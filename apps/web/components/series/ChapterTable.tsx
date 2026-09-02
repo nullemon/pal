@@ -97,10 +97,18 @@ export function ChapterTable({
       const el = listRef.current
       if (!el) return
       const top = el.getBoundingClientRect().top + window.scrollY
-      const start = Math.max(0, Math.floor((window.scrollY - top) / h) - OVERSCAN)
-      const end = Math.min(
+      // both bounds clamped to [0, rows.length] and end >= start, so the spacers always sum to
+      // rows.length * rowH — the table's height must not depend on scrollY
+      const start = Math.min(
         rows.length,
-        Math.ceil((window.scrollY + window.innerHeight - top) / h) + OVERSCAN,
+        Math.max(0, Math.floor((window.scrollY - top) / h) - OVERSCAN),
+      )
+      const end = Math.max(
+        start,
+        Math.min(
+          rows.length,
+          Math.ceil((window.scrollY + window.innerHeight - top) / h) + OVERSCAN,
+        ),
       )
       setRange((r) => (r && r.start === start && r.end === end ? r : { start, end }))
     }

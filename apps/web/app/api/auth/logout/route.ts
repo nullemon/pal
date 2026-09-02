@@ -1,8 +1,10 @@
+import { messages } from '@palscans/core/messages'
 import { cookies } from 'next/headers'
 import { z } from 'zod'
 import {
   clearSessionCookie,
   csrfFailed,
+  fail,
   ok,
   parseSessionCookie,
   revokeAllSessions,
@@ -18,10 +20,14 @@ const bodySchema = z.object({ everywhere: z.boolean().optional() })
 export async function POST(request: Request): Promise<Response> {
   if (!sameOrigin(request)) return csrfFailed()
   const text = await request.text()
-  const body = text.trim()
-    ? bodySchema.safeParse(JSON.parse(text))
-    : { success: true as const, data: {} }
-  const everywhere = body.success ? body.data.everywhere === true : false
+  let everywhere = false
+  if (text.trim()) {
+    try {
+      everywhere = bodySchema.parse(JSON.parse(text)).everywhere === true
+    } catch {
+      return fail(400, 'invalid_json', messages.errors.validation)
+    }
+  }
   const store = await cookies()
   const raw = store.get(SESSION_COOKIE)?.value
   const parsed = parseSessionCookie(raw)

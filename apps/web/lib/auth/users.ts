@@ -1,6 +1,8 @@
-import { getDb, slugHistory, users } from '@palscans/db'
-import { and, eq, gt, isNull } from 'drizzle-orm'
+import { messages } from '@palscans/core/messages'
+import { comments, getDb, oauthAccounts, pushSubscriptions, slugHistory, users } from '@palscans/db'
+import { and, eq, gt, isNotNull, isNull, lte } from 'drizzle-orm'
 import { RESERVED_USERNAMES } from './schemas'
+import { revokeAllSessions } from './session'
 
 export const USERNAME_CHANGE_DAYS = 30
 export const USERNAME_RESERVE_DAYS = 90
@@ -92,3 +94,73 @@ export const changeUsername = async (userId: number, username: string): Promise<
 /** Deletion runs after the grace period (a worker job purges); until then it can be cancelled. */
 export const deletionPurgeAt = (requestedAt: Date | null): Date | null =>
   requestedAt ? new Date(requestedAt.getTime() + DELETION_GRACE_DAYS * 86_400_000) : null
+
+/**
+ * Complete account deletions whose 14-day grace period has elapsed (docs/13). Meant to be
+ * called by the worker's scheduled job (see README). For each due user, in one transaction:
+ * - comments are anonymised, not removed — `comments.user_id` is NOT NULL, so the rows keep
+ *   pointing at the user, which becomes a PII-free tombstone (`username` null, display name
+ *   "Deleted user", no bio/avatar/banner); the per-comment `ip_hash` is cleared
+ * - email (NOT NULL, unique) is replaced by `deleted-<id>@deleted.invalid`; username,
+ *   password_hash, avatar_key, banner_key, totp_secret, bio and display name are wiped
+ * - oauth_accounts and push_subscriptions are deleted
+ * - deleted_at is set; then every session is revoked (also drops the Redis cache).
+ * Returns the ids of purged users.
+ */
+export const purgeDueDeletions = async (now: Date = new Date()): Promise<number[]> => {
+  const db = await getDb()
+  const cutoff = new Date(now.getTime() - DELETION_GRACE_DAYS * 86_400_000)
+  const due = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(
+      and(
+        isNotNull(users.deletionRequestedAt),
+        lte(users.deletionRequestedAt, cutoff),
+        isNull(users.deletedAt),
+      ),
+    )
+  const purged: number[] = []
+  for (const { id } of due) {
+    await db.transaction(async (tx) => {
+      // Re-check inside the transaction so a cancellation racing the job wins.
+      const [row] = await tx
+        .select({ id: users.id })
+        .from(users)
+        .where(
+          and(
+            eq(users.id, id),
+            isNotNull(users.deletionRequestedAt),
+            lte(users.deletionRequestedAt, cutoff),
+            isNull(users.deletedAt),
+          ),
+        )
+        .for('update')
+      if (!row) return
+      await tx.update(comments).set({ ipHash: null }).where(eq(comments.userId, id))
+      await tx.delete(oauthAccounts).where(eq(oauthAccounts.userId, id))
+      await tx.delete(pushSubscriptions).where(eq(pushSubscriptions.userId, id))
+      await tx
+        .update(users)
+        .set({
+          email: `deleted-${id}@deleted.invalid`,
+          username: null,
+          passwordHash: null,
+          displayName: messages.me.settings.deletedUser,
+          bio: null,
+          avatarKey: null,
+          bannerKey: null,
+          totpSecret: null,
+          totpEnabledAt: null,
+          emailVerifiedAt: null,
+          lastLoginMethod: null,
+          deletedAt: now,
+          updatedAt: now,
+        })
+        .where(eq(users.id, id))
+      purged.push(id)
+    })
+    await revokeAllSessions(id)
+  }
+  return purged
+}

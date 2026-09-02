@@ -41,6 +41,26 @@ import { getSessionUser, requireUser, withPermission } from '@/lib/auth'
 - Emails go through `@/lib/email` — console locally, Resend when `RESEND_API_KEY` is set.
 - Turnstile (`turnstile.ts`) verifies tokens only when `TURNSTILE_SECRET_KEY` is set.
 
+## Account deletion — worker hand-off (P5 / integration)
+
+`POST /api/me/delete` only stamps `users.deletion_requested_at` (14-day grace, docs/13) and
+emails the user; `DELETE` cancels. Nothing in the web app completes the deletion. **The
+worker's scheduled job must call `purgeDueDeletions()`** from `@/lib/auth/users` (hourly or
+daily), e.g.
+
+```ts
+import { purgeDueDeletions } from '@/lib/auth/users' // apps/web/lib/auth/users.ts
+const purgedUserIds = await purgeDueDeletions() // pass a `now` to override the clock
+```
+
+For each user whose `deletion_requested_at <= now - 14d` and `deleted_at IS NULL` it runs one
+transaction: comments are anonymised (kept, `ip_hash` cleared, author shown as "Deleted user"
+because the user row becomes a PII-free tombstone — `comments.user_id` is NOT NULL so the FK is
+kept), email → `deleted-<id>@deleted.invalid`, username / password / avatar / banner / bio /
+TOTP secret wiped, `oauth_accounts` and `push_subscriptions` deleted, `deleted_at` set, then
+`revokeAllSessions(userId)`. Idempotent and safe to re-run; a cancellation racing the job wins.
+Renderers should show `messages.me.settings.deletedUser` for any author with `deleted_at` set.
+
 ## Routes
 
 `/api/auth/*`: `register`, `login`, `login/totp`, `logout` (`{everywhere}`), `forgot-password`,

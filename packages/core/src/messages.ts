@@ -734,6 +734,7 @@ export const messages = {
       deleteScheduled: 'Deletion scheduled for {date}. Cancel any time before then.',
       deleteCancel: 'Cancel deletion',
       deleteCancelled: 'Deletion cancelled. Welcome back.',
+      deletedUser: 'Deleted user',
       email: 'Email',
       verified: 'Verified',
       unverified: 'Not verified',

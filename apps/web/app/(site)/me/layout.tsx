@@ -27,8 +27,8 @@ export default async function MeLayout({ children }: { children: ReactNode }) {
   const name = profile?.displayName || user?.username || '?'
   return (
     <div className="container-page py-6 lg:py-8">
-      <div className="grid gap-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-10">
-        <aside className="flex flex-col gap-4">
+      <div className="grid min-w-0 gap-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-10">
+        <aside className="flex min-w-0 flex-col gap-4">
           {user ? (
             <div className="flex items-center gap-3 rounded-lg border border-line bg-surface-1 p-3">
               <Avatar name={name} src={avatarUrl(profile?.avatarKey)} size={40} />
