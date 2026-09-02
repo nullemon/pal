@@ -151,7 +151,7 @@ renders:
 
 ```ts
 // settings.layouts
-{ home: 'B', series: 'A', reader: { default_mode: 'strip' } }
+{ home: 'A', series: 'B', reader: { default_mode: 'strip' } }   // chosen defaults: A Violet Classic home, B Violet Refined series
 ```
 
 The screen shows a row of radio cards per page type (thumbnail, name, a **Live** pill on

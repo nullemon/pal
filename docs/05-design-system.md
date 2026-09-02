@@ -1,5 +1,10 @@
 # 05 — Design system (the theme)
 
+**Chosen layouts (defaults):** homepage = direction **A · Violet Classic**, series page =
+direction **B · Violet Refined** — see `design/README.md`. The reader is being re-drawn as
+two modes (long strip · paged) and will be chosen next. The token values below are the
+starting point; direction A's and B's palettes are folded into them as the build begins.
+
 **Direction:** the dark violet reading-platform idiom you liked on Asura — deep near-black
 ground, a saturated purple accent, dense cover grids, coloured type and status chips —
 built as our own tokens and components. The layout conventions are shared because readers

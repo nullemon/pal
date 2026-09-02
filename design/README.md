@@ -19,6 +19,10 @@ slots, footer, craft rules).
 | E | Daylight | the light theme, end to end including the reader |
 | F | Cinematic Rows | streaming-app feel — full-bleed hero, horizontal rails, glass pills |
 
+**Chosen:** homepage **A · Violet Classic**, series page **B · Violet Refined** (both
+Asura-style layout family, original execution). These are the defaults in Appearance →
+Layouts; the other directions remain selectable there once built.
+
 A's homepage is `A/Main.dc.html` (the canvas entry artboard). All content is the shared
 sample catalog from the brief; covers are placeholders, not real artwork. The chosen
 direction becomes the basis for `docs/05-design-system.md` tokens and the component set.
