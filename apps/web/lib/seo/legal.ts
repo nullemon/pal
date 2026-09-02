@@ -3,7 +3,7 @@ import { and, eq, isNull } from 'drizzle-orm'
 import { unstable_cache } from 'next/cache'
 import { headers } from 'next/headers'
 import { z } from 'zod'
-import { getRateLimiter } from '@/lib/auth/rate-limit'
+import { clientIp, getRateLimiter, ipKey } from '@/lib/auth/rate-limit'
 import { getMailer } from '@/lib/email'
 
 /**
@@ -106,20 +106,14 @@ export const formValues = (data: FormData): Record<string, string> => {
   return out
 }
 
-const requestIp = async (): Promise<string> => {
-  const h = await headers()
-  return (
-    h.get('cf-connecting-ip') ??
-    h.get('x-forwarded-for')?.split(',')[0]?.trim() ??
-    h.get('x-real-ip') ??
-    'unknown'
-  )
-}
-
-/** 5 submissions per hour per IP for either form. */
+/**
+ * 5 submissions per hour per IP for either form (the address is keyed, never stored raw).
+ * With no trusted proxy the address is unknown and the form is not pooled into one bucket.
+ */
 export const formRateLimited = async (form: 'dmca' | 'contact'): Promise<boolean> => {
-  const ip = await requestIp()
-  const result = await getRateLimiter().hit(`${form}:${ip}`, 5, 3600)
+  const ip = ipKey(clientIp(await headers()))
+  if (!ip) return false
+  const result = await getRateLimiter().hit(`${form}:ip:${ip}`, 5, 3600)
   return !result.ok
 }
 

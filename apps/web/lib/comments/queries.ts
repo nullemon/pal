@@ -12,6 +12,7 @@ import {
 } from '@palscans/db'
 import { and, asc, desc, eq, gt, inArray, isNull, notInArray, or, sql } from 'drizzle-orm'
 import { storageUrl } from './media'
+import { MAX_CURSOR } from './schemas'
 import type {
   CommentAuthor,
   CommentImage,
@@ -131,10 +132,12 @@ const orderFor = (sort: CommentSort) => {
   }
 }
 
-export const parseCursor = (cursor: string | undefined): number => {
-  if (!cursor) return 0
-  const n = Number.parseInt(cursor, 10)
-  return Number.isFinite(n) && n >= 0 ? n : 0
+/** An offset cursor, clamped to [0, MAX_CURSOR] (the schema rejects more; this mirrors it). */
+export const parseCursor = (cursor: string | number | undefined): number => {
+  if (cursor === undefined || cursor === '') return 0
+  const n = typeof cursor === 'number' ? cursor : Number.parseInt(cursor, 10)
+  if (!Number.isFinite(n) || n < 0) return 0
+  return Math.min(Math.floor(n), MAX_CURSOR)
 }
 
 interface Enrichment {
@@ -288,7 +291,7 @@ const replyPreviews = async (db: Db, parentIds: number[], viewer: CommentViewer 
 export interface ListOptions {
   target: CommentTarget
   sort: CommentSort
-  cursor?: string
+  cursor?: string | number
   limit?: number
   viewer: CommentViewer | null
 }

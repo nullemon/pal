@@ -179,5 +179,6 @@ export const uploadCommitSchema = z.object({
 export type UploadCommit = z.infer<typeof uploadCommitSchema>
 
 export const MAX_PAGES_PER_CHAPTER = 400
+/** Mirrors `MAX_ORIGINAL_BYTES` in @palscans/core/storage (this file stays client-safe). */
 export const MAX_FILE_BYTES = 50 * 1024 * 1024
 export const MAX_CHAPTER_BYTES = 1024 * 1024 * 1024

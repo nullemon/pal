@@ -14,6 +14,7 @@ import {
   Th,
   When,
 } from '@/components/admin/ui'
+import { withPermission } from '@/lib/auth'
 
 function Sparkline({ values }: { values: number[] }) {
   const max = Math.max(1, ...values)
@@ -38,6 +39,8 @@ function Sparkline({ values }: { values: number[] }) {
 }
 
 export default async function AdminDashboardPage() {
+  // docs/16: the layout is not an auth boundary — every page guards itself.
+  await withPermission('admin.access', { returnTo: '/admin' })
   const d = await loadDashboard()
   const m = messages.admin.dashboard
   const now = new Date()

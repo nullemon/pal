@@ -1,3 +1,4 @@
+export { escapeLike } from './_shared.js'
 export * from './chapters.js'
 export * from './genres.js'
 export * from './home.js'

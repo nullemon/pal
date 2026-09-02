@@ -56,6 +56,12 @@
   /* hairline highlights on dark surfaces */
   --color-glass-line: rgb(255 255 255 / 0.06);
   --color-glass-line-strong: rgb(255 255 255 / 0.14);
+  /* third-party sign-in marks — fixed by the providers' brand guidelines, never themed */
+  --color-brand-google-blue: #4285f4;
+  --color-brand-google-green: #34a853;
+  --color-brand-google-yellow: #fbbc05;
+  --color-brand-google-red: #ea4335;
+  --color-brand-discord: #5865f2;
 
   --font-display: "Archivo Variable", ui-sans-serif, system-ui, sans-serif;
   --font-body: "Plus Jakarta Sans Variable", ui-sans-serif, system-ui, sans-serif;
@@ -68,6 +74,12 @@
 
   --shadow-1: 0 1px 2px rgb(0 0 0 / 0.45);
   --shadow-2: 0 10px 30px -12px rgb(0 0 0 / 0.7);
+  /* a reader page floating over the reader background (paged mode) */
+  --shadow-page: 0 24px 64px rgb(0 0 0 / 0.55);
+  /* the "elevated" card style in Appearance → Theme */
+  --shadow-card-elevated: 0 10px 30px -12px rgb(0 0 0 / 0.5);
+  /* spine highlight on a book-shaped card (`inset-shadow-highlight`) */
+  --inset-shadow-highlight: inset 3px 0 0 var(--color-glass-line);
 
   --breakpoint-sm: 480px;
   --breakpoint-md: 768px;
@@ -116,6 +128,7 @@
   --color-brand-wash: oklch(0.96 0.03 300);
   --shadow-1: 0 1px 2px rgb(0 0 0 / 0.08);
   --shadow-2: 0 10px 30px -12px rgb(0 0 0 / 0.2);
+  --shadow-card-elevated: 0 10px 30px -12px rgb(0 0 0 / 0.15);
   color-scheme: light;
 }
 

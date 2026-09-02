@@ -18,6 +18,8 @@ export const rejectResponse = (
       return { status: 403, message: t.accountTooNew }
     case 'rate_limited':
       return { status: 429, message: messages.comments.rateLimited }
+    case 'turnstile':
+      return { status: 403, message: t.challengeFailed }
     case 'too_long':
       return { status: 400, message: t.tooLong }
     case 'empty':

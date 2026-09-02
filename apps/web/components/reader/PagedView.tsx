@@ -145,7 +145,7 @@ export function PagedView(p: PagedViewProps) {
                 load
                 counter={`${page.idx + 1} / ${p.pages.length}`}
                 lightInk={p.lightInk}
-                className="shrink-0 shadow-[0_24px_64px_rgb(0_0_0_/_0.55)]"
+                className="shrink-0 shadow-page"
                 style={{ width: size.w, height: size.h, aspectRatio: 'auto' }}
               />
             )
@@ -159,7 +159,7 @@ export function PagedView(p: PagedViewProps) {
             type="button"
             aria-label={rtl ? messages.readerUi.nextPage : messages.readerUi.prevPage}
             onClick={left}
-            className="group pointer-events-auto flex w-[30%] cursor-w-resize items-center justify-start pl-5 outline-none transition-colors hover:bg-[linear-gradient(90deg,rgb(139_92_246_/_0.1),transparent)]"
+            className="group pointer-events-auto flex w-[30%] cursor-w-resize items-center justify-start pl-5 outline-none transition-colors hover:bg-[linear-gradient(90deg,var(--color-brand-wash),transparent)]"
           >
             <ChevronLeft
               size={48}
@@ -177,7 +177,7 @@ export function PagedView(p: PagedViewProps) {
             type="button"
             aria-label={rtl ? messages.readerUi.prevPage : messages.readerUi.nextPage}
             onClick={right}
-            className="group pointer-events-auto flex w-[30%] cursor-e-resize items-center justify-end pr-5 outline-none transition-colors hover:bg-[linear-gradient(270deg,rgb(139_92_246_/_0.1),transparent)]"
+            className="group pointer-events-auto flex w-[30%] cursor-e-resize items-center justify-end pr-5 outline-none transition-colors hover:bg-[linear-gradient(270deg,var(--color-brand-wash),transparent)]"
           >
             <ChevronRight
               size={48}

@@ -181,10 +181,13 @@ export function TotpPanel({ enabled, hasPassword }: { enabled: boolean; hasPassw
   )
   const [code, setCode] = useState('')
   const [password, setPassword] = useState('')
+  /** Password-less (OAuth-only) accounts re-authenticate with a current code instead. */
+  const [disableCode, setDisableCode] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const codeId = useId()
   const pwId = useId()
+  const disableCodeId = useId()
 
   const start = async () => {
     setBusy(true)
@@ -216,13 +219,18 @@ export function TotpPanel({ enabled, hasPassword }: { enabled: boolean; hasPassw
     e.preventDefault()
     setBusy(true)
     setError(null)
-    const res = await api<{ message: string }>('/api/me/totp', { password }, 'DELETE')
+    const res = await api<{ message: string }>(
+      '/api/me/totp',
+      hasPassword ? { password } : { code: disableCode },
+      'DELETE',
+    )
     setBusy(false)
     if (!res.ok) {
       setError(res.message)
       return
     }
     setPassword('')
+    setDisableCode('')
     toast.toast({ title: res.data.message })
     router.refresh()
   }
@@ -244,26 +252,45 @@ export function TotpPanel({ enabled, hasPassword }: { enabled: boolean; hasPassw
       ) : null}
       {enabled ? (
         <form onSubmit={disable} className="flex max-w-[420px] flex-col gap-3">
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor={pwId} className={labelClasses}>
-              {messages.me.security.totpPasswordToDisable}
-            </label>
-            <input
-              id={pwId}
-              type="password"
-              autoComplete="current-password"
-              required={hasPassword}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className={inputClasses}
-            />
-          </div>
+          {hasPassword ? (
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor={pwId} className={labelClasses}>
+                {messages.me.security.totpPasswordToDisable}
+              </label>
+              <input
+                id={pwId}
+                type="password"
+                autoComplete="current-password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className={inputClasses}
+              />
+            </div>
+          ) : (
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor={disableCodeId} className={labelClasses}>
+                {messages.me.security.totpCodeToDisable}
+              </label>
+              <input
+                id={disableCodeId}
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                pattern="\d{6}"
+                maxLength={6}
+                required
+                value={disableCode}
+                onChange={(e) => setDisableCode(e.target.value)}
+                className={inputClasses}
+              />
+            </div>
+          )}
           <div>
             <Button
               type="submit"
               size="sm"
               variant="outline"
-              disabled={busy || (hasPassword && !password)}
+              disabled={busy || (hasPassword ? !password : disableCode.length !== 6)}
             >
               {messages.me.security.totpDisable}
             </Button>

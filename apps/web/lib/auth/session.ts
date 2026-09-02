@@ -1,4 +1,4 @@
-import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto'
+import { createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto'
 import type { EntitlementRow, SessionUser } from '@palscans/core'
 import { entitlements, getDb, sessions, users } from '@palscans/db'
 import { and, eq, gt, isNull, or } from 'drizzle-orm'
@@ -47,11 +47,28 @@ export function hashSessionSecret(secret: string): Uint8Array {
   return new Uint8Array(createHash('sha256').update(secret, 'utf8').digest())
 }
 
-/** Client IPs are stored hashed with the session secret (abuse detection, never logging). */
-export function hashIp(ip: string | null | undefined): Uint8Array | null {
+const WEEK_MS = 7 * 24 * 3600 * 1000
+
+/** The rotating salt for persisted IP hashes: the UTC week the row was written in. */
+export const ipHashSalt = (at: Date = new Date()): string =>
+  `w${Math.floor(at.getTime() / WEEK_MS)}`
+
+/**
+ * Client IPs are persisted hashed (sessions, comments, audit log — abuse detection, never
+ * logging): HMAC with the app secret over a weekly salt and the address, so a database dump
+ * plus the secret only lets an attacker sweep one week's worth of rows at a time, and rows
+ * from different weeks never share a hash. Comparisons are meaningful within a week.
+ */
+export function hashIp(
+  ip: string | null | undefined,
+  at: Date = new Date(),
+  secret: string = getEnv().SESSION_SECRET,
+): Uint8Array | null {
   if (!ip) return null
   return new Uint8Array(
-    createHash('sha256').update(`${getEnv().SESSION_SECRET}:${ip}`, 'utf8').digest(),
+    createHmac('sha256', secret)
+      .update(`${ipHashSalt(at)}:${ip}`, 'utf8')
+      .digest(),
   )
 }
 
@@ -197,22 +214,28 @@ export const resolveSession = async (
   return { sessionId: parsed.id, user }
 }
 
+/** The request's cookie resolved once (secret verified) and shared by the helpers below. */
+const getResolvedSession = cache(async () => {
+  const store = await cookies()
+  return resolveSession(store.get(SESSION_COOKIE)?.value)
+})
+
 /**
  * The signed-in user for this request, or null. Memoised per request with React `cache`.
  * Calling it makes the route dynamic (it reads cookies) — call it only from pages that
  * personalise.
  */
-export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
-  const store = await cookies()
-  const resolved = await resolveSession(store.get(SESSION_COOKIE)?.value)
-  return resolved?.user ?? null
-})
-
-/** The current session id (for "this device" on the security page), or null. */
-export const getSessionId = cache(async (): Promise<string | null> => {
-  const store = await cookies()
-  return parseSessionCookie(store.get(SESSION_COOKIE)?.value)?.id ?? null
-})
+export const getSessionUser = cache(
+  async (): Promise<SessionUser | null> => (await getResolvedSession())?.user ?? null,
+)
+/**
+ * The current session id — only when the cookie's secret verified against the row, so a
+ * crafted `sid=<someone else's uuid>.<junk>` never names a session to revoke or rotate.
+ * Null for anonymous or invalid cookies ("this device" on the security page).
+ */
+export const getSessionId = cache(
+  async (): Promise<string | null> => (await getResolvedSession())?.sessionId ?? null,
+)
 
 export interface SessionContext {
   userAgent?: string | null
@@ -319,10 +342,17 @@ export const listSessions = async (userId: number, currentId: string | null) => 
   })
 }
 
+/**
+ * Whether auth cookies carry `Secure`: always in production (env.ts also refuses a non-https
+ * SITE_URL there), and on https origins elsewhere — never decided by the URL alone.
+ */
+export const secureCookies = (env: { NODE_ENV: string; SITE_URL: string } = getEnv()): boolean =>
+  env.NODE_ENV === 'production' || env.SITE_URL.startsWith('https://')
+
 /** Cookie attributes (docs/07): HttpOnly, Secure (https origins), SameSite=Lax, 30 days. */
 export const sessionCookieOptions = (expiresAt: Date) => ({
   httpOnly: true,
-  secure: getEnv().SITE_URL.startsWith('https://'),
+  secure: secureCookies(),
   sameSite: 'lax' as const,
   path: '/',
   expires: expiresAt,

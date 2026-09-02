@@ -11,10 +11,17 @@ import {
   assertSafeKey,
   contentTypeFor,
   joinUrl,
+  type ObjectInfo,
   type PutOptions,
+  type SignedPutOptions,
   type SignedPutUrl,
   type Storage,
 } from './types.js'
+
+const isMissing = (err: unknown): boolean => {
+  const e = err as { name?: string; $metadata?: { httpStatusCode?: number } }
+  return e.name === 'NotFound' || e.name === 'NoSuchKey' || e.$metadata?.httpStatusCode === 404
+}
 
 export interface S3StorageOptions {
   bucket?: string
@@ -77,18 +84,18 @@ export class S3Storage implements Storage {
     }
   }
 
-  async getSignedPutUrl(
-    key: string,
-    opts: PutOptions & { expiresInSeconds?: number } = {},
-  ): Promise<SignedPutUrl> {
+  async getSignedPutUrl(key: string, opts: SignedPutOptions = {}): Promise<SignedPutUrl> {
     const expiresIn = opts.expiresInSeconds ?? 900
     const contentType = opts.contentType ?? contentTypeFor(key)
+    // ContentLength is part of the signature, so the browser cannot PUT a larger body
+    // than the intent declared (the intent already caps it).
     const url = await getSignedUrl(
       this.client,
       new PutObjectCommand({
         Bucket: this.bucket,
         Key: assertSafeKey(key),
         ContentType: contentType,
+        ContentLength: opts.contentLength,
         CacheControl: opts.cacheControl,
       }),
       { expiresIn },
@@ -96,13 +103,54 @@ export class S3Storage implements Storage {
     return {
       url,
       method: 'PUT',
-      headers: { 'content-type': contentType },
+      headers: {
+        'content-type': contentType,
+        ...(opts.contentLength !== undefined
+          ? { 'content-length': String(opts.contentLength) }
+          : {}),
+      },
       expiresAt: new Date(Date.now() + expiresIn * 1000),
     }
   }
 
+  async getSignedGetUrl(key: string, expiresInSeconds = 600): Promise<string> {
+    return getSignedUrl(
+      this.client,
+      new GetObjectCommand({ Bucket: this.bucket, Key: assertSafeKey(key) }),
+      { expiresIn: expiresInSeconds },
+    )
+  }
+
   getUrl(key: string): string {
     return joinUrl(this.publicUrl, assertSafeKey(key))
+  }
+
+  async head(key: string): Promise<ObjectInfo | null> {
+    try {
+      const res = await this.client.send(
+        new HeadObjectCommand({ Bucket: this.bucket, Key: assertSafeKey(key) }),
+      )
+      return { size: res.ContentLength ?? 0, contentType: res.ContentType ?? null }
+    } catch (err) {
+      if (isMissing(err)) return null
+      throw err
+    }
+  }
+
+  async getRange(key: string, start: number, end: number): Promise<Uint8Array | null> {
+    try {
+      const res = await this.client.send(
+        new GetObjectCommand({
+          Bucket: this.bucket,
+          Key: assertSafeKey(key),
+          Range: `bytes=${start}-${end}`,
+        }),
+      )
+      return res.Body ? await res.Body.transformToByteArray() : null
+    } catch (err) {
+      if (isMissing(err)) return null
+      throw err
+    }
   }
 
   async delete(key: string): Promise<void> {
@@ -118,8 +166,7 @@ export class S3Storage implements Storage {
       )
       return true
     } catch (err) {
-      const e = err as { name?: string; $metadata?: { httpStatusCode?: number } }
-      if (e.name === 'NotFound' || e.$metadata?.httpStatusCode === 404) return false
+      if (isMissing(err)) return false
       throw err
     }
   }

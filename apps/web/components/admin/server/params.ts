@@ -1,7 +1,10 @@
 import { z } from 'zod'
 
-/** Admin tables keep filters, sort and page in the URL (docs/04 interaction rules). */
-export const pageSchema = z.coerce.number().int().min(1).catch(1)
+/**
+ * Admin tables keep filters, sort and page in the URL (docs/04 interaction rules). The page
+ * is capped so `?page=1e15` cannot become a petabyte OFFSET.
+ */
+export const pageSchema = z.coerce.number().int().min(1).max(10_000).catch(1)
 
 export const idParam = z.coerce.number().int().positive()
 

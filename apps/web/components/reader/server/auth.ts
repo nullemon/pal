@@ -9,6 +9,7 @@ export {
   forbidden,
   notFound,
   ok,
+  parseJson,
   type RouteParams,
   requireUser,
   unauthorized,

@@ -762,13 +762,19 @@ function ArtDrop({
       })
       if (!intent.ok) throw new Error(intent.message || intent.error)
       await uploadWithRetry(intent.data.url, intent.data.headers, file)
-      const confirm = await patchJson<{ key: string; url: string }>(`/api/admin/series/${id}/art`, {
-        kind,
-        key: intent.data.key,
-      })
+      const confirm = await patchJson<{ key: string; url: string | null; pending: boolean }>(
+        `/api/admin/series/${id}/art`,
+        { kind, key: intent.data.key },
+      )
       if (!confirm.ok) throw new Error(confirm.message || confirm.error)
-      setUrl(confirm.data.url)
-      toast({ title: messages.admin.saved, tone: 'ok' })
+      // The worker re-encodes the original before it becomes the public cover / banner;
+      // the current image stays until then.
+      if (confirm.data.url) setUrl(confirm.data.url)
+      toast({
+        title: messages.admin.saved,
+        description: confirm.data.pending ? f.processing : undefined,
+        tone: 'ok',
+      })
     } catch (err) {
       toast({
         title: messages.admin.errorSaving,

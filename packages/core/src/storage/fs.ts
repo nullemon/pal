@@ -1,11 +1,14 @@
 import { existsSync } from 'node:fs'
-import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
+import { mkdir, open, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { getEnv } from '../env.js'
 import {
   assertSafeKey,
+  contentTypeFor,
   joinUrl,
+  type ObjectInfo,
   type PutOptions,
+  type SignedPutOptions,
   type SignedPutUrl,
   type Storage,
 } from './types.js'
@@ -69,10 +72,7 @@ export class FsStorage implements Storage {
     }
   }
 
-  async getSignedPutUrl(
-    key: string,
-    opts: PutOptions & { expiresInSeconds?: number } = {},
-  ): Promise<SignedPutUrl> {
+  async getSignedPutUrl(key: string, opts: SignedPutOptions = {}): Promise<SignedPutUrl> {
     assertSafeKey(key)
     const expiresAt = new Date(Date.now() + (opts.expiresInSeconds ?? 900) * 1000)
     return {
@@ -83,12 +83,41 @@ export class FsStorage implements Storage {
     }
   }
 
+  async getSignedGetUrl(key: string, _expiresInSeconds = 600): Promise<string> {
+    return this.getUrl(key)
+  }
+
   getUrl(key: string): string {
     return joinUrl(this.publicUrl, assertSafeKey(key))
   }
 
   async delete(key: string): Promise<void> {
     await rm(this.pathFor(key), { force: true })
+  }
+
+  async head(key: string): Promise<ObjectInfo | null> {
+    try {
+      const s = await stat(this.pathFor(key))
+      return s.isFile() ? { size: s.size, contentType: contentTypeFor(key) } : null
+    } catch {
+      return null
+    }
+  }
+
+  async getRange(key: string, start: number, end: number): Promise<Uint8Array | null> {
+    let handle: Awaited<ReturnType<typeof open>> | undefined
+    try {
+      handle = await open(this.pathFor(key), 'r')
+      const length = Math.max(0, end - start + 1)
+      const buf = new Uint8Array(length)
+      const { bytesRead } = await handle.read(buf, 0, length, start)
+      return buf.subarray(0, bytesRead)
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null
+      throw err
+    } finally {
+      await handle?.close()
+    }
   }
 
   async exists(key: string): Promise<boolean> {

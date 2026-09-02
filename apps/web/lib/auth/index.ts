@@ -4,16 +4,19 @@
  *   import { getSessionUser, requireUser, withPermission } from '@/lib/auth'
  */
 export {
+  type BodyResult,
   csrfFailed,
   fail,
   forbidden,
   loginHref,
+  MAX_JSON_BYTES,
   notFound,
   ok,
   parseJson,
   parseQuery,
   type RouteParams,
   rateLimited,
+  readBody,
   requireUser,
   sameOrigin,
   totpRequired,
@@ -21,7 +24,7 @@ export {
   unauthorized,
   withPermission,
 } from './http'
-export { clientIp, getRateLimiter } from './rate-limit'
+export { accountKey, clientIp, getRateLimiter, ipKey, type TrustedProxy } from './rate-limit'
 export { safeReturnPath, withReturn } from './return-to'
 export {
   type ActiveSession,
@@ -32,6 +35,7 @@ export {
   hashIp,
   hashSessionSecret,
   invalidateSessionCache,
+  ipHashSalt,
   listSessions,
   loadSessionUser,
   type ParsedSessionCookie,

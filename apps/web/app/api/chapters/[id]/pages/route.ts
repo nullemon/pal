@@ -5,12 +5,13 @@ import { z } from 'zod'
 import { fail, notFound, ok, type RouteParams } from '@/components/reader/server/auth'
 import {
   chapterForApi,
+  lockOf,
   readerChapter,
   readerSeries,
   toReaderPages,
   viewerCanRead,
 } from '@/components/reader/server/data'
-import { clientIp, getRateLimiter, rateLimited } from '@/lib/auth'
+import { clientIp, getRateLimiter, ipKey, rateLimited } from '@/lib/auth'
 import { getSessionUser } from '@/lib/auth/session'
 
 const idSchema = z.coerce.number().int().positive()
@@ -19,8 +20,10 @@ const querySchema = z.object({ limit: z.coerce.number().int().min(1).max(50).cat
 /**
  * GET /api/chapters/:id/pages?limit=3 — the page manifest the reader prefetches for the
  * next chapter at 80% (docs/06). Access is decided by `canReadChapter`; a locked chapter
- * answers 403 with the lock kind and never a page URL. Anonymous readers may fetch free
- * chapters (the reader itself is public), which is why this is not behind `requireUser`.
+ * answers 403 with the lock kind and never a page URL; an entitled reader of a locked
+ * chapter gets URLs signed for 10 minutes and an uncacheable response (docs/03). Anonymous
+ * readers may fetch free chapters (the reader itself is public), which is why this is not
+ * behind `requireUser`.
  */
 export async function GET(request: Request, ctx: RouteParams<{ id: string }>) {
   const id = idSchema.safeParse((await ctx.params).id)
@@ -30,9 +33,12 @@ export async function GET(request: Request, ctx: RouteParams<{ id: string }>) {
 
   // docs/07: page-manifest fetches are limited to 60/min per user (or per IP when anonymous)
   const user = await getSessionUser()
-  const limitKey = user ? `manifest:u:${user.id}` : `manifest:ip:${clientIp(request) ?? 'unknown'}`
-  const rate = await getRateLimiter().hit(limitKey, 60, 60)
-  if (!rate.ok) return rateLimited(rate.retryAfterSec)
+  const ip = user ? null : ipKey(clientIp(request))
+  const limitKey = user ? `manifest:u:${user.id}` : ip ? `manifest:ip:${ip}` : null
+  if (limitKey) {
+    const rate = await getRateLimiter().hit(limitKey, 60, 60)
+    if (!rate.ok) return rateLimited(rate.retryAfterSec)
+  }
 
   const row = await chapterForApi(id.data)
   if (!row) return notFound()
@@ -50,7 +56,8 @@ export async function GET(request: Request, ctx: RouteParams<{ id: string }>) {
   if (!bundle) return notFound()
   const now = new Date()
   if (!viewerCanRead(user, bundle.chapter, now)) return fail(403, 'locked')
-  const pages = toReaderPages(bundle.pages).slice(0, limit)
+  const lock = lockOf(bundle.chapter, now)
+  const pages = (await toReaderPages(bundle.pages.slice(0, limit), lock)).slice(0, limit)
   return ok(
     {
       chapterId: bundle.chapter.id,
@@ -58,6 +65,10 @@ export async function GET(request: Request, ctx: RouteParams<{ id: string }>) {
       pageCount: bundle.chapter.pageCount,
       pages,
     },
-    { headers: { 'cache-control': 'private, max-age=60' } },
+    {
+      headers: {
+        'cache-control': lock === 'none' ? 'private, max-age=60' : 'private, no-store',
+      },
+    },
   )
 }

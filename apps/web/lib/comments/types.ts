@@ -100,4 +100,8 @@ export interface CommentThreadConfig {
   imagesEnabled: boolean
   customGifs: 'off' | 'premium' | 'all'
   pageSize: number
+  /** Cloudflare Turnstile site key when the server verifies tokens; null disables the widget. */
+  turnstileSiteKey: string | null
+  /** docs/14 §2 step 3: this viewer must solve the challenge up front (new account / lockdown). */
+  challenge: boolean
 }

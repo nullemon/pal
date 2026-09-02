@@ -1,8 +1,17 @@
 import { can, type Permission } from '@palscans/core'
 import { messages } from '@palscans/core/messages'
 import type { z } from 'zod'
-import { csrfFailed, fail, forbidden, type RouteParams, sameOrigin, unauthorized } from '@/lib/auth'
-import { getEnv } from '@/lib/env'
+import {
+  clientIp,
+  csrfFailed,
+  fail,
+  forbidden,
+  hashIp,
+  type RouteParams,
+  readBody,
+  sameOrigin,
+  unauthorized,
+} from '@/lib/auth'
 import { type AppUser, getAppUser } from './viewer'
 
 /**
@@ -43,16 +52,21 @@ const parseWith = <T>(raw: string, schema: z.ZodType<T>): ParseResult<T> => {
   return { ok: true, data: parsed.data }
 }
 
+/** Content-Length first, then a streaming cap — the body is never buffered past the limit. */
+const readCapped = async (request: Request): Promise<ParseResult<string>> => {
+  const read = await readBody(request, MAX_JSON_BYTES)
+  if (!read.ok) return { ok: false, response: tooLarge() }
+  return { ok: true, data: new TextDecoder().decode(read.body) }
+}
+
 /** Parse a JSON body (≤ 32 KB) with a zod schema; malformed input is a 400 with the first issue. */
 export const parseJson = async <T>(
   request: Request,
   schema: z.ZodType<T>,
 ): Promise<ParseResult<T>> => {
-  const declared = Number(request.headers.get('content-length') ?? 0)
-  if (declared > MAX_JSON_BYTES) return { ok: false, response: tooLarge() }
-  const raw = await request.text()
-  if (raw.length > MAX_JSON_BYTES) return { ok: false, response: tooLarge() }
-  return parseWith(raw, schema)
+  const raw = await readCapped(request)
+  if (!raw.ok) return raw
+  return parseWith(raw.data, schema)
 }
 
 /** Like `parseJson`, but an empty body yields `fallback` (e.g. a bare POST with defaults). */
@@ -61,10 +75,10 @@ export const parseJsonOptional = async <T>(
   schema: z.ZodType<T>,
   fallback: T,
 ): Promise<ParseResult<T>> => {
-  const raw = await request.text()
-  if (!raw.trim()) return { ok: true, data: fallback }
-  if (raw.length > MAX_JSON_BYTES) return { ok: false, response: tooLarge() }
-  return parseWith(raw, schema)
+  const raw = await readCapped(request)
+  if (!raw.ok) return raw
+  if (!raw.data.trim()) return { ok: true, data: fallback }
+  return parseWith(raw.data, schema)
 }
 
 type UserHandler<P extends Record<string, string>> = (
@@ -100,11 +114,6 @@ export const withPermission =
     return handler(request, ctx, user)
   }
 
-/** Client IP hashed with the session secret so raw addresses are never stored (docs/14 §6). */
-export const ipHashFor = async (request: Request): Promise<Uint8Array | null> => {
-  const forwarded = request.headers.get('x-forwarded-for')
-  const ip = forwarded?.split(',')[0]?.trim() || request.headers.get('x-real-ip')
-  if (!ip) return null
-  const { createHash } = await import('node:crypto')
-  return new Uint8Array(createHash('sha256').update(`${getEnv().SESSION_SECRET}:${ip}`).digest())
-}
+/** Client IP (from the trusted proxy hop) hashed with the weekly salt — never stored raw (docs/14 §6). */
+export const ipHashFor = async (request: Request): Promise<Uint8Array | null> =>
+  hashIp(clientIp(request))

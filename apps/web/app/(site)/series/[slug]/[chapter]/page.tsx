@@ -57,10 +57,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const now = new Date()
   const readable = viewerCanRead(ctx.user, ctx.bundle.chapter, now)
   const first = ctx.bundle.pages[0]
+  // Locked chapters never put a page URL in the metadata, entitled viewer or not.
+  const free = readable && lockOf(ctx.bundle.chapter, now) === 'none'
   return chapterMetadata({
     series: ctx.series,
     bundle: ctx.bundle,
-    firstPageUrl: readable && first ? storageUrl(first.key) : null,
+    firstPageUrl: free && first ? storageUrl(first.key) : null,
     coverUrl: ctx.series.coverKey ? storageUrl(ctx.series.coverKey) : null,
   })
 }
@@ -128,7 +130,7 @@ export default async function ChapterPage({ params }: PageProps) {
     )
   }
 
-  const pages = toReaderPages(bundle.pages)
+  const pages = await toReaderPages(bundle.pages, lockOf(bundle.chapter, now))
   const first = pages[0]
   if (first) preload(first.url, { as: 'image', fetchPriority: 'high' })
   const resume = await readerResume(user, series.id, bundle.chapter.id)

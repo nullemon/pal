@@ -16,6 +16,9 @@ x-app-env: &app-env
   SITE_URL: ${SITE_URL:-http://localhost:3000}
   SITE_NAME: PALScans
   SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET}
+  # Caddy appends the real client address to X-Forwarded-For; nothing else is trusted.
+  TRUSTED_PROXY: ${TRUSTED_PROXY:-xff}
+  TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-1}
   SMTP_HOST: mailpit
   SMTP_PORT: "1025"
 

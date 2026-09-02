@@ -13,6 +13,7 @@ import { and, eq, isNull } from 'drizzle-orm'
 import { unstable_cache } from 'next/cache'
 import { cache } from 'react'
 import { getEnv } from '@/lib/env'
+import { signedStorageUrl } from '@/lib/storage'
 import type { PageVariantUrl, ReaderPage } from '../types'
 
 /** docs/06: chapter pages are immutable once published — cache their data for an hour. */
@@ -224,19 +225,33 @@ export const storageUrl = (key: string): string => {
   return `${env.PUBLIC_CDN_URL.replace(/\/+$/, '')}/${safe}`
 }
 
-/** Page rows → what the island renders. Only ever called after `viewerCanRead`. */
-export const toReaderPages = (pages: ChapterBundle['pages']): ReaderPage[] =>
-  pages.map((p) => {
-    const variants: PageVariantUrl[] = p.variants
-      .filter((v) => typeof v.w === 'number' && v.w > 0)
-      .map((v) => ({ w: v.w, url: storageUrl(v.key ?? p.key) }))
-      .sort((a, b) => a.w - b.w)
-    return {
-      idx: p.idx,
-      width: p.width,
-      height: p.height,
-      blurHash: p.blurHash,
-      url: storageUrl(p.key),
-      variants,
-    }
-  })
+/**
+ * Page rows → what the island renders. Only ever called after `viewerCanRead`. Free
+ * chapters get plain immutable CDN URLs; a locked chapter (premium / early access) gets
+ * URLs signed for 10 minutes (docs/03 "Paid content"), so an entitled reader's DOM or HAR
+ * never turns into a permanent public link to paid pages.
+ */
+export const toReaderPages = async (
+  pages: ChapterBundle['pages'],
+  lock: ChapterLock,
+): Promise<ReaderPage[]> => {
+  const url = lock === 'none' ? async (key: string) => storageUrl(key) : signedStorageUrl
+  return Promise.all(
+    pages.map(async (p) => {
+      const sized = p.variants
+        .filter((v) => typeof v.w === 'number' && v.w > 0)
+        .sort((a, b) => a.w - b.w)
+      const variants: PageVariantUrl[] = await Promise.all(
+        sized.map(async (v) => ({ w: v.w, url: await url(v.key ?? p.key) })),
+      )
+      return {
+        idx: p.idx,
+        width: p.width,
+        height: p.height,
+        blurHash: p.blurHash,
+        url: await url(p.key),
+        variants,
+      }
+    }),
+  )
+}

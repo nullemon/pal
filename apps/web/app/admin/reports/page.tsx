@@ -3,7 +3,12 @@ import { getDb, reports, users } from '@palscans/db'
 import { and, count, desc, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { ReportsQueue } from '@/components/admin/client/ReportsQueue'
-import { PAGE_SIZE, parseSearch, type SearchParams } from '@/components/admin/server/params'
+import {
+  PAGE_SIZE,
+  pageSchema,
+  parseSearch,
+  type SearchParams,
+} from '@/components/admin/server/params'
 import { PageHeader, Pagination } from '@/components/admin/ui'
 import { withPermission } from '@/lib/auth'
 
@@ -13,7 +18,7 @@ const schema = z.object({
     .optional()
     .catch(undefined),
   status: z.enum(['open', 'triaged', 'actioned', 'rejected']).catch('open'),
-  page: z.coerce.number().int().min(1).catch(1),
+  page: pageSchema,
 })
 
 export default async function ReportsPage({

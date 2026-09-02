@@ -4,14 +4,19 @@ import { COMMENT_SORTS, REACTION_KINDS, REPORT_REASONS } from './types'
 
 export const targetSchema = z.string().regex(/^(series|chapter):\d{1,12}$/)
 
+/** Deepest offset a listing accepts — past this the query would be an out-of-range OFFSET. */
+export const MAX_CURSOR = 10_000
+
 export const listQuerySchema = z.object({
   target: targetSchema,
   sort: z.enum(COMMENT_SORTS).default('best'),
-  cursor: z.string().max(64).optional(),
+  cursor: z.coerce.number().int().min(0).max(MAX_CURSOR).optional(),
   limit: z.coerce.number().int().min(1).max(50).default(20),
 })
 
 export const createCommentSchema = z.object({
+  /** Turnstile token (docs/14 §2 step 3) — required only when the server asks for a challenge. */
+  turnstile: z.string().max(2048).optional(),
   target: targetSchema,
   parent_id: z.number().int().positive().nullable().optional(),
   body: commentBodySchema,

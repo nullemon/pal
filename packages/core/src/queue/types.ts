@@ -5,6 +5,8 @@
 export interface JobMap {
   'chapter.process': { chapterId: number }
   'chapter.publish': { chapterId: number }
+  /** Re-encode an uploaded cover / banner original into the public variants (docs/03). */
+  'series.art': { seriesId: number; kind: 'cover' | 'banner'; key: string }
   'sitemap.build': { kind: 'full' | 'incremental'; seriesIds?: number[] }
   'notify.new_chapter': { chapterId: number }
   'notify.comment': { commentId: number; kind: 'reply' | 'mention' | 'reaction' }

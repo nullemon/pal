@@ -10,6 +10,8 @@ export const envSchema = z.object({
 
   // database
   DATABASE_URL: z.string().min(1).default('pglite://./.data/pg'),
+  /** postgres.js pool size (read by @palscans/db; mirrored here so the template stays complete). */
+  DATABASE_POOL_MAX: z.coerce.number().int().positive().optional(),
 
   // cache / queue
   REDIS_URL: z.string().url().optional(),
@@ -22,6 +24,8 @@ export const envSchema = z.object({
   S3_ACCESS_KEY_ID: z.string().min(1).optional(),
   S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
   S3_REGION: z.string().min(1).optional(),
+  /** MinIO and some S3 clones need path-style URLs ("true" / "1" / "yes"). */
+  S3_FORCE_PATH_STYLE: z.stringbool().optional(),
   PUBLIC_CDN_URL: z.string().url().default('http://localhost:3000/_storage'),
 
   // app
@@ -33,6 +37,15 @@ export const envSchema = z.object({
    * SESSION_SECRET in development only; production must set it explicitly.
    */
   INTERNAL_API_SECRET: z.string().min(1).optional(),
+
+  /**
+   * Which proxy header carries the client address. `none` (default) trusts no header —
+   * a forged X-Forwarded-For must never pick a rate-limit bucket; `xff` takes the hop the
+   * trusted proxy appended (the last one, or `TRUSTED_PROXY_HOPS` from the end when more
+   * than one trusted proxy is in the chain); `cloudflare` reads `cf-connecting-ip`.
+   */
+  TRUSTED_PROXY: z.enum(['none', 'xff', 'cloudflare']).default('none'),
+  TRUSTED_PROXY_HOPS: z.coerce.number().int().min(1).max(10).default(1),
 
   // bot protection (docs/13); both unset → every Turnstile check passes
   TURNSTILE_SECRET_KEY: z.string().min(1).optional(),
@@ -69,30 +82,63 @@ function withoutEmpty(source: Record<string, string | undefined>): Record<string
 /** Minimum SESSION_SECRET length in production (32 random bytes, base64 → 44 chars). */
 export const MIN_SESSION_SECRET_LENGTH = 32
 
-const productionSchema = envSchema.superRefine((env, ctx) => {
-  if (env.NODE_ENV !== 'production') return
-  if (
-    env.SESSION_SECRET.length < MIN_SESSION_SECRET_LENGTH ||
-    env.SESSION_SECRET.startsWith('change-me')
-  )
-    ctx.addIssue({
-      code: 'custom',
-      path: ['SESSION_SECRET'],
-      message: `must be at least ${MIN_SESSION_SECRET_LENGTH} random characters in production (not the placeholder)`,
-    })
-  if (!env.INTERNAL_API_SECRET)
-    ctx.addIssue({
-      code: 'custom',
-      path: ['INTERNAL_API_SECRET'],
-      message: 'is required in production (no fallback to SESSION_SECRET)',
-    })
-})
+const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]'])
+/** `http://localhost[:port]` and the other loopback literals — secure contexts in every browser. */
+export const isLoopbackHttp = (url: string): boolean => {
+  try {
+    const u = new URL(url)
+    return u.protocol === 'http:' && LOOPBACK_HOSTS.has(u.hostname)
+  } catch {
+    return false
+  }
+}
+
+/** The runtime checks; `source` is the raw environment (to tell an explicit SITE_URL from the default). */
+const productionSchema = (source: Record<string, string | undefined>) =>
+  envSchema.superRefine((env, ctx) => {
+    if (env.NODE_ENV !== 'production') return
+    if (
+      env.SESSION_SECRET.length < MIN_SESSION_SECRET_LENGTH ||
+      env.SESSION_SECRET.startsWith('change-me')
+    )
+      ctx.addIssue({
+        code: 'custom',
+        path: ['SESSION_SECRET'],
+        message: `must be at least ${MIN_SESSION_SECRET_LENGTH} random characters in production (not the placeholder)`,
+      })
+    if (!env.INTERNAL_API_SECRET)
+      ctx.addIssue({
+        code: 'custom',
+        path: ['INTERNAL_API_SECRET'],
+        message: 'is required in production (no fallback to SESSION_SECRET)',
+      })
+    // With no proxy declared every client shares one rate-limit bucket (and no IP is ever
+    // hashed): production must say where the client address comes from.
+    if (env.TRUSTED_PROXY === 'none')
+      ctx.addIssue({
+        code: 'custom',
+        path: ['TRUSTED_PROXY'],
+        message: 'must be "xff" or "cloudflare" in production (per-IP rate limits need it)',
+      })
+    // The session / OAuth / MFA cookies carry `Secure` (docs/07); an http:// origin copied from
+    // .env.example (TLS at Caddy) must not silently drop it. An *explicit* loopback origin is
+    // exempt: browsers treat http://localhost as a secure context (Secure cookies work there),
+    // and a production build started on it is a local verification run (`next start -p …`),
+    // never a deployment. The unset default (`http://localhost:3000`) is still refused.
+    if (!env.SITE_URL.startsWith('https://') && !(source.SITE_URL && isLoopbackHttp(env.SITE_URL)))
+      ctx.addIssue({
+        code: 'custom',
+        path: ['SITE_URL'],
+        message: 'must be an https:// origin in production (Secure cookies)',
+      })
+  })
 
 export function parseEnv(source: Record<string, string | undefined> = process.env): Env {
   // `next build` runs with NODE_ENV=production but serves nothing; the secret checks apply
   // to the running server (`next start`), where a placeholder secret would be exploitable.
   const building = source.NEXT_PHASE === 'phase-production-build'
-  const result = (building ? envSchema : productionSchema).safeParse(withoutEmpty(source))
+  const src = withoutEmpty(source)
+  const result = (building ? envSchema : productionSchema(src)).safeParse(src)
   if (!result.success) {
     const issues = result.error.issues.map((i) => `  ${i.path.join('.')}: ${i.message}`).join('\n')
     throw new Error(`Invalid environment:\n${issues}`)

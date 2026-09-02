@@ -12,14 +12,14 @@ import type {
   ReactionKind,
 } from '@/lib/comments/types'
 import { CommentBody } from './CommentBody'
-import { Composer, type ComposerSubmission } from './Composer'
+import { Composer, type ComposerResult, type ComposerSubmission } from './Composer'
 import { ReactionBar } from './ReactionBar'
 import { PendingBadge, PinnedBadge, PremiumBadge, RoleBadge } from './RoleBadge'
 
 export interface CommentActions {
   react: (comment: CommentView, kind: ReactionKind) => Promise<void>
-  reply: (parent: CommentView, s: ComposerSubmission) => Promise<boolean>
-  edit: (comment: CommentView, s: ComposerSubmission) => Promise<boolean>
+  reply: (parent: CommentView, s: ComposerSubmission) => Promise<ComposerResult>
+  edit: (comment: CommentView, s: ComposerSubmission) => Promise<ComposerResult>
   remove: (comment: CommentView) => Promise<void>
   openReport: (comment: CommentView) => void
   block: (userId: number) => Promise<void>

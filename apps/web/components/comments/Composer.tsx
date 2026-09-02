@@ -8,12 +8,18 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { api } from '@/lib/comments/client'
 import { parseMarkup } from '@/lib/comments/markup'
 import type { CommentImage, CommentThreadConfig, CommentViewer } from '@/lib/comments/types'
+import { TurnstileWidget } from './TurnstileWidget'
 
 export interface ComposerSubmission {
   body: CommentBody
   imageId: number | null
   isSpoiler: boolean
+  /** Turnstile token when the widget is shown (docs/14 §2 step 3). */
+  turnstile?: string
 }
+
+/** `'challenge'`: the server wants a Turnstile token — the composer shows the widget and keeps the text. */
+export type ComposerResult = boolean | 'challenge'
 
 export interface ComposerProps {
   viewer: CommentViewer | null
@@ -24,7 +30,7 @@ export interface ComposerProps {
   placeholder?: string
   autoFocus?: boolean
   /** Resolve true to clear the editor. */
-  onSubmit: (s: ComposerSubmission) => Promise<boolean>
+  onSubmit: (s: ComposerSubmission) => Promise<ComposerResult>
   onCancel?: () => void
 }
 
@@ -62,8 +68,12 @@ export function Composer({
   const [mentionQuery, setMentionQuery] = useState<string | null>(null)
   const [hits, setHits] = useState<MentionHit[]>([])
   const [hitIndex, setHitIndex] = useState(0)
+  const [challenge, setChallenge] = useState(config.challenge && mode !== 'edit')
+  const [token, setToken] = useState<string | null>(null)
+  const [widgetReset, setWidgetReset] = useState(0)
   const ref = useRef<HTMLTextAreaElement>(null)
   const listId = useId()
+  const widget = !!config.turnstileSiteKey && challenge
 
   const max = config.maxChars || COMMENT_MAX_CHARS
   const length = text.length
@@ -149,11 +159,22 @@ export function Composer({
     if (!plain.trim() && !image) return
     setBusy(true)
     try {
-      const ok = await onSubmit({ body, imageId: image?.id ?? null, isSpoiler: hasSpoiler(body) })
-      if (ok) {
+      const result = await onSubmit({
+        body,
+        imageId: image?.id ?? null,
+        isSpoiler: hasSpoiler(body),
+        turnstile: widget && token ? token : undefined,
+      })
+      if (result === 'challenge') setChallenge(true)
+      if (result === true) {
         setText('')
         setImage(null)
         if (ref.current) ref.current.style.height = 'auto'
+      }
+      // tokens are single-use: ask the widget for a fresh one either way
+      if (widget || result === 'challenge') {
+        setToken(null)
+        setWidgetReset((n) => n + 1)
       }
     } finally {
       setBusy(false)
@@ -411,6 +432,14 @@ export function Composer({
             </Button>
           </div>
         </div>
+        {widget && config.turnstileSiteKey ? (
+          <TurnstileWidget
+            siteKey={config.turnstileSiteKey}
+            onToken={setToken}
+            onExpire={() => setToken(null)}
+            resetKey={widgetReset}
+          />
+        ) : null}
         {mode === 'new' ? (
           <p className="mt-1 text-[12px] leading-4 text-fg-muted">
             {messages.commentThread.composerHint}

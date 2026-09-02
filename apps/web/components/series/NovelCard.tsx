@@ -14,7 +14,7 @@ export function NovelCard({ title: rawTitle, slug, author, className }: NovelCar
   return (
     <div className={className}>
       <div className="flex min-w-0 flex-col items-start gap-5 rounded-[16px] border border-line bg-[linear-gradient(135deg,var(--color-brand-wash),transparent)] bg-surface-1 p-5 transition-colors hover:border-brand-dim sm:flex-row sm:items-center sm:gap-6 sm:p-6">
-        <div className="flex h-[178px] w-[124px] shrink-0 flex-col justify-between rounded-[6px_12px_12px_6px] border border-fg/8 bg-linear-to-br from-brand-dim to-surface-2 px-3.5 py-4 shadow-2 [box-shadow:inset_3px_0_0_rgb(255_255_255/0.06)]">
+        <div className="flex h-[178px] w-[124px] shrink-0 flex-col justify-between rounded-[6px_12px_12px_6px] border border-fg/8 bg-linear-to-br from-brand-dim to-surface-2 px-3.5 py-4 shadow-2 inset-shadow-highlight">
           <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-brand-hover">
             {messages.seriesDetail.novelLabel}
           </span>

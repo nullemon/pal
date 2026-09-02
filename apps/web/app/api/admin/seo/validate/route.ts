@@ -1,9 +1,12 @@
+import { fmt, messages } from '@palscans/core/messages'
 import { fail, ok, parseJson, withPermission } from '@/lib/auth'
 import { getEnv } from '@/lib/env'
 import { validateUrlSchema } from '@/lib/seo/admin'
 import { extractJsonLd, jsonLdTypes, validateJsonLd } from '@/lib/seo/jsonld'
 
 /** Fetch a page on this site, pull out its JSON-LD and run the builders' required-field checks. */
+const m = messages.adminSeo.tools
+
 export const POST = withPermission('settings.write', async (request) => {
   const parsed = await parseJson(request, validateUrlSchema)
   if (!parsed.ok) return parsed.response
@@ -12,7 +15,7 @@ export const POST = withPermission('settings.write', async (request) => {
   try {
     target = new URL(parsed.data.url, origin)
   } catch {
-    return fail(400, 'validation', 'Invalid URL')
+    return fail(400, 'validation', m.invalidUrl)
   }
   const requestOrigin = new URL(request.url).origin
   if (target.origin !== origin && target.origin !== requestOrigin)
@@ -26,10 +29,10 @@ export const POST = withPermission('settings.write', async (request) => {
       cache: 'no-store',
       signal: AbortSignal.timeout(10_000),
     })
-    if (!res.ok) return fail(502, 'fetch_failed', `HTTP ${res.status}`)
+    if (!res.ok) return fail(502, 'fetch_failed', fmt(m.httpStatus, { status: res.status }))
     html = await res.text()
   } catch (err) {
-    return fail(502, 'fetch_failed', err instanceof Error ? err.message : 'fetch failed')
+    return fail(502, 'fetch_failed', err instanceof Error ? err.message : m.fetchFailed)
   }
   const { parsed: blocks, errors } = extractJsonLd(html)
   const result = validateJsonLd(blocks)

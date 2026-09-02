@@ -1,10 +1,11 @@
 import { getEnv } from '@palscans/core/env'
 import { getQueue } from '@palscans/core/queue'
 import { getStorage } from '@palscans/core/storage'
-import { chapters, closeDb, getDb } from '@palscans/db'
-import { and, eq, isNull, lt, sql } from 'drizzle-orm'
+import { chapters, closeDb, getDb, series } from '@palscans/db'
+import { and, eq, isNotNull, isNull, lt, sql } from 'drizzle-orm'
 import { processChapter } from './jobs/chapter-process.js'
 import { publishDue } from './jobs/publish.js'
+import { type ArtKind, processSeriesArt } from './jobs/series-art.js'
 import { log } from './lib/log.js'
 import { revalidateWeb } from './lib/revalidate.js'
 
@@ -41,6 +42,20 @@ const main = async () => {
     },
     CONCURRENCY,
   )
+  const artInflight = new Set<string>()
+  const runArt = async (seriesId: number, kind: ArtKind) => {
+    const id = `${seriesId}:${kind}`
+    if (artInflight.has(id)) return
+    artInflight.add(id)
+    try {
+      await processSeriesArt(seriesId, kind, deps)
+    } finally {
+      artInflight.delete(id)
+    }
+  }
+  queue.process('series.art', async (job) => {
+    await runArt(job.data.seriesId, job.data.kind)
+  })
   queue.process('chapter.publish', async (job) => {
     if ((await publishDue(db)).length) await revalidateWeb(['catalog'])
     log.info('chapter.publish handled by the scheduler pass', { chapterId: job.data.chapterId })
@@ -83,6 +98,25 @@ const main = async () => {
       for (const s of stale) {
         log.warn('picking up stale processing chapter', { chapterId: s.id })
         void run(s.id)
+      }
+      // cover / banner originals waiting for `series.art` (in-process web queue, lost job);
+      // entries carrying an error are left for the admin to re-upload
+      const art = await db
+        .select({ id: series.id, artPending: series.artPending })
+        .from(series)
+        .where(
+          and(
+            isNotNull(series.artPending),
+            isNull(series.deletedAt),
+            lt(series.updatedAt, new Date(Date.now() - (queue.kind === 'memory' ? 5_000 : 60_000))),
+          ),
+        )
+        .limit(10)
+      for (const s of art) {
+        for (const kind of ['cover', 'banner'] as const) {
+          const entry = s.artPending?.[kind]
+          if (entry && !entry.error) void runArt(s.id, kind)
+        }
       }
     } catch (err) {
       log.error('scheduler tick failed', err)

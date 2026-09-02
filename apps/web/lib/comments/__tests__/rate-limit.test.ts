@@ -37,9 +37,11 @@ describe('RedisRateLimiter', () => {
         ],
       }),
       pexpire: async () => 1,
+      get: async () => String(count),
     }
     const rl = new RedisRateLimiter(Promise.resolve(fake))
     expect((await rl.hit('y', 2, 60)).ok).toBe(true)
+    expect(await rl.count('y')).toBe(1)
     expect((await rl.hit('y', 2, 60)).ok).toBe(true)
     expect((await rl.hit('y', 2, 60)).ok).toBe(false)
   })

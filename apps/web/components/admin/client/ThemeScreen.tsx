@@ -200,8 +200,7 @@ export function ThemeScreen({
   const tokens = previewTheme === 'dark' ? resolved.dark : resolved.light
   const previewStyle = Object.fromEntries(Object.entries(tokens)) as React.CSSProperties
   const cardBorder = doc.shape.card_style === 'flat' ? '0' : '1px solid var(--color-line)'
-  const cardShadow =
-    doc.shape.card_style === 'elevated' ? '0 10px 30px -12px rgb(0 0 0 / .5)' : 'none'
+  const cardShadow = doc.shape.card_style === 'elevated' ? 'var(--shadow-card-elevated)' : 'none'
   const btnRadius = doc.shape.pill_buttons ? 999 : undefined
   const checks = previewTheme === 'dark' ? resolved.contrast.dark : resolved.contrast.light
   const contrastLabel: Record<string, string> = {
@@ -256,10 +255,10 @@ export function ThemeScreen({
           <Section title={m.accent} hint={m.accentHint}>
             <div className="flex min-h-14 flex-wrap items-center gap-x-3 gap-y-3">
               <span
-                className="size-14 rounded-[12px] shadow-[inset_0_0_0_1px_rgba(255,255,255,.14)]"
+                className="size-14 rounded-[12px] shadow-[inset_0_0_0_1px_var(--color-line)]"
                 style={{
                   background: resolved.ramp.brand,
-                  boxShadow: `inset 0 0 0 1px rgba(255,255,255,.14), 0 4px 14px ${resolved.ramp.wash}`,
+                  boxShadow: `inset 0 0 0 1px var(--color-line), 0 4px 14px ${resolved.ramp.wash}`,
                 }}
               />
               <HexInput value={doc.color.accent} onChange={(v) => color('accent', v)} />
@@ -363,7 +362,7 @@ export function ThemeScreen({
             <Section title={m.secondary}>
               <div className="flex h-9 items-center gap-2.5">
                 <span
-                  className="size-9 rounded-md shadow-[inset_0_0_0_1px_rgba(255,255,255,.18)]"
+                  className="size-9 rounded-md shadow-[inset_0_0_0_1px_var(--color-line)]"
                   style={{ background: resolved.dark['--color-gold'] }}
                 />
                 <div className="flex flex-col">
@@ -650,7 +649,10 @@ export function ThemeScreen({
                   </div>
                   <div className="mt-1 flex flex-col gap-0.5">
                     {keys.map((k) => {
-                      const darkHex = (doc.color[group] as Record<string, string>)[k] ?? '#000000'
+                      const darkHex =
+                        (doc.color[group] as Record<string, string>)[k] ??
+                        resolved.dark[`--color-${group}-${k}`] ??
+                        ''
                       const lightHex = resolved.light[`--color-${group}-${k}`] ?? darkHex
                       return (
                         <div key={k} className="flex h-6 items-center gap-3">

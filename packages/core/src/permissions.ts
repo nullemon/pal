@@ -80,6 +80,17 @@ export const STAFF_ROLES: readonly Role[] = ['moderator', 'admin']
 export const isStaff = (u: SessionUser | null | undefined): boolean =>
   !!u && STAFF_ROLES.includes(u.role)
 
+export const isStaffRole = (role: Role): boolean => STAFF_ROLES.includes(role)
+
+/**
+ * Whether `actor` may take a user-level action (ban, shadow-ban, comment-ban, warn, role
+ * change, revocation) against an account holding `targetRole`. Holding `user.ban` is not
+ * enough on its own: staff accounts can only be acted on by an admin, so a moderator can
+ * never lock out an admin or another moderator. Self-checks stay with the caller.
+ */
+export const canActOn = (actor: SessionUser | null | undefined, targetRole: Role): boolean =>
+  !!actor && (!isStaffRole(targetRole) || actor.role === 'admin')
+
 export const isRole = (value: unknown): value is Role =>
   typeof value === 'string' && (ROLES as readonly string[]).includes(value)
 

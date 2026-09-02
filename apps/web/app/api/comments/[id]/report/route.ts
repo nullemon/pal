@@ -19,7 +19,9 @@ export const POST = requireUser<Params>(async (request, ctx, user) => {
   const parsed = await parseJson(request, reportSchema)
   if (!parsed.ok) return parsed.response
   const row = await getCommentRow(db, id.data)
-  if (!row || row.deletedAt) return notFound()
+  // Hidden (pending / shadow / rejected) comments answer exactly like a missing id, as the
+  // reactions route does — otherwise sequential ids would enumerate held comments.
+  if (!row || row.deletedAt || row.status !== 'published') return notFound()
 
   const [existing] = await db
     .select({ id: reports.id })

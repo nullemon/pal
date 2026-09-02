@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { messages } from '../messages.js'
 import { safeHref } from './render.js'
 
 /**
@@ -86,7 +87,7 @@ export const inlineNodeSchema: z.ZodType<InlineNode> = z.lazy(() =>
       href: z
         .string()
         .max(COMMENT_MAX_HREF)
-        .refine((h) => safeHref(h) !== null, 'Only http(s) links are allowed'),
+        .refine((h) => safeHref(h) !== null, messages.commentThread.linkScheme),
       children: z.array(inlineNodeSchema).max(COMMENT_MAX_INLINE),
     }),
     z.object({
@@ -147,11 +148,15 @@ export const commentBodySchema: z.ZodType<CommentBody> = z
   .superRefine((doc, ctx) => {
     const depth = bodyDepth(doc)
     if (depth.quote > COMMENT_MAX_QUOTE_DEPTH)
-      ctx.addIssue({ code: 'custom', message: 'Quotes are nested too deeply', path: ['children'] })
+      ctx.addIssue({
+        code: 'custom',
+        message: messages.commentThread.quoteTooDeep,
+        path: ['children'],
+      })
     if (depth.inline > COMMENT_MAX_INLINE_DEPTH)
       ctx.addIssue({
         code: 'custom',
-        message: 'Formatting is nested too deeply',
+        message: messages.commentThread.formattingTooDeep,
         path: ['children'],
       })
   })

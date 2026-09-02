@@ -1,4 +1,4 @@
-import type { Storage } from '@palscans/core/storage'
+import { MAX_ORIGINAL_BYTES, type Storage } from '@palscans/core/storage'
 import {
   type ChapterProcessing,
   chapterPages,
@@ -103,6 +103,12 @@ export const processChapter = async (
   try {
     await pool(todo, deps.pageConcurrency ?? 4, async (source) => {
       try {
+        // HEAD before GET: an oversized object (the browser PUT it straight to the store)
+        // is skipped instead of being pulled into memory for sharp.
+        const info = await storage.head(source.key)
+        if (!info) throw new Error(`missing object ${source.key}`)
+        if (info.size > MAX_ORIGINAL_BYTES)
+          throw new Error(`source too large: ${info.size} bytes > ${MAX_ORIGINAL_BYTES}`)
         const original = await storage.get(source.key)
         if (!original) throw new Error(`missing object ${source.key}`)
         const encoded = await processImage(original, { prefix, startIdx: source.idx * 10 })

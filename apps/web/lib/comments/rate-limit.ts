@@ -12,6 +12,8 @@ export interface RateLimitResult {
 export interface RateLimiter {
   readonly kind: 'memory' | 'redis'
   hit(key: string, limit: number, windowSec: number): Promise<RateLimitResult>
+  /** The live count of a key without touching it (0 when absent or expired). */
+  count(key: string): Promise<number>
 }
 
 export class MemoryRateLimiter implements RateLimiter {
@@ -36,6 +38,11 @@ export class MemoryRateLimiter implements RateLimiter {
     return { ok: b.count <= limit, remaining: Math.max(0, limit - b.count), retryAfterSec }
   }
 
+  async count(key: string): Promise<number> {
+    const b = this.buckets.get(key)
+    return b && b.resetAt > this.now() ? b.count : 0
+  }
+
   private sweep(t: number): void {
     for (const [k, b] of this.buckets) if (b.resetAt <= t) this.buckets.delete(k)
   }
@@ -50,6 +57,7 @@ interface RedisPipeline {
 interface RedisLike {
   multi(): RedisPipeline
   pexpire(key: string, ms: number): Promise<unknown>
+  get(key: string): Promise<string | null>
 }
 
 export class RedisRateLimiter implements RateLimiter {
@@ -79,6 +87,16 @@ export class RedisRateLimiter implements RateLimiter {
       }
     } catch {
       return this.fallback.hit(key, limit, windowSec)
+    }
+  }
+
+  async count(key: string): Promise<number> {
+    const redis = await this.client
+    if (!redis) return this.fallback.count(key)
+    try {
+      return Number((await redis.get(key)) ?? 0)
+    } catch {
+      return this.fallback.count(key)
     }
   }
 }

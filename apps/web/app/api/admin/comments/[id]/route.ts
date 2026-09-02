@@ -1,3 +1,4 @@
+import { canActOn } from '@palscans/core'
 import { domainOf, isCommentBody, linkHrefs } from '@palscans/core/comments'
 import { bans, comments, getDb, linkAllowlist, notifications, users } from '@palscans/db'
 import { and, eq, isNull } from 'drizzle-orm'
@@ -5,7 +6,17 @@ import { commentActionSchema } from '@/components/admin/schemas-moderation'
 import { audit } from '@/components/admin/server/audit'
 import { resolveReportsFor } from '@/components/admin/server/moderation'
 import { idParam } from '@/components/admin/server/params'
-import { fail, notFound, ok, parseJson, revokeAllSessions, withPermission } from '@/lib/auth'
+import {
+  fail,
+  forbidden,
+  notFound,
+  ok,
+  parseJson,
+  revokeAllSessions,
+  withPermission,
+} from '@/lib/auth'
+
+const USER_ACTIONS = new Set(['warn', 'comment_ban', 'shadow_ban', 'ban'])
 
 /**
  * POST /api/admin/comments/:id — the moderation actions from docs/14 §3. Comment-level
@@ -27,8 +38,17 @@ export const POST = withPermission<{ id: string }>(
       .where(and(eq(comments.id, id.data), isNull(comments.deletedAt)))
       .limit(1)
     if (!c) return notFound()
-    if (c.userId === user.id && ['warn', 'comment_ban', 'shadow_ban', 'ban'].includes(body.action))
-      return fail(400, 'self')
+    if (USER_ACTIONS.has(body.action)) {
+      if (c.userId === user.id) return fail(400, 'self')
+      // The author's role decides who may act on them: staff only by an admin.
+      const [author] = await db
+        .select({ role: users.role })
+        .from(users)
+        .where(eq(users.id, c.userId))
+        .limit(1)
+      if (!author) return notFound()
+      if (!canActOn(user, author.role)) return forbidden()
+    }
     const now = new Date()
     const before = { status: c.status, isPinned: c.isPinned, locked: c.locked }
     let after: Record<string, unknown> = {}

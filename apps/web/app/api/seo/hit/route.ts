@@ -1,20 +1,23 @@
+import { timingSafeEqual } from 'node:crypto'
 import { z } from 'zod'
+import { ok, parseJson } from '@/lib/auth'
 import { proxyToken, recordRedirectHit } from '@/lib/seo/snapshot'
 
 const bodySchema = z.object({ path: z.string().min(1).max(2048).startsWith('/') })
 
+/** Constant-time check of the shared proxy token (length first, then every byte). */
+const tokenMatches = (header: string | null): boolean => {
+  const given = Buffer.from(header ?? '')
+  const expected = Buffer.from(proxyToken())
+  return given.length === expected.length && timingSafeEqual(given, expected)
+}
+
 /** Internal: proxy.ts reports a redirect hit; authenticated with the derived proxy token. */
 export async function POST(request: Request) {
-  if (request.headers.get('x-proxy-token') !== proxyToken())
+  if (!tokenMatches(request.headers.get('x-proxy-token')))
     return Response.json({ error: 'forbidden' }, { status: 403 })
-  let raw: unknown
-  try {
-    raw = await request.json()
-  } catch {
-    return Response.json({ error: 'invalid_json' }, { status: 400 })
-  }
-  const parsed = bodySchema.safeParse(raw)
-  if (!parsed.success) return Response.json({ error: 'validation' }, { status: 400 })
+  const parsed = await parseJson(request, bodySchema)
+  if (!parsed.ok) return parsed.response
   await recordRedirectHit(parsed.data.path)
-  return Response.json({ data: { ok: true } })
+  return ok({ ok: true })
 }

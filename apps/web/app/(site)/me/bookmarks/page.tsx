@@ -4,6 +4,7 @@ import { Button, cn, EmptyState } from '@palscans/ui'
 import { and, desc, eq, isNull, max, ne, sql } from 'drizzle-orm'
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { coverSrc } from '@/components/discovery/media'
 import { mediaUrl } from '@/lib/auth/media'
 import { BOOKMARK_STATUSES, type BookmarkStatus, bookmarksQuerySchema } from '@/lib/auth/schemas'
 import { BookmarkCard, type BookmarkItem } from '../_components/BookmarkCard'
@@ -14,11 +15,8 @@ export const metadata: Metadata = { title: messages.me.bookmarks.title }
 
 const PAGE_SIZE = 24
 
-const coverFor = (key: string | null, color: string | null) => {
-  if (key) return mediaUrl(key)
-  const fill = color && /^#[0-9a-f]{3,8}$/i.test(color) ? color : '#26203a'
-  return `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="400" height="600"><rect width="100%" height="100%" fill="${fill}"/></svg>`)}`
-}
+const coverFor = (key: string | null, color: string | null) =>
+  key ? mediaUrl(key) : coverSrc(null, color)
 
 /** Bookmarks — five shelves × comics / novels tabs (docs/13 bookmark statuses). */
 export default async function BookmarksPage({ searchParams }: { searchParams: SearchParams }) {

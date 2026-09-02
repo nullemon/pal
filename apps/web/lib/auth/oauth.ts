@@ -1,6 +1,7 @@
 import { Discord, decodeIdToken, Google, generateCodeVerifier, generateState } from 'arctic'
 import { z } from 'zod'
 import { getEnv } from '../env'
+import { secureCookies } from './session'
 import { signValue, verifyValue } from './signed'
 
 /**
@@ -152,7 +153,7 @@ export const readPendingLink = (raw: string | undefined): PendingLink | null =>
 
 export const shortCookie = (maxAgeMs: number) => ({
   httpOnly: true,
-  secure: getEnv().SITE_URL.startsWith('https://'),
+  secure: secureCookies(),
   sameSite: 'lax' as const,
   path: '/',
   maxAge: Math.floor(maxAgeMs / 1000),

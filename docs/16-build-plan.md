@@ -79,6 +79,13 @@ these values as the defaults. Tailwind utilities must reference `--color-*` toke
   actions. Client code never decides access.
 - Locked chapters: page URLs are not rendered for a user who may not read them.
 - Every mutating admin action writes `audit_log`. Nothing is hard-deleted (`deleted_at`).
+  **Explicit exception — per-user toggle rows**: `bookmarks`, `ratings`, `comment_reactions`,
+  `user_blocks`, `chapter_reads` and `reading_progress` are keyed `(user, target)` and *are*
+  the state (a bookmark exists or it does not); removing one is the user's own undo, not an
+  admin mutation, so those handlers delete the row and the `0002_counters.sql` AFTER DELETE
+  triggers keep the denormalised counts right. Content, accounts, catalogue rows, reports
+  and anything an admin acts on stay soft-deleted. (The docs/14 §6 "blocked by ≥ 10 distinct
+  accounts in 7 days" signal reads live `user_blocks`, so an unblock removes that vote.)
 - All UI copy goes through `packages/core/src/messages.ts` (plain English keys, one file).
 - Relative times: render `<time datetime>` server-side, format client-side.
 - Images: `<img>`/`next/image` with intrinsic `width`/`height` from the DB, lazy except LCP.

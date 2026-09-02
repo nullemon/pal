@@ -1,6 +1,12 @@
 import { and, eq, isNull, sql } from 'drizzle-orm'
 import { chapters, series } from '../schema/index.js'
 
+/**
+ * Escape the ILIKE metacharacters in user input so `%` / `_` match literally; pair with
+ * `escape '\\'` in the pattern (a bare `?q=%` must not match every row).
+ */
+export const escapeLike = (value: string): string => value.replace(/[\\%_]/g, '\\$&')
+
 /** Published, not soft-deleted series. */
 export const publishedSeries = () => and(eq(series.state, 'published'), isNull(series.deletedAt))
 

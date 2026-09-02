@@ -1,7 +1,7 @@
 import { messages } from '@palscans/core/messages'
 import { z } from 'zod'
 import { diffJson, loadAuditLog } from '@/components/admin/server/audit-log'
-import { parseSearch, type SearchParams } from '@/components/admin/server/params'
+import { pageSchema, parseSearch, type SearchParams } from '@/components/admin/server/params'
 import {
   EmptyRow,
   inputClass,
@@ -29,7 +29,7 @@ const schema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/)
     .optional()
     .catch(undefined),
-  page: z.coerce.number().int().min(1).catch(1),
+  page: pageSchema,
 })
 
 export default async function AuditPage({ searchParams }: { searchParams: Promise<SearchParams> }) {

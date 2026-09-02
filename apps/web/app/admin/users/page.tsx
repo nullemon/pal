@@ -1,6 +1,6 @@
 import { messages } from '@palscans/core/messages'
 import { z } from 'zod'
-import { parseSearch, type SearchParams } from '@/components/admin/server/params'
+import { pageSchema, parseSearch, type SearchParams } from '@/components/admin/server/params'
 import { loadUserList } from '@/components/admin/server/users'
 import {
   EmptyRow,
@@ -17,7 +17,7 @@ import { withPermission } from '@/lib/auth'
 
 const schema = z.object({
   q: z.string().trim().max(120).optional(),
-  page: z.coerce.number().int().min(1).catch(1),
+  page: pageSchema,
 })
 
 export default async function UsersPage({ searchParams }: { searchParams: Promise<SearchParams> }) {

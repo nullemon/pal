@@ -26,7 +26,9 @@ export function mediaUrl(key: string): string {
 /** A cover URL, or a flat placeholder in the series' dominant colour when none is stored. */
 export function coverSrc(key: string | null, color: string | null): string {
   if (key) return mediaUrl(key)
-  const fill = color && /^#[0-9a-f]{3,8}$/i.test(color) ? color : '#26203a'
+  // No dominant colour stored: a transparent rect lets the card's token background
+  // (`bg-surface-*`) show through — an <img> data URI cannot read CSS custom properties.
+  const fill = color && /^#[0-9a-f]{3,8}$/i.test(color) ? color : 'transparent'
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${COVER_WIDTH}" height="${COVER_HEIGHT}"><rect width="100%" height="100%" fill="${fill}"/></svg>`
   return `data:image/svg+xml,${encodeURIComponent(svg)}`
 }

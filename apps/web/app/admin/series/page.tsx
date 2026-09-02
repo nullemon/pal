@@ -3,7 +3,7 @@ import { fmt, messages } from '@palscans/core/messages'
 import { Chip } from '@palscans/ui'
 import { Plus } from 'lucide-react'
 import { z } from 'zod'
-import { parseSearch, type SearchParams } from '@/components/admin/server/params'
+import { pageSchema, parseSearch, type SearchParams } from '@/components/admin/server/params'
 import { loadSeriesList } from '@/components/admin/server/series'
 import {
   EmptyRow,
@@ -19,6 +19,7 @@ import {
   When,
 } from '@/components/admin/ui'
 import { coverSrc } from '@/components/discovery/media'
+import { withPermission } from '@/lib/auth'
 
 const schema = z.object({
   q: z.string().trim().max(100).optional(),
@@ -27,7 +28,7 @@ const schema = z.object({
     .optional()
     .catch(undefined),
   type: z.enum(['manga', 'manhwa', 'manhua', 'comic', 'novel']).optional().catch(undefined),
-  page: z.coerce.number().int().min(1).catch(1),
+  page: pageSchema,
   trash: z.coerce.boolean().catch(false),
 })
 
@@ -36,6 +37,7 @@ export default async function AdminSeriesPage({
 }: {
   searchParams: Promise<SearchParams>
 }) {
+  await withPermission('series.read', { returnTo: '/admin/series' })
   const p = parseSearch(schema, await searchParams)
   const { rows, total, pages } = await loadSeriesList(p)
   const m = messages.admin.series

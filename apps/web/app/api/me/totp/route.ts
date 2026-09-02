@@ -22,7 +22,8 @@ import { findUserById } from '@/lib/auth/users'
 /**
  * POST   /api/me/totp           start enrolment → {secret, uri, qrSvg} (pending until confirmed)
  * PATCH  /api/me/totp {code}    confirm with a code from the app → enabled
- * DELETE /api/me/totp {password} turn off
+ * DELETE /api/me/totp {password} | {code}  turn off — re-authenticated with the password, or
+ *        with a current code when the account has none (OAuth-only), never a bare request
  */
 export const POST = requireUser(async (_request, _ctx, user) => {
   const row = await findUserById(user.id)
@@ -63,10 +64,20 @@ export const PATCH = requireUser(async (request, _ctx, user) => {
 export const DELETE = requireUser(async (request, _ctx, user) => {
   const parsed = await parseJson(request, totpDisableSchema)
   if (!parsed.ok) return parsed.response
+  const limit = await getRateLimiter().hit(`totp:disable:${user.id}`, 6, 300)
+  if (!limit.ok) return rateLimited(limit.retryAfterSec)
   const row = await findUserById(user.id)
   if (!row) return fail(404, 'not_found', messages.errors.notFound)
-  if (row.passwordHash && !(await verifyPassword(row.passwordHash, parsed.data.password)))
-    return fail(400, 'wrong_password', messages.me.security.wrongPassword)
+  if (row.passwordHash) {
+    const { password } = parsed.data
+    if (!password || !(await verifyPassword(row.passwordHash, password)))
+      return fail(400, 'wrong_password', messages.me.security.wrongPassword)
+  } else {
+    // password-less account: the second factor itself is the re-authentication
+    const { code } = parsed.data
+    if (!row.totpSecret || !code || !verifyTotp(row.totpSecret, code, row.email))
+      return fail(400, 'totp_invalid', messages.authPage.totpInvalid)
+  }
   const db = await getDb()
   await db
     .update(users)

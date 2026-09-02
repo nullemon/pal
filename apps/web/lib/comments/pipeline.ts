@@ -32,9 +32,10 @@ import type { AppUser } from './viewer'
 
 /**
  * docs/14 §2 — the submit pipeline, in order:
- *   account gate → rate limit → link policy → word filters → automod → duplicate check
- *   → published | pending | shadow | rejected.
- * Turnstile (step 3) is a client-side challenge and is not wired here.
+ *   account gate → rate limit → Turnstile → link policy → word filters → automod
+ *   → duplicate check → published | pending | shadow | rejected.
+ * Turnstile (step 3) is demanded for accounts under 7 days old, after a rate-limit hit in
+ * the last hour, and site-wide under lockdown; the token is verified server-side.
  */
 
 export type RejectCode =
@@ -43,6 +44,7 @@ export type RejectCode =
   | 'banned'
   | 'too_new'
   | 'rate_limited'
+  | 'turnstile'
   | 'too_long'
   | 'empty'
   | 'too_many_mentions'
@@ -200,8 +202,22 @@ export const loadActiveBans = async (
   return new Set(rows.map((r) => r.kind as BanKind))
 }
 
+const isFreshAccount = (user: { createdAt: Date }, now: Date) =>
+  now.getTime() - user.createdAt.getTime() < 7 * DAY
+
+/** Step 3 — who must pass the invisible challenge: new accounts, recently limited, or everyone under lockdown. */
+export const challengeRequired = (
+  user: { createdAt: Date },
+  settings: CommentSettings,
+  recentlyLimited: boolean,
+  now: Date = new Date(),
+): boolean => settings.lockdown || recentlyLimited || isFreshAccount(user, now)
+
+/** Marks a user as rate-limited for an hour, so their next attempts need the challenge. */
+export const limitedKey = (userId: number) => `comments:u:${userId}:limited`
+
 export const rateLimitsFor = (user: { createdAt: Date }, settings: CommentSettings, now: Date) => {
-  const fresh = now.getTime() - user.createdAt.getTime() < 7 * DAY
+  const fresh = isFreshAccount(user, now)
   return {
     perMinute: fresh ? settings.rate_limits.new_per_minute : settings.rate_limits.per_minute,
     perHour: fresh ? settings.rate_limits.new_per_hour : settings.rate_limits.per_hour,
@@ -209,6 +225,13 @@ export const rateLimitsFor = (user: { createdAt: Date }, settings: CommentSettin
 }
 
 // ---- the full pipeline ----------------------------------------------------------------------
+
+/** The Turnstile hook: `enabled` mirrors TURNSTILE_SECRET_KEY, `verify` calls siteverify. */
+export interface CommentChallenge {
+  enabled: boolean
+  token: string | undefined
+  verify: (token: string | undefined) => Promise<boolean>
+}
 
 export interface SubmitInput {
   db: Db
@@ -221,6 +244,7 @@ export interface SubmitInput {
   isSpoiler: boolean
   ipHash: Uint8Array | null
   limiter: RateLimiter
+  challenge?: CommentChallenge
   now?: Date
 }
 
@@ -311,13 +335,28 @@ export const submitComment = async (input: SubmitInput): Promise<SubmitOutcome> 
       return { ok: false, code: 'invalid_image' }
   }
 
-  // 2. rate limits (per user; stricter for accounts < 7 days)
+  // 2. rate limits (per user; stricter for accounts < 7 days); a hit flags the user for step 3
   if (!staff) {
     const limits = rateLimitsFor(user, settings, now)
     const minute = await limiter.hit(`comments:u:${user.id}:m`, limits.perMinute, 60)
-    if (!minute.ok) return { ok: false, code: 'rate_limited', retryAfterSec: minute.retryAfterSec }
-    const hour = await limiter.hit(`comments:u:${user.id}:h`, limits.perHour, 3600)
-    if (!hour.ok) return { ok: false, code: 'rate_limited', retryAfterSec: hour.retryAfterSec }
+    const hour = minute.ok
+      ? await limiter.hit(`comments:u:${user.id}:h`, limits.perHour, 3600)
+      : minute
+    if (!minute.ok || !hour.ok) {
+      await limiter.hit(limitedKey(user.id), 1, 3600)
+      const retryAfterSec = minute.ok ? hour.retryAfterSec : minute.retryAfterSec
+      return { ok: false, code: 'rate_limited', retryAfterSec }
+    }
+  }
+
+  // 3. Turnstile (docs/14 §2, §6): new accounts, after a rate-limit hit, or under lockdown
+  if (!staff && input.challenge?.enabled) {
+    const recentlyLimited = (await limiter.count(limitedKey(user.id))) > 0
+    if (
+      challengeRequired(user, settings, recentlyLimited, now) &&
+      !(await input.challenge.verify(input.challenge.token))
+    )
+      return { ok: false, code: 'turnstile' }
   }
 
   // 5. word filters (before automod so masked text is what gets scored)

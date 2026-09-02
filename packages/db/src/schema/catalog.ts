@@ -27,6 +27,15 @@ export interface ReleaseSchedule {
   note?: string
 }
 
+/** One queued cover / banner original: the worker writes the variants, then points the key column at them. */
+export interface SeriesArtPendingEntry {
+  key: string
+  requestedAt: string
+  requestedBy: number
+  error?: string
+}
+export type SeriesArtPending = Partial<Record<'cover' | 'banner', SeriesArtPendingEntry>>
+
 /** Rich text stored as structured JSON (docs/12 §3); rendered by the SEO/text renderer. */
 export type RichText = { type: 'doc'; children: readonly unknown[] }
 
@@ -42,6 +51,8 @@ export const series = pgTable(
     synopsis: text('synopsis'),
     coverKey: text('cover_key'),
     bannerKey: text('banner_key'),
+    /** Uploaded cover / banner originals the worker has not re-encoded yet (`series.art`). */
+    artPending: jsonb('art_pending').$type<SeriesArtPending | null>(),
     coverColor: text('cover_color'), // dominant colour extracted at ingest (docs/05)
     country: char('country', { length: 2 }),
     releasedYear: smallint('released_year'),

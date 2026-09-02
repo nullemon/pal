@@ -1,7 +1,7 @@
 import { and, desc, inArray, or, sql } from 'drizzle-orm'
 import type { Db } from '../client.js'
 import { series, seriesTitles } from '../schema/index.js'
-import { publishedSeries, seriesCardColumns } from './_shared.js'
+import { escapeLike, publishedSeries, seriesCardColumns } from './_shared.js'
 
 export interface SearchOptions {
   limit?: number
@@ -51,19 +51,20 @@ export const searchSeries = async (
     .map((w) => w.replace(/[^\p{L}\p{N}]/gu, ''))
     .filter(Boolean)
   const tsquery = words.length ? words.map((w) => `${w}:*`).join(' & ') : ''
+  const like = `%${escapeLike(query)}%`
 
   // Alternative titles that match by trigram or substring.
   const altMatches = await db
     .select({
       seriesId: seriesTitles.seriesId,
       title: seriesTitles.title,
-      sim: sql<number>`greatest(similarity(${seriesTitles.title}, ${query}), case when ${seriesTitles.title} ilike ${`%${query}%`} then 0.6 else 0 end)`,
+      sim: sql<number>`greatest(similarity(${seriesTitles.title}, ${query}), case when ${seriesTitles.title} ilike ${like} escape '\\' then 0.6 else 0 end)`,
     })
     .from(seriesTitles)
     .where(
       or(
         sql`similarity(${seriesTitles.title}, ${query}) >= ${threshold}`,
-        sql`${seriesTitles.title} ilike ${`%${query}%`}`,
+        sql`${seriesTitles.title} ilike ${like} escape '\\'`,
       ),
     )
     .orderBy(desc(sql`similarity(${seriesTitles.title}, ${query})`))
@@ -80,11 +81,11 @@ export const searchSeries = async (
     ? sql<number>`coalesce(ts_rank(${series.searchVector}, to_tsquery('simple', ${tsquery})), 0)`
     : sql<number>`0`
   const trgm = sql<number>`similarity(${series.title}, ${query})`
-  const substring = sql<number>`case when ${series.title} ilike ${`%${query}%`} then 0.5 else 0 end`
+  const substring = sql<number>`case when ${series.title} ilike ${like} escape '\\' then 0.5 else 0 end`
   const score = sql<number>`(${ftsRank} * 2 + ${trgm} + ${substring})`
 
   const conditions = [
-    sql`${series.title} ilike ${`%${query}%`}`,
+    sql`${series.title} ilike ${like} escape '\\'`,
     sql`${trgm} >= ${threshold}`,
     ...(tsquery ? [sql`${series.searchVector} @@ to_tsquery('simple', ${tsquery})`] : []),
     ...(altIds.length ? [inArray(series.id, altIds)] : []),
@@ -119,7 +120,9 @@ export const suggestSeries = (db: Db, q: string, limit = 8) =>
       coverKey: series.coverKey,
     })
     .from(series)
-    .where(and(publishedSeries(), sql`${series.title} ilike ${`${q.trim()}%`}`))
+    .where(
+      and(publishedSeries(), sql`${series.title} ilike ${`${escapeLike(q.trim())}%`} escape '\\'`),
+    )
     .orderBy(desc(series.viewCount))
     .limit(limit)
 

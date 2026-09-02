@@ -41,7 +41,9 @@ function RadioCard({
     <div
       className={cn(
         'relative flex flex-col items-center gap-2 rounded-[12px] border bg-bg p-2 transition-colors',
-        selected ? 'border-brand-hover shadow-[0_0_0_2px_rgb(139_92_246_/_0.45)]' : 'border-line',
+        selected
+          ? 'border-brand-hover shadow-[0_0_0_2px_color-mix(in_srgb,var(--color-brand-hover)_45%,transparent)]'
+          : 'border-line',
         built ? 'hover:border-fg-subtle' : 'opacity-60',
       )}
     >

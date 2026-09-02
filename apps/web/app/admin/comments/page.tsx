@@ -2,13 +2,13 @@ import { messages } from '@palscans/core/messages'
 import { z } from 'zod'
 import { ModerationQueue } from '@/components/admin/client/ModerationQueue'
 import { loadModerationCounts, loadModerationQueue } from '@/components/admin/server/moderation'
-import { parseSearch, type SearchParams } from '@/components/admin/server/params'
+import { pageSchema, parseSearch, type SearchParams } from '@/components/admin/server/params'
 import { Kbd, PageHeader, Pagination } from '@/components/admin/ui'
 import { withPermission } from '@/lib/auth'
 
 const schema = z.object({
   tab: z.enum(['pending', 'reported', 'flagged', 'all']).catch('pending'),
-  page: z.coerce.number().int().min(1).catch(1),
+  page: pageSchema,
 })
 
 export default async function CommentsQueuePage({

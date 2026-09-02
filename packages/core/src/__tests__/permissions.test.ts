@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   can,
+  canActOn,
   isPermission,
   isRole,
   isStaff,
@@ -8,6 +9,22 @@ import {
   ROLE_PERMISSIONS,
   ROLES,
 } from '../permissions.js'
+
+describe('canActOn', () => {
+  const moderator = { id: 2, role: 'moderator' as const }
+  const admin = { id: 1, role: 'admin' as const }
+  it('refuses a moderator acting on staff (ban / shadow-ban / comment-ban an admin)', () => {
+    expect(canActOn(moderator, 'admin')).toBe(false)
+    expect(canActOn(moderator, 'moderator')).toBe(false)
+  })
+  it('lets a moderator act on regular members and an admin act on anyone', () => {
+    expect(canActOn(moderator, 'user')).toBe(true)
+    expect(canActOn(moderator, 'uploader')).toBe(true)
+    expect(canActOn(admin, 'moderator')).toBe(true)
+    expect(canActOn(admin, 'admin')).toBe(true)
+    expect(canActOn(null, 'user')).toBe(false)
+  })
+})
 
 describe('permissions', () => {
   it('matches docs/04 role bundles', () => {

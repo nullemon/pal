@@ -10,21 +10,46 @@ import {
 import { messages } from '@palscans/core/messages'
 import { auditLog, commentEdits, comments, db, linkAllowlist, wordFilters } from '@palscans/db'
 import { eq, isNull } from 'drizzle-orm'
+import { rejectResponse } from '@/lib/comments/errors'
 import { forbidden, ipHashFor, notFound, ok, parseJson, requireUser } from '@/lib/comments/http'
-import { applyWordFilters, canEditComment, loadActiveBans } from '@/lib/comments/pipeline'
+import {
+  accountGate,
+  applyWordFilters,
+  canEditComment,
+  loadActiveBans,
+} from '@/lib/comments/pipeline'
 import { getCommentRow, getCommentView, viewerFor } from '@/lib/comments/queries'
+import { getRateLimiter } from '@/lib/comments/rate-limit'
 import { editCommentSchema, idParamSchema } from '@/lib/comments/schemas'
 import { loadCommentSettings } from '@/lib/comments/settings'
 
 type Params = { id: string }
 
-/** PATCH /api/comments/:id {body} — within the edit window; links re-run the hold policy. */
+/**
+ * PATCH /api/comments/:id {body} — within the edit window; links re-run the hold policy.
+ * The docs/14 §2 account gate (verified email, comment ban, account age) and a per-user
+ * limit apply to edits as to new comments, so a banned author cannot keep rewriting a
+ * published comment inside the window.
+ */
 export const PATCH = requireUser<Params>(async (request, ctx, user) => {
   const id = idParamSchema.safeParse((await ctx.params).id)
   if (!id.success) return notFound()
+  const settings = await loadCommentSettings(db)
+  const gate = accountGate(user, settings)
+  if (gate) {
+    const r = rejectResponse(gate)
+    return Response.json({ error: gate, message: r.message }, { status: r.status })
+  }
+  const limit = await getRateLimiter().hit(`comments:u:${user.id}:edit`, 10, 60)
+  if (!limit.ok) {
+    const r = rejectResponse('rate_limited')
+    return Response.json(
+      { error: 'rate_limited', message: r.message },
+      { status: r.status, headers: { 'retry-after': String(limit.retryAfterSec) } },
+    )
+  }
   const row = await getCommentRow(db, id.data)
   if (!row) return notFound()
-  const settings = await loadCommentSettings(db)
   if (!canEditComment(row, user, settings))
     return Response.json(
       { error: 'edit_window', message: messages.commentThread.editWindowOver },

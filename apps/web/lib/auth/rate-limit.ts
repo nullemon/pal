@@ -1,3 +1,5 @@
+import { createHmac } from 'node:crypto'
+import { getEnv } from '../env'
 import { getRedis, type RedisLike } from './redis'
 
 /**
@@ -121,8 +123,9 @@ export class RateLimiter {
 
   /**
    * Login-style limit: `limit` per `windowSec`, and once exceeded the block doubles with
-   * every further overflow (1 min, 2, 4 … up to `maxBlockSec`). Successful logins call
-   * `clear` so an honest user is not punished for one typo streak.
+   * every further overflow (1 min, 2, 4 … up to `maxBlockSec`). docs/07 asks for backoff,
+   * not a reset: a correct password never clears the window, so owning one account cannot
+   * launder an IP's guesses against the others.
    */
   async hitWithBackoff(
     key: string,
@@ -167,9 +170,76 @@ export const getRateLimiter = (): RateLimiter => {
 export const createMemoryRateLimiter = (now?: () => number): RateLimiter =>
   new RateLimiter(new MemoryStore(now))
 
-/** The client address from the proxy headers, or null when unknown. */
-export const clientIp = (request: Request): string | null => {
-  const forwarded = request.headers.get('x-forwarded-for')
-  const ip = forwarded?.split(',')[0]?.trim() || request.headers.get('x-real-ip')
-  return ip || null
+export interface TrustedProxy {
+  mode: 'none' | 'xff' | 'cloudflare'
+  hops: number
 }
+
+const proxyFromEnv = (): TrustedProxy => {
+  const env = getEnv()
+  return { mode: env.TRUSTED_PROXY, hops: env.TRUSTED_PROXY_HOPS }
+}
+
+/**
+ * The client address as seen by the trusted proxy — the only helper that reads the
+ * forwarding headers (rate-limit keys, session / comment / audit `ip_hash`). Proxies append
+ * the address they saw to `X-Forwarded-For`, so the client-supplied hops come first and the
+ * trustworthy one is the last (or `hops` from the end behind more than one trusted proxy);
+ * the first hop is whatever the client typed. With no proxy configured the headers are not
+ * consulted at all and the address is unknown (route handlers never see the socket).
+ */
+export const clientIp = (
+  request: Request | Headers,
+  proxy: TrustedProxy = proxyFromEnv(),
+): string | null => {
+  const headers = request instanceof Headers ? request : request.headers
+  if (proxy.mode === 'none') return null
+  if (proxy.mode === 'cloudflare') {
+    const cf = headers.get('cf-connecting-ip')?.trim()
+    if (cf) return cf
+  }
+  const hops =
+    headers
+      .get('x-forwarded-for')
+      ?.split(',')
+      .map((s) => s.trim())
+      .filter(Boolean) ?? []
+  const fromChain = hops.at(-Math.max(1, proxy.hops))
+  if (fromChain) return fromChain
+  const real = headers.get('x-real-ip')?.trim()
+  return real || null
+}
+
+/**
+ * The same for an account identifier (login / forgot-password buckets): an e-mail address is
+ * PII and a bare sha256 of it is a dictionary lookup for anyone holding Redis, so it is keyed
+ * by the app secret and rotated daily exactly like `ipKey`.
+ */
+export const accountKey = (
+  email: string,
+  now: Date = new Date(),
+  secret: string = getEnv().SESSION_SECRET,
+): string =>
+  createHmac('sha256', secret)
+    .update(`${now.toISOString().slice(0, 10)}:${email.trim().toLowerCase()}`)
+    .digest('hex')
+    .slice(0, 32)
+
+/**
+ * A rate-limit key component for an address: the raw IP never reaches Redis. HMAC with the
+ * app secret over the UTC day, so a stored key is only ever linkable within that day.
+ * Null when the address is unknown (`TRUSTED_PROXY=none`): callers then skip the per-IP
+ * bucket rather than pooling every client into one — a shared "unknown" bucket would let
+ * one attacker (or five real users) lock login for the whole site.
+ */
+export const ipKey = (
+  ip: string | null,
+  now: Date = new Date(),
+  secret: string = getEnv().SESSION_SECRET,
+): string | null =>
+  ip
+    ? createHmac('sha256', secret)
+        .update(`${now.toISOString().slice(0, 10)}:${ip}`)
+        .digest('hex')
+        .slice(0, 32)
+    : null

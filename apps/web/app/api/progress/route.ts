@@ -1,13 +1,13 @@
 import { chapterReads, getDb, readingProgress } from '@palscans/db'
 import { z } from 'zod'
-import { fail, notFound, ok, requireUser } from '@/components/reader/server/auth'
+import { fail, notFound, ok, parseJson, requireUser } from '@/components/reader/server/auth'
 import { chapterForApi, viewerCanRead } from '@/components/reader/server/data'
 
 /**
  * POST /api/progress — the reader's position, written at most every 5s and once more on
  * `visibilitychange` through `navigator.sendBeacon` (docs/06 "Progress and offline").
- * Beacons arrive as a JSON blob; `request.json()` reads both. Upserts `reading_progress`
- * (one row per user × series: resume) and `chapter_reads` (history).
+ * Beacons arrive as a JSON blob; `parseJson` (streaming 64 KB cap) reads both. Upserts
+ * `reading_progress` (one row per user × series: resume) and `chapter_reads` (history).
  */
 export const progressSchema = z.object({
   chapterId: z.number().int().positive(),
@@ -18,14 +18,8 @@ export const progressSchema = z.object({
 export type ProgressInput = z.infer<typeof progressSchema>
 
 export const POST = requireUser(async (request, _ctx, user) => {
-  let raw: unknown
-  try {
-    raw = await request.json()
-  } catch {
-    return fail(400, 'invalid_json')
-  }
-  const parsed = progressSchema.safeParse(raw)
-  if (!parsed.success) return fail(400, 'validation', parsed.error.issues[0]?.message)
+  const parsed = await parseJson(request, progressSchema)
+  if (!parsed.ok) return parsed.response
 
   const chapter = await chapterForApi(parsed.data.chapterId)
   if (!chapter) return notFound()

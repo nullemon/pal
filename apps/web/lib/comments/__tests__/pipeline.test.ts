@@ -1,7 +1,38 @@
 import { bodyFromText, plainText } from '@palscans/core/comments'
 import { describe, expect, it } from 'vitest'
-import { accountGate, applyWordFilters, isDuplicate, rateLimitsFor } from '../pipeline'
+import {
+  accountGate,
+  applyWordFilters,
+  challengeRequired,
+  isDuplicate,
+  rateLimitsFor,
+} from '../pipeline'
+import { MemoryRateLimiter } from '../rate-limit'
 import { DEFAULT_COMMENT_SETTINGS } from '../settings'
+
+describe('challengeRequired (Turnstile, docs/14 §2 step 3)', () => {
+  const aged = { createdAt: new Date('2026-01-01T00:00:00Z') }
+  const fresh = { createdAt: new Date(now.getTime() - 3 * 86_400_000) }
+  it('challenges accounts under 7 days old', () => {
+    expect(challengeRequired(fresh, DEFAULT_COMMENT_SETTINGS, false, now)).toBe(true)
+    expect(challengeRequired(aged, DEFAULT_COMMENT_SETTINGS, false, now)).toBe(false)
+  })
+  it('challenges after a rate-limit hit and everyone under lockdown', () => {
+    expect(challengeRequired(aged, DEFAULT_COMMENT_SETTINGS, true, now)).toBe(true)
+    expect(
+      challengeRequired(aged, { ...DEFAULT_COMMENT_SETTINGS, lockdown: true }, false, now),
+    ).toBe(true)
+  })
+  it('the memory limiter exposes a live count for the limited flag', async () => {
+    let t = 0
+    const limiter = new MemoryRateLimiter(() => t)
+    expect(await limiter.count('flag')).toBe(0)
+    await limiter.hit('flag', 1, 3600)
+    expect(await limiter.count('flag')).toBe(1)
+    t += 3_600_001
+    expect(await limiter.count('flag')).toBe(0)
+  })
+})
 
 const now = new Date('2026-09-02T12:00:00Z')
 const user = (over: Partial<Parameters<typeof accountGate>[0]> = {}) => ({

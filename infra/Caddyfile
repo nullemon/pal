@@ -10,6 +10,12 @@ palscans.org, www.palscans.org {
 	@www host www.palscans.org
 	redir @www https://palscans.org{uri} permanent
 
+	# Uploads go straight to object storage (presigned PUT); the largest body the app itself
+	# accepts is the fs-driver stand-in for that PUT (50 MB) — nothing needs more than this.
+	request_body {
+		max_size 64MB
+	}
+
 	encode zstd gzip
 
 	header {

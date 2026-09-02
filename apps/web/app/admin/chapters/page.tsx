@@ -3,7 +3,12 @@ import { messages } from '@palscans/core/messages'
 import { chapters, getDb, series } from '@palscans/db'
 import { and, count, desc, eq, isNull } from 'drizzle-orm'
 import { z } from 'zod'
-import { PAGE_SIZE, parseSearch, type SearchParams } from '@/components/admin/server/params'
+import {
+  PAGE_SIZE,
+  pageSchema,
+  parseSearch,
+  type SearchParams,
+} from '@/components/admin/server/params'
 import {
   ChapterStatePill,
   EmptyRow,
@@ -16,6 +21,7 @@ import {
   Th,
   When,
 } from '@/components/admin/ui'
+import { withPermission } from '@/lib/auth'
 
 const schema = z.object({
   state: z
@@ -24,7 +30,7 @@ const schema = z.object({
     .catch(undefined),
   series: z.coerce.number().int().positive().optional().catch(undefined),
   chapter: z.coerce.number().int().positive().optional().catch(undefined),
-  page: z.coerce.number().int().min(1).catch(1),
+  page: pageSchema,
 })
 
 export default async function AdminChaptersPage({
@@ -32,6 +38,7 @@ export default async function AdminChaptersPage({
 }: {
   searchParams: Promise<SearchParams>
 }) {
+  await withPermission('chapter.read', { returnTo: '/admin/chapters' })
   const p = parseSearch(schema, await searchParams)
   const db = await getDb()
   const where = and(

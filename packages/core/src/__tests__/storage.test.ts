@@ -26,6 +26,13 @@ describe('FsStorage', () => {
     expect(signed.method).toBe('PUT')
     expect(signed.url).toBe('http://localhost:3000/_storage/pages/x/0.avif')
     expect(signed.headers['content-type']).toBe('image/avif')
+    expect(await s.head('covers/a b.svg')).toEqual({ size: 6, contentType: 'image/svg+xml' })
+    expect(await s.head('covers/missing.svg')).toBeNull()
+    expect(new TextDecoder().decode((await s.getRange('covers/a b.svg', 0, 3)) as Uint8Array)).toBe(
+      '<svg',
+    )
+    expect(await s.getRange('covers/missing.svg', 0, 15)).toBeNull()
+    expect(await s.getSignedGetUrl('covers/a b.svg')).toBe(s.getUrl('covers/a b.svg'))
     await s.delete('covers/a b.svg')
     expect(await s.exists('covers/a b.svg')).toBe(false)
     expect(await s.get('covers/a b.svg')).toBeNull()

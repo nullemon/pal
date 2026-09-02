@@ -1,3 +1,4 @@
+import { messages } from '@palscans/core/messages'
 import { z } from 'zod'
 
 /** Every auth/account input, validated with zod (docs/16). */
@@ -12,7 +13,7 @@ export const usernameSchema = z
   .trim()
   .min(3)
   .max(24)
-  .regex(USERNAME_RE, 'Use 3–24 letters, numbers or underscores.')
+  .regex(USERNAME_RE, messages.auth.usernameRule)
 
 /** Names no account may take: routes and staff words. */
 export const RESERVED_USERNAMES = new Set([
@@ -55,7 +56,7 @@ export const loginSchema = z.object({
 export const totpCodeSchema = z
   .string()
   .trim()
-  .regex(/^\d{6}$/, 'Enter the 6-digit code.')
+  .regex(/^\d{6}$/, messages.authPage.totpCodeRule)
 
 export const loginTotpSchema = z.object({ code: totpCodeSchema, return: returnSchema })
 
@@ -70,7 +71,7 @@ export const onboardingSchema = z.object({ username: usernameSchema, return: ret
 export const changePasswordSchema = z
   .object({ currentPassword: z.string().min(1).max(200), password: passwordSchema })
   .refine((v) => v.currentPassword !== v.password, {
-    message: 'Choose a password different from the current one.',
+    message: messages.me.security.samePassword,
     path: ['password'],
   })
 
@@ -96,7 +97,14 @@ export const avatarPresignSchema = z.object({
 export const avatarConfirmSchema = z.object({ key: z.string().min(1).max(200) })
 
 export const totpConfirmSchema = z.object({ code: totpCodeSchema })
-export const totpDisableSchema = z.object({ password: z.string().min(1).max(200) })
+/**
+ * Turning TOTP off re-authenticates: the password for password accounts, a current code
+ * for OAuth-only accounts (docs/07 — never a bare request). The route decides which applies.
+ */
+export const totpDisableSchema = z.object({
+  password: z.string().max(200).optional(),
+  code: totpCodeSchema.optional(),
+})
 
 export const deleteAccountSchema = z.object({ password: z.string().max(200).optional() })
 

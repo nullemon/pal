@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { getEnv } from '../env'
+import { getEnv, isLoopbackHttp } from '../env'
 
 /**
  * Mailer abstraction (docs/16): logs to the console locally, sends through Resend when
@@ -87,9 +87,12 @@ let shared: Mailer | undefined
 export const getMailer = (): Mailer => {
   if (shared) return shared
   const env = getEnv()
+  // Production never prints a link to stdout — except a production build started on an
+  // explicit loopback SITE_URL (env.ts refuses the default there): that is a local
+  // verification run (`next start -p …`), where the console is the mailbox.
   shared = env.RESEND_API_KEY
     ? new ResendMailer(env.RESEND_API_KEY)
-    : env.NODE_ENV === 'production'
+    : env.NODE_ENV === 'production' && !isLoopbackHttp(env.SITE_URL)
       ? new NoopMailer()
       : new ConsoleMailer()
   return shared

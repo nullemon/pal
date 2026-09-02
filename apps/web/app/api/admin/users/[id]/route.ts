@@ -1,4 +1,4 @@
-import { can } from '@palscans/core'
+import { can, canActOn } from '@palscans/core'
 import { messages } from '@palscans/core/messages'
 import { bans, entitlements, getDb, sessions, users } from '@palscans/db'
 import { and, eq, isNull } from 'drizzle-orm'
@@ -7,7 +7,7 @@ import { audit } from '@/components/admin/server/audit'
 import { idParam } from '@/components/admin/server/params'
 import {
   fail,
-  invalidateSessionCache,
+  forbidden,
   notFound,
   ok,
   parseJson,
@@ -42,6 +42,9 @@ export const POST = withPermission<{ id: string }>('user.read', async (request, 
   if (!can(actor, needs)) return fail(403, 'forbidden', messages.errors.forbidden)
   if (target.id === actor.id && body.action !== 'resend_verification')
     return fail(400, 'self', messages.admin.forbiddenSelf)
+  // Holding `user.ban` is not enough against staff: only an admin may act on a moderator or
+  // another admin, or a moderator could lock every admin out with one ban.
+  if (body.action !== 'resend_verification' && !canActOn(actor, target.role)) return forbidden()
   const now = new Date()
   let before: unknown = null
   let after: unknown = null
@@ -52,8 +55,10 @@ export const POST = withPermission<{ id: string }>('user.read', async (request, 
         return fail(400, 'confirm', messages.errors.validation)
       before = { role: target.role }
       await db.update(users).set({ role: body.role, updatedAt: now }).where(eq(users.id, target.id))
-      await invalidateSessionCache(target.id)
-      after = { role: body.role }
+      // docs/07: a role change rotates the secret — every session ends and the user signs in
+      // again, so a demoted moderator loses each device and a promotion never inherits one.
+      const revoked = await revokeAllSessions(target.id)
+      after = { role: body.role, sessionsRevoked: revoked }
       break
     }
     case 'grant': {

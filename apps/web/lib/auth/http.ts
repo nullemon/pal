@@ -28,14 +28,66 @@ const firstIssue = (error: z.ZodError) => {
   return `${where}${first?.message ?? messages.errors.validation}`
 }
 
-/** Parse a JSON body with a zod schema; malformed input is a 400 with the first issue. */
+/** Every JSON route body is small; anything past this is refused before it is buffered. */
+export const MAX_JSON_BYTES = 64 * 1024
+
+export type BodyResult = { ok: true; body: Uint8Array } | { ok: false; response: Response }
+
+export interface ReadBodyOptions {
+  /** Refuse bodies with no (or a non-positive) Content-Length — uploads must declare their size. */
+  requireLength?: boolean
+}
+
+/**
+ * Read a request body with a hard byte cap: Content-Length is checked first, then the
+ * stream is consumed chunk by chunk and cancelled the moment the running total passes
+ * `max` — the whole body is never buffered before the limit applies.
+ */
+export const readBody = async (
+  request: Request,
+  max: number,
+  opts: ReadBodyOptions = {},
+): Promise<BodyResult> => {
+  const tooLarge = () => ({ ok: false as const, response: fail(413, 'too_large') })
+  const header = request.headers.get('content-length')
+  const declared = header === null || header === '' ? null : Number(header)
+  if (declared !== null && (!Number.isFinite(declared) || declared < 0 || declared > max))
+    return tooLarge()
+  if (opts.requireLength && (declared === null || declared <= 0)) return tooLarge()
+  const stream = request.body
+  if (!stream) return { ok: true, body: new Uint8Array(0) }
+  const reader = stream.getReader()
+  const chunks: Uint8Array[] = []
+  let total = 0
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    total += value.byteLength
+    if (total > max) {
+      await reader.cancel().catch(() => undefined)
+      return tooLarge()
+    }
+    chunks.push(value)
+  }
+  const body = new Uint8Array(total)
+  let offset = 0
+  for (const c of chunks) {
+    body.set(c, offset)
+    offset += c.byteLength
+  }
+  return { ok: true, body }
+}
+
+/** Parse a JSON body (≤ 64 KB) with a zod schema; malformed input is a 400 with the first issue. */
 export const parseJson = async <T>(
   request: Request,
   schema: z.ZodType<T>,
 ): Promise<ParseResult<T>> => {
+  const read = await readBody(request, MAX_JSON_BYTES)
+  if (!read.ok) return read
   let raw: unknown
   try {
-    raw = await request.json()
+    raw = JSON.parse(new TextDecoder().decode(read.body))
   } catch {
     return { ok: false, response: fail(400, 'invalid_json', messages.errors.validation) }
   }

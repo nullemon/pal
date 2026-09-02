@@ -1,13 +1,14 @@
-import { createHash } from 'node:crypto'
 import { messages } from '@palscans/core/messages'
 import { getDb, users } from '@palscans/db'
 import { eq } from 'drizzle-orm'
 import {
+  accountKey,
   clientIp,
   csrfFailed,
   fail,
   getRateLimiter,
   getSessionId,
+  ipKey,
   ok,
   parseJson,
   rateLimited,
@@ -20,13 +21,12 @@ import { loginSchema } from '@/lib/auth/schemas'
 import { verifyTurnstile } from '@/lib/auth/turnstile'
 import { activeUserBan, findUserByEmail } from '@/lib/auth/users'
 
-const accountKey = (email: string) =>
-  `login:acct:${createHash('sha256').update(email).digest('hex').slice(0, 32)}`
-
 /**
  * POST /api/auth/login {email, password, return?}
  * docs/07: 5/min per IP and per account with exponential backoff; unknown emails answer
- * exactly like wrong passwords (a dummy Argon2 verify keeps the timing equal).
+ * exactly like wrong passwords (a dummy Argon2 verify keeps the timing equal). A correct
+ * password never resets either window: backoff, not reset, or one owned account would
+ * launder an IP's guesses against every other account.
  */
 export async function POST(request: Request): Promise<Response> {
   if (!sameOrigin(request)) return csrfFailed()
@@ -34,13 +34,14 @@ export async function POST(request: Request): Promise<Response> {
   if (!parsed.ok) return parsed.response
   const { email, password } = parsed.data
   const limiter = getRateLimiter()
-  const ip = clientIp(request) ?? 'unknown'
-  const [byIp, byAccount] = await Promise.all([
-    limiter.hitWithBackoff(`login:ip:${ip}`, 5, 60),
-    limiter.hitWithBackoff(accountKey(email), 5, 60),
+  // The IP bucket applies only when a trusted proxy names the client (ipKey → null otherwise).
+  const ip = ipKey(clientIp(request))
+  const hits = await Promise.all([
+    limiter.hitWithBackoff(`login:acct:${accountKey(email)}`, 5, 60),
+    ...(ip ? [limiter.hitWithBackoff(`login:ip:${ip}`, 5, 60)] : []),
   ])
-  if (!byIp.ok || !byAccount.ok)
-    return rateLimited(Math.max(byIp.retryAfterSec, byAccount.retryAfterSec))
+  if (hits.some((h) => !h.ok))
+    return rateLimited(Math.max(...hits.map((h) => (h.ok ? 0 : h.retryAfterSec))))
   if (!(await verifyTurnstile(parsed.data.turnstile, clientIp(request))))
     return fail(400, 'turnstile', messages.errors.validation)
 
@@ -58,7 +59,6 @@ export async function POST(request: Request): Promise<Response> {
       .set({ passwordHash: await hashPassword(password) })
       .where(eq(users.id, user.id))
   }
-  await Promise.all([limiter.clear(accountKey(email)), limiter.clear(`login:ip:${ip}`)])
 
   const returnTo = safeReturnPath(parsed.data.return)
   if (user.totpEnabledAt && user.totpSecret) {

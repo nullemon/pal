@@ -6,6 +6,7 @@ import {
   csrfFailed,
   fail,
   getRateLimiter,
+  ipKey,
   ok,
   parseJson,
   rateLimited,
@@ -27,9 +28,11 @@ import { getMailer } from '@/lib/email'
  */
 export async function POST(request: Request): Promise<Response> {
   if (!sameOrigin(request)) return csrfFailed()
-  const ip = clientIp(request) ?? 'unknown'
-  const limit = await getRateLimiter().hit(`register:ip:${ip}`, 3, 3600)
-  if (!limit.ok) return rateLimited(limit.retryAfterSec)
+  const ip = ipKey(clientIp(request))
+  if (ip) {
+    const limit = await getRateLimiter().hit(`register:ip:${ip}`, 3, 3600)
+    if (!limit.ok) return rateLimited(limit.retryAfterSec)
+  }
 
   const parsed = await parseJson(request, registerSchema)
   if (!parsed.ok) return parsed.response

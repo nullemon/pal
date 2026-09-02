@@ -1,7 +1,8 @@
+import { messages } from '@palscans/core/messages'
 import { getDb, wordFilters } from '@palscans/db'
 import { wordFilterSchema } from '@/components/admin/schemas-moderation'
 import { audit } from '@/components/admin/server/audit'
-import { ok, parseJson, withPermission } from '@/lib/auth'
+import { fail, ok, parseJson, withPermission } from '@/lib/auth'
 
 /** POST /api/admin/comments/filters — add a word filter (block / hold / replace). */
 export const POST = withPermission('settings.write', async (request, _ctx, user) => {
@@ -11,7 +12,7 @@ export const POST = withPermission('settings.write', async (request, _ctx, user)
     try {
       new RegExp(parsed.data.pattern, 'i')
     } catch {
-      return Response.json({ error: 'validation', message: 'Invalid regex' }, { status: 400 })
+      return fail(400, 'validation', messages.admin.moderation.settings.invalidRegex)
     }
   }
   const db = await getDb()

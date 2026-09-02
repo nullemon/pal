@@ -29,8 +29,10 @@ export const POST = requireUser(async (request, _ctx, user) => {
       headers: { 'content-type': parsed.data.contentType },
     })
   }
+  // The signature binds the declared size: the store refuses any other Content-Length.
   const signed = await storage.getSignedPutUrl(key, {
     contentType: parsed.data.contentType,
+    contentLength: parsed.data.size,
     expiresInSeconds: 600,
   })
   return ok({ key, url: signed.url, method: signed.method, headers: signed.headers })

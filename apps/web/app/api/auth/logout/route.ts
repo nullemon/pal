@@ -5,8 +5,9 @@ import {
   clearSessionCookie,
   csrfFailed,
   fail,
+  MAX_JSON_BYTES,
   ok,
-  parseSessionCookie,
+  readBody,
   revokeAllSessions,
   revokeSession,
   SESSION_COOKIE,
@@ -16,10 +17,16 @@ import { resolveSession } from '@/lib/auth/session'
 
 const bodySchema = z.object({ everywhere: z.boolean().optional() })
 
-/** POST /api/auth/logout {everywhere?} — revoke this session (or all of them) and clear the cookie. */
+/**
+ * POST /api/auth/logout {everywhere?} — revoke this session (or all of them) and clear the
+ * cookie. Only a session whose secret verifies is revoked: the id half of the cookie alone
+ * names nothing, so a guessed or leaked UUID cannot sign someone else out.
+ */
 export async function POST(request: Request): Promise<Response> {
   if (!sameOrigin(request)) return csrfFailed()
-  const text = await request.text()
+  const read = await readBody(request, MAX_JSON_BYTES)
+  if (!read.ok) return read.response
+  const text = new TextDecoder().decode(read.body)
   let everywhere = false
   if (text.trim()) {
     try {
@@ -29,16 +36,10 @@ export async function POST(request: Request): Promise<Response> {
     }
   }
   const store = await cookies()
-  const raw = store.get(SESSION_COOKIE)?.value
-  const parsed = parseSessionCookie(raw)
-  if (parsed) {
-    if (everywhere) {
-      const resolved = await resolveSession(raw)
-      if (resolved) await revokeAllSessions(resolved.user.id)
-      else await revokeSession(parsed.id)
-    } else {
-      await revokeSession(parsed.id)
-    }
+  const resolved = await resolveSession(store.get(SESSION_COOKIE)?.value)
+  if (resolved) {
+    if (everywhere) await revokeAllSessions(resolved.user.id)
+    else await revokeSession(resolved.sessionId)
   }
   await clearSessionCookie()
   return ok({ signedOut: true })

@@ -4,6 +4,7 @@ import {
   chapters,
   comments,
   entitlements,
+  escapeLike,
   getDb,
   series,
   sessions,
@@ -22,8 +23,8 @@ export const loadUserList = async (q: string | undefined, page: number) => {
     isNull(users.deletedAt),
     q
       ? or(
-          ilike(users.email, `%${q}%`),
-          ilike(users.username, `%${q}%`),
+          ilike(users.email, `%${escapeLike(q)}%`),
+          ilike(users.username, `%${escapeLike(q)}%`),
           numeric ? eq(users.id, numeric) : undefined,
         )
       : undefined,

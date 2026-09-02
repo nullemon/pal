@@ -1,9 +1,142 @@
 import { describe, expect, it } from 'vitest'
 import { z } from 'zod'
 import { parseHibpRange } from './hibp'
-import { createMemoryRateLimiter } from './rate-limit'
+import { MAX_JSON_BYTES, parseJson, readBody } from './http'
+import { accountKey, clientIp, createMemoryRateLimiter, ipKey } from './rate-limit'
 import { safeReturnPath, withReturn } from './return-to'
+import { hashIp, ipHashSalt } from './session'
 import { signValue, verifyValue } from './signed'
+
+const headers = (h: Record<string, string>) => new Request('http://x/', { headers: h })
+
+describe('clientIp', () => {
+  const forged = { 'x-forwarded-for': '6.6.6.6, 203.0.113.9', 'x-real-ip': '203.0.113.9' }
+  it('trusts no header when no proxy is configured', () => {
+    expect(clientIp(headers(forged), { mode: 'none', hops: 1 })).toBeNull()
+  })
+  it('takes the hop the trusted proxy appended (the last), never the client-supplied first one', () => {
+    expect(clientIp(headers(forged), { mode: 'xff', hops: 1 })).toBe('203.0.113.9')
+    expect(
+      clientIp(headers({ 'x-forwarded-for': '6.6.6.6, 10.0.0.2, 203.0.113.9' }), {
+        mode: 'xff',
+        hops: 1,
+      }),
+    ).toBe('203.0.113.9')
+    expect(
+      clientIp(headers({ 'x-forwarded-for': '6.6.6.6, 203.0.113.9, 10.0.0.2' }), {
+        mode: 'xff',
+        hops: 2,
+      }),
+    ).toBe('203.0.113.9')
+    expect(clientIp(headers({ 'x-real-ip': '198.51.100.4' }), { mode: 'xff', hops: 1 })).toBe(
+      '198.51.100.4',
+    )
+    expect(clientIp(headers({}), { mode: 'xff', hops: 1 })).toBeNull()
+  })
+  it('prefers cf-connecting-ip behind Cloudflare and accepts a Headers object', () => {
+    const h = new Headers({ ...forged, 'cf-connecting-ip': '198.51.100.7' })
+    expect(clientIp(h, { mode: 'cloudflare', hops: 1 })).toBe('198.51.100.7')
+    expect(clientIp(headers(forged), { mode: 'cloudflare', hops: 1 })).toBe('203.0.113.9')
+  })
+})
+
+describe('ip keys and hashes', () => {
+  const ip = '203.0.113.9'
+  it('ipKey never contains the address and rotates daily', () => {
+    const a = ipKey(ip, new Date('2026-09-02T10:00:00Z'), 's')
+    const b = ipKey(ip, new Date('2026-09-02T23:59:00Z'), 's')
+    const c = ipKey(ip, new Date('2026-09-03T00:01:00Z'), 's')
+    expect(a).toMatch(/^[a-f0-9]{32}$/)
+    expect(a).not.toContain('203')
+    expect(a).toBe(b)
+    expect(a).not.toBe(c)
+    expect(ipKey(ip, new Date('2026-09-02T10:00:00Z'), 'other')).not.toBe(a)
+    // no address → no key, so callers skip the IP bucket instead of sharing one
+    expect(ipKey(null, new Date('2026-09-02T10:00:00Z'), 's')).toBeNull()
+  })
+  it('accountKey is keyed by the secret, rotates daily and never contains the address', () => {
+    const email = 'Reader@Example.org'
+    const a = accountKey(email, new Date('2026-09-02T10:00:00Z'), 's')
+    const b = accountKey(email, new Date('2026-09-02T23:59:00Z'), 's')
+    const c = accountKey(email, new Date('2026-09-03T00:01:00Z'), 's')
+    expect(a).toMatch(/^[a-f0-9]{32}$/)
+    expect(a.toLowerCase()).not.toContain('reader')
+    expect(a).toBe(b)
+    expect(a).not.toBe(c)
+    // not a bare digest of the address: the secret is part of the key
+    expect(accountKey(email, new Date('2026-09-02T10:00:00Z'), 'other')).not.toBe(a)
+    // the same account spelled differently shares one bucket
+    expect(accountKey(' reader@example.org ', new Date('2026-09-02T10:00:00Z'), 's')).toBe(a)
+    expect(accountKey('other@example.org', new Date('2026-09-02T10:00:00Z'), 's')).not.toBe(a)
+  })
+  it('hashIp is keyed by the secret and a weekly salt', () => {
+    const week1 = new Date('2026-09-02T10:00:00Z')
+    const week2 = new Date('2026-09-12T10:00:00Z')
+    expect(ipHashSalt(week1)).not.toBe(ipHashSalt(week2))
+    const h1 = hashIp(ip, week1, 's') as Uint8Array
+    expect(h1).toHaveLength(32)
+    expect(Buffer.from(h1)).toEqual(Buffer.from(hashIp(ip, week1, 's') as Uint8Array))
+    expect(Buffer.from(h1)).not.toEqual(Buffer.from(hashIp(ip, week2, 's') as Uint8Array))
+    expect(Buffer.from(h1)).not.toEqual(Buffer.from(hashIp(ip, week1, 'other') as Uint8Array))
+    expect(hashIp(null)).toBeNull()
+  })
+})
+
+describe('readBody', () => {
+  const streamOf = (chunks: Uint8Array[]) =>
+    new ReadableStream<Uint8Array>({
+      start(controller) {
+        for (const c of chunks) controller.enqueue(c)
+        controller.close()
+      },
+    })
+  const post = (body: BodyInit | null, h: Record<string, string> = {}) =>
+    new Request('http://x/', {
+      method: 'POST',
+      body,
+      headers: h,
+      // @ts-expect-error duplex is required by undici for stream bodies
+      duplex: 'half',
+    })
+  it('refuses a declared Content-Length over the cap before reading', async () => {
+    const r = await readBody(post('abc', { 'content-length': '999' }), 10)
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.response.status).toBe(413)
+  })
+  it('cuts a chunked body off the moment it passes the cap', async () => {
+    let pulled = 0
+    const endless = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pulled += 1
+        controller.enqueue(new Uint8Array(1024))
+      },
+    })
+    const r = await readBody(post(endless), 4096)
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.response.status).toBe(413)
+    expect(pulled).toBeLessThan(20)
+  })
+  it('reads a body within the cap and can demand a Content-Length', async () => {
+    const ok = await readBody(post(streamOf([new Uint8Array([1, 2]), new Uint8Array([3])])), 10)
+    expect(ok.ok).toBe(true)
+    if (ok.ok) expect([...ok.body]).toEqual([1, 2, 3])
+    const missing = await readBody(post(streamOf([new Uint8Array([1])])), 10, {
+      requireLength: true,
+    })
+    expect(missing.ok).toBe(false)
+  })
+  it('parseJson caps at MAX_JSON_BYTES and still parses normal bodies', async () => {
+    const schema = z.object({ a: z.number() })
+    const good = await parseJson(post(JSON.stringify({ a: 1 })), schema)
+    expect(good.ok).toBe(true)
+    const big = await parseJson(post(`{"a":"${'x'.repeat(MAX_JSON_BYTES)}"}`), schema)
+    expect(big.ok).toBe(false)
+    if (!big.ok) expect(big.response.status).toBe(413)
+    const bad = await parseJson(post('{'), schema)
+    expect(bad.ok).toBe(false)
+    if (!bad.ok) expect(bad.response.status).toBe(400)
+  })
+})
 
 describe('safeReturnPath', () => {
   it('keeps same-origin paths and drops everything else', () => {

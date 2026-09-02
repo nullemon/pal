@@ -5,11 +5,16 @@ import { uploadCommitSchema } from '@/components/admin/schemas'
 import { audit } from '@/components/admin/server/audit'
 import { emptyProcessing, enqueueProcess } from '@/components/admin/server/chapters'
 import { fail, notFound, ok, parseJson, withPermission } from '@/lib/auth'
-import { getStorage } from '@/lib/storage'
+import { getStorage, MAX_ORIGINAL_BYTES, verifyUploadedObject } from '@/lib/storage'
+
+const SOURCE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/gif'])
 
 /**
  * POST /api/upload/commit — docs/03 step 6–7: the ordered key list becomes the chapter's
  * processing document, the state flips to `processing`, and `chapter.process` is enqueued.
+ * Every key is verified against the store first (HEAD size and type, magic bytes) — the
+ * browser PUT the objects directly, so this is where an oversized or non-image object is
+ * refused before the worker ever loads it.
  */
 export const POST = withPermission('chapter.create', async (request, _ctx, user) => {
   const parsed = await parseJson(request, uploadCommitSchema)
@@ -33,8 +38,19 @@ export const POST = withPermission('chapter.create', async (request, _ctx, user)
     return fail(400, 'validation', messages.errors.validation)
   const storage = await getStorage()
   const missing: string[] = []
-  for (const k of keys) if (!(await storage.exists(k))) missing.push(k)
+  const rejected: string[] = []
+  const sizes = new Map<string, number>()
+  for (const k of keys) {
+    const check = await verifyUploadedObject(storage, k, {
+      maxBytes: MAX_ORIGINAL_BYTES,
+      types: SOURCE_TYPES,
+    })
+    if (check.ok) sizes.set(k, check.bytes)
+    else if (check.code === 'missing') missing.push(k)
+    else rejected.push(k)
+  }
   if (missing.length) return fail(400, 'missing_objects', missing.slice(0, 5).join(', '))
+  if (rejected.length) return fail(415, 'unsupported_type', rejected.slice(0, 5).join(', '))
   if (after && (after.mode === 'publish' || after.mode === 'schedule')) {
     const { can } = await import('@palscans/core')
     if (!can(user, 'chapter.publish')) return fail(403, 'forbidden', messages.errors.forbidden)
@@ -42,7 +58,7 @@ export const POST = withPermission('chapter.create', async (request, _ctx, user)
   const sources = keys.map((key, idx) => ({
     idx,
     key,
-    bytes: 0,
+    bytes: sizes.get(key) ?? 0,
     sha256: key.slice(-16).split('.')[0] ?? '',
   }))
   const processing = {

@@ -16,7 +16,7 @@ import type {
 } from '@/lib/comments/types'
 import { COMMENT_SORTS } from '@/lib/comments/types'
 import { type CommentActions, CommentItem } from './CommentItem'
-import { Composer, type ComposerSubmission } from './Composer'
+import { Composer, type ComposerResult, type ComposerSubmission } from './Composer'
 import { ReportDialog } from './ReportDialog'
 
 export interface CommentThreadProps {
@@ -154,7 +154,7 @@ export function CommentThread({ target, initial, viewer, config, enabled }: Comm
     [],
   )
 
-  const post = async (s: ComposerSubmission): Promise<boolean> => {
+  const post = async (s: ComposerSubmission): Promise<ComposerResult> => {
     const res = await postJson<{ comment: CommentView | null; status: string; message: string }>(
       '/api/comments',
       {
@@ -162,11 +162,12 @@ export function CommentThread({ target, initial, viewer, config, enabled }: Comm
         body: s.body,
         image_id: s.imageId,
         is_spoiler: s.isSpoiler,
+        turnstile: s.turnstile,
       },
     )
     if (!res.ok) {
       toast({ title: res.message || messages.errors.generic, tone: 'danger' })
-      return false
+      return res.error === 'turnstile' ? 'challenge' : false
     }
     const c = res.data.comment
     if (c) {
@@ -244,10 +245,11 @@ export function CommentThread({ target, initial, viewer, config, enabled }: Comm
           body: s.body,
           image_id: s.imageId,
           is_spoiler: s.isSpoiler,
+          turnstile: s.turnstile,
         })
         if (!res.ok) {
           toast({ title: res.message || messages.errors.generic, tone: 'danger' })
-          return false
+          return res.error === 'turnstile' ? 'challenge' : false
         }
         const c = res.data.comment
         if (c)
