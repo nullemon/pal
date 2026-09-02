@@ -1,4 +1,4 @@
-import type { SessionUser } from '@palscans/core'
+import type { EntitlementOverrides, SessionUser } from '@palscans/core'
 import { messages } from '@palscans/core/messages'
 import { cn, EmptyState } from '@palscans/ui'
 import { Clock3 } from 'lucide-react'
@@ -28,15 +28,31 @@ export interface LatestUpdatesProps {
   now: Date
   /** Sponsored cell: `null` hides it entirely (ad-free or slot disabled). */
   sponsored: { placeholder: boolean } | null
+  /** `settings.entitlements` overrides, so a free feature renders unlocked (docs/17 §B). */
+  overrides?: EntitlementOverrides | null
 }
 
 /**
  * The primary module (docs/06): 2-column grid of update rows, type tabs and real `?page=`
  * pagination as links. The 5th cell is the `home_infeed` native ad.
  */
-export function LatestUpdates({ feed, type, user, now, sponsored }: LatestUpdatesProps) {
+export function LatestUpdates({
+  feed,
+  type,
+  user,
+  now,
+  sponsored,
+  overrides = null,
+}: LatestUpdatesProps) {
   const cells: ReactNode[] = feed.items.map((item, i) => (
-    <UpdateRow key={item.id} item={item} user={user} now={now} priority={i < 4} />
+    <UpdateRow
+      key={item.id}
+      item={item}
+      user={user}
+      now={now}
+      overrides={overrides}
+      priority={i < 4}
+    />
   ))
   if (sponsored && cells.length >= AD_INDEX) {
     cells.splice(AD_INDEX, 0, <SponsoredCard key="sponsored" placeholder={sponsored.placeholder} />)

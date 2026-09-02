@@ -1,4 +1,4 @@
-import { can, showsAds } from '@palscans/core'
+import { type ChapterLock, can } from '@palscans/core'
 import { fmt, messages } from '@palscans/core/messages'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
@@ -28,6 +28,7 @@ import { chapterJsonLd, chapterMetadata } from '@/components/reader/server/seo'
 import { cachedReaderSiteSettings } from '@/components/reader/server/settings'
 import type { ChapterLink, ReaderData } from '@/components/reader/types'
 import { getSessionUser } from '@/lib/auth/session'
+import { entitlementGate } from '@/lib/entitlements'
 
 interface PageProps {
   params: Promise<{ slug: string; chapter: string }>
@@ -55,7 +56,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const ctx = await load(params)
   if (!ctx) return { title: messages.errors.notFound }
   const now = new Date()
-  const readable = viewerCanRead(ctx.user, ctx.bundle.chapter, now)
+  const gate = await entitlementGate()
+  const readable = viewerCanRead(ctx.user, ctx.bundle.chapter, { overrides: gate.overrides, now })
   const first = ctx.bundle.pages[0]
   // Locked chapters never put a page URL in the metadata, entitled viewer or not.
   const free = readable && lockOf(ctx.bundle.chapter, now) === 'none'
@@ -70,11 +72,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 const chapterLabel = (n: number) =>
   fmt(messages.readerUi.chapterTitle, { n: formatChapterNumber(n) })
 
-const toLink = (slug: string, c: ChapterListEntry): ChapterLink => ({
+const toLink = (slug: string, c: ChapterListEntry, locked: boolean): ChapterLink => ({
   number: c.number,
   label: chapterLabel(c.number),
   href: chapterHref(slug, c.number),
-  locked: c.lock !== 'none',
+  locked,
 })
 
 export default async function ChapterPage({ params }: PageProps) {
@@ -82,12 +84,27 @@ export default async function ChapterPage({ params }: PageProps) {
   if (!ctx) notFound()
   const { user, series, bundle } = ctx
   const now = new Date()
-  const readable = viewerCanRead(user, bundle.chapter, now)
-  const [list, site] = await Promise.all([
+  const [gate, list, site] = await Promise.all([
+    entitlementGate(),
     readerChapterList(series.id, now),
     cachedReaderSiteSettings(),
   ])
-  const links = list.map((c) => toLink(series.slug, c))
+  const readable = viewerCanRead(user, bundle.chapter, { overrides: gate.overrides, now })
+  // docs/17 §B: the chapter select shows a lock only where *this* viewer is actually
+  // locked out, so a feature the operator made free renders as free here too.
+  const lockedFor = (lock: ChapterLock): boolean => {
+    switch (lock) {
+      case 'early_access':
+        return !gate.can('early_access', user, now)
+      case 'premium':
+        return !gate.can('premium_content', user, now)
+      case 'unpublished':
+        return !can(user, 'chapter.read')
+      default:
+        return false
+    }
+  }
+  const links = list.map((c) => toLink(series.slug, c, lockedFor(c.lock)))
   const byNumber = new Map(links.map((l) => [l.number, l]))
   const prev = bundle.prev ? (byNumber.get(bundle.prev.number) ?? null) : null
   const next = bundle.next ? (byNumber.get(bundle.next.number) ?? null) : null
@@ -134,7 +151,7 @@ export default async function ChapterPage({ params }: PageProps) {
   const first = pages[0]
   if (first) preload(first.url, { as: 'image', fetchPriority: 'high' })
   const resume = await readerResume(user, series.id, bundle.chapter.id)
-  const noAds = !showsAds(user, now)
+  const noAds = !gate.showsAds(user, now)
   const [w, h] = site.ads.sky_size === '300x600' ? [300, 600] : [160, 600]
 
   const data: ReaderData = {

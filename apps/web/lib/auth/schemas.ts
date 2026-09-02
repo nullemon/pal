@@ -44,6 +44,8 @@ export const registerSchema = z.object({
   return: returnSchema,
   /** Cloudflare Turnstile token (docs/13); verified when TURNSTILE_SECRET_KEY is set. */
   turnstile: z.string().max(4096).optional(),
+  /** docs/17 §C: required only while `settings.site.registration` is `invite`. */
+  invite: z.string().trim().max(32).optional(),
 })
 
 export const loginSchema = z.object({

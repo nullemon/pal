@@ -8,11 +8,21 @@ import { api, Field, Notice, PasswordField } from './fields'
 
 const USERNAME_RE = /^[a-z0-9](?:[a-z0-9_]{1,22})[a-z0-9]$/i
 
-export function RegisterForm({ returnTo }: { returnTo: string }) {
+/** docs/17 §C: the invite field appears only while registration is invite only. */
+export function RegisterForm({
+  returnTo,
+  inviteRequired = false,
+  initialInvite = '',
+}: {
+  returnTo: string
+  inviteRequired?: boolean
+  initialInvite?: string
+}) {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [invite, setInvite] = useState(initialInvite)
   const [error, setError] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<{ username?: string; password?: string }>({})
   const [busy, setBusy] = useState(false)
@@ -31,6 +41,7 @@ export function RegisterForm({ returnTo }: { returnTo: string }) {
       password,
       username: username || undefined,
       return: returnTo,
+      invite: invite.trim() || undefined,
     })
     setBusy(false)
     if (!res.ok) {
@@ -68,6 +79,18 @@ export function RegisterForm({ returnTo }: { returnTo: string }) {
         value={username}
         onChange={(e) => setUsername(e.target.value)}
       />
+      {inviteRequired ? (
+        <Field
+          label={messages.auth.inviteCode}
+          name="invite"
+          autoComplete="off"
+          required
+          maxLength={32}
+          hint={messages.auth.inviteCodeHint}
+          value={invite}
+          onChange={(e) => setInvite(e.target.value)}
+        />
+      ) : null}
       <PasswordField
         label={messages.auth.password}
         name="password"

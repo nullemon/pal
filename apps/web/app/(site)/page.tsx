@@ -1,4 +1,3 @@
-import { showsAds } from '@palscans/core'
 import { messages } from '@palscans/core/messages'
 import { AdSlot, Rail, SeriesCard } from '@palscans/ui'
 import { Sparkles } from 'lucide-react'
@@ -27,6 +26,7 @@ import { LatestUpdates } from '@/components/home/LatestUpdates'
 import { PopularSidebar } from '@/components/home/PopularSidebar'
 import { TrendingRail } from '@/components/home/TrendingRail'
 import { getSessionUser } from '@/lib/auth/session'
+import { entitlementGate } from '@/lib/entitlements'
 
 /**
  * Home — layout A (design/mockups/A/Main.dc.html). The page personalises (Continue reading,
@@ -39,9 +39,14 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function HomePage({ searchParams }: PageProps<'/'>) {
   const params = homeParamsSchema.parse(await searchParams)
-  const [user, layout, ads] = await Promise.all([getSessionUser(), cachedHomeLayout(), cachedAds()])
+  const [user, layout, ads, gate] = await Promise.all([
+    getSessionUser(),
+    cachedHomeLayout(),
+    cachedAds(),
+    entitlementGate(),
+  ])
   const now = new Date()
-  const withAds = showsAds(user, now)
+  const withAds = gate.showsAds(user, now)
 
   const hero = layout.hero
   const sContinue = homeSection(layout, 'continue')
@@ -106,6 +111,7 @@ export default async function HomePage({ searchParams }: PageProps<'/'>) {
               type={params.type}
               user={user}
               now={now}
+              overrides={gate.overrides}
               sponsored={withAds && infeed.enabled ? { placeholder: infeed.tag === null } : null}
             />
           ) : (

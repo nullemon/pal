@@ -81,3 +81,71 @@ export const apiKeys = pgTable('api_keys', {
   revokedAt: timestamptz('revoked_at'),
   createdAt: createdAt(),
 })
+
+/**
+ * D · Notifications (docs/17 §D). One row per attempted send on every channel — the ledger
+ * `Admin → Community → Notifications` reads for "recent sends and failures", and the
+ * idempotency key the worker uses so a chapter is never pushed twice.
+ */
+export const notificationDeliveries = pgTable(
+  'notification_deliveries',
+  {
+    id: identity(),
+    userId: ref('user_id').references(() => users.id, { onDelete: 'cascade' }),
+    notificationId: ref('notification_id'), // notifications.id, kept loose (rows are prunable)
+    kind: text('kind').notNull(), // new_chapter | reply | reaction | announcement | test
+    channel: text('channel').notNull(), // push | email | discord
+    status: text('status').notNull(), // sent | failed | skipped
+    /** Non-identifying handle: push endpoint host, mail domain, webhook name, Discord id. */
+    target: text('target'),
+    detail: text('detail'),
+    /** Collapses a fan-out into one idempotency key, e.g. `chapter:412:push`. */
+    dedupeKey: text('dedupe_key'),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    index('notification_deliveries_created_idx').on(t.createdAt.desc()),
+    index('notification_deliveries_channel_idx').on(t.channel, t.status, t.createdAt.desc()),
+    index('notification_deliveries_user_idx').on(t.userId, t.createdAt.desc()),
+    index('notification_deliveries_dedupe_idx').on(t.dedupeKey),
+  ],
+)
+
+/**
+ * Per-user Discord account link (docs/17 §D). The reader generates a code on
+ * `/me/notifications`, types it at the bot, and the bot redeems it — leaving the Discord
+ * snowflake here. Everything is inert without `DISCORD_BOT_TOKEN`.
+ */
+export const discordLinks = pgTable(
+  'discord_links',
+  {
+    userId: ref('user_id')
+      .primaryKey()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    discordId: text('discord_id').unique(),
+    discordUsername: text('discord_username'),
+    code: text('code').unique(),
+    codeExpiresAt: timestamptz('code_expires_at'),
+    linkedAt: timestamptz('linked_at'),
+    rolesSyncedAt: timestamptz('roles_synced_at'),
+    syncedRoles: text('synced_roles').array().notNull().default(sql`'{}'::text[]`),
+    createdAt: createdAt(),
+    updatedAt: timestamptz('updated_at').notNull().defaultNow(),
+  },
+  (t) => [index('discord_links_code_idx').on(t.code).where(sql`${t.code} IS NOT NULL`)],
+)
+
+/**
+ * Email digest opt-in and its cursor (docs/17 §D). `frequency` is the reader's choice on
+ * `/me/notifications`; `lastCursorAt` is the watermark the assembler reads from, so a digest
+ * never repeats a chapter and a missed run catches up rather than skipping.
+ */
+export const notificationDigestState = pgTable('notification_digest_state', {
+  userId: ref('user_id')
+    .primaryKey()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  frequency: text('frequency').notNull().default('off'), // off | daily | weekly
+  lastSentAt: timestamptz('last_sent_at'),
+  lastCursorAt: timestamptz('last_cursor_at'),
+  updatedAt: timestamptz('updated_at').notNull().defaultNow(),
+})

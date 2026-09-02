@@ -15,6 +15,7 @@ export type AdminIcon =
   | 'flag'
   | 'users'
   | 'badge-dollar'
+  | 'zap'
   | 'layout'
   | 'palette'
   | 'settings'
@@ -22,6 +23,8 @@ export type AdminIcon =
   | 'cpu'
   | 'scroll'
   | 'search'
+  | 'shield'
+  | 'bell'
 
 export interface AdminNavItem {
   label: string
@@ -83,11 +86,19 @@ export const adminNav: readonly AdminNavGroup[] = [
       },
       { label: m.reports, href: '/admin/reports', icon: 'flag', permission: 'report.handle' },
       { label: m.users, href: '/admin/users', icon: 'users', permission: 'user.read' },
+      // D · Notifications (docs/17 §D): what fires, to whom, and the send-test controls.
+      {
+        label: messages.notify.navLabel,
+        href: '/admin/notifications',
+        icon: 'bell',
+        permission: 'settings.write',
+      },
     ],
   },
   {
     label: m.business,
     items: [
+      { label: m.premium, href: '/admin/premium', icon: 'zap', permission: 'settings.write' },
       { label: m.ads, href: '/admin/ads', icon: 'badge-dollar', permission: 'settings.write' },
     ],
   },
@@ -119,6 +130,7 @@ export const adminNav: readonly AdminNavGroup[] = [
         permission: 'settings.write',
         exact: true,
       },
+      { label: m.access, href: '/admin/access', icon: 'shield', permission: 'settings.write' },
       { label: m.featureFlags, href: '/admin/flags', icon: 'toggle', permission: 'settings.write' },
       { label: m.jobs, href: '/admin/jobs', icon: 'cpu', permission: 'chapter.update' },
       { label: m.auditLog, href: '/admin/audit', icon: 'scroll', permission: 'audit.read' },

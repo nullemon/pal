@@ -371,7 +371,7 @@ export function Composer({
                 onClick={() => {
                   if (
                     config.customGifs === 'all' ||
-                    (config.customGifs === 'premium' && viewer.isPremium)
+                    (config.customGifs === 'premium' && viewer.canUseCustomGifs)
                   )
                     setPickerOpen(true)
                   else

@@ -13,6 +13,7 @@ import {
 } from '@/components/reader/server/data'
 import { clientIp, getRateLimiter, ipKey, rateLimited } from '@/lib/auth'
 import { getSessionUser } from '@/lib/auth/session'
+import { entitlementGate } from '@/lib/entitlements'
 
 const idSchema = z.coerce.number().int().positive()
 const querySchema = z.object({ limit: z.coerce.number().int().min(1).max(50).catch(50) })
@@ -55,7 +56,9 @@ export async function GET(request: Request, ctx: RouteParams<{ id: string }>) {
   const bundle = await readerChapter(owner.id, Number(row.number), staff)
   if (!bundle) return notFound()
   const now = new Date()
-  if (!viewerCanRead(user, bundle.chapter, now)) return fail(403, 'locked')
+  const gate = await entitlementGate()
+  if (!viewerCanRead(user, bundle.chapter, { overrides: gate.overrides, now }))
+    return fail(403, 'locked')
   const lock = lockOf(bundle.chapter, now)
   const pages = (await toReaderPages(bundle.pages.slice(0, limit), lock)).slice(0, limit)
   return ok(

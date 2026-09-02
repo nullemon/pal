@@ -3,6 +3,7 @@
 import { cn } from '@palscans/ui'
 import {
   BadgeDollarSign,
+  Bell,
   Cpu,
   Files,
   Flag,
@@ -15,9 +16,11 @@ import {
   ScrollText,
   Search,
   Settings,
+  ShieldCheck,
   ToggleLeft,
   Upload,
   Users,
+  Zap,
 } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 import type { ComponentType } from 'react'
@@ -25,6 +28,7 @@ import { type AdminIcon, type AdminNavGroup, breadcrumbFor, isNavActive } from '
 
 const icons: Record<AdminIcon, ComponentType<{ size?: number; className?: string }>> = {
   gauge: Gauge,
+  bell: Bell,
   library: Library,
   'file-stack': Files,
   upload: Upload,
@@ -33,6 +37,7 @@ const icons: Record<AdminIcon, ComponentType<{ size?: number; className?: string
   flag: Flag,
   users: Users,
   'badge-dollar': BadgeDollarSign,
+  zap: Zap,
   layout: LayoutTemplate,
   palette: Palette,
   settings: Settings,
@@ -40,6 +45,7 @@ const icons: Record<AdminIcon, ComponentType<{ size?: number; className?: string
   cpu: Cpu,
   scroll: ScrollText,
   search: Search,
+  shield: ShieldCheck,
 }
 
 export function AdminNavLinks({ groups }: { groups: AdminNavGroup[] }) {

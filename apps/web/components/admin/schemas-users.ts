@@ -1,7 +1,9 @@
+import { FEATURES } from '@palscans/core'
 import { z } from 'zod'
 
 export const roleSchema = z.enum(['user', 'supporter', 'premium', 'uploader', 'moderator', 'admin'])
-export const featureSchema = z.enum(['early_access', 'premium_content', 'no_ads', 'offline'])
+/** Every operator-controlled feature can also be granted to one account (docs/17 §B). */
+export const featureSchema = z.enum(FEATURES)
 
 export const userActionSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('role'), role: roleSchema, confirm: z.string().min(1) }),

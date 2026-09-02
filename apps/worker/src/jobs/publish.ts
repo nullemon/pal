@@ -1,5 +1,6 @@
-import { bookmarks, chapters, type Db, notifications, series } from '@palscans/db'
-import { and, asc, eq, isNull, lte, sql } from 'drizzle-orm'
+import { bookmarks, chapters, type Db, notificationPrefs, notifications, series } from '@palscans/db'
+import { and, asc, eq, inArray, isNull, lte, sql } from 'drizzle-orm'
+import { prefAllows } from '../../../web/lib/notifications/index.js'
 import { log } from '../lib/log.js'
 
 /**
@@ -70,6 +71,20 @@ export const notifyBookmarkers = async (
     .from(bookmarks)
     .where(eq(bookmarks.seriesId, seriesId))
   if (readers.length === 0) return
+  // D · Notifications (docs/17 §D): the in-app row is a send like any other, so it obeys the
+  // reader's `new_chapter × in_app` preference. Rows are sparse — a missing one means "on".
+  const ids = readers.map((r) => r.userId)
+  const prefs = await tx
+    .select({
+      userId: notificationPrefs.userId,
+      kind: notificationPrefs.kind,
+      channel: notificationPrefs.channel,
+      enabled: notificationPrefs.enabled,
+    })
+    .from(notificationPrefs)
+    .where(inArray(notificationPrefs.userId, ids))
+  const recipients = ids.filter((id) => prefAllows(prefs, id, 'new_chapter', 'in_app'))
+  if (recipients.length === 0) return
   const payload = {
     chapterId,
     seriesId,
@@ -78,8 +93,8 @@ export const notifyBookmarkers = async (
     seriesSlug: s?.slug ?? '',
   }
   await tx.insert(notifications).values(
-    readers.map((r) => ({
-      userId: r.userId,
+    recipients.map((userId) => ({
+      userId,
       kind: 'new_chapter',
       payload,
       groupKey: `series:${seriesId}`,

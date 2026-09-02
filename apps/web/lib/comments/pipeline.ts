@@ -1,4 +1,4 @@
-import { entitlement, isStaff } from '@palscans/core'
+import { type EntitlementOverrides, entitlement, isStaff } from '@palscans/core'
 import {
   automod,
   type BlockNode,
@@ -276,6 +276,8 @@ export interface SubmitInput {
   limiter: RateLimiter
   challenge?: CommentChallenge
   now?: Date
+  /** `settings.entitlements` overrides (docs/17 §B); null keeps the entitlement check. */
+  overrides?: EntitlementOverrides | null
 }
 
 export const submitComment = async (input: SubmitInput): Promise<SubmitOutcome> => {
@@ -456,7 +458,9 @@ export const submitComment = async (input: SubmitInput): Promise<SubmitOutcome> 
         createdAt: user.createdAt,
         publishedComments,
         actionedReports30d,
-        isPremium: entitlement(user, 'premium_content') || user.role === 'premium',
+        isPremium:
+          entitlement(user, 'priority_comments', { overrides: input.overrides ?? null, now }) ||
+          user.role === 'premium',
         isStaff: staff,
       },
       recentBodies: ownTexts,

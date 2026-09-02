@@ -89,6 +89,9 @@ export interface CommentViewer {
   verified: boolean
   canModerate: boolean
   blockedIds: number[]
+  /** docs/17 §B — resolved from `settings.entitlements`, not from `isPremium`. */
+  canUseCustomGifs: boolean
+  canSeeReactors: boolean
 }
 
 /** Comment-thread configuration the client needs (from comment settings). */

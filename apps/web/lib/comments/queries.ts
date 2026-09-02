@@ -12,6 +12,7 @@ import {
   users,
 } from '@palscans/db'
 import { and, asc, desc, eq, gt, inArray, isNull, notInArray, or, sql } from 'drizzle-orm'
+import { type EntitlementGate, entitlementGate } from '@/lib/entitlements'
 import { storageUrl } from './media'
 import { MAX_CURSOR } from './schemas'
 import type {
@@ -72,8 +73,13 @@ type Row = {
 const DELETED_BODY: CommentBody = { type: 'doc', version: 1, children: [] }
 
 /** The viewer as the thread needs it (null for anonymous). */
-export const viewerFor = async (db: Db, user: AppUser | null): Promise<CommentViewer | null> => {
+export const viewerFor = async (
+  db: Db,
+  user: AppUser | null,
+  gate?: EntitlementGate,
+): Promise<CommentViewer | null> => {
   if (!user) return null
+  const g = gate ?? (await entitlementGate())
   const blocked = await db
     .select({ id: userBlocks.blockedId })
     .from(userBlocks)
@@ -84,10 +90,14 @@ export const viewerFor = async (db: Db, user: AppUser | null): Promise<CommentVi
     displayName: user.displayName ?? user.username ?? `user${user.id}`,
     avatarUrl: storageUrl(user.avatarKey),
     role: user.role,
+    // The badge follows the *subscription*, not the operator override: an override that
+    // makes a perk free does not make every reader a subscriber (docs/17 §B).
     isPremium: entitlement(user, 'premium_content') || user.role === 'premium',
     verified: !!user.emailVerifiedAt,
     canModerate: can(user, 'comment.moderate'),
     blockedIds: blocked.map((b) => b.id),
+    canUseCustomGifs: g.can('custom_gifs', user),
+    canSeeReactors: g.can('see_reactors', user),
   }
 }
 

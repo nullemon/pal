@@ -12,6 +12,7 @@ import { createCommentSchema, listQuerySchema } from '@/lib/comments/schemas'
 import { loadCommentSettings } from '@/lib/comments/settings'
 import { parseTarget } from '@/lib/comments/types'
 import { getAppUser } from '@/lib/comments/viewer'
+import { entitlementGate } from '@/lib/entitlements'
 
 /** GET /api/comments?target=series:1&sort=best&cursor=20 — public, cached 60s for anonymous viewers. */
 export async function GET(request: Request) {
@@ -44,10 +45,12 @@ export const POST = requireUser(async (request, _ctx, user) => {
   const target = parseTarget(parsed.data.target)
   if (!target) return fail(400, 'validation', messages.errors.validation)
   const settings = await loadCommentSettings(db)
+  const gate = await entitlementGate()
 
   const outcome = await submitComment({
     db,
     settings,
+    overrides: gate.overrides,
     user,
     target,
     parentId: parsed.data.parent_id ?? null,

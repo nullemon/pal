@@ -1,4 +1,4 @@
-import { entitlement, renderSeo, showsAds, truncateWords } from '@palscans/core'
+import { renderSeo, truncateWords } from '@palscans/core'
 import { fmt, messages } from '@palscans/core/messages'
 import { AdSlot } from '@palscans/ui'
 import { BookOpen } from 'lucide-react'
@@ -19,6 +19,7 @@ import { Synopsis } from '@/components/series/Synopsis'
 import { storageUrl } from '@/lib/comments/media'
 import { COMMENT_SORTS } from '@/lib/comments/types'
 import { getAppUser } from '@/lib/comments/viewer'
+import { entitlementGate } from '@/lib/entitlements'
 import { getEnv } from '@/lib/env'
 import { chapterRows, getSeries, loadRank, loadRecommended, viewerSeriesState } from './data'
 
@@ -97,13 +98,14 @@ export default async function SeriesPage({ params, searchParams }: PageProps) {
   const env = getEnv()
   const now = new Date()
   const user = await getAppUser()
+  const gate = await entitlementGate()
   const [chapters, rank, recommended, state] = await Promise.all([
-    chapterRows(series.id, user, now),
+    chapterRows(series.id, user, now, gate.overrides),
     loadRank(series.id),
     loadRecommended(series.id),
     viewerSeriesState(user, series.id),
   ])
-  const noAds = !showsAds(user, now)
+  const noAds = !gate.showsAds(user, now)
   const coverUrl = storageUrl(series.coverKey)
   const coverAlt = fmt(messages.seriesDetail.coverAlt, { title: series.title })
   const first = chapters[chapters.length - 1]
@@ -227,7 +229,7 @@ export default async function SeriesPage({ params, searchParams }: PageProps) {
                   signedIn={!!user}
                   initial={state.rating}
                 />
-                <DownloadButton entitled={entitlement(user, 'offline', now)} />
+                <DownloadButton entitled={gate.can('offline', user, now)} />
               </div>
 
               {series.synopsis ? (

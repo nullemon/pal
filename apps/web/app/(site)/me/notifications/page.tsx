@@ -1,10 +1,14 @@
 import { messages } from '@palscans/core/messages'
-import { getDb, notificationPrefs, notifications } from '@palscans/db'
+import { getDb, notificationPrefs, notifications, pushSubscriptions } from '@palscans/db'
 import { EmptyState } from '@palscans/ui'
 import { and, desc, eq, isNull, sql } from 'drizzle-orm'
 import type { Metadata } from 'next'
 import { z } from 'zod'
 import { NOTIFICATION_CHANNELS, NOTIFICATION_KINDS } from '@/lib/auth/schemas'
+import { getLink } from '@/lib/discord'
+import { discordStatus, pushStatus } from '@/lib/env'
+import { readDigestState, readNotificationSettings } from '@/lib/notifications'
+import { pushConfig } from '@/lib/notifications/config'
 import {
   MarkAllReadButton,
   type NotificationItem,
@@ -15,6 +19,10 @@ import {
 } from '../_components/NotificationsClient'
 import { PageTitle, Section } from '../_components/Section'
 import { requireAccount } from '../_lib'
+import { DigestPanel } from './_components/DigestPanel'
+import { DiscordPanel } from './_components/DiscordPanel'
+import { NotConfigured } from './_components/NotConfigured'
+import { PushPanel } from './_components/PushPanel'
 
 export const metadata: Metadata = { title: messages.me.notifications.title }
 
@@ -66,7 +74,7 @@ const toItem = (row: {
 export default async function NotificationsPage() {
   const user = await requireAccount('/me/notifications')
   const db = await getDb()
-  const [rows, [unreadRow], prefRows] = await Promise.all([
+  const [rows, [unreadRow], prefRows, settings, digest, discordLink, devices] = await Promise.all([
     db
       .select({
         id: notifications.id,
@@ -84,6 +92,13 @@ export default async function NotificationsPage() {
       .from(notifications)
       .where(and(eq(notifications.userId, user.id), isNull(notifications.readAt))),
     db.select().from(notificationPrefs).where(eq(notificationPrefs.userId, user.id)),
+    readNotificationSettings(db),
+    readDigestState(db, user.id),
+    getLink(db, user.id),
+    db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(pushSubscriptions)
+      .where(eq(pushSubscriptions.userId, user.id)),
   ])
   const unread = unreadRow?.n ?? 0
   const items = rows.map(toItem)
@@ -94,6 +109,13 @@ export default async function NotificationsPage() {
       enabled: prefRows.find((r) => r.kind === kind && r.channel === channel)?.enabled ?? true,
     })),
   )
+  // Channel availability, decided on the server (docs/17 §D): the environment says whether a
+  // channel *can* work, the settings document says whether the operator wants it to.
+  const push = pushStatus()
+  const pushKey = pushConfig()?.publicKey ?? null
+  const discord = discordStatus()
+  const emailChannelOn =
+    prefs.find((p) => p.kind === 'new_chapter' && p.channel === 'email')?.enabled ?? true
 
   return (
     <>
@@ -117,6 +139,35 @@ export default async function NotificationsPage() {
             ))}
           </ol>
         )}
+        <Section id="push" title={messages.notify.push.title}>
+          {push.configured && pushKey && settings.push.enabled ? (
+            <PushPanel publicKey={pushKey} otherDevices={devices[0]?.n ?? 0} />
+          ) : (
+            <NotConfigured missing={push.configured ? [] : push.missing} />
+          )}
+        </Section>
+        <Section id="digest" title={messages.notify.digest.title}>
+          {settings.email.enabled ? (
+            <DigestPanel initial={digest.frequency} emailChannelOn={emailChannelOn} />
+          ) : (
+            <p className="text-[13px] text-fg-muted">{messages.notify.channelOff}</p>
+          )}
+        </Section>
+        <Section id="discord" title={messages.notify.discord.title}>
+          {discord.configured && settings.discord.enabled ? (
+            <DiscordPanel
+              initial={{
+                discordId: discordLink?.discordId ?? null,
+                discordUsername: discordLink?.discordUsername ?? null,
+                linkedAt: discordLink?.linkedAt?.toISOString() ?? null,
+                code: discordLink?.discordId ? null : (discordLink?.code ?? null),
+                codeExpiresAt: discordLink?.codeExpiresAt?.toISOString() ?? null,
+              }}
+            />
+          ) : (
+            <NotConfigured missing={discord.configured ? [] : discord.missing} />
+          )}
+        </Section>
         <Section id="preferences" title={messages.me.notifications.preferences}>
           <PrefsMatrix initial={prefs} />
         </Section>

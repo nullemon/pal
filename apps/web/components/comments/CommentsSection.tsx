@@ -8,6 +8,7 @@ import { loadCommentSettings } from '@/lib/comments/settings'
 import type { CommentSort, CommentTarget, CommentThreadConfig } from '@/lib/comments/types'
 import { targetKey } from '@/lib/comments/types'
 import type { AppUser } from '@/lib/comments/viewer'
+import { entitlementGate } from '@/lib/entitlements'
 import { getEnv } from '@/lib/env'
 import { CommentThread } from './CommentThread'
 
@@ -31,7 +32,8 @@ export async function CommentsSection({
   enabled,
   className,
 }: CommentsSectionProps) {
-  const [viewer, settings] = await Promise.all([viewerFor(db, user), loadCommentSettings(db)])
+  const gate = await entitlementGate()
+  const [viewer, settings] = await Promise.all([viewerFor(db, user, gate), loadCommentSettings(db)])
   const page = await listComments(db, { target, sort, viewer, limit: PAGE_SIZE })
   // docs/14 §2 step 3: the widget is only rendered when the server will verify tokens, and
   // up front for the viewers the pipeline is sure to challenge (a rate-limit hit adds the
@@ -43,7 +45,9 @@ export async function CommentsSection({
     maxMentions: settings.max_mentions,
     maxChars: COMMENT_MAX_CHARS,
     imagesEnabled: settings.images.collection,
-    customGifs: settings.images.custom_gifs,
+    // docs/17 §B: an operator who switches `custom_gifs` off takes the button away for
+    // everyone; who gets it otherwise is `viewer.canUseCustomGifs`.
+    customGifs: gate.mode('custom_gifs') === 'disabled' ? 'off' : settings.images.custom_gifs,
     pageSize: PAGE_SIZE,
     turnstileSiteKey: turnstile,
     challenge: !!turnstile && !!user && !isStaff(user) && challengeRequired(user, settings, false),

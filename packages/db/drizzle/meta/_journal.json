@@ -57,6 +57,34 @@
       "when": 1788350000000,
       "tag": "9007_series_art_pending",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1788360000000,
+      "tag": "9008_a_billing",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1788370000000,
+      "tag": "9009_b_entitlements_setting",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1788380000000,
+      "tag": "9010_c_login_events",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1788380001000,
+      "tag": "9011_d_notifications",
+      "breakpoints": true
     }
   ]
 }

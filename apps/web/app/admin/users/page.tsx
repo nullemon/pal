@@ -1,19 +1,12 @@
+import { can } from '@palscans/core'
 import { messages } from '@palscans/core/messages'
+import { Button } from '@palscans/ui'
 import { z } from 'zod'
 import { pageSchema, parseSearch, type SearchParams } from '@/components/admin/server/params'
 import { loadUserList } from '@/components/admin/server/users'
-import {
-  EmptyRow,
-  inputClass,
-  PageHeader,
-  Pagination,
-  Pill,
-  Table,
-  Td,
-  Th,
-  When,
-} from '@/components/admin/ui'
+import { inputClass, PageHeader, Pagination } from '@/components/admin/ui'
 import { withPermission } from '@/lib/auth'
+import { type UserRowView, UsersTable } from './UsersTable'
 
 const schema = z.object({
   q: z.string().trim().max(120).optional(),
@@ -21,14 +14,34 @@ const schema = z.object({
 })
 
 export default async function UsersPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
-  await withPermission('user.read', { returnTo: '/admin/users' })
+  const actor = await withPermission('user.read', { returnTo: '/admin/users' })
   const p = parseSearch(schema, await searchParams)
   const { rows, pages } = await loadUserList(p.q, p.page)
   const m = messages.admin.users
-  const now = new Date()
+  const view: UserRowView[] = rows.map((u) => ({
+    id: u.id,
+    email: u.email,
+    username: u.username,
+    role: u.role,
+    createdAt: u.createdAt.toISOString(),
+    lastLoginAt: u.lastLoginAt?.toISOString() ?? null,
+    emailVerifiedAt: u.emailVerifiedAt?.toISOString() ?? null,
+    commentBannedUntil: u.commentBannedUntil?.toISOString() ?? null,
+    banned: !!u.banned,
+  }))
   return (
     <>
-      <PageHeader title={m.title} subtitle={m.subtitle} />
+      <PageHeader
+        title={m.title}
+        subtitle={m.subtitle}
+        actions={
+          can(actor, 'user.update') ? (
+            <Button href="/admin/users/new" size="sm" className="h-9">
+              {m.newUser}
+            </Button>
+          ) : null
+        }
+      />
       <form method="get" action="/admin/users" className="flex items-center gap-2">
         <input
           name="q"
@@ -43,60 +56,16 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
           {messages.nav.search}
         </button>
       </form>
-      <Table>
-        <thead>
-          <tr>
-            <Th>{m.colUser}</Th>
-            <Th>{m.colRole}</Th>
-            <Th>{m.colStatus}</Th>
-            <Th align="right">{m.colJoined}</Th>
-            <Th align="right">{m.colLastLogin}</Th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.length === 0 ? <EmptyRow colSpan={5}>{m.empty}</EmptyRow> : null}
-          {rows.map((u) => (
-            <tr key={u.id} className="hover:bg-surface-2/60">
-              <Td>
-                <a href={`/admin/users/${u.id}`} className="block">
-                  <span className="block font-semibold hover:text-brand-hover">
-                    {u.username ?? `#${u.id}`}
-                  </span>
-                  <span className="block text-[12px] text-fg-subtle">{u.email}</span>
-                </a>
-              </Td>
-              <Td>
-                <Pill
-                  tone={
-                    u.role === 'admin'
-                      ? 'brand'
-                      : u.role === 'moderator' || u.role === 'uploader'
-                        ? 'gold'
-                        : 'neutral'
-                  }
-                >
-                  {u.role}
-                </Pill>
-              </Td>
-              <Td>
-                <div className="flex flex-wrap gap-1">
-                  {u.banned ? <Pill tone="danger">{m.banned}</Pill> : null}
-                  {u.commentBannedUntil && u.commentBannedUntil > now ? (
-                    <Pill tone="warn">{m.commentBanned}</Pill>
-                  ) : null}
-                  {!u.emailVerifiedAt ? <Pill>{m.unverified}</Pill> : null}
-                </div>
-              </Td>
-              <Td align="right" className="text-fg-muted">
-                <When date={u.createdAt} />
-              </Td>
-              <Td align="right" className="text-fg-muted">
-                <When date={u.lastLoginAt} />
-              </Td>
-            </tr>
-          ))}
-        </tbody>
-      </Table>
+      <UsersTable
+        rows={view}
+        actorId={actor.id}
+        query={p.q ?? ''}
+        perms={{
+          role: can(actor, 'user.role'),
+          ban: can(actor, 'user.ban'),
+          update: can(actor, 'user.update'),
+        }}
+      />
       <Pagination
         page={p.page}
         pages={pages}

@@ -1,4 +1,4 @@
-import { canReadChapter, chapterLock } from '@palscans/core'
+import { canReadChapter, chapterLock, type EntitlementOverrides } from '@palscans/core'
 import {
   bookmarks,
   chapterList,
@@ -93,6 +93,8 @@ export const chapterRows = async (
   seriesId: number,
   user: AppUser | null,
   now: Date,
+  /** `settings.entitlements` overrides (docs/17 §B) — a free feature unlocks the row. */
+  overrides: EntitlementOverrides | null = null,
 ): Promise<ChapterRowData[]> => {
   const rows = await chapterList(db, seriesId, 'desc')
   return rows.map((c) => {
@@ -109,7 +111,7 @@ export const chapterRows = async (
       publishedAt: c.publishedAt ? c.publishedAt.toISOString() : null,
       earlyAccessUntil: c.earlyAccessUntil ? c.earlyAccessUntil.toISOString() : null,
       lock: lock === 'early_access' || lock === 'premium' ? lock : 'none',
-      canRead: canReadChapter(user, access, now),
+      canRead: canReadChapter(user, access, { overrides, now }),
       pageCount: c.pageCount,
     }
   })

@@ -1,4 +1,10 @@
-import { canReadChapter, chapterLock, countdown, type SessionUser } from '@palscans/core'
+import {
+  canReadChapter,
+  chapterLock,
+  countdown,
+  type EntitlementOverrides,
+  type SessionUser,
+} from '@palscans/core'
 import { fmt, messages } from '@palscans/core/messages'
 import { cn, RelativeTime } from '@palscans/ui'
 import { Lock, Pin } from 'lucide-react'
@@ -15,6 +21,8 @@ export interface UpdateRowProps {
   now: Date
   /** Eager-load the cover (first rows are above the fold on desktop). */
   priority?: boolean
+  /** `settings.entitlements` overrides, so a free feature renders unlocked (docs/17 §B). */
+  overrides?: EntitlementOverrides | null
 }
 
 /**
@@ -23,7 +31,7 @@ export interface UpdateRowProps {
  * PINNED badge; the newest chapter gets NEW inside the badge window; chapters the viewer
  * may not read show a lock instead of a bare link into the reader.
  */
-export function UpdateRow({ item, user, now, priority = false }: UpdateRowProps) {
+export function UpdateRow({ item, user, now, priority = false, overrides = null }: UpdateRowProps) {
   const chapters = item.chapters.slice(0, 3)
   return (
     <article
@@ -69,7 +77,13 @@ export function UpdateRow({ item, user, now, priority = false }: UpdateRowProps)
         <ul className="mt-1.5 flex flex-col gap-1">
           {chapters.map((c, i) => (
             <li key={c.id}>
-              <ChapterPill chapter={c} first={i === 0} user={user} now={now} />
+              <ChapterPill
+                chapter={c}
+                first={i === 0}
+                user={user}
+                now={now}
+                overrides={overrides}
+              />
             </li>
           ))}
           {chapters.length === 0 ? (
@@ -92,11 +106,13 @@ function ChapterPill({
   first,
   user,
   now,
+  overrides,
 }: {
   chapter: ChapterSummary
   first: boolean
   user: SessionUser | null
   now: Date
+  overrides: EntitlementOverrides | null
 }) {
   const published = chapter.publishedAt ? new Date(chapter.publishedAt) : null
   const isNew =
@@ -107,7 +123,7 @@ function ChapterPill({
     early_access_until: chapter.earlyAccessUntil ? new Date(chapter.earlyAccessUntil) : null,
   }
   const lock = chapterLock(access, now)
-  const locked = lock !== 'none' && !canReadChapter(user, access, now)
+  const locked = lock !== 'none' && !canReadChapter(user, access, { overrides, now })
   const lockLabel =
     lock === 'early_access' && access.early_access_until
       ? fmt(messages.series.earlyAccessFreeIn, {

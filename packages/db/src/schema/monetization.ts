@@ -18,6 +18,10 @@ export const plans = pgTable('plans', {
   priceCents: integer('price_cents').notNull(),
   interval: text('interval').notNull(), // 'month' | 'year'
   stripePriceId: text('stripe_price_id').notNull(),
+  /** Entitlement features the plan grants (agent A, 9008): the operator edits these, not code. */
+  features: text('features').array().notNull().default(sql`'{}'::text[]`),
+  /** Off keeps the plan for existing subscribers but hides it from /subscribe. */
+  active: boolean('active').notNull().default(true),
 })
 
 export const subscriptions = pgTable(
@@ -81,3 +85,38 @@ export const promoCodes = pgTable('promo_codes', {
   createdBy: ref('created_by').references(() => users.id),
   createdAt: createdAt(),
 })
+
+/**
+ * The Stripe customer behind an account, written before the first Checkout session so a
+ * webhook can resolve the user from `customer` alone (agent A, docs/07).
+ */
+export const billingCustomers = pgTable('billing_customers', {
+  userId: ref('user_id')
+    .primaryKey()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  stripeCustomerId: text('stripe_customer_id').notNull().unique(),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+})
+
+/** Invoice history for /me/billing — "receipts linked from the account page" (docs/07). */
+export const billingReceipts = pgTable(
+  'billing_receipts',
+  {
+    id: identity(),
+    userId: ref('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    stripeInvoiceId: text('stripe_invoice_id').notNull().unique(),
+    stripeSubscriptionId: text('stripe_subscription_id'),
+    description: text('description'),
+    amountCents: integer('amount_cents').notNull(),
+    currency: text('currency').notNull().default('usd'),
+    status: text('status').notNull(), // paid | failed | disputed
+    hostedInvoiceUrl: text('hosted_invoice_url'),
+    invoicePdfUrl: text('invoice_pdf_url'),
+    issuedAt: timestamptz('issued_at').notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index('billing_receipts_user_idx').on(t.userId, t.issuedAt.desc())],
+)

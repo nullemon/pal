@@ -3,6 +3,7 @@ import { and, eq } from 'drizzle-orm'
 import { cookies } from 'next/headers'
 import { getSessionId, getSessionUser } from '@/lib/auth'
 import { signIn } from '@/lib/auth/flows'
+import { recordLoginEvent } from '@/lib/auth/login-events'
 import {
   completeOAuth,
   isOAuthProvider,
@@ -73,9 +74,22 @@ export async function GET(
     .limit(1)
   const currentId = await getSessionId()
   if (linkedRow && !linkedRow.deletedAt) {
-    if (await activeUserBan(linkedRow.userId))
+    if (await activeUserBan(linkedRow.userId)) {
+      await recordLoginEvent({
+        request,
+        userId: linkedRow.userId,
+        method: provider,
+        outcome: 'banned',
+      })
       return loginWith(url, { error: 'banned', provider, return: returnTo })
+    }
     await signIn(linkedRow.userId, linkedRow.email, request, provider, currentId)
+    await recordLoginEvent({
+      request,
+      userId: linkedRow.userId,
+      method: provider,
+      outcome: 'success',
+    })
     return afterSignIn(url, returnTo, !!linkedRow.username, null)
   }
 
@@ -94,8 +108,10 @@ export async function GET(
     .limit(1)
 
   if (existing && !existing.deletedAt) {
-    if (await activeUserBan(existing.id))
+    if (await activeUserBan(existing.id)) {
+      await recordLoginEvent({ request, userId: existing.id, method: provider, outcome: 'banned' })
       return loginWith(url, { error: 'banned', provider, return: returnTo })
+    }
     const current = await getSessionUser()
     if (current && current.id === existing.id) {
       // Initiated from the security page by the authenticated owner: link now.
@@ -126,5 +142,6 @@ export async function GET(
   if (!created) return loginWith(url, { error: 'oauth_failed', provider, return: returnTo })
   await db.insert(oauthAccounts).values({ userId: created.id, provider, providerUid: identity.uid })
   await signIn(created.id, identity.email, request, provider, currentId)
+  await recordLoginEvent({ request, userId: created.id, method: provider, outcome: 'success' })
   return afterSignIn(url, returnTo, false, null)
 }

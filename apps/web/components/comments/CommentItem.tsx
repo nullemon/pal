@@ -227,7 +227,7 @@ export function CommentItem({
                   }
                 }}
                 onSeeReactors={
-                  viewer && (viewer.isPremium || viewer.canModerate)
+                  viewer && (viewer.canSeeReactors || viewer.canModerate)
                     ? () => void actions.seeReactors(comment)
                     : undefined
                 }

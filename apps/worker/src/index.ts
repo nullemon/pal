@@ -5,6 +5,7 @@ import { chapters, closeDb, getDb, series } from '@palscans/db'
 import { and, eq, isNotNull, isNull, lt, sql } from 'drizzle-orm'
 import { processChapter } from './jobs/chapter-process.js'
 import { publishDue } from './jobs/publish.js'
+import { registerNotifications } from './jobs/notify-index.js'
 import { type ArtKind, processSeriesArt } from './jobs/series-art.js'
 import { log } from './lib/log.js'
 import { revalidateWeb } from './lib/revalidate.js'
@@ -62,9 +63,11 @@ const main = async () => {
   })
   // The shared queue carries every job name (docs/16); the ones outside this scope are
   // acknowledged with a log line so they never pile up as failures. Integration wires them.
+  // D · Notifications (docs/17 §D): takes over `notify.new_chapter` and runs the push /
+  // digest / Discord passes on its own timer. Inert when VAPID and the bot token are unset.
+  const notifications = registerNotifications(db, queue)
   for (const name of [
     'sitemap.build',
-    'notify.new_chapter',
     'notify.comment',
     'email.send',
     'stats.rollup',
@@ -127,6 +130,7 @@ const main = async () => {
 
   const shutdown = async () => {
     clearInterval(timer)
+    notifications.stop()
     log.info('shutting down')
     await queue.close()
     await closeDb()

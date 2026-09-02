@@ -2,6 +2,7 @@ import { chapterReads, getDb, readingProgress } from '@palscans/db'
 import { z } from 'zod'
 import { fail, notFound, ok, parseJson, requireUser } from '@/components/reader/server/auth'
 import { chapterForApi, viewerCanRead } from '@/components/reader/server/data'
+import { entitlementGate } from '@/lib/entitlements'
 
 /**
  * POST /api/progress — the reader's position, written at most every 5s and once more on
@@ -24,6 +25,7 @@ export const POST = requireUser(async (request, _ctx, user) => {
   const chapter = await chapterForApi(parsed.data.chapterId)
   if (!chapter) return notFound()
   const now = new Date()
+  const gate = await entitlementGate()
   const readable = viewerCanRead(
     user,
     {
@@ -38,7 +40,7 @@ export const POST = requireUser(async (request, _ctx, user) => {
       publishedAt: null,
       pageCount: 0,
     },
-    now,
+    { overrides: gate.overrides, now },
   )
   if (!readable) return fail(403, 'forbidden')
 

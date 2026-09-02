@@ -42,7 +42,17 @@ interface Props {
 }
 
 const ROLES = ['user', 'supporter', 'premium', 'uploader', 'moderator', 'admin'] as const
-const FEATURES = ['early_access', 'premium_content', 'no_ads', 'offline'] as const
+const FEATURES = [
+  'early_access',
+  'premium_content',
+  'offline',
+  'no_ads',
+  'priority_comments',
+  'see_reactors',
+  'custom_gifs',
+  'animated_avatar',
+  'profile_banner',
+] as const
 
 export function UserActions({
   user,

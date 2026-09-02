@@ -1,4 +1,3 @@
-import { entitlement } from '@palscans/core'
 import { messages } from '@palscans/core/messages'
 import { comments, db, reports } from '@palscans/db'
 import { and, eq, ne, sql } from 'drizzle-orm'
@@ -7,6 +6,7 @@ import { getCommentRow, isDeprioritisedReporter } from '@/lib/comments/queries'
 import { getRateLimiter } from '@/lib/comments/rate-limit'
 import { idParamSchema, reportSchema } from '@/lib/comments/schemas'
 import { loadCommentSettings } from '@/lib/comments/settings'
+import { entitlementGate } from '@/lib/entitlements'
 
 type Params = { id: string }
 
@@ -66,8 +66,9 @@ export const POST = requireUser<Params>(async (request, ctx, user) => {
       ),
     )
   const unique = Number(count?.n ?? 0)
+  const gate = await entitlementGate()
   const premiumReporter =
-    !deprioritised && (entitlement(user, 'premium_content') || user.role === 'premium')
+    !deprioritised && (gate.can('priority_comments', user) || user.role === 'premium')
   const hide =
     row.status === 'published' &&
     (unique >= settings.report_threshold.unique ||

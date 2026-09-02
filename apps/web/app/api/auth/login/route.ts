@@ -16,6 +16,7 @@ import {
   sameOrigin,
 } from '@/lib/auth'
 import { setMfaChallenge, signIn } from '@/lib/auth/flows'
+import { recordLoginEvent } from '@/lib/auth/login-events'
 import { dummyHash, hashPassword, needsRehash, verifyPassword } from '@/lib/auth/password'
 import { loginSchema } from '@/lib/auth/schemas'
 import { verifyTurnstile } from '@/lib/auth/turnstile'
@@ -40,17 +41,31 @@ export async function POST(request: Request): Promise<Response> {
     limiter.hitWithBackoff(`login:acct:${accountKey(email)}`, 5, 60),
     ...(ip ? [limiter.hitWithBackoff(`login:ip:${ip}`, 5, 60)] : []),
   ])
-  if (hits.some((h) => !h.ok))
+  if (hits.some((h) => !h.ok)) {
+    // docs/17 §C: the attempt is history too — recorded without a lookup so a flood of
+    // rate-limited requests stays cheap.
+    await recordLoginEvent({ request, userId: null, method: 'password', outcome: 'locked' })
     return rateLimited(Math.max(...hits.map((h) => (h.ok ? 0 : h.retryAfterSec))))
+  }
   if (!(await verifyTurnstile(parsed.data.turnstile, clientIp(request))))
     return fail(400, 'turnstile', messages.errors.validation)
 
   const user = await findUserByEmail(email)
   const hashed = user?.passwordHash ?? (await dummyHash())
   const valid = await verifyPassword(hashed, password)
-  if (!user?.passwordHash || !valid || user.deletedAt)
+  if (!user?.passwordHash || !valid || user.deletedAt) {
+    await recordLoginEvent({
+      request,
+      userId: user?.deletedAt ? null : (user?.id ?? null),
+      method: 'password',
+      outcome: 'bad_password',
+    })
     return fail(401, 'invalid_credentials', messages.auth.invalidCredentials)
-  if (await activeUserBan(user.id)) return fail(403, 'banned', messages.auth.banned)
+  }
+  if (await activeUserBan(user.id)) {
+    await recordLoginEvent({ request, userId: user.id, method: 'password', outcome: 'banned' })
+    return fail(403, 'banned', messages.auth.banned)
+  }
 
   if (needsRehash(user.passwordHash)) {
     const db = await getDb()
@@ -66,6 +81,7 @@ export async function POST(request: Request): Promise<Response> {
     return ok({ mfa: true })
   }
   const { linked } = await signIn(user.id, user.email, request, 'password', await getSessionId())
+  await recordLoginEvent({ request, userId: user.id, method: 'password', outcome: 'success' })
   return ok({
     mfa: false,
     return: user.username ? returnTo : `/onboarding?return=${encodeURIComponent(returnTo)}`,

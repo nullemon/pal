@@ -1,4 +1,10 @@
-import { type ChapterLock, canReadChapter, chapterLock, type SessionUser } from '@palscans/core'
+import {
+  type ChapterLock,
+  canReadChapter,
+  chapterLock,
+  type EntitlementArg,
+  type SessionUser,
+} from '@palscans/core'
 import {
   type ChapterPageRow,
   type ChapterWithPages,
@@ -142,11 +148,12 @@ export const accessInput = (c: ChapterBundle['chapter']) => ({
   early_access_until: c.earlyAccessUntil ? new Date(c.earlyAccessUntil) : null,
 })
 
+/** `arg` carries the operator's entitlement overrides as well as the clock (docs/17 §B). */
 export const viewerCanRead = (
   user: SessionUser | null,
   c: ChapterBundle['chapter'],
-  now: Date,
-): boolean => canReadChapter(user, accessInput(c), now)
+  arg: EntitlementArg,
+): boolean => canReadChapter(user, accessInput(c), arg)
 
 export const lockOf = (c: ChapterBundle['chapter'], now: Date): ChapterLock =>
   chapterLock(accessInput(c), now)

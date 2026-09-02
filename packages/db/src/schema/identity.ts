@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm'
-import { boolean, index, pgTable, text, unique, uuid } from 'drizzle-orm/pg-core'
+import { boolean, index, integer, pgTable, text, unique, uuid } from 'drizzle-orm/pg-core'
 import { createdAt, deletedAt, identity, ref, timestamptz, updatedAt } from './_shared.js'
 import { bytea, citext } from './custom-types.js'
 import { userRole } from './enums.js'
@@ -86,3 +86,54 @@ export const authTokens = pgTable('auth_tokens', {
   consumedAt: timestamptz('consumed_at'),
   createdAt: createdAt(),
 })
+
+/**
+ * docs/17 §C — every authentication attempt, successful or not. `user_id` is null when the
+ * address typed does not belong to an account, so a spike of unknown-email attempts is still
+ * visible. The address itself is never stored: only its HMAC (`hashIp`, weekly salt), the
+ * user agent and what it parses to, and the country/city Cloudflare put on the request.
+ */
+export const loginEvents = pgTable(
+  'login_events',
+  {
+    id: identity(),
+    userId: ref('user_id').references(() => users.id, { onDelete: 'set null' }),
+    at: timestamptz('at').notNull().defaultNow(),
+    method: text('method').notNull(), // password | google | discord | totp
+    outcome: text('outcome').notNull(), // success | bad_password | locked | totp_failed | banned
+    userAgent: text('user_agent'),
+    device: text('device'), // Desktop | Mobile | Tablet | Bot | Unknown
+    browser: text('browser'),
+    os: text('os'),
+    country: text('country'), // CF-IPCountry, when the edge sent one
+    city: text('city'), // CF-IPCity
+    ipHash: bytea('ip_hash'),
+    sessionId: uuid('session_id').references(() => sessions.id, { onDelete: 'set null' }),
+  },
+  (t) => [
+    index('login_events_user_idx').on(t.userId, t.at.desc()),
+    index('login_events_at_idx').on(t.at.desc()),
+    index('login_events_outcome_idx').on(t.outcome, t.at.desc()),
+  ],
+)
+
+/**
+ * docs/17 §C — invite codes, used by the register route when `settings.site.registration`
+ * is `invite`. Single- or multi-use with an optional expiry; revoked, never deleted.
+ */
+export const inviteCodes = pgTable(
+  'invite_codes',
+  {
+    id: identity(),
+    code: citext('code').notNull().unique(),
+    maxUses: integer('max_uses').notNull().default(1),
+    uses: integer('uses').notNull().default(0),
+    note: text('note'),
+    expiresAt: timestamptz('expires_at'),
+    lastUsedAt: timestamptz('last_used_at'),
+    createdBy: ref('created_by').references(() => users.id),
+    createdAt: createdAt(),
+    revokedAt: timestamptz('revoked_at'),
+  },
+  (t) => [index('invite_codes_created_idx').on(t.createdAt.desc())],
+)

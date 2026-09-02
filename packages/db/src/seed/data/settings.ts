@@ -17,6 +17,27 @@ export const ADS = {
   },
 }
 
+/**
+ * settings.entitlements — docs/17 §B `Admin → Business → Premium`. Every feature ships on
+ * `premium` (today's behaviour); the operator flips one to `free` / `disabled`, or throws
+ * the `all_free` master switch with an optional `free_until` window.
+ */
+export const ENTITLEMENTS = {
+  all_free: false,
+  free_until: null,
+  features: {
+    early_access: 'premium',
+    premium_content: 'premium',
+    offline: 'premium',
+    no_ads: 'premium',
+    priority_comments: 'premium',
+    see_reactors: 'premium',
+    custom_gifs: 'premium',
+    animated_avatar: 'premium',
+    profile_banner: 'premium',
+  },
+}
+
 /** settings.comments and comment_settings — docs/14 §3 defaults. */
 export const COMMENTS = {
   enabled: true,

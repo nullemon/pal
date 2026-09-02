@@ -51,7 +51,5 @@ export const canReadChapter = (
 }
 
 /** Ad-free is an entitlement granted by both tiers (docs/11). */
-export const showsAds = (
-  user: SessionUser | null | undefined,
-  arg?: EntitlementArg,
-): boolean => !entitlement(user, 'no_ads', arg)
+export const showsAds = (user: SessionUser | null | undefined, arg?: EntitlementArg): boolean =>
+  !entitlement(user, 'no_ads', arg)

@@ -29,6 +29,7 @@ import {
   APPEARANCE,
   COMMENTS,
   DARK_TOKENS,
+  ENTITLEMENTS,
   HOME_LAYOUT,
   LAYOUTS,
   LIGHT_TOKENS,
@@ -293,6 +294,46 @@ export const seed = async (db: Db, opts: SeedOptions = {}): Promise<SeedResult> 
       },
     ])
     .onConflictDoNothing()
+
+  // Billing sample rows (agent A · docs/17 §A) so /me/billing and Admin → Premium have
+  // something to show before Stripe keys exist. The ids are obvious placeholders: nothing
+  // here talks to Stripe, and the seeded prices (`price_dev_*`) are not sellable.
+  {
+    const periodEnd = new Date(now.getTime() + 21 * DAY)
+    await db
+      .insert(s.billingCustomers)
+      .values({ userId: premiumId, stripeCustomerId: 'cus_dev_premium_reader' })
+      .onConflictDoNothing()
+    await db
+      .insert(s.subscriptions)
+      .values({
+        userId: premiumId,
+        planId: 'premium',
+        stripeCustomerId: 'cus_dev_premium_reader',
+        stripeSubscriptionId: 'sub_dev_premium_reader',
+        status: 'active',
+        currentPeriodEnd: periodEnd,
+        cancelAtPeriodEnd: false,
+      })
+      .onConflictDoNothing()
+    await db
+      .insert(s.billingReceipts)
+      .values(
+        [0, 1, 2].map((i) => ({
+          userId: premiumId,
+          stripeInvoiceId: `in_dev_premium_${i}`,
+          stripeSubscriptionId: 'sub_dev_premium_reader',
+          description: 'PALScans Premium · monthly',
+          amountCents: 500,
+          currency: 'usd',
+          status: 'paid',
+          hostedInvoiceUrl: null,
+          invoicePdfUrl: null,
+          issuedAt: new Date(periodEnd.getTime() - (i + 1) * 30 * DAY),
+        })),
+      )
+      .onConflictDoNothing()
+  }
   log(`users: ${userIdByEmail.size}`)
 
   // ---- series ------------------------------------------------------------------------
@@ -946,6 +987,7 @@ export const seed = async (db: Db, opts: SeedOptions = {}): Promise<SeedResult> 
     { key: 'site', value: SITE },
     { key: 'home_layout', value: HOME_LAYOUT },
     { key: 'menus', value: MENUS },
+    { key: 'entitlements', value: ENTITLEMENTS },
   ]
   await db
     .insert(s.settings)

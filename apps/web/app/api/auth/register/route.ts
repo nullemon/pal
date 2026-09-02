@@ -15,9 +15,10 @@ import {
 } from '@/lib/auth'
 import { sendVerification, signIn } from '@/lib/auth/flows'
 import { checkBreachedPassword } from '@/lib/auth/hibp'
+import { checkRegistrationAccess, redeemInvite } from '@/lib/auth/invites'
+import { recordLoginEvent } from '@/lib/auth/login-events'
 import { hashPassword } from '@/lib/auth/password'
 import { registerSchema } from '@/lib/auth/schemas'
-import { verifyTurnstile } from '@/lib/auth/turnstile'
 import { usernameAvailability } from '@/lib/auth/users'
 import { getMailer } from '@/lib/email'
 
@@ -37,8 +38,16 @@ export async function POST(request: Request): Promise<Response> {
   const parsed = await parseJson(request, registerSchema)
   if (!parsed.ok) return parsed.response
   const { email, password, username } = parsed.data
-  if (!(await verifyTurnstile(parsed.data.turnstile, clientIp(request))))
-    return fail(400, 'turnstile', messages.errors.validation)
+  // docs/17 §C: one call covers the registration mode, the email-domain rules, Turnstile
+  // (on/off in `settings.access`) and the invite code. The code is validated here and only
+  // claimed once everything else has passed, so a rejected password never burns one.
+  const gate = await checkRegistrationAccess({
+    email,
+    invite: parsed.data.invite,
+    turnstileToken: parsed.data.turnstile,
+    ip: clientIp(request),
+  })
+  if (!gate.ok) return fail(gate.status, gate.error, gate.message)
   // No provider in production: refuse before an unverifiable account exists.
   if (getMailer().kind === 'none')
     return fail(503, 'mail_unavailable', messages.errors.mailUnavailable)
@@ -61,6 +70,9 @@ export async function POST(request: Request): Promise<Response> {
   const breach = await checkBreachedPassword(password)
   if (breach.breached) return fail(400, 'breached_password', messages.auth.breachedPassword)
 
+  if (gate.invite && !(await redeemInvite(gate.invite)))
+    return fail(403, 'invite_invalid', messages.auth.inviteInvalid)
+
   const passwordHash = await hashPassword(password)
   const [created] = await db
     .insert(users)
@@ -70,10 +82,19 @@ export async function POST(request: Request): Promise<Response> {
 
   const sent = await sendVerification(created.id, email)
   await signIn(created.id, email, request, 'password')
+  await recordLoginEvent({ request, userId: created.id, method: 'password', outcome: 'success' })
   const returnTo = safeReturnPath(parsed.data.return)
+  // `require_verification` (docs/17 §C): the account exists and is signed in — so the resend
+  // button works — but registration ends on the verification screen instead of the site.
+  const next = gate.access.require_verification
+    ? '/verify'
+    : username
+      ? returnTo
+      : `/onboarding?return=${encodeURIComponent(returnTo)}`
   return ok({
-    return: username ? returnTo : `/onboarding?return=${encodeURIComponent(returnTo)}`,
+    return: next,
     verificationSent: sent.ok,
+    verificationRequired: gate.access.require_verification,
     breachChecked: breach.checked,
   })
 }

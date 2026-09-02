@@ -22,6 +22,10 @@
       "types": "./dist/queue/index.d.ts",
       "default": "./dist/queue/index.js"
     },
+    "./entitlements": {
+      "types": "./dist/entitlements.d.ts",
+      "default": "./dist/entitlements.js"
+    },
     "./comments": {
       "types": "./dist/comments/index.d.ts",
       "default": "./dist/comments/index.js"
