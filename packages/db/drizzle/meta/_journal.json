@@ -29,6 +29,20 @@
       "when": 1788320944882,
       "tag": "0003_view_events_partition",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1788323936924,
+      "tag": "9004_p4_account_security",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1788330000000,
+      "tag": "9005_p5_chapter_processing",
+      "breakpoints": true
     }
   ]
 }

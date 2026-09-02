@@ -1,176 +1,162 @@
-import { fmt, messages } from '@palscans/core/messages'
-import { AdSlot, Chip, Rail, RatingStars, SeriesCard } from '@palscans/ui'
-import { ChevronRight, Flame } from 'lucide-react'
-import Image from 'next/image'
-import Link from 'next/link'
-import { sampleCatalog } from '@/lib/sample-catalog'
+import { showsAds } from '@palscans/core'
+import { messages } from '@palscans/core/messages'
+import { AdSlot, Rail, SeriesCard } from '@palscans/ui'
+import { Sparkles } from 'lucide-react'
+import type { Metadata } from 'next'
+import {
+  cachedAds,
+  cachedAnnouncement,
+  cachedHero,
+  cachedHomeLayout,
+  cachedLatestUpdates,
+  cachedNewest,
+  cachedPopular,
+  cachedTrending,
+} from '@/components/discovery/cached'
+import { homeParamsSchema } from '@/components/discovery/filters'
+import { COVER_HEIGHT, COVER_WIDTH } from '@/components/discovery/media'
+import { pageMetadata } from '@/components/discovery/metadata'
+import { continueReading } from '@/components/discovery/queries'
+import { SectionTitle } from '@/components/discovery/SectionTitle'
+import { uiType } from '@/components/discovery/SeriesGrid'
+import { adSlot, homeSection } from '@/components/discovery/settings'
+import { AnnouncementCard } from '@/components/home/AnnouncementCard'
+import { ContinueReading } from '@/components/home/ContinueReading'
+import { Hero } from '@/components/home/Hero'
+import { LatestUpdates } from '@/components/home/LatestUpdates'
+import { PopularSidebar } from '@/components/home/PopularSidebar'
+import { TrendingRail } from '@/components/home/TrendingRail'
+import { getSessionUser } from '@/lib/auth/session'
 
 /**
- * Placeholder home. P1 replaces this with layout A (design/mockups/A/Main.dc.html) backed by
- * the real query helpers; the shell around it is what F1 delivers.
+ * Home — layout A (design/mockups/A/Main.dc.html). The page personalises (Continue reading,
+ * ad-free), so it renders per request; every catalogue query behind it is served from the
+ * 60s data cache in components/discovery/cached.ts (docs/06 "static shell + dynamic holes").
  */
-export default function HomePage() {
-  const featured = sampleCatalog[0]
-  const trending = sampleCatalog.slice(0, 8)
+export async function generateMetadata(): Promise<Metadata> {
+  return pageMetadata('home', {}, { path: '/' })
+}
+
+export default async function HomePage({ searchParams }: PageProps<'/'>) {
+  const params = homeParamsSchema.parse(await searchParams)
+  const [user, layout, ads] = await Promise.all([getSessionUser(), cachedHomeLayout(), cachedAds()])
+  const now = new Date()
+  const withAds = showsAds(user, now)
+
+  const hero = layout.hero
+  const sContinue = homeSection(layout, 'continue')
+  const sTrending = homeSection(layout, 'trending')
+  const sLatest = homeSection(layout, 'latest')
+  const sPopular = homeSection(layout, 'popular')
+  const sNewest = homeSection(layout, 'recently_added')
+  const sAnnouncements = homeSection(layout, 'announcements')
+
+  const [slides, trending, feed, popular, announcement, newest, resume] = await Promise.all([
+    hero.enabled ? cachedHero(hero.count) : Promise.resolve([]),
+    sTrending.enabled ? cachedTrending(Math.min(sTrending.count, 12)) : Promise.resolve([]),
+    cachedLatestUpdates(params.page, sLatest.count, params.type),
+    sPopular.enabled ? cachedPopular(sPopular.count) : Promise.resolve(null),
+    sAnnouncements.enabled ? cachedAnnouncement() : Promise.resolve(null),
+    sNewest.enabled ? cachedNewest(sNewest.count) : Promise.resolve([]),
+    user && sContinue.enabled ? continueReading(user.id, sContinue.count) : Promise.resolve([]),
+  ])
+
+  const top = adSlot(ads, 'home_top')
+  const sidebar = adSlot(ads, 'home_sidebar')
+  const infeed = adSlot(ads, 'home_infeed')
+
   return (
-    <div className="container-page flex flex-col gap-6 pt-4 md:pt-6">
-      {/* Hero placeholder: cover-derived backdrop, one featured series. */}
-      {featured ? (
-        <section
-          aria-label={messages.home.heroEyebrow}
-          className="relative overflow-hidden rounded-lg border border-line-soft bg-surface-1"
-        >
-          <Image
-            src={featured.cover}
-            alt=""
-            width={400}
-            height={600}
-            aria-hidden="true"
-            className="absolute inset-0 h-full w-full scale-110 object-cover opacity-40 blur-2xl"
-          />
-          <div className="relative flex flex-col gap-4 bg-linear-to-r from-bg/90 via-bg/70 to-bg/20 p-5 md:flex-row md:items-end md:gap-8 md:p-8">
-            <Image
-              src={featured.cover}
-              alt={featured.title}
-              width={400}
-              height={600}
-              priority
-              className="aspect-[2/3] w-[120px] shrink-0 rounded-md object-cover shadow-2 md:w-[180px]"
-            />
-            <div className="flex min-w-0 flex-col gap-3">
-              <p className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-brand-hover">
-                {messages.home.heroEyebrow} · {fmt(messages.series.rank, { n: featured.rank })}
-              </p>
-              <h1 className="font-display text-[clamp(1.6rem,1.3rem+1.4vw,2.2rem)] font-extrabold leading-tight">
-                {featured.title}
-              </h1>
-              <div className="flex flex-wrap items-center gap-2">
-                <Chip variant="type" value={featured.type} />
-                <Chip variant="status" value={featured.status} />
-                <RatingStars value={featured.rating} count={12481} size={14} />
-              </div>
-              <p className="max-w-[68ch] text-sm text-fg-muted">
-                Executed by the empire he built, Kael Vantheris wakes three hundred years in the
-                past with his memories intact and his power gone. The Frost Monarch has one winter
-                to rebuild an army, and this time he remembers every betrayal.
-              </p>
-              <div className="flex gap-2">
-                <Link
-                  href={`/series/${featured.slug}/chapter-1`}
-                  className="inline-flex h-[38px] items-center rounded-md bg-brand px-4 text-sm font-semibold text-brand-ink hover:bg-brand-hover"
-                >
-                  {messages.series.readFirst}
-                </Link>
-                <Link
-                  href={`/series/${featured.slug}`}
-                  className="inline-flex h-[38px] items-center rounded-md border border-line bg-surface-1 px-4 text-sm font-semibold text-fg hover:bg-surface-2"
-                >
-                  {messages.series.chapters}
-                </Link>
-              </div>
+    <div className="flex flex-col gap-4 pb-6">
+      <h1 className="sr-only">{messages.site.tagline}</h1>
+      <Hero slides={slides} />
+
+      <div className="container-page flex flex-col gap-5">
+        {top.enabled ? (
+          <div className="py-1">
+            <div className="hidden md:block">
+              <AdSlot
+                slot="home_top"
+                label={messages.ads.leaderboard}
+                width={970}
+                height={90}
+                noAds={!withAds}
+                placeholder={top.tag === null}
+              />
+            </div>
+            <div className="md:hidden">
+              <AdSlot
+                slot="home_top"
+                label={messages.ads.leaderboard}
+                width={320}
+                height={100}
+                noAds={!withAds}
+                placeholder={top.tag === null}
+              />
             </div>
           </div>
-        </section>
-      ) : null}
+        ) : null}
 
-      <AdSlot slot="home_top" label={messages.ads.leaderboard} width={970} height={90} />
+        <ContinueReading items={resume} />
+        <TrendingRail items={trending} />
 
-      <section aria-labelledby="trending-title" className="flex flex-col gap-3">
-        <div className="flex items-center justify-between">
-          <h2 id="trending-title" className="section-title flex items-center gap-2">
-            <Flame size={18} className="text-brand-hover" aria-hidden="true" />
-            {messages.home.trending}
-          </h2>
-          <Link
-            href="/rankings"
-            className="inline-flex items-center gap-1 text-[13px] font-semibold text-brand-hover hover:text-fg"
-          >
-            {messages.nav.rankings}
-            <ChevronRight size={14} aria-hidden="true" />
-          </Link>
-        </div>
-        <Rail label={messages.home.trending}>
-          {trending.map((s, i) => (
-            <SeriesCard
-              key={s.slug}
-              title={s.title}
-              href={`/series/${s.slug}`}
-              cover={{ src: s.cover, width: 400, height: 600, alt: s.title }}
-              type={s.type}
-              rank={s.rank}
-              rating={s.rating}
-              priority={i < 3}
-              latestChapter={{
-                number: s.latestChapter,
-                href: `/series/${s.slug}/chapter-${s.latestChapter}`,
-              }}
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+          {sLatest.enabled ? (
+            <LatestUpdates
+              feed={feed}
+              type={params.type}
+              user={user}
+              now={now}
+              sponsored={withAds && infeed.enabled ? { placeholder: infeed.tag === null } : null}
             />
-          ))}
-        </Rail>
-      </section>
-
-      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_300px]">
-        <section aria-labelledby="latest-title" className="flex flex-col gap-3">
-          <h2 id="latest-title" className="section-title">
-            {messages.home.latestUpdates}
-          </h2>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {sampleCatalog.slice(0, 6).map((s) => (
-              <article
-                key={s.slug}
-                className="flex gap-3 rounded-md border border-line-soft bg-surface-1 p-3"
-              >
-                <Image
-                  src={s.cover}
-                  alt=""
-                  width={400}
-                  height={600}
-                  loading="lazy"
-                  className="aspect-[2/3] w-[64px] shrink-0 rounded-sm object-cover"
+          ) : (
+            <div />
+          )}
+          <aside className="flex flex-col gap-2.5">
+            {popular ? <PopularSidebar lists={popular} /> : null}
+            {sidebar.enabled ? (
+              <div className="hidden lg:block">
+                <AdSlot
+                  slot="home_sidebar"
+                  label={messages.ads.mpu}
+                  width={300}
+                  height={250}
+                  noAds={!withAds}
+                  placeholder={sidebar.tag === null}
                 />
-                <div className="flex min-w-0 flex-col gap-1">
-                  <Link
-                    href={`/series/${s.slug}`}
-                    className="line-clamp-2 text-sm font-bold leading-5 hover:text-brand-hover"
-                  >
-                    {s.title}
-                  </Link>
-                  <Chip variant="type" value={s.type} size="sm" className="self-start" />
-                  <span className="text-xs tabular-nums text-fg-muted">{fmt(messages.series.chapterShort, { n: s.latestChapter })}</span>
-                </div>
-              </article>
-            ))}
-          </div>
-        </section>
-        <aside className="flex flex-col gap-4">
-          <section
-            aria-labelledby="popular-title"
-            className="rounded-md border border-line-soft bg-surface-1 p-4"
-          >
-            <h2 id="popular-title" className="section-title mb-3">
-              {messages.home.popular}
-            </h2>
-            <ol className="flex flex-col gap-2 text-sm">
-              {sampleCatalog.slice(0, 5).map((s) => (
-                <li key={s.slug} className="flex items-center gap-3">
-                  <span className="w-5 font-display text-lg font-extrabold tabular-nums text-fg-subtle">
-                    {s.rank}
-                  </span>
-                  <Link href={`/series/${s.slug}`} className="truncate hover:text-brand-hover">
-                    {s.title}
-                  </Link>
-                </li>
+              </div>
+            ) : null}
+            <AnnouncementCard announcement={announcement} />
+          </aside>
+        </div>
+
+        {newest.length > 0 ? (
+          <section aria-labelledby="newest-title" className="flex flex-col gap-2">
+            <SectionTitle
+              id="newest-title"
+              title={messages.home.recentlyAdded}
+              icon={<Sparkles size={18} />}
+              link={{ href: '/browse?sort=newest', label: messages.home.viewAll }}
+            />
+            <Rail label={messages.home.recentlyAdded} itemWidth="140px">
+              {newest.map((s) => (
+                <SeriesCard
+                  key={s.id}
+                  title={s.title}
+                  href={s.href}
+                  cover={{
+                    src: s.coverSrc,
+                    width: COVER_WIDTH,
+                    height: COVER_HEIGHT,
+                    alt: `${s.title} cover`,
+                  }}
+                  type={uiType(s.type)}
+                  rating={s.ratingCount > 0 ? s.rating : undefined}
+                  latestChapter={{ number: s.chapterCount }}
+                />
               ))}
-            </ol>
+            </Rail>
           </section>
-          <AdSlot
-            slot="home_sidebar"
-            label={messages.ads.mpu}
-            width={300}
-            height={250}
-            className="hidden lg:flex"
-          />
-        </aside>
+        ) : null}
       </div>
     </div>
   )

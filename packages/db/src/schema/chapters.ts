@@ -17,6 +17,41 @@ import { groups, series } from './catalog.js'
 import { chapterState } from './enums.js'
 import { users } from './identity.js'
 
+/** One uploaded original, in display order (docs/03 upload flow step 6). */
+export interface ChapterSource {
+  idx: number
+  key: string
+  bytes: number
+  sha256: string
+}
+
+/** One emitted page (a source, or one segment of a split long strip) with its variants. */
+export interface ProcessedPage {
+  key: string
+  width: number
+  height: number
+  bytes: number
+  blurHash: string | null
+  variants: PageVariant[]
+}
+
+/** `chapters.processing` — written by the upload commit and the worker (docs/03). */
+export interface ChapterProcessing {
+  sources: ChapterSource[]
+  /** Per-source results kept while a run has failures so "retry failed only" can rebuild the rows. */
+  results?: Record<string, ProcessedPage[]>
+  progress: { done: number; total: number }
+  /** Per-page error messages keyed by source idx; empty when the last run succeeded. */
+  errors: Record<string, string>
+  attempt: number
+  /** `failed` = re-run only the sources listed in `errors` (docs/03 "retry failed pages only"). */
+  mode?: 'all' | 'failed'
+  /** Set by the upload commit: premium flag and target publish time applied when processing ends. */
+  after?: { isPremium?: boolean; publishedAt?: string | null }
+  startedAt: string | null
+  finishedAt: string | null
+}
+
 export const chapters = pgTable(
   'chapters',
   {
@@ -34,6 +69,8 @@ export const chapters = pgTable(
     pageCount: smallint('page_count').notNull().default(0),
     viewCount: bigint('view_count', { mode: 'number' }).notNull().default(0),
     uploadedBy: ref('uploaded_by').references(() => users.id),
+    // P5 (migration 9005): the worker's processing document — sources, progress, per-page errors
+    processing: jsonb('processing').$type<ChapterProcessing | null>(),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
     deletedAt: deletedAt(),

@@ -12,6 +12,10 @@ loadEnvConfig(repoRoot, process.env.NODE_ENV !== 'production')
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   transpilePackages: ['@palscans/ui'],
+  // Native / WASM database drivers are loaded from node_modules at runtime rather than
+  // bundled (PGlite ships a WASM binary, postgres-js opens sockets). Workspace packages
+  // cannot be listed here — Next always bundles local packages.
+  serverExternalPackages: ['drizzle-orm', 'postgres', '@electric-sql/pglite'],
   outputFileTracingRoot: repoRoot,
   images: {
     // Covers and pages are pre-encoded by the worker (AVIF/WebP, four widths) and served

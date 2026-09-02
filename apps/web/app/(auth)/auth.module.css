@@ -1,0 +1,22 @@
+/* Drifting cover collage on the auth pages: three columns, each an infinite vertical loop.
+   transform-only animation (docs/05), paused under prefers-reduced-motion. */
+.column {
+  animation: drift var(--drift-duration, 60s) linear infinite;
+  will-change: transform;
+}
+.columnReverse {
+  animation-direction: reverse;
+}
+@keyframes drift {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-50%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .column {
+    animation: none;
+  }
+}

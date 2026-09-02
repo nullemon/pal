@@ -5,6 +5,8 @@ import './globals.css'
 import type { Metadata, Viewport } from 'next'
 import type { ReactNode } from 'react'
 import { ThemeScript } from '@/components/shell/ThemeScript'
+import { AppearanceStyle } from '@/lib/appearance/AppearanceStyle'
+import { SeoHead } from '@/lib/seo/SeoHead'
 import { site } from '@/lib/site'
 
 export const metadata: Metadata = {
@@ -29,6 +31,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en" data-theme="dark" className="font-body" suppressHydrationWarning>
       <head>
         <ThemeScript />
+        <AppearanceStyle />
+        {/* P6: Organization/WebSite JSON-LD, sitemap + feed links (cached, never throws) */}
+        <SeoHead />
       </head>
       <body className="bg-bg text-fg">{children}</body>
     </html>

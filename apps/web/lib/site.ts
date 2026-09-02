@@ -51,6 +51,8 @@ export const footerColumns: readonly FooterColumn[] = [
       { label: messages.footer.popular, href: '/rankings' },
       { label: messages.footer.genres, href: '/genres' },
       { label: messages.footer.rankings, href: '/rankings' },
+      { label: messages.nav.random, href: '/random' },
+      { label: messages.home.announcements, href: '/announcements' },
     ],
   },
   {

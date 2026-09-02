@@ -21,11 +21,21 @@ export const users = pgTable(
     lastLoginAt: timestamptz('last_login_at'),
     lastLoginMethod: text('last_login_method'),
     safeMode: boolean('safe_mode').notNull().default(false), // docs/13 content safety
+    // P4 (migration 9004): optional TOTP, username-change cooldown, deletion grace period
+    totpSecret: text('totp_secret'), // base32, set during enrolment; enabled once confirmed
+    totpEnabledAt: timestamptz('totp_enabled_at'),
+    usernameChangedAt: timestamptz('username_changed_at'), // docs/13: once per 30 days
+    deletionRequestedAt: timestamptz('deletion_requested_at'), // docs/13: 14-day grace
     createdAt: createdAt(),
     updatedAt: updatedAt(),
     deletedAt: deletedAt(),
   },
-  (t) => [index('users_role_idx').on(t.role).where(sql`${t.deletedAt} IS NULL`)],
+  (t) => [
+    index('users_role_idx').on(t.role).where(sql`${t.deletedAt} IS NULL`),
+    index('users_deletion_requested_idx')
+      .on(t.deletionRequestedAt)
+      .where(sql`${t.deletionRequestedAt} IS NOT NULL`),
+  ],
 )
 
 export const oauthAccounts = pgTable(
@@ -55,6 +65,7 @@ export const sessions = pgTable(
     ipHash: bytea('ip_hash'),
     expiresAt: timestamptz('expires_at').notNull(),
     revokedAt: timestamptz('revoked_at'),
+    lastSeenAt: timestamptz('last_seen_at'), // P4 (migration 9004): security page "last seen"
     createdAt: createdAt(),
   },
   (t) => [
