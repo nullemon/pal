@@ -2,8 +2,12 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "lib": ["ES2023"],
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    // The notification jobs reuse `apps/web/lib/{notifications,discord}` (docs/17 §D), and
+    // files inside apps/web are written for Next's resolver — relative imports there carry no
+    // `.js` extension. NodeNext rejects those, so the worker resolves like the rest of the
+    // repo (tsconfig.base) and keeps its own `./x.js` specifiers working for tsx at runtime.
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
     "types": ["node"],
     "noEmit": true
   },
