@@ -1,0 +1,22 @@
+{
+  "name": "palscans",
+  "private": true,
+  "packageManager": "pnpm@11.25.0",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "build": "turbo run build",
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "db:generate": "pnpm --filter @palscans/db generate",
+    "db:migrate": "pnpm --filter @palscans/db migrate",
+    "db:seed": "pnpm --filter @palscans/db seed"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.2.0",
+    "turbo": "^2.5.0",
+    "typescript": "^5.9.0"
+  }
+}

@@ -1,0 +1,15 @@
+node_modules/
+.pnpm-store/
+.next/
+dist/
+.turbo/
+.data/
+*.log
+.env
+.env.local
+.env.*.local
+coverage/
+playwright-report/
+test-results/
+# uploaded theme packages are not source
+*.zip
