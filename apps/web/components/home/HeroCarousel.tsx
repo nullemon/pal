@@ -105,15 +105,18 @@ export function HeroCarousel({ slides, autoplayMs = AUTOPLAY_MS }: HeroCarouselP
       onFocus={() => setPaused(true)}
       onBlur={() => setPaused(false)}
     >
-      <img
-        key={current.id}
-        src={current.coverSrc}
-        alt=""
-        aria-hidden="true"
-        width={current.coverWidth}
-        height={current.coverHeight}
-        className="pointer-events-none absolute -left-[5%] -top-[5%] h-[110%] w-[110%] object-cover blur-[28px] brightness-[.42] saturate-[1.3]"
-      />
+      {/* The backdrop is scaled past the edges so the blur has no visible seam; the wrapper
+          clips it, otherwise the 110% width pushes the whole page sideways on a phone. */}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
+        <img
+          key={current.id}
+          src={current.coverSrc}
+          alt=""
+          width={current.coverWidth}
+          height={current.coverHeight}
+          className="absolute -left-[5%] -top-[5%] h-[110%] w-[110%] object-cover blur-[28px] brightness-[.42] saturate-[1.3]"
+        />
+      </div>
       <div
         aria-hidden="true"
         className="absolute inset-0 bg-linear-to-b from-bg/30 via-bg/10 via-45% to-bg"
@@ -159,7 +162,7 @@ export function HeroCarousel({ slides, autoplayMs = AUTOPLAY_MS }: HeroCarouselP
       <div className="relative flex flex-col items-center pb-3 pt-4 md:hidden">
         <ul
           ref={railRef}
-          className="flex w-full snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain px-[calc(50%-110px)] pb-1 [scrollbar-width:none]"
+          className="flex w-full snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain px-[calc(50%-min(45vw,140px))] pb-1 [scrollbar-width:none]"
         >
           {slides.map((s, i) => (
             <li key={s.id} data-slide={i} className="shrink-0 snap-center">
@@ -176,7 +179,7 @@ export function HeroCarousel({ slides, autoplayMs = AUTOPLAY_MS }: HeroCarouselP
 function ActiveSlide({ slide, priority = true }: { slide: HeroSlideData; priority?: boolean }) {
   return (
     <article
-      className="relative h-[315px] w-[220px] shrink-0 overflow-hidden rounded-[10px] shadow-2 ring-2 ring-brand/75"
+      className="relative aspect-[2/3] w-[min(56vw,220px)] shrink-0 overflow-hidden rounded-[10px] shadow-2 ring-2 ring-brand/75 md:h-[315px] md:w-[220px]"
       aria-label={slide.title}
     >
       <img

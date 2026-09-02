@@ -28,7 +28,7 @@ export function UpdateRow({ item, user, now, priority = false }: UpdateRowProps)
   return (
     <article
       className={cn(
-        'relative flex h-[144px] gap-2.5 rounded-[10px] border bg-surface-1 p-2 transition-colors duration-[120ms]',
+        'relative flex h-[144px] min-w-0 gap-2.5 overflow-hidden rounded-[10px] border bg-surface-1 p-2 transition-colors duration-[120ms]',
         item.isPinned ? 'border-brand shadow-(--glow-brand)' : 'border-line hover:border-fg-subtle',
       )}
     >
@@ -120,13 +120,13 @@ function ChapterPill({
     <Link
       href={chapter.href}
       className={cn(
-        'flex h-6 items-center justify-between gap-2 rounded-md px-2 text-[13px] transition-colors duration-[120ms] hover:bg-surface-3',
+        'flex h-6 min-w-0 items-center justify-between gap-2 rounded-md px-2 text-[13px] transition-colors duration-[120ms] hover:bg-surface-3',
         first && isNew ? 'bg-brand-wash' : 'bg-surface-2',
       )}
     >
       <span
         className={cn(
-          'inline-flex items-center gap-1.5 text-fg',
+          'inline-flex min-w-0 items-center gap-1.5 truncate text-fg',
           first ? 'font-bold' : 'font-semibold',
         )}
       >
