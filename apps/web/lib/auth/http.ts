@@ -243,6 +243,12 @@ export function withPermission<P extends Record<string, string> = Record<string,
   })()
 }
 
-/** `/login?return=<path>` — pages pass their own path so the user lands back where they were. */
-export const loginHref = (returnTo?: string): string =>
-  returnTo && returnTo !== '/' ? `/login?return=${encodeURIComponent(returnTo)}` : '/login'
+/**
+ * `/login?return=<path>` — pages pass their own path so the user lands back where they were.
+ * Panel routes send staff to their own door instead, so a signed-in reader who follows an
+ * admin link is told plainly that the account has no access rather than silently 404ing.
+ */
+export const loginHref = (returnTo?: string): string => {
+  const base = returnTo?.startsWith('/admin') ? '/admin/login' : '/login'
+  return returnTo && returnTo !== '/' ? `${base}?return=${encodeURIComponent(returnTo)}` : base
+}

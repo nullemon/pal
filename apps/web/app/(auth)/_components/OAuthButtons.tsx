@@ -39,10 +39,22 @@ function DiscordMark() {
 }
 
 /** Google + Discord entry points; the return path rides along to the callback. */
-export function OAuthButtons({ returnTo }: { returnTo: string }) {
+/**
+ * `stacked` keeps one button per row. The default two-column grid is keyed off the
+ * viewport, which clips the labels inside a narrow card (the staff door) even on a wide
+ * screen — a container query would need the parent to declare containment, so the caller
+ * says which shape it wants.
+ */
+export function OAuthButtons({
+  returnTo,
+  stacked = false,
+}: {
+  returnTo: string
+  stacked?: boolean
+}) {
   const qs = returnTo && returnTo !== '/' ? `?return=${encodeURIComponent(returnTo)}` : ''
   return (
-    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+    <div className={stacked ? 'grid grid-cols-1 gap-2' : 'grid grid-cols-1 gap-2 sm:grid-cols-2'}>
       <a href={`/api/auth/google${qs}`} className={buttonClasses('outline', 'lg', 'w-full')}>
         <GoogleMark />
         {fmt(messages.authPage.continueWith, { provider: 'Google' })}
@@ -55,11 +67,12 @@ export function OAuthButtons({ returnTo }: { returnTo: string }) {
   )
 }
 
-export function Divider() {
+/** `label` overrides the default "or" — the staff door says what the providers are for. */
+export function Divider({ label }: { label?: string } = {}) {
   return (
-    <div className="flex items-center gap-3 text-[12px] font-semibold uppercase tracking-[0.08em] text-fg-subtle">
+    <div className="flex items-center gap-3 text-center text-[12px] font-semibold uppercase tracking-[0.08em] text-fg-subtle">
       <span className="h-px flex-1 bg-line" />
-      {messages.auth.or}
+      {label ?? messages.auth.or}
       <span className="h-px flex-1 bg-line" />
     </div>
   )

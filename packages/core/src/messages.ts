@@ -643,6 +643,20 @@ export const messages = {
     fitHeightShort: 'Height',
   },
   // P4 · auth + account — appended
+  staffAuth: {
+    title: 'Staff sign-in',
+    lead: 'This is the PALScans control panel. Reader accounts cannot sign in here.',
+    badge: 'Admin',
+    twoFactorNote: 'Administrator accounts require two-factor authentication.',
+    noAccessTitle: 'This account has no panel access',
+    noAccessLead:
+      'You are signed in as {email}, which is a reader account. Sign in with a staff account, or head back to the site.',
+    signedInAs: 'Signed in as {email}',
+    useAnother: 'Use a different account',
+    backToSite: 'Back to the site',
+    readerSignIn: 'Reader sign-in',
+    oauthLead: 'Or use the provider your staff account is linked to',
+  },
   authPage: {
     backToSite: 'Back to PALScans',
     signInTitle: 'Sign in',
