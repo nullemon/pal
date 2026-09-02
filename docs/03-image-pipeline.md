@@ -77,7 +77,7 @@ overlap and emit them as consecutive pages. Do this at ingest, never at read tim
 
 ```html
 <img
-  src="https://cdn.site.com/pages/1284/59310/0007-9f2c1ab4de07.720.webp"
+  src="https://cdn.palscans.org/pages/1284/59310/0007-9f2c1ab4de07.720.webp"
   srcset="…480.webp 480w, …720.webp 720w, …1080.webp 1080w, …1440.webp 1440w"
   sizes="(max-width: 768px) 100vw, 800px"
   width="800" height="1200"

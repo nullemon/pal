@@ -1,7 +1,7 @@
 # 10 — Build roadmap
 
 Sized for one full-time developer. Two developers compresses this to roughly 8 weeks by
-splitting admin work from public-site work after Phase 1. The old Madara site stays live and
+splitting admin work from public-site work after Phase 1. The old WordPress site stays live and
 earning throughout.
 
 ## Phase 0 — Foundations (week 1)
@@ -21,7 +21,7 @@ CRUD. **The image pipeline**: presigned uploads, the worker, variants, dimension
 The bulk uploader with reorderable thumbnails. The reader, good enough to read a chapter
 comfortably on a phone.
 
-**In parallel, week 2: write the Madara importer.** It runs against live data from here on.
+**In parallel, week 2: write the legacy-site importer.** It runs against live data from here on.
 
 **Done when:** you can upload a 40-page chapter from a folder and read it on a phone.
 
@@ -55,7 +55,7 @@ chapter.
 
 PWA with the service worker and offline downloads. Discord OAuth and the notification bot.
 Full accessibility pass. Load test the reader path. Restore-test the backups. Then run the
-cutover sequence in `09-madara-migration.md`.
+cutover sequence in `09-legacy-site-migration.md`.
 
 **Done when:** DNS points at the new stack, legacy URLs 301 correctly, and Search Console is
 stable.

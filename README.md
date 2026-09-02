@@ -1,7 +1,7 @@
-# pal
+# PALScans
 
-A bespoke webcomic / manga reading platform: public reader front end, full content admin
-panel, image pipeline, subscriptions, and a migration path off an existing WordPress+Madara
+PALScans — a bespoke manhwa / manga / manhua reading platform: public reader front end, full content admin
+panel, image pipeline, subscriptions, and a migration path off the existing WordPress site
 site.
 
 ## Status
@@ -18,7 +18,7 @@ Redis/Valkey + BullMQ · Cloudflare R2 for object storage · Cloudflare CDN · S
 fees**. At 10M chapter reads a month this is the difference between about $0 and about
 $7,200 a month in bandwidth.
 
-**Approach to the existing Madara site:** keep it live and earning, build the new platform
+**Approach to the existing WordPress site:** keep it live and earning, build the new platform
 beside it, write the importer in week 2, and cut over with 301s preserving every legacy URL.
 
 ## Documents
@@ -34,8 +34,9 @@ beside it, write the importer in week 2, and cut over with 301s preserving every
 | [06 — Front end and reader](docs/06-frontend-and-reader.md) | Routes, rendering strategy, the reader, mobile |
 | [07 — Auth and monetization](docs/07-auth-and-monetization.md) | Sessions, roles vs entitlements, Stripe, compliance |
 | [08 — Infrastructure and cost](docs/08-infrastructure-and-cost.md) | Topology, sizing, deploys, backups, security |
-| [09 — Madara migration](docs/09-madara-migration.md) | Discovery, mapping, images, cutover, rollback |
+| [09 — Legacy site migration](docs/09-legacy-site-migration.md) | Discovery, mapping, images, cutover, rollback |
 | [10 — Roadmap](docs/10-roadmap.md) | 12 weeks, phase by phase |
+| [11 — Ads, footer, community](docs/11-ads-footer-community.md) | Ad slot inventory and rules, footer map, Discord and socials |
 
 ## Non-negotiables
 

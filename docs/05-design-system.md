@@ -3,7 +3,7 @@
 **Direction:** the dark violet reading-platform idiom you liked on Asura — deep near-black
 ground, a saturated purple accent, dense cover grids, coloured type and status chips —
 built as our own tokens and components. The layout conventions are shared because readers
-expect them. The stylesheet is ours: nothing is lifted from Madara's theme files or from
+expect them. The stylesheet is ours: nothing is lifted from the legacy theme's files or from
 Asura's compiled CSS.
 
 ## Tokens

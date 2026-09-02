@@ -1,30 +1,30 @@
-# 09 — Migrating off the existing Madara site
+# 09 — Migrating off the existing the legacy WordPress theme site
 
-You already run a Madara theme. The plan is **not** to throw it away and **not** to build on
+You already run a legacy theme. The plan is **not** to throw it away and **not** to build on
 top of it. It stays live and earning while the new platform is built beside it, and a
 repeatable importer moves the data across.
 
-## Why not build on Madara
+## Why not build on the legacy WordPress theme
 
-| | Madara / WordPress | Bespoke |
+| | WordPress (legacy) | Bespoke |
 |---|---|---|
 | Chapter page storage | `wp_postmeta` — an EAV key-value table. 500 chapters × 35 pages ≈ 17.5k rows for **one** series; a 3,000-series catalog reaches eight figures in a table WordPress joins on nearly every query | Two purpose-built tables with composite primary keys and covering indexes |
 | Reader performance | PHP renders each view; needs Varnish or LiteSpeed cache in front and still degrades under a new-chapter spike | Static/ISR HTML from the edge; the origin is untouched during a spike |
 | Attack surface | Theme + a dozen plugins, each an update treadmill. Nulled builds in this niche are a well-known malware vector | Your dependencies, audited in CI |
 | Customising the reader | Fighting theme templates and hooks; every update risks the overrides | It is your component |
 | Subscriptions | WooCommerce Subscriptions plus glue plugins | Stripe Billing directly, two tiers, one webhook |
-| Differentiation | Instantly recognisable as a Madara site | Yours |
+| Differentiation | Instantly recognisable as a the legacy WordPress theme site | Yours |
 
-Asura ran Madara, publicly migrated off it, and rebuilt bespoke. That is the most relevant
+Asura ran the legacy WordPress theme, publicly migrated off it, and rebuilt bespoke. That is the most relevant
 data point available, and it came from someone with your exact catalog shape.
 
-**The honest counter-argument:** Madara works *today* and the rebuild is roughly 10–14 weeks.
+**The honest counter-argument:** the legacy WordPress theme works *today* and the rebuild is roughly 10–14 weeks.
 That is precisely why the old site keeps running until cutover.
 
 ## Confirmed against your own theme package
 
-The `Sample Data.zip` you uploaded contains Madara's demo WordPress export, and
-`Installation Files.zip` pins the version: **Madara 1.7.4.1** with `madara-core 1.7.4.1`.
+The `Sample Data.zip` you uploaded contains the legacy theme's demo WordPress export, and
+`Installation Files.zip` pins the version: **version 1.7.4.1** of the legacy theme with its core plugin at the same version.
 That is recent enough that chapters live in the plugin's **custom database tables**, not in
 postmeta — which is good news for the importer and confirmed by their absence from the
 export. Series, taxonomies, and series metadata are all in the standard WordPress tables.
@@ -70,7 +70,7 @@ SHOW CREATE TABLE wp_manga_chapters;
 SELECT * FROM wp_manga_chapters LIMIT 5;
 ```
 
-Then find where the bytes live — Madara can store pages in the media library or in its own
+Then find where the bytes live — the legacy WordPress theme can store pages in the media library or in its own
 uploads folder:
 
 ```bash
@@ -85,7 +85,7 @@ specification, and the mapping below is already pinned for everything except cha
 
 Once discovery confirms the shapes, the mapping is mechanical:
 
-| Madara / WordPress | New schema |
+| WordPress (legacy) | New schema |
 |---|---|
 | `wp_posts` where `post_type='wp-manga'` | `series` (`post_name`→`slug`, `post_title`→`title`, `post_content`→`synopsis`, `post_date_gmt`→`created_at`) |
 | `_wp_manga_status`, `_wp_manga_type`, `_wp_manga_alternative`, `_wp_manga_views` | `series.status`, `series.type`, `series_titles[]`, `series.view_count` |
@@ -100,7 +100,7 @@ Once discovery confirms the shapes, the mapping is mechanical:
 
 ### Two mappings that need care
 
-**Chapter numbers.** Madara stores a display string (`"Chapter 154"`, `"Ch.12.5"`,
+**Chapter numbers.** the legacy WordPress theme stores a display string (`"Chapter 154"`, `"Ch.12.5"`,
 `"Chapter 7 - The End"`). Parse with a strict regex into `number numeric(10,3)` plus a
 `title` remainder, and **write every unparsed row to a review CSV** rather than guessing.
 Expect 1–3% to need a human. Getting this wrong silently reorders a reader's chapter list,
@@ -137,8 +137,8 @@ T-14d  Full import into staging. Spot-check 100 random series against the live s
 T-7d   Announce the migration and the password reset. Freeze new features.
 T-3d   Import again. Verify counts: series, chapters, pages, users, bookmarks, comments.
 T-1d   Final delta import. Lower DNS TTL to 60s.
-T-0    Put Madara in read-only (maintenance plugin). Final delta import. Flip DNS.
-       Keep the old stack running on old.site.com for 30 days, unindexed.
+T-0    Put the legacy WordPress theme in read-only (maintenance plugin). Final delta import. Flip DNS.
+       Keep the old stack running on old.palscans.org for 30 days, unindexed.
 T+0    301 every legacy URL to its new equivalent. This is not optional.
 T+7d   Verify Search Console coverage and index status; watch 404 reports daily.
 T+30d  Decommission the old stack once traffic and rankings are stable.

@@ -80,7 +80,7 @@ this document is reversible; this one determines whether the site is affordable.
 
 **Reading a chapter (the hot path).**
 Cloudflare edge → cached HTML shell (60s, `stale-while-revalidate`) → RSC renders the page
-list from Postgres → the browser requests images directly from `cdn.yoursite.com`, which is
+list from Postgres → the browser requests images directly from `cdn.palscans.org`, which is
 R2 behind Cloudflare with `Cache-Control: public, max-age=31536000, immutable`. The
 application server never touches image bytes. Personalised elements (progress bar, bookmark
 state, premium chrome) stream in through a dynamic hole so the shell stays shareable — the

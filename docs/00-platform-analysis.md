@@ -6,7 +6,7 @@ blocked by the network proxy, so every claim below is traceable to something in 
 
 ## Verdict
 
-**A bespoke application.** Not WordPress+Madara (their previous stack, which they publicly
+**A bespoke application.** Not a WordPress theme (their previous stack, which they publicly
 migrated off), not Strapi, not any off-the-shelf manga CMS. The footer credits
 "Powered by Toraka", i.e. it was written by the operator of toraka.com.
 

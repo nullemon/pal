@@ -7,7 +7,7 @@
                      │
         ┌────────────┴──────────────┐
         │                           │
-   site.com                    cdn.site.com
+   palscans.org                    cdn.palscans.org
    (Caddy → Next.js)           (R2 bucket, public prefix, immutable cache)
         │
    ┌────┴──────┬───────────┬──────────────┐
