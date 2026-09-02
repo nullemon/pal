@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto'
 import { announcements, type Db, genres, getDb, redirects, series, slugHistory } from '@palscans/db'
 import { and, eq, isNotNull, isNull, or, sql } from 'drizzle-orm'
 import { unstable_cache } from 'next/cache'
+import { readAccessSetting } from '../auth/invites'
 import { getEnv } from '../env'
 import type { ProxySnapshot } from './proxy'
 import { loadSeoSettings } from './settings'
@@ -18,6 +19,9 @@ export async function loadProxySnapshot(db?: Db): Promise<ProxySnapshot> {
   const database = db ?? (await getDb())
   const env = getEnv()
   const settings = await loadSeoSettings(database)
+  // The proxy needs the staff path and the panel allowlist, and it must not import the
+  // database itself — so they ride along in the same 60s snapshot as the SEO rules.
+  const access = await readAccessSetting()
 
   const [rules, seriesSlugs, genreSlugs, announcementSlugs, removed] = await Promise.all([
     database
@@ -62,6 +66,8 @@ export async function loadProxySnapshot(db?: Db): Promise<ProxySnapshot> {
     },
     gone: removed.map((r) => r.slug.toLowerCase()),
     indexnowKey: settings.sitemap.indexnow_key,
+    staffPath: access.staff_path,
+    panelIps: access.panel_ips,
   }
 }
 

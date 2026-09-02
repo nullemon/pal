@@ -19,11 +19,54 @@ export const ACCESS_SETTING_KEY = 'access'
 export const domainModeSchema = z.enum(['off', 'allow', 'block'])
 export type DomainMode = z.infer<typeof domainModeSchema>
 
+/**
+ * Where the staff sign-in answers. Moving it off the default trims the automated scanner
+ * traffic that hammers well-known admin paths — it is noise reduction, not access control,
+ * so it sits alongside `panel_ips` and the mandatory TOTP rather than replacing them.
+ */
+export const STAFF_PATH_DEFAULT = '/admin/login'
+
+const RESERVED_STAFF_PATHS = new Set([
+  '/',
+  '/admin',
+  '/login',
+  '/register',
+  '/browse',
+  '/search',
+  '/series',
+  '/genres',
+  '/rankings',
+  '/subscribe',
+  '/me',
+  '/api',
+])
+
+export const staffPathSchema = z
+  .string()
+  .trim()
+  .min(2)
+  .max(80)
+  .transform((v) => (v.startsWith('/') ? v : `/${v}`))
+  .transform((v) => (v.length > 1 && v.endsWith('/') ? v.slice(0, -1) : v))
+  .refine((v) => /^\/[a-z0-9][a-z0-9/_-]*$/i.test(v), 'letters, digits, - _ and / only')
+  .refine((v) => !v.includes('//') && !v.includes('..'), 'no empty or relative segments')
+  .refine(
+    (v) => !RESERVED_STAFF_PATHS.has(v) && !v.startsWith('/api/'),
+    'that path belongs to the site',
+  )
+
 export const accessSettingSchema = z.object({
   domain_mode: domainModeSchema,
   domains: z.array(z.string().trim().max(253)).max(200),
   require_verification: z.boolean(),
   turnstile: z.boolean(),
+  /** Custom staff sign-in path; the default is served when this equals it. */
+  staff_path: staffPathSchema.catch(STAFF_PATH_DEFAULT),
+  /**
+   * When non-empty, only these IPs and CIDR ranges reach the panel at all — the real
+   * restriction. Needs TRUSTED_PROXY set, or every request looks like the proxy's own IP.
+   */
+  panel_ips: z.array(z.string().trim().max(64)).max(100),
 })
 export type AccessSetting = z.infer<typeof accessSettingSchema>
 
@@ -32,6 +75,8 @@ export const DEFAULT_ACCESS: AccessSetting = {
   domains: [],
   require_verification: false,
   turnstile: true,
+  staff_path: STAFF_PATH_DEFAULT,
+  panel_ips: [],
 }
 
 export const readAccessSetting = async (): Promise<AccessSetting> => {

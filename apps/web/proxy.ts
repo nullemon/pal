@@ -1,5 +1,8 @@
 import { createHash } from 'node:crypto'
 import { type NextRequest, NextResponse } from 'next/server'
+import { ipAllowed } from '@/lib/auth/ip-allowlist'
+import { clientIp } from '@/lib/auth/rate-limit'
+import { STAFF_PATH_DEFAULT } from '@/lib/auth/staff-path'
 import { goneHtml } from '@/lib/seo/gone'
 import { EMPTY_SNAPSHOT, type ProxySnapshot, resolveProxy } from '@/lib/seo/proxy'
 
@@ -137,7 +140,47 @@ export const seoRules: ProxyHandler = async (request, ctx) => {
   }
 }
 
-export const proxy = composeProxy([storageGuard, seoRules])
+/**
+ * Access rules for the panel (docs/17 §C), from the same 60s snapshot as the SEO rules.
+ *
+ * Two separate things, and it matters which is which:
+ *  - `staffPath` MOVES the staff sign-in and 404s the default. That is obscurity: it trims
+ *    the automated scanner traffic that hammers well-known admin paths, and nothing more.
+ *  - `panelIps` RESTRICTS who reaches the panel at all. That is the actual control, and it
+ *    needs TRUSTED_PROXY set or every request carries the proxy's own address.
+ *
+ * Both answer 404 rather than 403, so a probe cannot tell a wrong address from a wrong path.
+ */
+export const staffAccess: ProxyHandler = async (request, ctx) => {
+  const path = ctx.pathname
+  const isPanel = path === '/admin' || path.startsWith('/admin/')
+  const snapshot = await getSnapshot(request)
+  const staffPath = snapshot.staffPath || STAFF_PATH_DEFAULT
+  const moved = staffPath !== STAFF_PATH_DEFAULT
+
+  if (!isPanel && path !== staffPath) return undefined
+
+  if (snapshot.panelIps.length > 0) {
+    const ip = clientIp(request)
+    if (!ip || !ipAllowed(ip, snapshot.panelIps)) return notFoundResponse()
+  }
+
+  // The moved door answers on its own path, and the default stops existing.
+  if (moved) {
+    if (path === staffPath) {
+      const url = request.nextUrl.clone()
+      url.pathname = STAFF_PATH_DEFAULT
+      return NextResponse.rewrite(url)
+    }
+    if (path === STAFF_PATH_DEFAULT) return notFoundResponse()
+  }
+  return undefined
+}
+
+const notFoundResponse = () =>
+  new Response(null, { status: 404, headers: { 'x-robots-tag': 'noindex' } })
+
+export const proxy = composeProxy([storageGuard, staffAccess, seoRules])
 
 export const config = {
   matcher: [

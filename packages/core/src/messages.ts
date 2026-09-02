@@ -643,6 +643,22 @@ export const messages = {
     fitHeightShort: 'Height',
   },
   // P4 · auth + account — appended
+  staffAccess: {
+    title: 'Panel access',
+    hint: 'Where the staff sign-in answers, and who can reach the panel at all.',
+    staffPath: 'Staff sign-in path',
+    staffPathHint:
+      'Moving it off /admin/login cuts automated scanner traffic. It is not access control — anyone who knows the address still reaches the form.',
+    staffPathInvalid: 'Use a path like /staff-door — letters, digits, hyphens and slashes.',
+    staffPathCurrent: 'Staff sign in at {path}',
+    staffPathReset: 'Reset to the default',
+    panelIps: 'Restrict the panel to these addresses',
+    panelIpsHint:
+      'One IP or CIDR range per line. Leave empty for no restriction. This is the real control — everything else on this page is a speed bump. Requires TRUSTED_PROXY to be set, or every request looks like your proxy.',
+    panelIpsPlaceholder: '203.0.113.7\n10.0.0.0/8\n2001:db8::/32',
+    panelIpsLocked: 'Set TRUSTED_PROXY first, or an allowlist will lock everyone out.',
+    twoFactorNote: 'Administrator accounts already require two-factor authentication.',
+  },
   staffAuth: {
     title: 'Staff sign-in',
     lead: 'This is the PALScans control panel. Reader accounts cannot sign in here.',

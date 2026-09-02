@@ -1,6 +1,6 @@
 'use client'
 
-import { messages } from '@palscans/core/messages'
+import { fmt, messages } from '@palscans/core/messages'
 import { Button, useToast } from '@palscans/ui'
 import { Copy } from 'lucide-react'
 import { useState } from 'react'
@@ -22,6 +22,7 @@ import {
   textareaClass,
 } from '@/components/admin/ui'
 import type { AccessSetting, DomainMode, InviteState, RegistrationMode } from '@/lib/auth/invites'
+import { STAFF_PATH_DEFAULT } from '@/lib/auth/staff-path'
 
 export interface AccessFormState {
   registration: RegistrationMode
@@ -54,17 +55,22 @@ export function AccessScreen({
   initial,
   invites: initialInvites,
   turnstileConfigured,
+  trustedProxy,
 }: {
   initial: AccessFormState
   invites: InviteView[]
   turnstileConfigured: boolean
+  /** TRUSTED_PROXY is set, so a client IP can actually be trusted. */
+  trustedProxy: boolean
 }) {
   const m = messages.admin.access
+  const sa = messages.staffAccess
   const { toast } = useToast()
   const [saved, setSaved] = useState(initial)
   const [s, setS] = useState(initial)
   const [saving, setSaving] = useState(false)
   const [domainText, setDomainText] = useState(initial.access.domains.join('\n'))
+  const [panelIpText, setPanelIpText] = useState(initial.access.panel_ips.join('\n'))
   const [invites, setInvites] = useState(initialInvites)
   const [draft, setDraft] = useState({ maxUses: 1, expiresAt: '', note: '' })
   const [creating, setCreating] = useState(false)
@@ -79,6 +85,10 @@ export function AccessScreen({
       registration: s.registration,
       access: {
         ...s.access,
+        panel_ips: panelIpText
+          .split('\n')
+          .map((v) => v.trim())
+          .filter(Boolean),
         domains: domainText
           .split(/[\n,]/)
           .map((d) => d.trim())
@@ -98,6 +108,7 @@ export function AccessScreen({
     setSaved(next)
     setS(next)
     setDomainText(next.access.domains.join('\n'))
+    setPanelIpText(next.access.panel_ips.join('\n'))
     toast({ title: m.saved, tone: 'ok' })
   }
 
@@ -109,6 +120,7 @@ export function AccessScreen({
         onDiscard={() => {
           setS(saved)
           setDomainText(saved.access.domains.join('\n'))
+          setPanelIpText(saved.access.panel_ips.join('\n'))
         }}
         onSave={() => void save()}
       />
@@ -126,6 +138,53 @@ export function AccessScreen({
               { value: 'closed' as const, label: m.registrationModes.closed },
             ]}
           />
+        </Panel>
+
+        <Panel>
+          <PanelHeader title={sa.title} hint={sa.hint} />
+          <div className="flex flex-col gap-4">
+            <Field label={sa.staffPath} hint={sa.staffPathHint} htmlFor="ac-staff-path">
+              <div className="flex items-center gap-2">
+                <input
+                  id="ac-staff-path"
+                  className={inputClass}
+                  value={s.access.staff_path}
+                  spellCheck={false}
+                  onChange={(e) => setAccess({ staff_path: e.target.value })}
+                />
+                {s.access.staff_path !== STAFF_PATH_DEFAULT ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setAccess({ staff_path: STAFF_PATH_DEFAULT })}
+                  >
+                    {sa.staffPathReset}
+                  </Button>
+                ) : null}
+              </div>
+              <Hint>{fmt(sa.staffPathCurrent, { path: s.access.staff_path })}</Hint>
+            </Field>
+            <Field
+              label={sa.panelIps}
+              hint={sa.panelIpsHint}
+              htmlFor="ac-panel-ips"
+              className="border-t border-line-soft pt-4"
+            >
+              <textarea
+                id="ac-panel-ips"
+                rows={4}
+                spellCheck={false}
+                placeholder={sa.panelIpsPlaceholder}
+                className={`${inputClass} font-mono text-[12px]`}
+                value={panelIpText}
+                onChange={(e) => setPanelIpText(e.target.value)}
+              />
+              {!trustedProxy && panelIpText.trim() ? (
+                <Hint className="text-warn">{sa.panelIpsLocked}</Hint>
+              ) : null}
+            </Field>
+            <Hint className="border-t border-line-soft pt-4">{sa.twoFactorNote}</Hint>
+          </div>
         </Panel>
 
         <Panel>

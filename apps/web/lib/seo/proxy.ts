@@ -25,11 +25,17 @@ export interface ProxySnapshot {
   /** Removed series slugs → 410 Gone. */
   gone: string[]
   indexnowKey: string | null
+  /** Access setting: where the staff sign-in answers (docs/17 §C). */
+  staffPath: string
+  /** Access setting: IPs/CIDRs allowed to reach the panel; empty means no restriction. */
+  panelIps: string[]
 }
 
 export const EMPTY_SNAPSHOT: ProxySnapshot = {
   canonicalHost: null,
   indexable: true,
+  staffPath: '/admin/login',
+  panelIps: [],
   redirects: {},
   slugs: { series: {}, genre: {}, announcement: {} },
   gone: [],

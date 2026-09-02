@@ -2,10 +2,14 @@ import { BUILT_LAYOUTS, DIRECTIONS, type Direction } from '@/components/admin/sc
 import { HomeA } from '@/components/home/layouts/HomeA'
 import { HomeC } from '@/components/home/layouts/HomeC'
 import { HomeD } from '@/components/home/layouts/HomeD'
+import { HomeE } from '@/components/home/layouts/HomeE'
+import { HomeF } from '@/components/home/layouts/HomeF'
 import type { HomeLayoutComponent } from '@/components/home/layouts/types'
 import { SeriesB } from '@/components/series/layouts/SeriesB'
 import { SeriesC } from '@/components/series/layouts/SeriesC'
 import { SeriesD } from '@/components/series/layouts/SeriesD'
+import { SeriesE } from '@/components/series/layouts/SeriesE'
+import { SeriesF } from '@/components/series/layouts/SeriesF'
 import type { SeriesLayoutComponent } from '@/components/series/layouts/types'
 
 /**
@@ -22,12 +26,16 @@ const HOME_LAYOUTS = {
   A: HomeA,
   C: HomeC,
   D: HomeD,
+  E: HomeE,
+  F: HomeF,
 } satisfies Record<BuiltHome, HomeLayoutComponent>
 
 const SERIES_LAYOUTS = {
   B: SeriesB,
   C: SeriesC,
   D: SeriesD,
+  E: SeriesE,
+  F: SeriesF,
 } satisfies Record<BuiltSeries, SeriesLayoutComponent>
 
 const isDirection = (v: string): v is Direction => (DIRECTIONS as readonly string[]).includes(v)

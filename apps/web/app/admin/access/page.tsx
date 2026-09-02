@@ -8,7 +8,7 @@ import {
   readMinAccountAgeMinutes,
   readRegistrationMode,
 } from '@/lib/auth/invites'
-import { turnstileConfigured } from '@/lib/env'
+import { getEnv, turnstileConfigured } from '@/lib/env'
 import { AccessScreen } from './AccessScreen'
 
 /**
@@ -32,6 +32,7 @@ export default async function AccessPage() {
       <AccessScreen
         initial={{ registration, access, minAccountAgeMinutes }}
         turnstileConfigured={turnstileConfigured()}
+        trustedProxy={getEnv().TRUSTED_PROXY !== 'none'}
         invites={invites.map((i) => ({
           state: inviteState(i, now),
           id: i.id,

@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import type { z } from 'zod'
 import { getEnv } from '../env'
 import { getSessionUser } from './session'
+import { STAFF_PATH_DEFAULT } from './staff-path'
 
 /** docs/16: every route handler answers `{ data }` or `{ error }`. */
 export const ok = <T>(data: T, init?: ResponseInit): Response => Response.json({ data }, init)
@@ -199,7 +200,7 @@ export function requireUser<P extends Record<string, string> = Record<string, st
   }
   return (async () => {
     const user = await getSessionUser()
-    if (!user) redirect(loginHref(arg?.returnTo))
+    if (!user) redirect(await resolvedLoginHref(arg?.returnTo))
     return user
   })()
 }
@@ -234,7 +235,7 @@ export function withPermission<P extends Record<string, string> = Record<string,
   }
   return (async () => {
     const user = await getSessionUser()
-    if (!user) redirect(loginHref(arg?.returnTo))
+    if (!user) redirect(await resolvedLoginHref(arg?.returnTo))
     if (!can(user, permission)) {
       const { notFound: nf } = await import('next/navigation')
       nf()
@@ -248,7 +249,19 @@ export function withPermission<P extends Record<string, string> = Record<string,
  * Panel routes send staff to their own door instead, so a signed-in reader who follows an
  * admin link is told plainly that the account has no access rather than silently 404ing.
  */
-export const loginHref = (returnTo?: string): string => {
-  const base = returnTo?.startsWith('/admin') ? '/admin/login' : '/login'
+export const loginHref = (returnTo?: string, staffPath = STAFF_PATH_DEFAULT): string => {
+  const base = returnTo?.startsWith('/admin') ? staffPath : '/login'
   return returnTo && returnTo !== '/' ? `${base}?return=${encodeURIComponent(returnTo)}` : base
+}
+
+/**
+ * `loginHref` with the operator's configured staff path resolved. Panel gates use this:
+ * when the door has been moved, the built-in path 404s, so redirecting there would strand
+ * staff on a dead page.
+ */
+export const resolvedLoginHref = async (returnTo?: string): Promise<string> => {
+  if (!returnTo?.startsWith('/admin')) return loginHref(returnTo)
+  const { readAccessSetting } = await import('./invites')
+  const access = await readAccessSetting().catch(() => null)
+  return loginHref(returnTo, access?.staff_path ?? STAFF_PATH_DEFAULT)
 }
