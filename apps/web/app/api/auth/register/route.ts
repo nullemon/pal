@@ -18,6 +18,7 @@ import { hashPassword } from '@/lib/auth/password'
 import { registerSchema } from '@/lib/auth/schemas'
 import { verifyTurnstile } from '@/lib/auth/turnstile'
 import { usernameAvailability } from '@/lib/auth/users'
+import { getMailer } from '@/lib/email'
 
 /**
  * POST /api/auth/register {email, password, username?, return?}
@@ -35,6 +36,9 @@ export async function POST(request: Request): Promise<Response> {
   const { email, password, username } = parsed.data
   if (!(await verifyTurnstile(parsed.data.turnstile, clientIp(request))))
     return fail(400, 'turnstile', messages.errors.validation)
+  // No provider in production: refuse before an unverifiable account exists.
+  if (getMailer().kind === 'none')
+    return fail(503, 'mail_unavailable', messages.errors.mailUnavailable)
 
   const db = await getDb()
   const [existing] = await db
@@ -61,12 +65,12 @@ export async function POST(request: Request): Promise<Response> {
     .returning({ id: users.id })
   if (!created) return fail(500, 'server_error', messages.errors.serverError)
 
-  await sendVerification(created.id, email)
+  const sent = await sendVerification(created.id, email)
   await signIn(created.id, email, request, 'password')
   const returnTo = safeReturnPath(parsed.data.return)
   return ok({
     return: username ? returnTo : `/onboarding?return=${encodeURIComponent(returnTo)}`,
-    verificationSent: true,
+    verificationSent: sent.ok,
     breachChecked: breach.checked,
   })
 }

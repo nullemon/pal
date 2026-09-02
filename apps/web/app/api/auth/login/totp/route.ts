@@ -12,7 +12,7 @@ import {
 import { clearMfaChallenge, readMfaChallenge, signIn } from '@/lib/auth/flows'
 import { loginTotpSchema } from '@/lib/auth/schemas'
 import { verifyTotp } from '@/lib/auth/totp'
-import { findUserById } from '@/lib/auth/users'
+import { activeUserBan, findUserById } from '@/lib/auth/users'
 
 /** POST /api/auth/login/totp {code} — second step after a correct password. */
 export async function POST(request: Request): Promise<Response> {
@@ -29,6 +29,7 @@ export async function POST(request: Request): Promise<Response> {
   if (!verifyTotp(user.totpSecret, parsed.data.code, user.email))
     return fail(401, 'totp_invalid', messages.authPage.totpInvalid)
   await clearMfaChallenge()
+  if (await activeUserBan(user.id)) return fail(403, 'banned', messages.auth.banned)
   const { linked } = await signIn(user.id, user.email, request, 'password', await getSessionId())
   const returnTo = challenge.returnTo
   return ok({

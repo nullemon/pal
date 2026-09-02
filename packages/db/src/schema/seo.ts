@@ -1,5 +1,5 @@
 import { bigint, integer, jsonb, pgTable, primaryKey, smallint, text } from 'drizzle-orm/pg-core'
-import { createdAt, identity, ref, timestamptz } from './_shared.js'
+import { createdAt, deletedAt, identity, ref, timestamptz } from './_shared.js'
 import { citext } from './custom-types.js'
 import { users } from './identity.js'
 
@@ -31,6 +31,7 @@ export const redirects = pgTable('redirects', {
   hits: bigint('hits', { mode: 'number' }).notNull().default(0),
   createdBy: ref('created_by').references(() => users.id),
   createdAt: createdAt(),
+  deletedAt: deletedAt(),
 })
 
 export interface SitemapFile {

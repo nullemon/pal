@@ -61,9 +61,12 @@ export const completePendingLink = async (
   return pending.p
 }
 
-export const sendVerification = async (userId: number, email: string): Promise<void> => {
+export const sendVerification = async (
+  userId: number,
+  email: string,
+): Promise<{ ok: boolean; error?: string }> => {
   const token = await issueToken(userId, 'verify_email')
-  await getMailer().send(verifyEmailMail(email, token))
+  return getMailer().send(verifyEmailMail(email, token))
 }
 
 /** The TOTP step between a correct password and a session: a signed 5-minute cookie. */

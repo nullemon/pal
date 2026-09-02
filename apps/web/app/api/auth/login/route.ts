@@ -18,7 +18,7 @@ import { setMfaChallenge, signIn } from '@/lib/auth/flows'
 import { dummyHash, hashPassword, needsRehash, verifyPassword } from '@/lib/auth/password'
 import { loginSchema } from '@/lib/auth/schemas'
 import { verifyTurnstile } from '@/lib/auth/turnstile'
-import { findUserByEmail } from '@/lib/auth/users'
+import { activeUserBan, findUserByEmail } from '@/lib/auth/users'
 
 const accountKey = (email: string) =>
   `login:acct:${createHash('sha256').update(email).digest('hex').slice(0, 32)}`
@@ -49,6 +49,7 @@ export async function POST(request: Request): Promise<Response> {
   const valid = await verifyPassword(hashed, password)
   if (!user?.passwordHash || !valid || user.deletedAt)
     return fail(401, 'invalid_credentials', messages.auth.invalidCredentials)
+  if (await activeUserBan(user.id)) return fail(403, 'banned', messages.auth.banned)
 
   if (needsRehash(user.passwordHash)) {
     const db = await getDb()

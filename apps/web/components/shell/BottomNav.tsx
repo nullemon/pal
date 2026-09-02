@@ -1,5 +1,6 @@
 'use client'
 
+import { messages } from '@palscans/core/messages'
 import { Compass, House, Library, UserRound } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -17,7 +18,7 @@ export function BottomNav() {
   const pathname = usePathname()
   return (
     <nav
-      aria-label="Primary, mobile"
+      aria-label={messages.nav.primaryMobile}
       className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface-2/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-[14px] md:hidden"
     >
       <ul className="grid h-16 grid-cols-4">

@@ -11,8 +11,16 @@ export {
   getStorage,
   joinUrl,
   type PutOptions,
+  resolveFsRoot,
   type SignedPutUrl,
   type Storage,
   type StorageDriver,
 } from '@palscans/core/storage'
-export { presignUpload, sniffImage, storageUrl } from './upload'
+export {
+  presignUpload,
+  sniffImage,
+  storageUrl,
+  UPLOAD_TTL_MS,
+  uploadSignature,
+  verifyUploadSignature,
+} from './upload'

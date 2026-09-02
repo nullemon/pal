@@ -69,10 +69,30 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
 }
 
 const swatches: Array<{ value: ReaderBackground; label: string; color: string; light: boolean }> = [
-  { value: 'black', label: messages.reader.backgroundBlack, color: '#000000', light: false },
-  { value: 'dark', label: messages.reader.backgroundDark, color: '#0b0a10', light: false },
-  { value: 'sepia', label: messages.reader.backgroundSepia, color: '#f1e4c8', light: true },
-  { value: 'white', label: messages.reader.backgroundWhite, color: '#ffffff', light: true },
+  {
+    value: 'black',
+    label: messages.reader.backgroundBlack,
+    color: 'var(--color-reader-black)',
+    light: false,
+  },
+  {
+    value: 'dark',
+    label: messages.reader.backgroundDark,
+    color: 'var(--color-reader-dark)',
+    light: false,
+  },
+  {
+    value: 'sepia',
+    label: messages.reader.backgroundSepia,
+    color: 'var(--color-reader-sepia)',
+    light: true,
+  },
+  {
+    value: 'white',
+    label: messages.reader.backgroundWhite,
+    color: 'var(--color-reader-white)',
+    light: true,
+  },
 ]
 
 export interface SettingsSheetProps {

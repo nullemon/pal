@@ -51,7 +51,7 @@ const toItem = (row: {
     (p.seriesSlug
       ? `/series/${p.seriesSlug}${p.chapterNumber !== undefined ? `/chapter-${p.chapterNumber}` : ''}`
       : null)
-  const href = rawHref && rawHref.startsWith('/') && !rawHref.startsWith('//') ? rawHref : null
+  const href = rawHref?.startsWith('/') && !rawHref.startsWith('//') ? rawHref : null
   return {
     id: row.id,
     kind: row.kind,

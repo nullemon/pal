@@ -12,6 +12,7 @@ import { eq, sql } from 'drizzle-orm'
 import { processImage } from '../lib/image.js'
 import { log } from '../lib/log.js'
 import { pool } from '../lib/pool.js'
+import { revalidateWeb } from '../lib/revalidate.js'
 import { notifyBookmarkers } from './publish.js'
 
 export interface ProcessDeps {
@@ -207,5 +208,6 @@ export const processChapter = async (
     }
   })
   log.info('chapter.process done', { chapterId, pages: rows.length, state: nextState })
+  if (nextState === 'published') await revalidateWeb(['catalog'])
   return 'done'
 }

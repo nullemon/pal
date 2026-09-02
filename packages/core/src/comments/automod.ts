@@ -34,6 +34,8 @@ export interface AutomodAuthor {
 
 export interface AutomodInput {
   body: CommentBody | string
+  /** Link-node hrefs (`linkHrefs(body)`), scanned alongside the plain text. */
+  hrefs?: readonly string[]
   author: AutomodAuthor
   /** Plain-text bodies of the author's recent comments (for repeat / near-duplicate). */
   recentBodies?: readonly string[]
@@ -111,7 +113,7 @@ export const automod = (
   if (ageMs < DAY) rules.push('new_account_24h')
   else if (ageMs < 7 * DAY) rules.push('new_account_7d')
 
-  const links = detectLinks(text)
+  const links = detectLinks([text, ...(input.hrefs ?? [])].join(' '))
   const allowlisted = links.length > 0 && allAllowlisted(links, input.linkAllowlist ?? [])
   const hasLink = links.length > 0 && !allowlisted && !author.isStaff
   if (hasLink) rules.push('link_present')

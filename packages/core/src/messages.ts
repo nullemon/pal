@@ -10,6 +10,8 @@ export const messages = {
     copyright: '© 2026 PALScans. All series belong to their respective authors and publishers.',
   },
   nav: {
+    primary: 'Primary',
+    primaryMobile: 'Primary, mobile',
     home: 'Home',
     browse: 'Browse',
     rankings: 'Rankings',
@@ -206,6 +208,7 @@ export const messages = {
     invalidCredentials: 'That email and password do not match.',
     accountExists: 'An account with that email already exists.',
     tooManyAttempts: 'Too many attempts. Try again in a few minutes.',
+    banned: 'This account has been suspended.',
     weakPassword: 'Choose a longer password — at least 10 characters.',
     breachedPassword: 'That password has appeared in a data breach. Choose another.',
     usernameTaken: 'That username is taken.',
@@ -382,6 +385,8 @@ export const messages = {
     rateLimited: 'Too many requests. Try again shortly.',
     network: 'Network error. Check your connection and retry.',
     serverError: 'Our servers hit a snag. We are on it.',
+    mailUnavailable: 'Email is not configured on this server. Try again later.',
+    totpRequired: 'Two-factor authentication is required for admin accounts.',
   },
   time: {
     justNow: 'just now',
@@ -487,6 +492,7 @@ export const messages = {
     accountTooNew: 'Your account is too new to comment. Try again in a few minutes.',
     banned: 'You cannot comment right now.',
     blockedWords: 'Your comment contains words that are not allowed.',
+    misleadingLink: 'Link text must match the address it points to.',
     duplicate: 'You already posted that.',
     repliesClosed: 'Replies are closed on this comment.',
     disabled: 'Comments are turned off for this series.',
@@ -503,6 +509,7 @@ export const messages = {
     more: 'More',
   },
   discovery: {
+    seriesCrumb: 'Series',
     readNow: 'Read now',
     all: 'All',
     featuredSeries: 'Featured series',
@@ -818,6 +825,7 @@ export const messages = {
   },
   // P5 · admin panel + upload pipeline — appended
   admin: {
+    title: 'Admin',
     badge: 'Admin',
     footerStatus: '{site} · live',
     unsaved: 'Unsaved changes',
@@ -985,6 +993,7 @@ export const messages = {
         geo: 'Country allow / block list',
         geoHint: 'Two-letter country codes, comma-separated. Allow lists win over block lists.',
         geoAllow: 'Allow only',
+        geoPlaceholder: 'US, GB, KR',
         geoBlock: 'Block',
         seoTitle: 'SEO title',
         seoDescription: 'SEO description',

@@ -24,7 +24,8 @@ export function AdminShell({ user, children }: { user: SessionUser; children: Re
               <rect width="28" height="28" rx="7" className="fill-brand-hover" />
               <path
                 d="M10.5 20V8h4.7a4 4 0 0 1 0 8h-4.7"
-                stroke="#fff"
+                stroke="currentColor"
+                className="text-brand-ink"
                 strokeWidth="2.2"
                 strokeLinecap="round"
                 strokeLinejoin="round"

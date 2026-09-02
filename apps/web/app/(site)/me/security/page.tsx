@@ -24,8 +24,13 @@ const providerLabel: Record<(typeof OAUTH_PROVIDERS)[number], string> = {
 }
 
 /** Security — sessions with revoke, password change, TOTP, connected providers (docs/07). */
-export default async function SecurityPage() {
+export default async function SecurityPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
   const user = await requireAccount('/me/security')
+  const totpRequired = (await searchParams).totp === 'required'
   const db = await getDb()
   const [[row], sessions, linked] = await Promise.all([
     db
@@ -92,6 +97,11 @@ export default async function SecurityPage() {
           title={messages.me.security.totp}
           description={messages.me.security.totpHint}
         >
+          {totpRequired && !row.totpEnabledAt ? (
+            <p className="mb-3 text-[13px] text-warn" role="status">
+              {messages.errors.totpRequired}
+            </p>
+          ) : null}
           <TotpPanel enabled={!!row.totpEnabledAt} hasPassword={!!row.passwordHash} />
         </Section>
 

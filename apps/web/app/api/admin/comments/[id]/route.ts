@@ -53,7 +53,10 @@ export const POST = withPermission<{ id: string }>(
           await db
             .insert(linkAllowlist)
             .values(domains.map((domain) => ({ domain, createdBy: user.id })))
-            .onConflictDoNothing()
+            .onConflictDoUpdate({
+              target: linkAllowlist.domain,
+              set: { createdBy: user.id, createdAt: now, deletedAt: null },
+            })
         await resolveReportsFor('comment', [c.id], user.id, 'rejected')
         after = { status: 'published', allowlisted: domains }
         break

@@ -10,7 +10,9 @@ import {
 } from '@/components/discovery/RankingsView'
 
 export const revalidate = 300
-export const dynamicParams = false
+// Unknown windows fall through to notFound() below. Not `dynamicParams = false`: with that,
+// Next 16 answers the on-demand re-render after a tag purge (settings / appearance) with an
+// internal NoFallbackError, and /rankings/monthly serves a cached 404 until the next build.
 
 const LIMIT = 50
 

@@ -1,38 +1,58 @@
 import { can, type Permission } from '@palscans/core'
 import { messages } from '@palscans/core/messages'
 import type { z } from 'zod'
+import { csrfFailed, fail, forbidden, type RouteParams, sameOrigin, unauthorized } from '@/lib/auth'
+import { getEnv } from '@/lib/env'
 import { type AppUser, getAppUser } from './viewer'
 
-/** docs/16: every route handler answers `{ data }` or `{ error }`. */
-export const ok = <T>(data: T, init?: ResponseInit): Response => Response.json({ data }, init)
-
-export const fail = (status: number, error: string, message?: string): Response =>
-  Response.json({ error, ...(message ? { message } : {}) }, { status })
-
-export const unauthorized = () => fail(401, 'unauthorized', messages.errors.unauthorized)
-export const forbidden = () => fail(403, 'forbidden', messages.errors.forbidden)
-export const notFound = () => fail(404, 'not_found', messages.errors.notFound)
+/**
+ * Comment-route helpers. The response shape, query parsing and the CSRF Origin check are
+ * the canonical ones from `lib/auth`; only the viewer type (`AppUser`, with the profile
+ * fields the pipeline needs) and the bounded JSON body parser are specific to comments.
+ */
+export {
+  fail,
+  forbidden,
+  notFound,
+  ok,
+  parseQuery,
+  type RouteParams,
+  unauthorized,
+} from '@/lib/auth'
 
 type ParseResult<T> = { ok: true; data: T } | { ok: false; response: Response }
 
-/** Parse a JSON body with a zod schema; malformed input is a 400 with the first issue. */
-export const parseJson = async <T>(
-  request: Request,
-  schema: z.ZodType<T>,
-): Promise<ParseResult<T>> => {
-  let raw: unknown
+/** Comment bodies are structurally capped; a raw JSON body larger than this is refused outright. */
+export const MAX_JSON_BYTES = 32 * 1024
+
+const tooLarge = () => fail(413, 'too_large', messages.commentThread.tooLong)
+
+const parseWith = <T>(raw: string, schema: z.ZodType<T>): ParseResult<T> => {
+  let json: unknown
   try {
-    raw = await request.json()
+    json = JSON.parse(raw)
   } catch {
     return { ok: false, response: fail(400, 'invalid_json', messages.errors.validation) }
   }
-  const parsed = schema.safeParse(raw)
+  const parsed = schema.safeParse(json)
   if (!parsed.success) {
     const first = parsed.error.issues[0]
     const where = first?.path.length ? `${first.path.join('.')}: ` : ''
     return { ok: false, response: fail(400, 'validation', `${where}${first?.message ?? ''}`) }
   }
   return { ok: true, data: parsed.data }
+}
+
+/** Parse a JSON body (≤ 32 KB) with a zod schema; malformed input is a 400 with the first issue. */
+export const parseJson = async <T>(
+  request: Request,
+  schema: z.ZodType<T>,
+): Promise<ParseResult<T>> => {
+  const declared = Number(request.headers.get('content-length') ?? 0)
+  if (declared > MAX_JSON_BYTES) return { ok: false, response: tooLarge() }
+  const raw = await request.text()
+  if (raw.length > MAX_JSON_BYTES) return { ok: false, response: tooLarge() }
+  return parseWith(raw, schema)
 }
 
 /** Like `parseJson`, but an empty body yields `fallback` (e.g. a bare POST with defaults). */
@@ -43,37 +63,8 @@ export const parseJsonOptional = async <T>(
 ): Promise<ParseResult<T>> => {
   const raw = await request.text()
   if (!raw.trim()) return { ok: true, data: fallback }
-  let json: unknown
-  try {
-    json = JSON.parse(raw)
-  } catch {
-    return { ok: false, response: fail(400, 'invalid_json', messages.errors.validation) }
-  }
-  const parsed = schema.safeParse(json)
-  if (!parsed.success) {
-    const first = parsed.error.issues[0]
-    return { ok: false, response: fail(400, 'validation', first?.message ?? '') }
-  }
-  return { ok: true, data: parsed.data }
-}
-
-export const parseQuery = <T>(request: Request, schema: z.ZodType<T>): ParseResult<T> => {
-  const url = new URL(request.url)
-  const raw: Record<string, string> = {}
-  url.searchParams.forEach((v, k) => {
-    raw[k] = v
-  })
-  const parsed = schema.safeParse(raw)
-  if (!parsed.success) {
-    const first = parsed.error.issues[0]
-    const where = first?.path.length ? `${first.path.join('.')}: ` : ''
-    return { ok: false, response: fail(400, 'validation', `${where}${first?.message ?? ''}`) }
-  }
-  return { ok: true, data: parsed.data }
-}
-
-export type RouteParams<P extends Record<string, string> = Record<string, string>> = {
-  params: Promise<P>
+  if (raw.length > MAX_JSON_BYTES) return { ok: false, response: tooLarge() }
+  return parseWith(raw, schema)
 }
 
 type UserHandler<P extends Record<string, string>> = (
@@ -82,22 +73,27 @@ type UserHandler<P extends Record<string, string>> = (
   user: AppUser,
 ) => Promise<Response>
 
-/** Route wrapper: the viewer must be signed in. Authorization beyond that is `can`/`entitlement`. */
+/**
+ * Route wrapper: same-origin (docs/07 Origin check on every mutating route) and signed in.
+ * Authorization beyond that is `can`/`entitlement`.
+ */
 export const requireUser =
   <P extends Record<string, string> = Record<string, string>>(handler: UserHandler<P>) =>
   async (request: Request, ctx: RouteParams<P>): Promise<Response> => {
+    if (!sameOrigin(request)) return csrfFailed()
     const user = await getAppUser()
     if (!user) return unauthorized()
     return handler(request, ctx, user)
   }
 
-/** Route wrapper: signed in and holding a permission from @palscans/core. */
+/** Route wrapper: same-origin, signed in and holding a permission from @palscans/core. */
 export const withPermission =
   <P extends Record<string, string> = Record<string, string>>(
     permission: Permission,
     handler: UserHandler<P>,
   ) =>
   async (request: Request, ctx: RouteParams<P>): Promise<Response> => {
+    if (!sameOrigin(request)) return csrfFailed()
     const user = await getAppUser()
     if (!user) return unauthorized()
     if (!can(user, permission)) return forbidden()
@@ -110,6 +106,5 @@ export const ipHashFor = async (request: Request): Promise<Uint8Array | null> =>
   const ip = forwarded?.split(',')[0]?.trim() || request.headers.get('x-real-ip')
   if (!ip) return null
   const { createHash } = await import('node:crypto')
-  const salt = process.env.SESSION_SECRET ?? ''
-  return new Uint8Array(createHash('sha256').update(`${salt}:${ip}`).digest())
+  return new Uint8Array(createHash('sha256').update(`${getEnv().SESSION_SECRET}:${ip}`).digest())
 }

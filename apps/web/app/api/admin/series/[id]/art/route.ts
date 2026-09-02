@@ -15,7 +15,7 @@ const ext: Record<string, string> = {
 }
 
 /** POST /api/admin/series/:id/art — presign a cover/banner upload (content-addressed key). */
-export const POST = withPermission<{ id: string }>('series.update', async (request, ctx) => {
+export const POST = withPermission<{ id: string }>('series.update', async (request, ctx, user) => {
   const id = idParam.safeParse((await ctx.params).id)
   if (!id.success) return notFound()
   const parsed = await parseJson(request, artIntentSchema)
@@ -29,7 +29,7 @@ export const POST = withPermission<{ id: string }>('series.update', async (reque
   if (!row) return notFound()
   const folder = parsed.data.kind === 'cover' ? 'covers' : 'banners'
   const key = `${folder}/${row.slug}/${parsed.data.sha256.slice(0, 12)}.${ext[parsed.data.type]}`
-  const signed = await presignUpload(key, parsed.data.type)
+  const signed = await presignUpload(key, parsed.data.type, user.id)
   return ok({ key, url: signed.url, method: signed.method, headers: signed.headers })
 })
 

@@ -94,6 +94,15 @@ export const sameOrigin = (request: Request): boolean => {
 }
 
 export const csrfFailed = () => fail(403, 'csrf', messages.errors.forbidden)
+export const totpRequired = () => fail(403, 'totp_required', messages.errors.totpRequired)
+
+/** docs/07: TOTP is mandatory for the admin role — permission routes refuse admins without it. */
+const adminTotpMissing = async (user: SessionUser): Promise<boolean> => {
+  if (user.role !== 'admin') return false
+  const { findUserById } = await import('./users')
+  const row = await findUserById(user.id)
+  return !row?.totpEnabledAt
+}
 
 export type RouteParams<P extends Record<string, string> = Record<string, string>> = {
   params: Promise<P>
@@ -167,6 +176,7 @@ export function withPermission<P extends Record<string, string> = Record<string,
       const user = await getSessionUser()
       if (!user) return unauthorized()
       if (!can(user, permission)) return forbidden()
+      if (await adminTotpMissing(user)) return totpRequired()
       return handler(request, ctx, user)
     }
   }

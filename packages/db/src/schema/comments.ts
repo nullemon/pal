@@ -177,12 +177,14 @@ export const wordFilters = pgTable('word_filters', {
   replacement: text('replacement'),
   createdBy: ref('created_by').references(() => users.id),
   createdAt: createdAt(),
+  deletedAt: deletedAt(),
 })
 
 export const linkAllowlist = pgTable('link_allowlist', {
   domain: citext('domain').primaryKey(),
   createdBy: ref('created_by').references(() => users.id),
   createdAt: createdAt(),
+  deletedAt: deletedAt(),
 })
 
 /** Singleton key/value like seo_settings. */

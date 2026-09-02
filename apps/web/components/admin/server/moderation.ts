@@ -185,8 +185,13 @@ export const loadFiltersAndAllowlist = async () => {
         replacement: wordFilters.replacement,
       })
       .from(wordFilters)
+      .where(isNull(wordFilters.deletedAt))
       .orderBy(desc(wordFilters.id)),
-    db.select({ domain: linkAllowlist.domain }).from(linkAllowlist).orderBy(linkAllowlist.domain),
+    db
+      .select({ domain: linkAllowlist.domain })
+      .from(linkAllowlist)
+      .where(isNull(linkAllowlist.deletedAt))
+      .orderBy(linkAllowlist.domain),
   ])
   return { filters, allowlist: allow.map((a) => a.domain) }
 }

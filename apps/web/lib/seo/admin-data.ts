@@ -217,7 +217,11 @@ export async function indexNowLog(db: Db): Promise<IndexNowLog | null> {
 export type RedirectRow = typeof redirects.$inferSelect
 
 export async function listRedirects(db: Db): Promise<RedirectRow[]> {
-  return db.select().from(redirects).orderBy(desc(redirects.hits), redirects.fromPath)
+  return db
+    .select()
+    .from(redirects)
+    .where(isNull(redirects.deletedAt))
+    .orderBy(desc(redirects.hits), redirects.fromPath)
 }
 
 export interface SitemapBuildView {

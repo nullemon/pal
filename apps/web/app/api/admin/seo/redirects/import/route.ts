@@ -18,7 +18,7 @@ export const POST = withPermission('settings.write', async (request, _ctx, user)
       .values({ fromPath: r.from, toPath: r.to, status: r.status, createdBy: user.id })
       .onConflictDoUpdate({
         target: redirects.fromPath,
-        set: { toPath: r.to, status: r.status, createdBy: user.id },
+        set: { toPath: r.to, status: r.status, createdBy: user.id, deletedAt: null },
       })
     imported += 1
   }

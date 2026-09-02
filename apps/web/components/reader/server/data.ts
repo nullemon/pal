@@ -119,10 +119,20 @@ const cachedBundle = unstable_cache(
   { revalidate: CHAPTER_REVALIDATE, tags: ['catalog'] },
 )
 
-/** Public readers hit the data cache; staff previews of unpublished chapters bypass it. */
+/**
+ * Public readers hit the data cache; staff previews of unpublished chapters bypass it. A
+ * cached miss is re-checked against the database: the worker publishes chapters out of
+ * process, and a 404 must not outlive the chapter going live.
+ */
 export const readerChapter = cache(
-  (seriesId: number, number: number, includeUnpublished: boolean): Promise<ChapterBundle | null> =>
-    includeUnpublished ? loadBundle(seriesId, number, true) : cachedBundle(seriesId, number),
+  async (
+    seriesId: number,
+    number: number,
+    includeUnpublished: boolean,
+  ): Promise<ChapterBundle | null> => {
+    if (includeUnpublished) return loadBundle(seriesId, number, true)
+    return (await cachedBundle(seriesId, number)) ?? loadBundle(seriesId, number, false)
+  },
 )
 
 export const accessInput = (c: ChapterBundle['chapter']) => ({

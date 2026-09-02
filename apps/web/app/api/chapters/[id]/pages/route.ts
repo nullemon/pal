@@ -10,6 +10,7 @@ import {
   toReaderPages,
   viewerCanRead,
 } from '@/components/reader/server/data'
+import { clientIp, getRateLimiter, rateLimited } from '@/lib/auth'
 import { getSessionUser } from '@/lib/auth/session'
 
 const idSchema = z.coerce.number().int().positive()
@@ -27,9 +28,14 @@ export async function GET(request: Request, ctx: RouteParams<{ id: string }>) {
   const query = querySchema.safeParse(Object.fromEntries(new URL(request.url).searchParams))
   const limit = query.success ? query.data.limit : 50
 
+  // docs/07: page-manifest fetches are limited to 60/min per user (or per IP when anonymous)
+  const user = await getSessionUser()
+  const limitKey = user ? `manifest:u:${user.id}` : `manifest:ip:${clientIp(request) ?? 'unknown'}`
+  const rate = await getRateLimiter().hit(limitKey, 60, 60)
+  if (!rate.ok) return rateLimited(rate.retryAfterSec)
+
   const row = await chapterForApi(id.data)
   if (!row) return notFound()
-  const user = await getSessionUser()
   const staff = can(user, 'chapter.read')
   const db = await getDb()
   const [s] = await db

@@ -6,6 +6,7 @@ import { cookies } from 'next/headers'
 import { cache } from 'react'
 import { z } from 'zod'
 import { getEnv } from '../env'
+import { activeUserBan } from './bans'
 import { getRedis } from './redis'
 
 /**
@@ -149,7 +150,10 @@ export const loadEntitlements = async (userId: number): Promise<EntitlementRow[]
   return active.map((e) => ({ feature: e.feature, expires_at: e.expiresAt }))
 }
 
-/** The `SessionUser` for a user id (null when deleted). Exported for the OAuth + MFA flows. */
+/**
+ * The `SessionUser` for a user id (null when deleted or account-banned — a ban therefore
+ * ends every session immediately, cached or not). Exported for the OAuth + MFA flows.
+ */
 export const loadSessionUser = async (userId: number): Promise<SessionUser | null> => {
   const db = await getDb()
   const [row] = await db
@@ -164,6 +168,7 @@ export const loadSessionUser = async (userId: number): Promise<SessionUser | nul
     .where(and(eq(users.id, userId), isNull(users.deletedAt)))
     .limit(1)
   if (!row) return null
+  if (await activeUserBan(row.id)) return null
   return { ...row, entitlements: await loadEntitlements(row.id) }
 }
 

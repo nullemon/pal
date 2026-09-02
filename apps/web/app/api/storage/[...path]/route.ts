@@ -4,6 +4,7 @@ import path from 'node:path'
 import { Readable } from 'node:stream'
 import { z } from 'zod'
 import { getEnv } from '@/lib/env'
+import { resolveFsRoot } from '@/lib/storage'
 
 /**
  * Local storage host for the `fs` storage driver. Exposed at `/_storage/*` through the
@@ -53,8 +54,9 @@ export async function GET(_request: Request, ctx: RouteContext<'/api/storage/[..
   }
   if (!segments.every((s) => segment.safeParse(s).success)) return notFound()
 
-  // The root comes from env at runtime; tell Turbopack not to trace the whole project.
-  const root = path.resolve(/* turbopackIgnore: true */ process.cwd(), env.STORAGE_FS_ROOT)
+  // The root comes from env at runtime and, like the fs driver that writes the files, a
+  // relative STORAGE_FS_ROOT is anchored at the workspace root (not apps/web).
+  const root = resolveFsRoot(env.STORAGE_FS_ROOT)
   const target = path.resolve(/* turbopackIgnore: true */ root, ...segments)
   if (target !== root && !target.startsWith(root + path.sep)) return notFound()
 
@@ -78,6 +80,9 @@ export async function GET(_request: Request, ctx: RouteContext<'/api/storage/[..
       // Uploaded objects are content-addressed by the worker, so long caching is safe.
       'cache-control': 'public, max-age=31536000, immutable',
       'x-content-type-options': 'nosniff',
+      // Files are served from the site origin; an SVG (or anything else) opened directly
+      // must never run script or load resources as this origin.
+      'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; sandbox",
     },
   })
 }

@@ -1,5 +1,5 @@
 import { featureFlags, getDb } from '@palscans/db'
-import { eq } from 'drizzle-orm'
+import { and, eq, isNull } from 'drizzle-orm'
 import { z } from 'zod'
 import { flagSchema } from '@/components/admin/schemas-system'
 import { audit } from '@/components/admin/server/audit'
@@ -27,6 +27,7 @@ export const PUT = withPermission('settings.write', async (request, _ctx, user) 
         percentage: parsed.data.percentage,
         description: parsed.data.description,
         updatedAt: now,
+        deletedAt: null,
       },
     })
   purgeSettings()
@@ -48,8 +49,9 @@ export const DELETE = withPermission('settings.write', async (request, _ctx, use
   if (!parsed.ok) return parsed.response
   const db = await getDb()
   const [row] = await db
-    .delete(featureFlags)
-    .where(eq(featureFlags.key, parsed.data.key))
+    .update(featureFlags)
+    .set({ deletedAt: new Date() })
+    .where(and(eq(featureFlags.key, parsed.data.key), isNull(featureFlags.deletedAt)))
     .returning()
   purgeSettings()
   await audit({

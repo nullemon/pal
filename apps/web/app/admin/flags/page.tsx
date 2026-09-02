@@ -1,12 +1,17 @@
 import { messages } from '@palscans/core/messages'
 import { featureFlags, getDb } from '@palscans/db'
+import { isNull } from 'drizzle-orm'
 import { FlagsTable } from '@/components/admin/client/FlagsTable'
 import { PageHeader } from '@/components/admin/ui'
 import { withPermission } from '@/lib/auth'
 
 export default async function FlagsPage() {
   await withPermission('settings.write', { returnTo: '/admin/flags' })
-  const rows = await (await getDb()).select().from(featureFlags).orderBy(featureFlags.key)
+  const rows = await (await getDb())
+    .select()
+    .from(featureFlags)
+    .where(isNull(featureFlags.deletedAt))
+    .orderBy(featureFlags.key)
   const m = messages.admin.settings.flags
   return (
     <>

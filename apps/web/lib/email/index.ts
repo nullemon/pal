@@ -4,6 +4,7 @@ export {
   MAIL_FROM,
   type Mail,
   type Mailer,
+  NoopMailer,
   ResendMailer,
   setMailer,
 } from './mailer'

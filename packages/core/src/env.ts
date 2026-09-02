@@ -22,6 +22,10 @@ export const envSchema = z.object({
   S3_SECRET_ACCESS_KEY: z.string().optional(),
   /** "true" / "1" / "yes" → true; "false" / "0" / "no" → false. */
   S3_FORCE_PATH_STYLE: z.stringbool().optional(),
+  // apps/worker knobs (mirrored in .env.example)
+  WORKER_CONCURRENCY: z.coerce.number().int().positive().default(1),
+  WORKER_PAGE_CONCURRENCY: z.coerce.number().int().positive().default(4),
+  WORKER_SCHEDULER_MS: z.coerce.number().int().positive().default(30_000),
 })
 
 export type Env = z.infer<typeof envSchema>

@@ -7,7 +7,7 @@ export const authParamsSchema = z.object({
   gate: z.enum(['premium']).optional(),
   link: z.enum(['google', 'discord']).optional(),
   email: z.string().email().optional(),
-  error: z.enum(['oauth_failed', 'oauth_unavailable', 'oauth_no_email']).optional(),
+  error: z.enum(['oauth_failed', 'oauth_unavailable', 'oauth_no_email', 'banned']).optional(),
   provider: z.enum(['google', 'discord']).optional(),
   linked: z.enum(['google', 'discord']).optional(),
   reset: z.string().optional(),

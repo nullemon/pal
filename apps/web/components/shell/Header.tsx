@@ -13,7 +13,7 @@ export function Header() {
     <header className="sticky top-0 z-30 border-b border-line bg-bg/90 backdrop-blur-[14px]">
       <div className="container-page flex h-16 items-center gap-3 md:gap-5">
         <Wordmark />
-        <nav aria-label="Primary" className="hidden md:block">
+        <nav aria-label={messages.nav.primary} className="hidden md:block">
           <NavLinks />
         </nav>
 

@@ -26,6 +26,8 @@ export const rejectResponse = (
       return { status: 400, message: fmt(t.tooManyMentions, { n: extra.maxMentions ?? 5 }) }
     case 'blocked_words':
       return { status: 422, message: t.blockedWords }
+    case 'misleading_link':
+      return { status: 400, message: t.misleadingLink }
     case 'invalid_image':
       return { status: 400, message: messages.errors.validation }
     case 'not_found':

@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { announcements, type Db, genres, getDb, redirects, series, slugHistory } from '@palscans/db'
-import { and, eq, isNotNull, or, sql } from 'drizzle-orm'
+import { and, eq, isNotNull, isNull, or, sql } from 'drizzle-orm'
 import { unstable_cache } from 'next/cache'
 import { getEnv } from '../env'
 import type { ProxySnapshot } from './proxy'
@@ -22,7 +22,8 @@ export async function loadProxySnapshot(db?: Db): Promise<ProxySnapshot> {
   const [rules, seriesSlugs, genreSlugs, announcementSlugs, removed] = await Promise.all([
     database
       .select({ from: redirects.fromPath, to: redirects.toPath, status: redirects.status })
-      .from(redirects),
+      .from(redirects)
+      .where(isNull(redirects.deletedAt)),
     database
       .select({ old: slugHistory.oldSlug, current: series.slug })
       .from(slugHistory)

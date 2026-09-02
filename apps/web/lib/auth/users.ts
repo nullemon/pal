@@ -4,6 +4,8 @@ import { and, eq, gt, isNotNull, isNull, lte } from 'drizzle-orm'
 import { RESERVED_USERNAMES } from './schemas'
 import { revokeAllSessions } from './session'
 
+export { type ActiveBan, activeUserBan } from './bans'
+
 export const USERNAME_CHANGE_DAYS = 30
 export const USERNAME_RESERVE_DAYS = 90
 export const DELETION_GRACE_DAYS = 14

@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { getEnv } from '../env'
 
 /**
@@ -13,7 +14,7 @@ export interface Mail {
 }
 
 export interface Mailer {
-  readonly kind: 'console' | 'resend'
+  readonly kind: 'console' | 'resend' | 'none'
   send(mail: Mail): Promise<{ ok: boolean; id?: string; error?: string }>
 }
 
@@ -66,12 +67,31 @@ export class ResendMailer implements Mailer {
   }
 }
 
+/**
+ * Production without a provider: never print a reset / verification link to stdout (it would
+ * land in the log aggregator). Logs a hashed recipient and the subject, and fails the send so
+ * the route can answer 503.
+ */
+export class NoopMailer implements Mailer {
+  readonly kind = 'none' as const
+  constructor(private readonly log: (line: string) => void = (line) => console.warn(line)) {}
+  async send(mail: Mail) {
+    const to = createHash('sha256').update(mail.to.toLowerCase()).digest('hex').slice(0, 12)
+    this.log(`[mail] no provider configured ${JSON.stringify({ subject: mail.subject, to })}`)
+    return { ok: false, error: 'no_mail_provider' }
+  }
+}
+
 let shared: Mailer | undefined
 
 export const getMailer = (): Mailer => {
   if (shared) return shared
-  const key = getEnv().RESEND_API_KEY
-  shared = key ? new ResendMailer(key) : new ConsoleMailer()
+  const env = getEnv()
+  shared = env.RESEND_API_KEY
+    ? new ResendMailer(env.RESEND_API_KEY)
+    : env.NODE_ENV === 'production'
+      ? new NoopMailer()
+      : new ConsoleMailer()
   return shared
 }
 

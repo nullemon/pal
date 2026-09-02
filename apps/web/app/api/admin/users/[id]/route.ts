@@ -1,6 +1,6 @@
 import { can } from '@palscans/core'
 import { messages } from '@palscans/core/messages'
-import { bans, entitlements, getDb, users } from '@palscans/db'
+import { bans, entitlements, getDb, sessions, users } from '@palscans/db'
 import { and, eq, isNull } from 'drizzle-orm'
 import { userActionSchema } from '@/components/admin/schemas-users'
 import { audit } from '@/components/admin/server/audit'
@@ -68,16 +68,30 @@ export const POST = withPermission<{ id: string }>('user.read', async (request, 
       after = { feature: body.feature, expiresAt: body.expiresAt }
       break
     }
-    case 'revoke':
-      await db
-        .delete(entitlements)
+    case 'revoke': {
+      // docs/16: nothing is hard-deleted — expire the grant so the history survives.
+      const [row] = await db
+        .update(entitlements)
+        .set({ expiresAt: now })
         .where(and(eq(entitlements.userId, target.id), eq(entitlements.feature, body.feature)))
+        .returning({ expiresAt: entitlements.expiresAt })
+      if (!row) return notFound()
       before = { feature: body.feature }
+      after = { feature: body.feature, expiresAt: now.toISOString() }
       break
-    case 'revoke_session':
-      await revokeSession(body.sessionId)
-      after = { sessionId: body.sessionId }
+    }
+    case 'revoke_session': {
+      // Only the target user's own sessions — never an arbitrary session id.
+      const [s] = await db
+        .select({ id: sessions.id })
+        .from(sessions)
+        .where(and(eq(sessions.id, body.sessionId), eq(sessions.userId, target.id)))
+        .limit(1)
+      if (!s) return notFound()
+      await revokeSession(s.id)
+      after = { sessionId: s.id }
       break
+    }
     case 'force_logout':
       after = { revoked: await revokeAllSessions(target.id) }
       break

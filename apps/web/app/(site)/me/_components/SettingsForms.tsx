@@ -122,8 +122,13 @@ export function AvatarForm({ name, src }: { name: string; src: string | null }) 
       toast.toast({ title: messages.errors.generic })
       return
     }
+    // The local upload route re-encodes and answers with the content-addressed key it stored.
+    const stored = (await put
+      .json()
+      .then((j: { data?: { key?: string } }) => j.data?.key)
+      .catch(() => undefined)) as string | undefined
     const confirm = await api<{ url: string | null; message: string }>('/api/me/avatar/confirm', {
-      key: presign.data.key,
+      key: stored ?? presign.data.key,
     })
     setBusy(false)
     if (!confirm.ok) {

@@ -1,3 +1,4 @@
+import { getEnv } from '@palscans/core/env'
 import { getQueue } from '@palscans/core/queue'
 import { getStorage } from '@palscans/core/storage'
 import { chapters, closeDb, getDb } from '@palscans/db'
@@ -5,15 +6,16 @@ import { and, eq, isNull, lt, sql } from 'drizzle-orm'
 import { processChapter } from './jobs/chapter-process.js'
 import { publishDue } from './jobs/publish.js'
 import { log } from './lib/log.js'
+import { revalidateWeb } from './lib/revalidate.js'
 
 /**
  * The PALScans worker (docs/16 "apps/worker"): the image pipeline (`chapter.process`), the
  * publish scheduler (every 30 s), and a safety net that picks up `processing` chapters no
  * job ever reached (the web app runs an in-process queue when REDIS_URL is unset).
  */
-const SCHEDULER_MS = Number(process.env.WORKER_SCHEDULER_MS ?? 30_000)
-const CONCURRENCY = Number(process.env.WORKER_CONCURRENCY ?? 1)
-const PAGE_CONCURRENCY = Number(process.env.WORKER_PAGE_CONCURRENCY ?? 4)
+const SCHEDULER_MS = getEnv().WORKER_SCHEDULER_MS
+const CONCURRENCY = getEnv().WORKER_CONCURRENCY
+const PAGE_CONCURRENCY = getEnv().WORKER_PAGE_CONCURRENCY
 
 const main = async () => {
   const db = await getDb()
@@ -40,7 +42,7 @@ const main = async () => {
     CONCURRENCY,
   )
   queue.process('chapter.publish', async (job) => {
-    await publishDue(db)
+    if ((await publishDue(db)).length) await revalidateWeb(['catalog'])
     log.info('chapter.publish handled by the scheduler pass', { chapterId: job.data.chapterId })
   })
   // The shared queue carries every job name (docs/16); the ones outside this scope are
@@ -61,7 +63,7 @@ const main = async () => {
 
   const tick = async () => {
     try {
-      await publishDue(db)
+      if ((await publishDue(db)).length) await revalidateWeb(['catalog'])
       // safety net: processing rows that never started (no Redis / lost job) or stalled for 30 minutes
       const stale = await db
         .select({ id: chapters.id })

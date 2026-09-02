@@ -69,17 +69,17 @@ export const saveSettings = (settings: ReaderSettings): void => {
 
 export const isPaged = (mode: ReaderMode): boolean => mode !== 'strip'
 
-/** Background swatch → CSS colour. The dark swatch is the site background token. */
+/** Background swatch → CSS colour (the `--color-reader-*` tokens in globals.css). */
 export const backgroundStyle = (bg: ReaderBackground): string => {
   switch (bg) {
     case 'black':
-      return '#000000'
+      return 'var(--color-reader-black)'
     case 'sepia':
-      return '#f1e4c8'
+      return 'var(--color-reader-sepia)'
     case 'white':
-      return '#ffffff'
+      return 'var(--color-reader-white)'
     default:
-      return 'var(--color-bg-deep)'
+      return 'var(--color-reader-dark)'
   }
 }
 

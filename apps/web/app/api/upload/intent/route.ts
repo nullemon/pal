@@ -85,7 +85,7 @@ export const POST = withPermission('chapter.create', async (request, _ctx, user)
     const files = await Promise.all(
       ch.files.map(async (f, idx) => {
         const key = `uploads/${seriesId}/${chapterId}/${String(idx).padStart(4, '0')}-${f.sha256.slice(0, 12)}.${ext[f.type]}`
-        const signed = await presignUpload(key, f.type)
+        const signed = await presignUpload(key, f.type, user.id)
         return {
           name: f.name,
           key,

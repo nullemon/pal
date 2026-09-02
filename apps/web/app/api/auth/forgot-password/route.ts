@@ -3,6 +3,7 @@ import { messages } from '@palscans/core/messages'
 import {
   clientIp,
   csrfFailed,
+  fail,
   getRateLimiter,
   ok,
   parseJson,
@@ -32,10 +33,13 @@ export async function POST(request: Request): Promise<Response> {
   if (!byEmail.ok || !byIp.ok)
     return rateLimited(Math.max(byEmail.retryAfterSec, byIp.retryAfterSec))
 
+  const mailer = getMailer()
+  if (mailer.kind === 'none') return fail(503, 'mail_unavailable', messages.errors.mailUnavailable)
   const user = await findUserByEmail(email)
   if (user && !user.deletedAt) {
     const token = await issueToken(user.id, 'reset_password')
-    await getMailer().send(resetPasswordMail(user.email, token))
+    const sent = await mailer.send(resetPasswordMail(user.email, token))
+    if (!sent.ok) return fail(503, 'mail_unavailable', messages.errors.mailUnavailable)
   }
   return ok({ sent: true, message: messages.auth.resetSent })
 }

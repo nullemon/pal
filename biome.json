@@ -8,9 +8,9 @@
       "!**/.next",
       "!**/dist",
       "!**/node_modules",
-      "!design/**",
+      "!design",
       "!**/*.zip",
-      "!packages/db/drizzle/**"
+      "!packages/db/drizzle"
     ]
   },
   "formatter": { "enabled": true, "indentStyle": "space", "indentWidth": 2, "lineWidth": 100 },

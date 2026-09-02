@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { type AutomodAuthor, automod, trigramSimilarity } from '../comments/automod.js'
 import {
+  bodyDepth,
   bodyFromText,
   type CommentBody,
+  commentBodySchema,
   isCommentBody,
   linkHrefs,
   mentions,
+  misleadingLinks,
   plainText,
 } from '../comments/body.js'
 import { allAllowlisted, detectLinks, domainOf, hasLink } from '../comments/links.js'
@@ -39,6 +42,22 @@ describe('link detection', () => {
     expect(detectLinks('dm me on t.me/someone').map((l) => l.kind)).toEqual(['telegram'])
     expect(domainOf('hxxp://www.Bad.Example/x')).toBe('bad.example')
     expect(domainOf('example [dot] com')).toBe('example.com')
+  })
+  it('sees through invisible characters, unicode dots and spaced dots', () => {
+    expect(detectLinks('exam\u200Bple.com').map((l) => [l.kind, l.domain])).toEqual([
+      ['obfuscated', 'example.com'],
+    ])
+    expect(detectLinks('example\u3002com').map((l) => l.domain)).toEqual(['example.com'])
+    expect(detectLinks('example\u2024com').map((l) => l.domain)).toEqual(['example.com'])
+    expect(detectLinks('example\uFF0Ecom').map((l) => l.domain)).toEqual(['example.com'])
+    expect(
+      detectLinks('\uFF45\uFF58\uFF41\uFF4D\uFF50\uFF4C\uFF45.com').map((l) => l.domain),
+    ).toEqual(['example.com'])
+    expect(detectLinks('example . com').map((l) => l.kind)).toEqual(['obfuscated'])
+    expect(detectLinks('example (.) com').map((l) => l.domain)).toEqual(['example.com'])
+    expect(detectLinks('example [.] com').map((l) => l.domain)).toEqual(['example.com'])
+    expect(allAllowlisted(detectLinks('pal\u200Bscans.org'), ['palscans.org'])).toBe(false)
+    expect(domainOf('example . com')).toBe('example.com')
   })
   it('ignores chapter numbers, ratings, mentions and emails', () => {
     expect(hasLink('Ch. 12.5 was 9.6/10, ver 1.2.3')).toBe(false)
@@ -89,8 +108,21 @@ describe('comment body', () => {
       },
     ],
   }
+  const safeBody: CommentBody = {
+    ...body,
+    children: body.children.map((b) =>
+      b.type === 'paragraph'
+        ? {
+            ...b,
+            children: b.children.filter((n) => n.type !== 'link' || !/^javascript:/.test(n.href)),
+          }
+        : b,
+    ),
+  }
   it('validates structure', () => {
-    expect(isCommentBody(body)).toBe(true)
+    // the javascript: link fails the href refinement; without it the body is valid
+    expect(isCommentBody(body)).toBe(false)
+    expect(isCommentBody(safeBody)).toBe(true)
     expect(
       isCommentBody({ type: 'doc', version: 1, children: [{ type: 'html', html: '<b>' }] }),
     ).toBe(false)
@@ -104,6 +136,49 @@ describe('comment body', () => {
       }),
     ).toBe(false)
     expect(isCommentBody('nope')).toBe(false)
+  })
+  it('caps width and depth', () => {
+    const p = (children: unknown[]) => ({ type: 'paragraph', children })
+    const t = { type: 'text', text: 'x' }
+    expect(isCommentBody({ type: 'doc', version: 1, children: Array(51).fill(p([t])) })).toBe(false)
+    expect(isCommentBody({ type: 'doc', version: 1, children: [p(Array(201).fill(t))] })).toBe(
+      false,
+    )
+    let quote: unknown = p([t])
+    for (let i = 0; i < 3; i++) quote = { type: 'quote', children: [quote] }
+    expect(isCommentBody({ type: 'doc', version: 1, children: [quote] })).toBe(false)
+    let spoiler: unknown = t
+    for (let i = 0; i < 5; i++) spoiler = { type: 'spoiler', children: [spoiler] }
+    expect(isCommentBody({ type: 'doc', version: 1, children: [p([spoiler])] })).toBe(false)
+    expect(bodyDepth(safeBody)).toEqual({ quote: 1, inline: 1 })
+    expect(
+      commentBodySchema.safeParse({
+        type: 'doc',
+        version: 1,
+        children: [p([{ type: 'link', href: 'https://a.example/x', children: [t] }])],
+      }).success,
+    ).toBe(true)
+  })
+  it('flags link nodes whose label is a different address', () => {
+    const link = (href: string, label: string) => ({
+      type: 'doc' as const,
+      version: 1 as const,
+      children: [
+        {
+          type: 'paragraph' as const,
+          children: [
+            { type: 'link' as const, href, children: [{ type: 'text' as const, text: label }] },
+          ],
+        },
+      ],
+    })
+    expect(misleadingLinks(link('https://spam.tld/x', 'click here'))).toHaveLength(1)
+    expect(misleadingLinks(link('https://spam.tld/x', 'palscans.org'))).toHaveLength(1)
+    expect(misleadingLinks(link('https://palscans.org/x', 'palscans.org/x'))).toHaveLength(0)
+    expect(misleadingLinks(link('https://palscans.org/x', 'https://palscans.org/x/'))).toHaveLength(
+      0,
+    )
+    expect(misleadingLinks(link('https://palscans.org/x', ''))).toHaveLength(0)
   })
   it('extracts plain text, mentions, links', () => {
     expect(plainText(body)).toBe(

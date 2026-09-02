@@ -452,10 +452,10 @@ export function ThemeScreen({
                 <div className="flex h-9 items-center gap-2">
                   {(
                     [
-                      ['black', '#000000'],
-                      ['dark', '#14111f'],
-                      ['sepia', '#f1e4c8'],
-                      ['white', '#ffffff'],
+                      ['black', 'var(--color-reader-black)'],
+                      ['dark', 'var(--color-reader-dark)'],
+                      ['sepia', 'var(--color-reader-sepia)'],
+                      ['white', 'var(--color-reader-white)'],
                     ] as const
                   ).map(([k, hex]) => (
                     <button
@@ -467,7 +467,7 @@ export function ThemeScreen({
                         set((d) => ({ ...d, theme: { ...d.theme, reader_background: k } }))
                       }
                       className={cn(
-                        'size-6 rounded-md shadow-[inset_0_0_0_1px_rgba(255,255,255,.14)]',
+                        'size-6 rounded-md shadow-[inset_0_0_0_1px_var(--color-glass-line-strong)]',
                         doc.theme.reader_background === k &&
                           'shadow-[0_0_0_2px_var(--color-surface-1),0_0_0_4px_var(--color-brand-hover)]',
                       )}
@@ -679,7 +679,7 @@ export function ThemeScreen({
                               aria-label={`${k} ${m.colDark}`}
                             />
                           </label>
-                          <div className="flex h-6 w-10 items-center justify-center rounded-md bg-[#f7f6fb]">
+                          <div className="flex h-6 w-10 items-center justify-center rounded-md bg-preview-light-surface">
                             <span
                               className="size-3.5 rounded-[4px]"
                               style={{ background: lightHex }}

@@ -6,7 +6,9 @@ import {
   type CommentBody,
   type InlineNode,
   imageIds,
+  linkHrefs,
   mentions as mentionsOf,
+  misleadingLinks,
   plainText,
 } from '@palscans/core/comments'
 import {
@@ -45,6 +47,7 @@ export type RejectCode =
   | 'empty'
   | 'too_many_mentions'
   | 'blocked_words'
+  | 'misleading_link'
   | 'invalid_image'
   | 'not_found'
   | 'locked'
@@ -175,6 +178,28 @@ export const isDuplicate = (
   )
 }
 
+export type BanKind = 'user' | 'shadow'
+
+/** Active bans on a user: `user` ends the request, `shadow` publishes to the author only. */
+export const loadActiveBans = async (
+  db: Db,
+  userId: number,
+  now: Date = new Date(),
+): Promise<Set<BanKind>> => {
+  const rows = await db
+    .select({ kind: bans.kind })
+    .from(bans)
+    .where(
+      and(
+        inArray(bans.kind, ['user', 'shadow']),
+        eq(bans.value, String(userId)),
+        isNull(bans.revokedAt),
+        or(isNull(bans.expiresAt), gt(bans.expiresAt, now)),
+      ),
+    )
+  return new Set(rows.map((r) => r.kind as BanKind))
+}
+
 export const rateLimitsFor = (user: { createdAt: Date }, settings: CommentSettings, now: Date) => {
   const fresh = now.getTime() - user.createdAt.getTime() < 7 * DAY
   return {
@@ -207,19 +232,10 @@ export const submitComment = async (input: SubmitInput): Promise<SubmitOutcome> 
   // 1. account gate
   const gate = accountGate(user, settings, now)
   if (gate) return { ok: false, code: gate }
-  const [ban] = await db
-    .select({ id: bans.id })
-    .from(bans)
-    .where(
-      and(
-        eq(bans.kind, 'user'),
-        eq(bans.value, String(user.id)),
-        isNull(bans.revokedAt),
-        or(isNull(bans.expiresAt), gt(bans.expiresAt, now)),
-      ),
-    )
-    .limit(1)
-  if (ban) return { ok: false, code: 'banned' }
+  const activeBans = await loadActiveBans(db, user.id, now)
+  if (activeBans.has('user')) return { ok: false, code: 'banned' }
+  // docs/14 §3: a shadow-banned author sees their comments as published; nobody else does.
+  const shadowBanned = activeBans.has('shadow') && !staff
 
   // target must exist, allow comments and (for replies) the parent must be open
   let seriesId: number | null = null
@@ -274,6 +290,9 @@ export const submitComment = async (input: SubmitInput): Promise<SubmitOutcome> 
   if (text.length > COMMENT_MAX_CHARS) return { ok: false, code: 'too_long' }
   const mentioned = mentionsOf(input.body)
   if (mentioned.length > settings.max_mentions) return { ok: false, code: 'too_many_mentions' }
+  // link nodes whose label is a different address than their href are only for staff
+  if (!staff && misleadingLinks(input.body).length > 0)
+    return { ok: false, code: 'misleading_link' }
 
   const imageId = input.imageId ?? imageIds(input.body)[0] ?? null
   if (imageId !== null) {
@@ -310,6 +329,7 @@ export const submitComment = async (input: SubmitInput): Promise<SubmitOutcome> 
       replacement: wordFilters.replacement,
     })
     .from(wordFilters)
+    .where(isNull(wordFilters.deletedAt))
   const filtered = applyWordFilters(input.body, filters)
   if (filtered.action === 'block') return { ok: false, code: 'blocked_words' }
   const body = filtered.body
@@ -360,17 +380,22 @@ export const submitComment = async (input: SubmitInput): Promise<SubmitOutcome> 
           gt(reports.handledAt, new Date(now.getTime() - 30 * DAY)),
         ),
       ),
-    db.select({ domain: linkAllowlist.domain }).from(linkAllowlist),
+    db
+      .select({ domain: linkAllowlist.domain })
+      .from(linkAllowlist)
+      .where(isNull(linkAllowlist.deletedAt)),
   ])
   const ownTexts = own.map((r) => plainText(r.body as CommentBody))
   const otherTexts = others.map((r) => plainText(r.body as CommentBody))
   const publishedComments = Number(publishedRow?.n ?? 0)
   const actionedReports30d = Number(reportsRow?.n ?? 0)
 
-  // 4 + 6. link policy and automod scoring (links are held by default)
+  // 4 + 6. link policy and automod scoring (links are held by default). Link-node hrefs are
+  // scanned with the text so a `{type:'link'}` node cannot slip past the hold policy.
   const result = automod(
     {
       body,
+      hrefs: linkHrefs(body),
       author: {
         createdAt: user.createdAt,
         publishedComments,
@@ -406,6 +431,8 @@ export const submitComment = async (input: SubmitInput): Promise<SubmitOutcome> 
     status = 'pending'
   }
   if (settings.lockdown && !staff && status === 'published') status = 'pending'
+  // A shadow-banned author must see nothing unusual: no holds, no review notices.
+  if (shadowBanned) status = 'shadow'
 
   const [inserted] = await db
     .insert(comments)

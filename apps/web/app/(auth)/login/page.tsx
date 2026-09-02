@@ -23,13 +23,15 @@ export default async function LoginPage({
   if (user && !params.link) redirect(user.username ? returnTo : withReturn('/onboarding', returnTo))
 
   const errorText =
-    params.error === 'oauth_unavailable'
-      ? fmt(messages.authPage.oauthUnavailable, { provider: providerName(params.provider) })
-      : params.error === 'oauth_no_email'
-        ? fmt(messages.authPage.oauthNoEmail, { provider: providerName(params.provider) })
-        : params.error === 'oauth_failed'
-          ? fmt(messages.authPage.oauthFailed, { provider: providerName(params.provider) })
-          : null
+    params.error === 'banned'
+      ? messages.auth.banned
+      : params.error === 'oauth_unavailable'
+        ? fmt(messages.authPage.oauthUnavailable, { provider: providerName(params.provider) })
+        : params.error === 'oauth_no_email'
+          ? fmt(messages.authPage.oauthNoEmail, { provider: providerName(params.provider) })
+          : params.error === 'oauth_failed'
+            ? fmt(messages.authPage.oauthFailed, { provider: providerName(params.provider) })
+            : null
 
   return (
     <>

@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import { messages } from '@palscans/core/messages'
+import { useEffect, useState } from 'react'
 
 const DIVISIONS: Array<{ amount: number; unit: Intl.RelativeTimeFormatUnit }> = [
   { amount: 60, unit: 'second' },

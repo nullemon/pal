@@ -11,7 +11,10 @@ export const POST = withPermission('settings.write', async (request, _ctx, user)
   await db
     .insert(linkAllowlist)
     .values({ domain: parsed.data.domain, createdBy: user.id })
-    .onConflictDoNothing()
+    .onConflictDoUpdate({
+      target: linkAllowlist.domain,
+      set: { createdBy: user.id, createdAt: new Date(), deletedAt: null },
+    })
   await audit({
     actorId: user.id,
     action: 'settings.allowlist.add',
@@ -26,7 +29,10 @@ export const DELETE = withPermission('settings.write', async (request, _ctx, use
   const parsed = await parseJson(request, allowlistSchema)
   if (!parsed.ok) return parsed.response
   const db = await getDb()
-  await db.delete(linkAllowlist).where(eq(linkAllowlist.domain, parsed.data.domain))
+  await db
+    .update(linkAllowlist)
+    .set({ deletedAt: new Date() })
+    .where(eq(linkAllowlist.domain, parsed.data.domain))
   await audit({
     actorId: user.id,
     action: 'settings.allowlist.remove',

@@ -6,8 +6,10 @@ import type { NextConfig } from 'next'
 const here = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(here, '../..')
 
-// The single .env lives at the repo root; load it for every workspace.
-loadEnvConfig(repoRoot, process.env.NODE_ENV !== 'production')
+// The single .env lives at the repo root; load it for every workspace. Next has already
+// called loadEnvConfig for apps/web (which has no .env) and @next/env memoises the result,
+// so the repo-root call must force a reload or `next start` never sees DATABASE_URL.
+loadEnvConfig(repoRoot, process.env.NODE_ENV !== 'production', undefined, true)
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,

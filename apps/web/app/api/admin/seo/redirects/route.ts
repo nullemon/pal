@@ -1,5 +1,5 @@
 import { getDb, redirects } from '@palscans/db'
-import { eq } from 'drizzle-orm'
+import { and, eq, isNull } from 'drizzle-orm'
 import { revalidateTag } from 'next/cache'
 import { z } from 'zod'
 import { audit } from '@/components/admin/server/audit'
@@ -23,7 +23,7 @@ export const POST = withPermission('settings.write', async (request, _ctx, user)
     .values({ fromPath: from, toPath: to, status, createdBy: user.id })
     .onConflictDoUpdate({
       target: redirects.fromPath,
-      set: { toPath: to, status, createdBy: user.id },
+      set: { toPath: to, status, createdBy: user.id, deletedAt: null },
     })
     .returning()
   await audit({
@@ -44,7 +44,11 @@ export const DELETE = withPermission('settings.write', async (request, _ctx, use
   const parsed = await parseJson(request, deleteSchema)
   if (!parsed.ok) return parsed.response
   const db = await getDb()
-  const [row] = await db.delete(redirects).where(eq(redirects.id, parsed.data.id)).returning()
+  const [row] = await db
+    .update(redirects)
+    .set({ deletedAt: new Date() })
+    .where(and(eq(redirects.id, parsed.data.id), isNull(redirects.deletedAt)))
+    .returning()
   if (!row) return notFound()
   await audit({
     actorId: user.id,

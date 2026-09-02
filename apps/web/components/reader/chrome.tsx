@@ -339,7 +339,7 @@ export function ProgressBar({
       style={{ top }}
     >
       <div
-        className="h-full bg-brand-hover shadow-[0_0_8px_rgb(139_92_246_/_0.55)] transition-[width] duration-150 ease-out motion-reduce:transition-none"
+        className="h-full bg-brand-hover shadow-[0_0_8px_var(--color-brand-hover)] transition-[width] duration-150 ease-out motion-reduce:transition-none"
         style={{ width: `${Math.round(Math.min(1, Math.max(0, pct)) * 1000) / 10}%` }}
       />
     </div>

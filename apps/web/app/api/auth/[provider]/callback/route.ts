@@ -14,6 +14,7 @@ import {
   readOAuthState,
   shortCookie,
 } from '@/lib/auth/oauth'
+import { activeUserBan } from '@/lib/auth/users'
 
 const loginWith = (base: URL, params: Record<string, string>) => {
   const target = new URL('/login', base)
@@ -72,6 +73,8 @@ export async function GET(
     .limit(1)
   const currentId = await getSessionId()
   if (linkedRow && !linkedRow.deletedAt) {
+    if (await activeUserBan(linkedRow.userId))
+      return loginWith(url, { error: 'banned', provider, return: returnTo })
     await signIn(linkedRow.userId, linkedRow.email, request, provider, currentId)
     return afterSignIn(url, returnTo, !!linkedRow.username, null)
   }
@@ -91,6 +94,8 @@ export async function GET(
     .limit(1)
 
   if (existing && !existing.deletedAt) {
+    if (await activeUserBan(existing.id))
+      return loginWith(url, { error: 'banned', provider, return: returnTo })
     const current = await getSessionUser()
     if (current && current.id === existing.id) {
       // Initiated from the security page by the authenticated owner: link now.

@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm'
 import { bigint, index, jsonb, pgTable, text } from 'drizzle-orm/pg-core'
-import { createdAt, identity, ref, timestamptz } from './_shared.js'
+import { createdAt, deletedAt, identity, ref, timestamptz } from './_shared.js'
 import { bytea, citext } from './custom-types.js'
 import { pubState } from './enums.js'
 import { users } from './identity.js'
@@ -92,4 +92,5 @@ export const featureFlags = pgTable('feature_flags', {
   percentage: bigint('percentage', { mode: 'number' }).notNull().default(0),
   description: text('description'),
   updatedAt: timestamptz('updated_at').notNull().defaultNow(),
+  deletedAt: deletedAt(),
 })

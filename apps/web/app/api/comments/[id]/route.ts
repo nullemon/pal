@@ -1,10 +1,17 @@
 import { can, isStaff } from '@palscans/core'
-import { allAllowlisted, COMMENT_MAX_CHARS, detectLinks, plainText } from '@palscans/core/comments'
+import {
+  allAllowlisted,
+  COMMENT_MAX_CHARS,
+  detectLinks,
+  linkHrefs,
+  misleadingLinks,
+  plainText,
+} from '@palscans/core/comments'
 import { messages } from '@palscans/core/messages'
 import { auditLog, commentEdits, comments, db, linkAllowlist, wordFilters } from '@palscans/db'
-import { eq } from 'drizzle-orm'
+import { eq, isNull } from 'drizzle-orm'
 import { forbidden, ipHashFor, notFound, ok, parseJson, requireUser } from '@/lib/comments/http'
-import { applyWordFilters, canEditComment } from '@/lib/comments/pipeline'
+import { applyWordFilters, canEditComment, loadActiveBans } from '@/lib/comments/pipeline'
 import { getCommentRow, getCommentView, viewerFor } from '@/lib/comments/queries'
 import { editCommentSchema, idParamSchema } from '@/lib/comments/schemas'
 import { loadCommentSettings } from '@/lib/comments/settings'
@@ -24,12 +31,25 @@ export const PATCH = requireUser<Params>(async (request, ctx, user) => {
       { status: 403 },
     )
 
+  const staff = isStaff(user)
+  const activeBans = await loadActiveBans(db, user.id)
+  if (activeBans.has('user'))
+    return Response.json(
+      { error: 'banned', message: messages.commentThread.banned },
+      { status: 403 },
+    )
+
   const parsed = await parseJson(request, editCommentSchema)
   if (!parsed.ok) return parsed.response
   const text = plainText(parsed.data.body)
   if (text.length > COMMENT_MAX_CHARS)
     return Response.json(
       { error: 'too_long', message: messages.commentThread.tooLong },
+      { status: 400 },
+    )
+  if (!staff && misleadingLinks(parsed.data.body).length > 0)
+    return Response.json(
+      { error: 'misleading_link', message: messages.commentThread.misleadingLink },
       { status: 400 },
     )
 
@@ -41,6 +61,7 @@ export const PATCH = requireUser<Params>(async (request, ctx, user) => {
       replacement: wordFilters.replacement,
     })
     .from(wordFilters)
+    .where(isNull(wordFilters.deletedAt))
   const filtered = applyWordFilters(parsed.data.body, filters)
   if (filtered.action === 'block')
     return Response.json(
@@ -49,11 +70,16 @@ export const PATCH = requireUser<Params>(async (request, ctx, user) => {
     )
 
   let status = row.status
-  if (!isStaff(user) && status === 'published') {
-    const links = detectLinks(text)
-    const allow = (await db.select({ domain: linkAllowlist.domain }).from(linkAllowlist)).map(
-      (a) => a.domain,
-    )
+  if (!staff && activeBans.has('shadow')) status = 'shadow'
+  else if (!staff && status === 'published') {
+    // text and link-node hrefs together, so a link node cannot bypass the hold policy
+    const links = detectLinks([text, ...linkHrefs(parsed.data.body)].join(' '))
+    const allow = (
+      await db
+        .select({ domain: linkAllowlist.domain })
+        .from(linkAllowlist)
+        .where(isNull(linkAllowlist.deletedAt))
+    ).map((a) => a.domain)
     const hasLink = links.length > 0 && !allAllowlisted(links, allow)
     if ((hasLink && settings.hold_links) || filtered.action === 'hold') status = 'pending'
   }

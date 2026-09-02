@@ -64,7 +64,7 @@ export function Scrubber({ count, current, onChange, variant, className }: Scrub
               aria-hidden="true"
               className={
                 n - 1 === current
-                  ? 'h-3.5 w-[3px] rounded-[2px] bg-brand-hover shadow-[0_0_8px_rgb(139_92_246_/_0.75)]'
+                  ? 'h-3.5 w-[3px] rounded-[2px] bg-brand-hover shadow-[0_0_8px_var(--color-brand-hover)]'
                   : 'h-2 w-px rounded-px bg-white/[.28]'
               }
             />
@@ -73,7 +73,7 @@ export function Scrubber({ count, current, onChange, variant, className }: Scrub
       ) : (
         <span
           aria-hidden="true"
-          className="absolute top-1/2 size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-brand-hover shadow-[0_0_0_3px_rgb(139_92_246_/_0.25),0_0_10px_rgb(139_92_246_/_0.6)]"
+          className="absolute top-1/2 size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-brand-hover shadow-[0_0_0_3px_var(--color-brand-wash),0_0_10px_var(--color-brand-hover)]"
           style={{ left: `${pct}%` }}
         />
       )}

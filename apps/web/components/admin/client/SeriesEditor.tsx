@@ -576,7 +576,7 @@ export function SeriesEditor(props: Props) {
                 </select>
                 <input
                   className={inputClass}
-                  placeholder="US, GB, KR"
+                  placeholder={f.geoPlaceholder}
                   value={doc.geo.countries.join(', ')}
                   onChange={(e) =>
                     patch({

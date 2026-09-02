@@ -28,6 +28,20 @@ export const envSchema = z.object({
   SITE_URL: z.string().url().default('http://localhost:3000'),
   SITE_NAME: z.string().min(1).default('PALScans'),
   SESSION_SECRET: z.string().min(1).default('change-me-to-32-random-bytes-base64'),
+  /**
+   * Bearer token for /api/internal/* (worker → web cache purges). Falls back to
+   * SESSION_SECRET in development only; production must set it explicitly.
+   */
+  INTERNAL_API_SECRET: z.string().min(1).optional(),
+
+  // bot protection (docs/13); both unset → every Turnstile check passes
+  TURNSTILE_SECRET_KEY: z.string().min(1).optional(),
+  NEXT_PUBLIC_TURNSTILE_SITE_KEY: z.string().min(1).optional(),
+
+  // worker knobs (read by apps/worker through @palscans/core's env; mirrored here for parity)
+  WORKER_CONCURRENCY: z.coerce.number().int().positive().default(1),
+  WORKER_PAGE_CONCURRENCY: z.coerce.number().int().positive().default(4),
+  WORKER_SCHEDULER_MS: z.coerce.number().int().positive().default(30_000),
 
   // auth providers
   GOOGLE_CLIENT_ID: z.string().min(1).optional(),
@@ -52,8 +66,33 @@ function withoutEmpty(source: Record<string, string | undefined>): Record<string
   return out
 }
 
+/** Minimum SESSION_SECRET length in production (32 random bytes, base64 → 44 chars). */
+export const MIN_SESSION_SECRET_LENGTH = 32
+
+const productionSchema = envSchema.superRefine((env, ctx) => {
+  if (env.NODE_ENV !== 'production') return
+  if (
+    env.SESSION_SECRET.length < MIN_SESSION_SECRET_LENGTH ||
+    env.SESSION_SECRET.startsWith('change-me')
+  )
+    ctx.addIssue({
+      code: 'custom',
+      path: ['SESSION_SECRET'],
+      message: `must be at least ${MIN_SESSION_SECRET_LENGTH} random characters in production (not the placeholder)`,
+    })
+  if (!env.INTERNAL_API_SECRET)
+    ctx.addIssue({
+      code: 'custom',
+      path: ['INTERNAL_API_SECRET'],
+      message: 'is required in production (no fallback to SESSION_SECRET)',
+    })
+})
+
 export function parseEnv(source: Record<string, string | undefined> = process.env): Env {
-  const result = envSchema.safeParse(withoutEmpty(source))
+  // `next build` runs with NODE_ENV=production but serves nothing; the secret checks apply
+  // to the running server (`next start`), where a placeholder secret would be exploitable.
+  const building = source.NEXT_PHASE === 'phase-production-build'
+  const result = (building ? envSchema : productionSchema).safeParse(withoutEmpty(source))
   if (!result.success) {
     const issues = result.error.issues.map((i) => `  ${i.path.join('.')}: ${i.message}`).join('\n')
     throw new Error(`Invalid environment:\n${issues}`)

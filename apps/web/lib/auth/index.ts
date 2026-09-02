@@ -16,6 +16,7 @@ export {
   rateLimited,
   requireUser,
   sameOrigin,
+  totpRequired,
   type UserHandler,
   unauthorized,
   withPermission,

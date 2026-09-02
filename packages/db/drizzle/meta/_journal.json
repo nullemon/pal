@@ -43,6 +43,13 @@
       "when": 1788330000000,
       "tag": "9005_p5_chapter_processing",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1788340000000,
+      "tag": "9006_soft_delete_settings",
+      "breakpoints": true
     }
   ]
 }

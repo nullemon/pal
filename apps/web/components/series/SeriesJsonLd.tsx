@@ -1,3 +1,4 @@
+import { messages } from '@palscans/core/messages'
 import type { SeriesDetail } from '@palscans/db'
 
 export interface SeriesJsonLdProps {
@@ -62,7 +63,12 @@ export function seriesJsonLd({
     '@type': 'BreadcrumbList',
     itemListElement: [
       { '@type': 'ListItem', position: 1, name: siteName, item: siteUrl },
-      { '@type': 'ListItem', position: 2, name: 'Series', item: `${siteUrl}/browse` },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: messages.discovery.seriesCrumb,
+        item: `${siteUrl}/browse`,
+      },
       { '@type': 'ListItem', position: 3, name: series.title, item: url },
     ],
   }
