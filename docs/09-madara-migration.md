@@ -21,47 +21,65 @@ data point available, and it came from someone with your exact catalog shape.
 **The honest counter-argument:** Madara works *today* and the rebuild is roughly 10–14 weeks.
 That is precisely why the old site keeps running until cutover.
 
-## Discover the actual schema first
+## Confirmed against your own theme package
 
-Madara's storage has changed materially across versions — older installs keep chapters in
-serialised postmeta, newer ones use custom tables, and image storage can be the WP media
-library or a folder under `wp-content/uploads`. **Do not write the importer against
-assumptions.** Run discovery against your own database and pin the mapping to what you find:
+The `Sample Data.zip` you uploaded contains Madara's demo WordPress export, and
+`Installation Files.zip` pins the version: **Madara 1.7.4.1** with `madara-core 1.7.4.1`.
+That is recent enough that chapters live in the plugin's **custom database tables**, not in
+postmeta — which is good news for the importer and confirmed by their absence from the
+export. Series, taxonomies, and series metadata are all in the standard WordPress tables.
+
+Confirmed from the export:
+
+| What | Where |
+|---|---|
+| Series | `wp_posts` with `post_type = 'wp-manga'` |
+| Bookmarks | `wp_posts` with `post_type = 'manga-bookmark'`, payload in `_bookmark_data` / `_bookmark_time` |
+| Genres | taxonomy `wp-manga-genre` |
+| Authors / artists | taxonomies `wp-manga-author`, `wp-manga-artist` |
+| Tags | taxonomy `wp-manga-tag` |
+| Release year | taxonomy `wp-manga-release` |
+| Type (manga/manhwa/manhua) | meta `_wp_manga_type` |
+| Status | meta `_wp_manga_status` |
+| Alternative titles | meta `_wp_manga_alternative` |
+| Stable id across renames | meta `manga_unique_id` |
+| View counters | meta `_wp_manga_views`, `_wp_manga_day_views`, `_wp_manga_week_views`, `_wp_manga_month_views`, `_wp_manga_year_views` |
+| Ratings | meta `_manga_reviews`, `_manga_avarage_reviews` (the misspelling is theirs — match it exactly) |
+| Badges | meta `manga_title_badges` |
+| Cover | meta `_thumbnail_id` → `wp_posts` attachment → `_wp_attached_file` |
+
+`manga_unique_id` is the key to import against: it survives slug and title changes, so
+re-running the importer updates the right row instead of creating duplicates.
+
+## Confirm the chapter tables on your live database
+
+Chapters are the one thing the demo export does not carry, so read them from your own
+install before writing that half of the importer:
 
 ```sql
--- 1. Which custom tables does the theme own?
+-- Which custom tables does the plugin own, and how big are they?
 SELECT table_name, table_rows
 FROM information_schema.tables
 WHERE table_schema = DATABASE() AND table_name LIKE '%manga%'
 ORDER BY table_rows DESC;
 
--- 2. Confirm the series post type and its volume
-SELECT post_type, post_status, COUNT(*)
-FROM wp_posts GROUP BY post_type, post_status ORDER BY 3 DESC;
+-- Then dump the shape of each one it names
+SHOW CREATE TABLE wp_manga_chapters;
 
--- 3. Which meta keys carry the series fields, and how big is the table?
-SELECT meta_key, COUNT(*) AS n
-FROM wp_postmeta
-WHERE post_id IN (SELECT ID FROM wp_posts WHERE post_type = 'wp-manga')
-GROUP BY meta_key ORDER BY n DESC LIMIT 60;
-
--- 4. Taxonomies in use
-SELECT taxonomy, COUNT(*) FROM wp_term_taxonomy GROUP BY taxonomy;
-
--- 5. Sample one chapter's storage end to end, then read the raw value
-SELECT * FROM wp_postmeta
-WHERE post_id = <a known series id> AND meta_key LIKE '%chapter%' LIMIT 5;
+-- And sample a real chapter end to end
+SELECT * FROM wp_manga_chapters LIMIT 5;
 ```
 
-Then check where the bytes live:
+Then find where the bytes live — Madara can store pages in the media library or in its own
+uploads folder:
 
 ```bash
-du -sh wp-content/uploads/*
-find wp-content/uploads -type d -name '*manga*' | head
+du -sh wp-content/uploads/* | sort -h | tail
+find wp-content/uploads -type d -iname '*manga*' | head
 ```
 
-Write the findings into `infra/migration/SOURCE-SCHEMA.md` before writing any code. That
-document is the importer's specification.
+Write the results into `infra/migration/SOURCE-SCHEMA.md`. That file is the importer's
+specification, and the mapping below is already pinned for everything except chapters.
 
 ## Mapping
 
@@ -69,16 +87,16 @@ Once discovery confirms the shapes, the mapping is mechanical:
 
 | Madara / WordPress | New schema |
 |---|---|
-| `wp_posts` rows of the series post type | `series` (`post_name` → `slug`, `post_title` → `title`, `post_content` → `synopsis`, `post_date_gmt` → `created_at`) |
-| series meta: status, type, alternative titles, adult flag, views | `series.status`, `series.type`, `series_titles[]`, `series.age_rating`, `series.view_count` |
-| genre / tag taxonomies | `genres` + `series_genres` |
-| author / artist taxonomies | `people` + `series_people` with `credit` |
-| chapter records (custom table or postmeta) | `chapters` — parse the display name into `numeric` `number` + `title` |
+| `wp_posts` where `post_type='wp-manga'` | `series` (`post_name`→`slug`, `post_title`→`title`, `post_content`→`synopsis`, `post_date_gmt`→`created_at`) |
+| `_wp_manga_status`, `_wp_manga_type`, `_wp_manga_alternative`, `_wp_manga_views` | `series.status`, `series.type`, `series_titles[]`, `series.view_count` |
+| `wp-manga-genre`, `wp-manga-tag` | `genres` + `series_genres` (`kind` distinguishes them) |
+| `wp-manga-author`, `wp-manga-artist` | `people` + `series_people` with `credit` |
+| `wp_manga_chapters` (custom table, v1.7.x) | `chapters` — parse the display name into `numeric` `number` + `title` |
 | chapter image list (attachment ids or file paths) | `chapter_pages`, one row per page, `idx` from the stored order |
 | WP users | `users` — carry `user_email`, `user_registered`; **do not** carry `user_pass` |
-| user bookmarks / reading lists | `bookmarks` |
-| ratings | `ratings`, plus recomputed `rating_sum` / `rating_count` |
-| `wp_comments` on series posts | `comments` — convert stored HTML to the structured JSON body |
+| `post_type='manga-bookmark'` + `_bookmark_data` | `bookmarks` |
+| `_manga_reviews` / `_manga_avarage_reviews` | `ratings`, plus recomputed `rating_sum` / `rating_count` |
+| `wp_comments` on `wp-manga` posts | `comments` — convert stored HTML to the structured JSON body |
 
 ### Two mappings that need care
 
