@@ -1,0 +1,70 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Nunito+Sans:wght@400;600;700&display=swap">
+  <style>
+    html, body { background: #fafafa; }
+    body { margin: 0; }
+    a { color: #6d3bc4; text-decoration: none; } a:hover { color: #5b2fa8; }
+    * { box-sizing: border-box; }
+    .tap:hover { background: #f7f6fb !important; }
+    .sel:hover { background: #e2d6f9 !important; }
+  </style>
+</helmet>
+<div style="width: 390px; min-height: 844px; background: #fafafa; color: #171426; font-family: 'Nunito Sans', system-ui, sans-serif; font-size: 14px; line-height: 1.4; overflow: hidden; display: flex; flex-direction: column;">
+
+  <!-- ===== Top bar ===== -->
+  <header style="height: 52px; flex: none; background: #ffffff; border-bottom: 1px solid #e4e1ee; display: flex; align-items: center; padding: 0 4px; position: relative; z-index: 2; box-shadow: 0 8px 24px -12px rgba(23,20,38,.18);">
+    <a class="tap" href="#" style="width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: #171426; flex: none;">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5"></path><path d="M11 18l-6-6 6-6"></path></svg>
+    </a>
+    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;">
+      <span style="font-family: 'Outfit', system-ui, sans-serif; font-size: 16px; font-weight: 700; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;">Frost Monarch · Ch. 301</span>
+    </div>
+    <a class="tap" href="#" style="width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: #171426; flex: none;">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 4z"></path></svg>
+    </a>
+    <span style="position: absolute; left: 0; bottom: -1px; height: 3px; width: 100%; background: #ede5fb; display: block;"></span>
+    <span style="position: absolute; left: 0; bottom: -1px; height: 3px; width: 20.6%; background: #6d3bc4; border-radius: 0 999px 999px 0; display: block;"></span>
+  </header>
+
+  <!-- ===== Pages (zero gap) ===== -->
+  <section style="height: 470px; flex: none; overflow: hidden; display: flex; flex-direction: column;">
+    <div style="height: 560px; margin-top: -520px; flex: none; background: linear-gradient(180deg, #ececf1 0%, #dcdbe4 100%); position: relative;"></div>
+    <div style="height: 400px; flex: none; background: linear-gradient(180deg, #ececf1 0%, #e4e3ea 55%, #dcdbe4 100%); position: relative;">
+      <span style="position: absolute; right: 12px; bottom: 10px; font-size: 14px; font-weight: 600; color: #9a95b3; letter-spacing: .02em;">Page 7 / 34</span>
+    </div>
+    <div style="height: 30px; flex: none; background: linear-gradient(180deg, #ececf1 0%, #e9e8ee 100%); position: relative;"></div>
+  </section>
+
+  <!-- ===== Ad after the last page, above the Next control ===== -->
+  <section style="height: 262px; flex: none; display: flex; align-items: center; justify-content: center; background: #fafafa;">
+    <div style="width: 300px; height: 250px; border: 1.5px dashed #c9c3dc; border-radius: 10px; background: #ffffff; display: flex; align-items: center; justify-content: center; font-variant-caps: all-small-caps; letter-spacing: .12em; font-size: 15px; font-weight: 700; color: #9a95b3;">AD · 300×250</div>
+  </section>
+
+  <!-- ===== Bottom bar ===== -->
+  <footer style="height: 60px; flex: none; background: #ffffff; border-top: 1px solid #e4e1ee; display: flex; align-items: center; justify-content: space-between; padding: 0 8px;">
+    <a class="tap" href="#" style="display: inline-flex; align-items: center; gap: 4px; height: 44px; padding: 0 12px 0 8px; border-radius: 12px; color: #6d3bc4; font-weight: 700; font-size: 14px;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg>
+      Prev
+    </a>
+    <a class="sel" href="#" style="display: inline-flex; align-items: center; gap: 6px; height: 44px; padding: 0 14px 0 16px; border-radius: 999px; background: #ede5fb; color: #6d3bc4; font-family: 'Outfit', system-ui, sans-serif; font-weight: 700; font-size: 15px;">
+      Chapter 301
+      <span style="font-size: 12px; line-height: 1;">▾</span>
+    </a>
+    <a class="tap" href="#" style="display: inline-flex; align-items: center; gap: 4px; height: 44px; padding: 0 8px 0 12px; border-radius: 12px; color: #6d3bc4; font-weight: 700; font-size: 14px;">
+      Next
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>
+    </a>
+  </footer>
+
+</div>
+</x-dc>
+</body>
+</html>

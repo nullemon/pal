@@ -1,0 +1,359 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Nunito+Sans:wght@400;600;700&display=swap">
+  <style>
+    html, body { background: #ffffff; }
+    body { margin: 0; }
+    a { color: #6d3bc4; text-decoration: none; } a:hover { color: #5b2fa8; }
+    * { box-sizing: border-box; }
+    .nav:hover { color: #171426 !important; background: #f7f6fb !important; }
+    .btn-primary:hover { background: #5b2fa8 !important; }
+    .btn-outline:hover { background: #ede5fb !important; }
+    .card:hover { box-shadow: 0 16px 32px -14px rgba(23,20,38,.32) !important; }
+    .ch-row:hover { background: #f7f6fb !important; }
+    .soc:hover { background: #ede5fb !important; color: #6d3bc4 !important; }
+    .icon-btn:hover { background: #f7f6fb !important; color: #171426 !important; }
+    .foot-link:hover { color: #6d3bc4 !important; }
+    .rec:hover img { box-shadow: 0 14px 28px -12px rgba(109,59,196,.5) !important; }
+  </style>
+</helmet>
+<div style="width: 1440px; min-height: 2000px; background: #ffffff; color: #171426; font-family: 'Nunito Sans', system-ui, sans-serif; font-size: 14px; line-height: 1.4; overflow: hidden; display: flex; flex-direction: column;">
+
+  <!-- ===== Header ===== -->
+  <header style="height: 64px; flex: none; background: #ffffff; box-shadow: 0 8px 24px -12px rgba(23,20,38,.25); position: relative; z-index: 3;">
+    <div style="width: 1280px; margin: 0 auto; height: 64px; display: flex; align-items: center; gap: 24px;">
+      <a href="#" style="display: flex; align-items: center; gap: 10px; color: #171426; flex: none;">
+        <svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9" fill="#6d3bc4"></rect><path d="M11.5 23V9h6a4.5 4.5 0 0 1 0 9h-6" fill="none" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        <span style="font-family: 'Outfit', system-ui, sans-serif; font-size: 20px; letter-spacing: -0.01em; line-height: 1;"><span style="font-weight: 800;">PAL</span><span style="font-weight: 400;">Scans</span></span>
+      </a>
+      <nav style="display: flex; align-items: center; gap: 4px;">
+        <a class="nav" href="#" style="font-size: 14px; font-weight: 600; color: #625d7a; padding: 8px 14px; border-radius: 999px;">Home</a>
+        <a class="nav" href="#" style="font-size: 14px; font-weight: 700; color: #6d3bc4; background: #ede5fb; padding: 8px 14px; border-radius: 999px;">Browse</a>
+        <a class="nav" href="#" style="font-size: 14px; font-weight: 600; color: #625d7a; padding: 8px 14px; border-radius: 999px;">Rankings</a>
+        <a class="nav" href="#" style="font-size: 14px; font-weight: 600; color: #625d7a; padding: 8px 14px; border-radius: 999px;">Genres</a>
+        <a class="nav" href="#" style="font-size: 14px; font-weight: 600; color: #625d7a; padding: 8px 14px; border-radius: 999px;">Bookmarks</a>
+      </nav>
+      <div style="margin-left: auto; display: flex; align-items: center; gap: 8px; width: 320px; height: 40px; padding: 0 8px 0 12px; background: #f7f6fb; border: 1px solid #e4e1ee; border-radius: 12px; color: #625d7a;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+        <span style="flex: 1; font-size: 14px;">Search series…</span>
+        <span style="font-size: 11px; font-weight: 700; padding: 3px 7px; border: 1px solid #e4e1ee; border-radius: 6px; background: #ffffff; color: #625d7a; line-height: 1;">⌘K</span>
+      </div>
+      <a class="icon-btn" href="#" style="width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; color: #625d7a; position: relative;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"></path><path d="M10 21h4"></path></svg>
+        <span style="position: absolute; top: 8px; right: 9px; width: 8px; height: 8px; border-radius: 50%; background: #c93a3a; border: 2px solid #ffffff;"></span>
+      </a>
+      <a class="btn-primary" href="#" style="display: inline-flex; align-items: center; gap: 7px; height: 38px; padding: 0 18px; border-radius: 999px; background: #6d3bc4; color: #ffffff; font-weight: 700; font-size: 13px; box-shadow: 0 8px 20px -10px rgba(109,59,196,.7);">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17l-1-10 5.5 4L12 5l3.5 6L21 7l-1 10z"></path><path d="M5 20h14"></path></svg>
+        Premium
+      </a>
+      <a href="#" style="width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #6d3bc4 0%, #d99a12 100%); display: flex; align-items: center; justify-content: center; color: #ffffff; box-shadow: 0 0 0 2px #ffffff, 0 0 0 3px #e4e1ee;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></svg>
+      </a>
+    </div>
+  </header>
+
+  <!-- ===== Series hero ===== -->
+  <section style="width: 1280px; margin: 20px auto 0; flex: none; display: flex; gap: 32px; align-items: flex-start;">
+    <div style="flex: none; background: #ffffff; border-radius: 16px; padding: 10px; box-shadow: 0 8px 24px -12px rgba(23,20,38,.25), 0 0 0 1px #e4e1ee;">
+      <img src="cover-01.svg" alt="" style="width: 240px; height: 360px; aspect-ratio: 2 / 3; object-fit: cover; border-radius: 10px; display: block;">
+    </div>
+
+    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px; padding-top: 4px;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; padding: 4px 10px; border-radius: 999px; color: #c93a3a; background: #fbe7e7;">Manhwa</span>
+        <span style="font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; padding: 4px 10px; border-radius: 999px; color: #1f7a3f; background: #e2f5e8;">Ongoing</span>
+        <span style="font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; padding: 4px 10px; border-radius: 999px; color: #625d7a; background: #f7f6fb; border: 1px solid #e4e1ee;">2023</span>
+      </div>
+
+      <h1 style="margin: 0; font-family: 'Outfit', system-ui, sans-serif; font-size: 40px; font-weight: 700; line-height: 1.1; letter-spacing: -0.01em; color: #171426;">Return of the Frost Monarch</h1>
+
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; max-width: 600px;">
+        <div style="padding: 12px 16px; border-radius: 12px; background: #fdf3dc; display: flex; flex-direction: column; gap: 2px;">
+          <span style="font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #8a5f05;">Rating</span>
+          <span style="display: flex; align-items: center; gap: 6px; font-family: 'Outfit', system-ui, sans-serif; font-size: 24px; font-weight: 700; line-height: 1.1; color: #171426;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="#d99a12" stroke="#d99a12" stroke-width="1.5" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1.1 5.9L12 16.9l-5.3 2.8 1.1-5.9-4.3-4.1 5.9-.8z"></path></svg>9.6
+          </span>
+          <span style="font-size: 12px; color: #625d7a;">12,481 ratings</span>
+        </div>
+        <div style="padding: 12px 16px; border-radius: 12px; background: #ede5fb; display: flex; flex-direction: column; gap: 2px;">
+          <span style="font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #6d3bc4;">Chapters</span>
+          <span style="font-family: 'Outfit', system-ui, sans-serif; font-size: 24px; font-weight: 700; line-height: 1.1; color: #171426;">301</span>
+          <span style="font-size: 12px; color: #625d7a;">Ch. 301 · 12 min ago</span>
+        </div>
+        <div style="padding: 12px 16px; border-radius: 12px; background: #dff5f1; display: flex; flex-direction: column; gap: 2px;">
+          <span style="font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #0f8c7f;">Bookmarks</span>
+          <span style="font-family: 'Outfit', system-ui, sans-serif; font-size: 24px; font-weight: 700; line-height: 1.1; color: #171426;">81.3K</span>
+          <span style="font-size: 12px; color: #625d7a;">Rank #2</span>
+        </div>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 24px; font-size: 14px; color: #171426;">
+        <span><span style="color: #625d7a;">Author</span>&nbsp; <a href="#" style="font-weight: 700; color: #171426;">Han Seo-jin</a></span>
+        <span style="width: 1px; height: 14px; background: #e4e1ee;"></span>
+        <span><span style="color: #625d7a;">Artist</span>&nbsp; <a href="#" style="font-weight: 700; color: #171426;">Studio Nocturne</a></span>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+        <a href="#" style="font-size: 12px; font-weight: 700; padding: 5px 12px; border-radius: 999px; color: #c93a3a; background: #fbe7e7;">Action</a>
+        <a href="#" style="font-size: 12px; font-weight: 700; padding: 5px 12px; border-radius: 999px; color: #6d3bc4; background: #ede5fb;">Fantasy</a>
+        <a href="#" style="font-size: 12px; font-weight: 700; padding: 5px 12px; border-radius: 999px; color: #0f8c7f; background: #dff5f1;">Regression</a>
+        <a href="#" style="font-size: 12px; font-weight: 700; padding: 5px 12px; border-radius: 999px; color: #2f63c9; background: #e3ecfb;">Martial Arts</a>
+        <a href="#" style="font-size: 12px; font-weight: 700; padding: 5px 12px; border-radius: 999px; color: #8a5f05; background: #fdf3dc;">Revenge</a>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 10px; margin-top: 4px;">
+        <a class="btn-primary" href="#" style="display: inline-flex; align-items: center; gap: 8px; height: 42px; padding: 0 22px; border-radius: 999px; background: #6d3bc4; color: #ffffff; font-weight: 700; font-size: 14px; box-shadow: 0 10px 24px -10px rgba(109,59,196,.7);">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"></path></svg>
+          Continue Ch. 288
+        </a>
+        <a class="btn-outline" href="#" style="display: inline-flex; align-items: center; gap: 8px; height: 42px; padding: 0 18px; border-radius: 999px; border: 1.5px solid #6d3bc4; color: #6d3bc4; font-weight: 700; font-size: 14px;">Read first</a>
+        <a class="btn-outline" href="#" style="display: inline-flex; align-items: center; gap: 8px; height: 42px; padding: 0 18px; border-radius: 999px; border: 1px solid #e4e1ee; color: #171426; font-weight: 700; font-size: 14px; background: #ffffff;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4h12v17l-6-4-6 4z"></path></svg>
+          Bookmark
+        </a>
+        <a class="btn-outline" href="#" style="display: inline-flex; align-items: center; gap: 8px; height: 42px; padding: 0 18px; border-radius: 999px; border: 1px solid #e4e1ee; color: #171426; font-weight: 700; font-size: 14px; background: #ffffff;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1.1 5.9L12 16.9l-5.3 2.8 1.1-5.9-4.3-4.1 5.9-.8z"></path></svg>
+          Rate
+        </a>
+        <a class="btn-outline" href="#" style="display: inline-flex; align-items: center; gap: 8px; height: 42px; padding: 0 8px 0 18px; border-radius: 999px; border: 1px solid #e4e1ee; color: #171426; font-weight: 700; font-size: 14px; background: #ffffff;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"></path><path d="M7 10l5 5 5-5"></path><path d="M4 19h16"></path></svg>
+          Download
+          <span style="display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; padding: 5px 9px; border-radius: 999px; background: #ede5fb; color: #6d3bc4;">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>Premium
+          </span>
+        </a>
+      </div>
+
+      <p style="margin: 0; font-size: 13px; color: #625d7a;">Alternative titles: 서리 군주의 귀환 · Frost Monarch's Return</p>
+    </div>
+  </section>
+
+  <!-- ===== Leaderboard ad ===== -->
+  <div style="width: 1280px; margin: 20px auto 0; flex: none; display: flex; justify-content: center;">
+    <div style="width: 728px; height: 90px; border: 1.5px dashed #c9c3dc; border-radius: 10px; background: #fbfaff; display: flex; align-items: center; justify-content: center; font-variant-caps: all-small-caps; letter-spacing: .12em; font-size: 15px; font-weight: 700; color: #9a95b3;">AD · Leaderboard 728×90</div>
+  </div>
+
+  <!-- ===== Tabs ===== -->
+  <div style="width: 1280px; margin: 20px auto 0; flex: none; display: flex; align-items: center; gap: 8px;">
+    <a href="#" style="display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 16px; border-radius: 999px; background: #6d3bc4; color: #ffffff; font-weight: 700; font-size: 13px;">Chapters<span style="font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 999px; background: rgba(255,255,255,.2); color: #ffffff;">301</span></a>
+    <a class="btn-outline" href="#" style="display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 16px; border-radius: 999px; background: #ffffff; border: 1px solid #e4e1ee; color: #625d7a; font-weight: 700; font-size: 13px;">Comments</a>
+    <a class="btn-outline" href="#" style="display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 16px; border-radius: 999px; background: #ffffff; border: 1px solid #e4e1ee; color: #625d7a; font-weight: 700; font-size: 13px;">Recommended</a>
+  </div>
+
+  <!-- ===== Two columns ===== -->
+  <main style="width: 1280px; margin: 16px auto 0; flex: none; display: flex; gap: 24px; align-items: flex-start;">
+
+    <!-- Left: chapter list -->
+    <section style="width: 840px; flex: none; background: #ffffff; border-radius: 14px; box-shadow: 0 8px 24px -12px rgba(23,20,38,.25), 0 0 0 1px #e4e1ee; overflow: hidden;">
+      <div style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid #e4e1ee; background: #ffffff;">
+        <div style="display: flex; align-items: center; gap: 8px; width: 280px; height: 36px; padding: 0 12px; background: #f7f6fb; border: 1px solid #e4e1ee; border-radius: 10px; color: #625d7a;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+          <span style="font-size: 13px;">Search chapters</span>
+        </div>
+        <span style="font-size: 13px; color: #625d7a; margin-left: 4px;">301 chapters</span>
+        <div style="margin-left: auto; display: flex; padding: 3px; background: #f7f6fb; border: 1px solid #e4e1ee; border-radius: 999px;">
+          <span style="font-size: 12px; font-weight: 700; padding: 5px 14px; border-radius: 999px; background: #ffffff; color: #6d3bc4; box-shadow: 0 2px 6px -2px rgba(23,20,38,.3);">Newest</span>
+          <span style="font-size: 12px; font-weight: 700; padding: 5px 14px; border-radius: 999px; color: #625d7a;">Oldest</span>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column;">
+        <a class="ch-row" href="#" style="display: flex; align-items: center; gap: 14px; height: 56px; padding: 0 16px; border-bottom: 1px solid #e4e1ee; color: #171426; background: #fbfaff;">
+          <span style="width: 36px; height: 36px; border-radius: 10px; background: #ede5fb; color: #6d3bc4; display: flex; align-items: center; justify-content: center; flex: none;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg></span>
+          <span style="font-family: 'Outfit', system-ui, sans-serif; font-size: 16px; font-weight: 700; width: 90px;">Ch. 301</span>
+          <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: #6d3bc4; color: #ffffff;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 17l-1-10 5.5 4L12 5l3.5 6L21 7l-1 10z"></path><path d="M5 20h14"></path></svg>Premium · free in 23h
+          </span>
+          <span style="margin-left: auto; font-size: 13px; color: #625d7a;">12 min ago</span>
+          <span style="width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #9a95b3; flex: none;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"></path><path d="M7 10l5 5 5-5"></path><path d="M4 19h16"></path></svg></span>
+        </a>
+        <a class="ch-row" href="#" style="display: flex; align-items: center; gap: 14px; height: 56px; padding: 0 16px; border-bottom: 1px solid #e4e1ee; color: #171426;">
+          <span style="width: 36px; height: 36px; border-radius: 10px; background: #f7f6fb; color: #625d7a; display: flex; align-items: center; justify-content: center; flex: none;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"></path><path d="M4 19a2 2 0 0 1 2-2h13"></path></svg></span>
+          <span style="font-family: 'Outfit', system-ui, sans-serif; font-size: 16px; font-weight: 700; width: 90px;">Ch. 300</span>
+          <span style="margin-left: auto; font-size: 13px; color: #625d7a;">3 days ago</span>
+          <span style="width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #9a95b3; flex: none;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"></path><path d="M7 10l5 5 5-5"></path><path d="M4 19h16"></path></svg></span>
+        </a>
+        <a class="ch-row" href="#" style="display: flex; align-items: center; gap: 14px; height: 56px; padding: 0 16px; border-bottom: 1px solid #e4e1ee; color: #171426;">
+          <span style="width: 36px; height: 36px; border-radius: 10px; background: #f7f6fb; color: #625d7a; display: flex; align-items: center; justify-content: center; flex: none;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"></path><path d="M4 19a2 2 0 0 1 2-2h13"></path></svg></span>
+          <span style="font-family: 'Outfit', system-ui, sans-serif; font-size: 16px; font-weight: 700; width: 90px;">Ch. 299</span>
+          <span style="margin-left: auto; font-size: 13px; color: #625d7a;">6 days ago</span>
+          <span style="width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #9a95b3; flex: none;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"></path><path d="M7 10l5 5 5-5"></path><path d="M4 19h16"></path></svg></span>
+        </a>
+        <a class="ch-row" href="#" style="display: flex; align-items: center; gap: 14px; height: 56px; padding: 0 16px; border-bottom: 1px solid #e4e1ee; color: #171426;">
+          <span style="width: 36px; height: 36px; border-radius: 10px; background: #f7f6fb; color: #625d7a; display: flex; align-items: center; justify-content: center; flex: none;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"></path><path d="M4 19a2 2 0 0 1 2-2h13"></path></svg></span>
+          <span style="font-family: 'Outfit', system-ui, sans-serif; font-size: 16px; font-weight: 700; width: 90px;">Ch. 298</span>
+          <span style="margin-left: auto; font-size: 13px; color: #625d7a;">last week</span>
+          <span style="width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #9a95b3; flex: none;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"></path><path d="M7 10l5 5 5-5"></path><path d="M4 19h16"></path></svg></span>
+        </a>
+        <a class="ch-row" href="#" style="display: flex; align-items: center; gap: 14px; height: 56px; padding: 0 16px; border-bottom: 1px solid #e4e1ee; color: #171426;">
+          <span style="width: 36px; height: 36px; border-radius: 10px; background: #f7f6fb; color: #625d7a; display: flex; align-items: center; justify-content: center; flex: none;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"></path><path d="M4 19a2 2 0 0 1 2-2h13"></path></svg></span>
+          <span style="font-family: 'Outfit', system-ui, sans-serif; font-size: 16px; font-weight: 700; width: 90px;">Ch. 297</span>
+          <span style="margin-left: auto; font-size: 13px; color: #625d7a;">last week</span>
+          <span style="width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #9a95b3; flex: none;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"></path><path d="M7 10l5 5 5-5"></path><path d="M4 19h16"></path></svg></span>
+        </a>
+        <a class="ch-row" href="#" style="display: flex; align-items: center; gap: 14px; height: 56px; padding: 0 16px; border-bottom: 1px solid #e4e1ee; color: #171426;">
+          <span style="width: 36px; height: 36px; border-radius: 10px; background: #f7f6fb; color: #625d7a; display: flex; align-items: center; justify-content: center; flex: none;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"></path><path d="M4 19a2 2 0 0 1 2-2h13"></path></svg></span>
+          <span style="font-family: 'Outfit', system-ui, sans-serif; font-size: 16px; font-weight: 700; width: 90px;">Ch. 296</span>
+          <span style="margin-left: auto; font-size: 13px; color: #625d7a;">2 weeks ago</span>
+          <span style="width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #9a95b3; flex: none;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"></path><path d="M7 10l5 5 5-5"></path><path d="M4 19h16"></path></svg></span>
+        </a>
+        <a class="ch-row" href="#" style="display: flex; align-items: center; gap: 14px; height: 56px; padding: 0 16px; border-bottom: 1px solid #e4e1ee; color: #171426;">
+          <span style="width: 36px; height: 36px; border-radius: 10px; background: #f7f6fb; color: #625d7a; display: flex; align-items: center; justify-content: center; flex: none;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"></path><path d="M4 19a2 2 0 0 1 2-2h13"></path></svg></span>
+          <span style="font-family: 'Outfit', system-ui, sans-serif; font-size: 16px; font-weight: 700; width: 90px;">Ch. 295</span>
+          <span style="margin-left: auto; font-size: 13px; color: #625d7a;">2 weeks ago</span>
+          <span style="width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #9a95b3; flex: none;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"></path><path d="M7 10l5 5 5-5"></path><path d="M4 19h16"></path></svg></span>
+        </a>
+        <a class="ch-row" href="#" style="display: flex; align-items: center; gap: 14px; height: 56px; padding: 0 16px; border-bottom: 1px solid #e4e1ee; color: #171426;">
+          <span style="width: 36px; height: 36px; border-radius: 10px; background: #f7f6fb; color: #625d7a; display: flex; align-items: center; justify-content: center; flex: none;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"></path><path d="M4 19a2 2 0 0 1 2-2h13"></path></svg></span>
+          <span style="font-family: 'Outfit', system-ui, sans-serif; font-size: 16px; font-weight: 700; width: 90px;">Ch. 294</span>
+          <span style="margin-left: auto; font-size: 13px; color: #625d7a;">3 weeks ago</span>
+          <span style="width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #9a95b3; flex: none;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"></path><path d="M7 10l5 5 5-5"></path><path d="M4 19h16"></path></svg></span>
+        </a>
+        <a class="ch-row" href="#" style="display: flex; align-items: center; gap: 14px; height: 56px; padding: 0 16px; border-bottom: 1px solid #e4e1ee; color: #171426;">
+          <span style="width: 36px; height: 36px; border-radius: 10px; background: #f7f6fb; color: #625d7a; display: flex; align-items: center; justify-content: center; flex: none;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"></path><path d="M4 19a2 2 0 0 1 2-2h13"></path></svg></span>
+          <span style="font-family: 'Outfit', system-ui, sans-serif; font-size: 16px; font-weight: 700; width: 90px;">Ch. 293</span>
+          <span style="margin-left: auto; font-size: 13px; color: #625d7a;">3 weeks ago</span>
+          <span style="width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #9a95b3; flex: none;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"></path><path d="M7 10l5 5 5-5"></path><path d="M4 19h16"></path></svg></span>
+        </a>
+        <a class="ch-row" href="#" style="display: flex; align-items: center; gap: 14px; height: 56px; padding: 0 16px; border-bottom: 1px solid #e4e1ee; color: #171426;">
+          <span style="width: 36px; height: 36px; border-radius: 10px; background: #f7f6fb; color: #625d7a; display: flex; align-items: center; justify-content: center; flex: none;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"></path><path d="M4 19a2 2 0 0 1 2-2h13"></path></svg></span>
+          <span style="font-family: 'Outfit', system-ui, sans-serif; font-size: 16px; font-weight: 700; width: 90px;">Ch. 292</span>
+          <span style="margin-left: auto; font-size: 13px; color: #625d7a;">last month</span>
+          <span style="width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #9a95b3; flex: none;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"></path><path d="M7 10l5 5 5-5"></path><path d="M4 19h16"></path></svg></span>
+        </a>
+      </div>
+
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: #fbfaff;">
+        <span style="font-size: 13px; color: #625d7a;">Ch. 292 – 301 of 301</span>
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <span style="width: 32px; height: 32px; border-radius: 8px; border: 1px solid #e4e1ee; background: #ffffff; display: flex; align-items: center; justify-content: center; color: #9a95b3;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg></span>
+          <span style="min-width: 32px; height: 32px; padding: 0 10px; border-radius: 8px; background: #6d3bc4; color: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700;">1</span>
+          <span style="min-width: 32px; height: 32px; padding: 0 10px; border-radius: 8px; border: 1px solid #e4e1ee; background: #ffffff; color: #171426; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700;">2</span>
+          <span style="min-width: 32px; height: 32px; padding: 0 10px; border-radius: 8px; border: 1px solid #e4e1ee; background: #ffffff; color: #171426; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700;">3</span>
+          <span style="font-size: 13px; color: #625d7a; padding: 0 4px;">…</span>
+          <span style="min-width: 32px; height: 32px; padding: 0 10px; border-radius: 8px; border: 1px solid #e4e1ee; background: #ffffff; color: #171426; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700;">31</span>
+          <span style="width: 32px; height: 32px; border-radius: 8px; border: 1px solid #e4e1ee; background: #ffffff; display: flex; align-items: center; justify-content: center; color: #171426;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Right: synopsis, novel, MPU, recommended -->
+    <aside style="width: 416px; flex: none; display: flex; flex-direction: column; gap: 16px;">
+      <section style="background: #ffffff; border-radius: 14px; padding: 16px 18px; box-shadow: 0 8px 24px -12px rgba(23,20,38,.25), 0 0 0 1px #e4e1ee;">
+        <h2 style="margin: 0 0 6px; font-family: 'Outfit', system-ui, sans-serif; font-size: 17px; font-weight: 700; line-height: 1.2;">Synopsis</h2>
+        <p style="margin: 0; font-size: 13px; line-height: 1.55; color: #625d7a;">Executed by the empire he built, Kael Vantheris wakes three hundred years in the past with his memories intact and his power gone. The Frost Monarch has one winter to rebuild an army, and this time he remembers every betrayal.</p>
+      </section>
+
+      <a class="card" href="#" style="display: flex; align-items: center; gap: 14px; padding: 12px 14px; border-radius: 14px; background: linear-gradient(135deg, #ede5fb 0%, #f7f6fb 100%); color: #171426; box-shadow: 0 8px 24px -12px rgba(23,20,38,.25), 0 0 0 1px #e4e1ee;">
+        <span style="width: 44px; height: 44px; border-radius: 12px; background: #6d3bc4; color: #ffffff; display: flex; align-items: center; justify-content: center; flex: none; box-shadow: 0 8px 20px -10px rgba(109,59,196,.7);"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"></path><path d="M4 19a2 2 0 0 1 2-2h13"></path></svg></span>
+        <span style="min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 2px;">
+          <span style="font-family: 'Outfit', system-ui, sans-serif; font-size: 16px; font-weight: 700; line-height: 1.2;">Read the novel</span>
+          <span style="font-size: 12px; color: #625d7a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Return of the Frost Monarch · Han Seo-jin</span>
+        </span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6d3bc4" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>
+      </a>
+
+      <div style="display: flex; justify-content: center;">
+        <div style="width: 300px; height: 250px; border: 1.5px dashed #c9c3dc; border-radius: 10px; background: #fbfaff; display: flex; align-items: center; justify-content: center; font-variant-caps: all-small-caps; letter-spacing: .12em; font-size: 15px; font-weight: 700; color: #9a95b3;">AD · MPU 300×250</div>
+      </div>
+
+      <section>
+        <div style="display: flex; align-items: center; justify-content: space-between; height: 26px; margin-bottom: 8px;">
+          <h2 style="margin: 0; font-family: 'Outfit', system-ui, sans-serif; font-size: 17px; font-weight: 700; line-height: 1.2;">Recommended</h2>
+          <a href="#" style="font-size: 13px; font-weight: 700; color: #6d3bc4;">Browse</a>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px;">
+          <a class="rec" href="#" style="display: flex; flex-direction: column; align-items: center; gap: 6px; color: #171426; text-align: center;">
+            <img src="cover-02.svg" alt="" style="width: 84px; height: 126px; aspect-ratio: 2 / 3; object-fit: cover; border-radius: 8px; display: block; box-shadow: 0 8px 24px -12px rgba(23,20,38,.25);">
+            <span style="font-size: 13px; font-weight: 700; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">Ashfall Regent</span>
+          </a>
+          <a class="rec" href="#" style="display: flex; flex-direction: column; align-items: center; gap: 6px; color: #171426; text-align: center;">
+            <img src="cover-03.svg" alt="" style="width: 84px; height: 126px; aspect-ratio: 2 / 3; object-fit: cover; border-radius: 8px; display: block; box-shadow: 0 8px 24px -12px rgba(23,20,38,.25);">
+            <span style="font-size: 13px; font-weight: 700; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">Solo Cartographer</span>
+          </a>
+          <a class="rec" href="#" style="display: flex; flex-direction: column; align-items: center; gap: 6px; color: #171426; text-align: center;">
+            <img src="cover-05.svg" alt="" style="width: 84px; height: 126px; aspect-ratio: 2 / 3; object-fit: cover; border-radius: 8px; display: block; box-shadow: 0 8px 24px -12px rgba(23,20,38,.25);">
+            <span style="font-size: 13px; font-weight: 700; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">The Ninth Sword Saint</span>
+          </a>
+          <a class="rec" href="#" style="display: flex; flex-direction: column; align-items: center; gap: 6px; color: #171426; text-align: center;">
+            <img src="cover-07.svg" alt="" style="width: 84px; height: 126px; aspect-ratio: 2 / 3; object-fit: cover; border-radius: 8px; display: block; box-shadow: 0 8px 24px -12px rgba(23,20,38,.25);">
+            <span style="font-size: 13px; font-weight: 700; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">Dawnbreaker Guild</span>
+          </a>
+          <a class="rec" href="#" style="display: flex; flex-direction: column; align-items: center; gap: 6px; color: #171426; text-align: center;">
+            <img src="cover-09.svg" alt="" style="width: 84px; height: 126px; aspect-ratio: 2 / 3; object-fit: cover; border-radius: 8px; display: block; box-shadow: 0 8px 24px -12px rgba(23,20,38,.25);">
+            <span style="font-size: 13px; font-weight: 700; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">Gilded Dungeon Broker</span>
+          </a>
+          <a class="rec" href="#" style="display: flex; flex-direction: column; align-items: center; gap: 6px; color: #171426; text-align: center;">
+            <img src="cover-11.svg" alt="" style="width: 84px; height: 126px; aspect-ratio: 2 / 3; object-fit: cover; border-radius: 8px; display: block; box-shadow: 0 8px 24px -12px rgba(23,20,38,.25);">
+            <span style="font-size: 13px; font-weight: 700; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">Blood-Iron Academy</span>
+          </a>
+        </div>
+      </section>
+    </aside>
+  </main>
+
+  <!-- ===== Footer ===== -->
+  <footer style="margin-top: auto; flex: none; background: #efedf5; border-top: 1px solid #e4e1ee;">
+    <div style="width: 1280px; margin: 0 auto; padding: 32px 0 20px;">
+      <div style="display: flex; gap: 40px; align-items: flex-start;">
+        <div style="width: 360px; flex: none;">
+          <a href="#" style="display: flex; align-items: center; gap: 10px; color: #171426;">
+            <svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9" fill="#6d3bc4"></rect><path d="M11.5 23V9h6a4.5 4.5 0 0 1 0 9h-6" fill="none" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            <span style="font-family: 'Outfit', system-ui, sans-serif; font-size: 20px; letter-spacing: -0.01em; line-height: 1;"><span style="font-weight: 800;">PAL</span><span style="font-weight: 400;">Scans</span></span>
+          </a>
+          <p style="margin: 14px 0 0; font-size: 14px; line-height: 1.5; color: #625d7a; max-width: 300px;">Read manhwa, manga and manhua, updated daily.</p>
+        </div>
+        <div style="flex: 1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px;">
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <span style="font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #625d7a; margin-bottom: 4px;">Browse</span>
+            <a class="foot-link" href="#" style="font-size: 14px; color: #171426;">Latest updates</a>
+            <a class="foot-link" href="#" style="font-size: 14px; color: #171426;">Popular</a>
+            <a class="foot-link" href="#" style="font-size: 14px; color: #171426;">Genres</a>
+            <a class="foot-link" href="#" style="font-size: 14px; color: #171426;">Rankings</a>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <span style="font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #625d7a; margin-bottom: 4px;">Account</span>
+            <a class="foot-link" href="#" style="font-size: 14px; color: #171426;">Bookmarks</a>
+            <a class="foot-link" href="#" style="font-size: 14px; color: #171426;">Reading history</a>
+            <a class="foot-link" href="#" style="font-size: 14px; color: #171426;">Notifications</a>
+            <a class="foot-link" href="#" style="font-size: 14px; color: #171426;">PALScans Premium</a>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <span style="font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #625d7a; margin-bottom: 4px;">Legal</span>
+            <a class="foot-link" href="#" style="font-size: 14px; color: #171426;">DMCA</a>
+            <a class="foot-link" href="#" style="font-size: 14px; color: #171426;">Terms of service</a>
+            <a class="foot-link" href="#" style="font-size: 14px; color: #171426;">Privacy policy</a>
+            <a class="foot-link" href="#" style="font-size: 14px; color: #171426;">Contact</a>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 12px; align-items: flex-start;">
+            <span style="font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #625d7a;">Community</span>
+            <a class="btn-primary" href="#" style="display: inline-flex; align-items: center; gap: 8px; height: 38px; padding: 0 16px; border-radius: 999px; background: #6d3bc4; color: #ffffff; font-weight: 700; font-size: 13px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.5 5A15 15 0 0 1 12 4.6a15 15 0 0 1 3.5.4l.6 1.4a13 13 0 0 1 3.9 1.9l.3 8.4a10 10 0 0 1-4.8 2.9l-1-1.6a9 9 0 0 1-5 0l-1 1.6a10 10 0 0 1-4.8-2.9l.3-8.4A13 13 0 0 1 7.9 6.4z"></path><circle cx="9.5" cy="12.3" r="1.2"></circle><circle cx="14.5" cy="12.3" r="1.2"></circle></svg>
+              Join the Discord
+            </a>
+            <div style="display: flex; gap: 8px;">
+              <a class="soc" href="#" style="width: 32px; height: 32px; border-radius: 50%; background: #ffffff; border: 1px solid #e4e1ee; display: flex; align-items: center; justify-content: center; color: #625d7a;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 4l14 16"></path><path d="M19 4L5 20"></path></svg></a>
+              <a class="soc" href="#" style="width: 32px; height: 32px; border-radius: 50%; background: #ffffff; border: 1px solid #e4e1ee; display: flex; align-items: center; justify-content: center; color: #625d7a;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4.5"></rect><circle cx="12" cy="12" r="3.5"></circle><circle cx="17" cy="7" r="0.6" fill="currentColor"></circle></svg></a>
+              <a class="soc" href="#" style="width: 32px; height: 32px; border-radius: 50%; background: #ffffff; border: 1px solid #e4e1ee; display: flex; align-items: center; justify-content: center; color: #625d7a;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13.5" r="6.5"></circle><path d="M12 7l1.2-3.5 3 1"></path><path d="M9.5 15.5a3.5 3.5 0 0 0 5 0"></path><circle cx="9.7" cy="12.7" r="0.6" fill="currentColor"></circle><circle cx="14.3" cy="12.7" r="0.6" fill="currentColor"></circle></svg></a>
+              <a class="soc" href="#" style="width: 32px; height: 32px; border-radius: 50%; background: #ffffff; border: 1px solid #e4e1ee; display: flex; align-items: center; justify-content: center; color: #625d7a;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="4"></rect><path d="M10 9.5v5l4.5-2.5z"></path></svg></a>
+              <a class="soc" href="#" style="width: 32px; height: 32px; border-radius: 50%; background: #ffffff; border: 1px solid #e4e1ee; display: flex; align-items: center; justify-content: center; color: #625d7a;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 21v-7h2.5l.5-3h-3V9.2c0-.9.4-1.6 1.6-1.6H17V5.1A21 21 0 0 0 14.9 5C12.7 5 11 6.3 11 8.8V11H8.5v3H11v7"></path></svg></a>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="height: 1px; background: #e4e1ee; margin: 20px 0 14px;"></div>
+      <p style="margin: 0; font-size: 13px; color: #625d7a;">© 2026 PALScans. All series belong to their respective authors and publishers.</p>
+    </div>
+  </footer>
+
+</div>
+</x-dc>
+</body>
+</html>

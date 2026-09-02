@@ -1,0 +1,354 @@
+{
+ "pages": [
+  {
+   "id": "home",
+   "name": "Homepages \u00d76"
+  },
+  {
+   "id": "series",
+   "name": "Series pages \u00d76"
+  },
+  {
+   "id": "reader",
+   "name": "Readers \u00d76"
+  }
+ ],
+ "artboards": [
+  {
+   "file": "Main.dc.html",
+   "title": "A \u00b7 Violet Classic (ASURA-STYLE) \u2014 Home",
+   "x": 0,
+   "y": 0,
+   "w": 1440,
+   "h": 2200,
+   "page": "home"
+  },
+  {
+   "file": "HomeB.dc.html",
+   "title": "B \u00b7 Violet Refined (ASURA-STYLE) \u2014 Home",
+   "x": 1560,
+   "y": 0,
+   "w": 1440,
+   "h": 2200,
+   "page": "home"
+  },
+  {
+   "file": "HomeC.dc.html",
+   "title": "C \u00b7 Editorial Noir \u2014 Home",
+   "x": 3120,
+   "y": 0,
+   "w": 1440,
+   "h": 2200,
+   "page": "home"
+  },
+  {
+   "file": "HomeD.dc.html",
+   "title": "D \u00b7 Catalog Grid \u2014 Home",
+   "x": 0,
+   "y": 2460,
+   "w": 1440,
+   "h": 2200,
+   "page": "home"
+  },
+  {
+   "file": "HomeE.dc.html",
+   "title": "E \u00b7 Daylight \u2014 Home",
+   "x": 1560,
+   "y": 2460,
+   "w": 1440,
+   "h": 2000,
+   "page": "home"
+  },
+  {
+   "file": "HomeF.dc.html",
+   "title": "F \u00b7 Cinematic Rows \u2014 Home",
+   "x": 3120,
+   "y": 2460,
+   "w": 1440,
+   "h": 2200,
+   "page": "home"
+  },
+  {
+   "file": "SeriesA.dc.html",
+   "title": "A \u00b7 Violet Classic (ASURA-STYLE) \u2014 Series page",
+   "x": 0,
+   "y": 0,
+   "w": 1440,
+   "h": 2000,
+   "page": "series"
+  },
+  {
+   "file": "SeriesB.dc.html",
+   "title": "B \u00b7 Violet Refined (ASURA-STYLE) \u2014 Series page",
+   "x": 1560,
+   "y": 0,
+   "w": 1440,
+   "h": 2000,
+   "page": "series"
+  },
+  {
+   "file": "SeriesC.dc.html",
+   "title": "C \u00b7 Editorial Noir \u2014 Series page",
+   "x": 3120,
+   "y": 0,
+   "w": 1440,
+   "h": 2000,
+   "page": "series"
+  },
+  {
+   "file": "SeriesD.dc.html",
+   "title": "D \u00b7 Catalog Grid \u2014 Series page",
+   "x": 0,
+   "y": 2260,
+   "w": 1440,
+   "h": 2000,
+   "page": "series"
+  },
+  {
+   "file": "SeriesE.dc.html",
+   "title": "E \u00b7 Daylight \u2014 Series page",
+   "x": 1560,
+   "y": 2260,
+   "w": 1440,
+   "h": 2000,
+   "page": "series"
+  },
+  {
+   "file": "SeriesF.dc.html",
+   "title": "F \u00b7 Cinematic Rows \u2014 Series page",
+   "x": 3120,
+   "y": 2260,
+   "w": 1440,
+   "h": 2000,
+   "page": "series"
+  },
+  {
+   "file": "ReaderA.dc.html",
+   "title": "A \u00b7 Violet Classic (ASURA-STYLE) \u2014 Reader",
+   "x": 0,
+   "y": 0,
+   "w": 390,
+   "h": 844,
+   "page": "reader"
+  },
+  {
+   "file": "ReaderB.dc.html",
+   "title": "B \u00b7 Violet Refined (ASURA-STYLE) \u2014 Reader",
+   "x": 560,
+   "y": 0,
+   "w": 390,
+   "h": 844,
+   "page": "reader"
+  },
+  {
+   "file": "ReaderC.dc.html",
+   "title": "C \u00b7 Editorial Noir \u2014 Reader",
+   "x": 1120,
+   "y": 0,
+   "w": 390,
+   "h": 844,
+   "page": "reader"
+  },
+  {
+   "file": "ReaderD.dc.html",
+   "title": "D \u00b7 Catalog Grid \u2014 Reader",
+   "x": 1680,
+   "y": 0,
+   "w": 390,
+   "h": 844,
+   "page": "reader"
+  },
+  {
+   "file": "ReaderE.dc.html",
+   "title": "E \u00b7 Daylight \u2014 Reader",
+   "x": 2240,
+   "y": 0,
+   "w": 390,
+   "h": 844,
+   "page": "reader"
+  },
+  {
+   "file": "ReaderF.dc.html",
+   "title": "F \u00b7 Cinematic Rows \u2014 Reader",
+   "x": 2800,
+   "y": 0,
+   "w": 390,
+   "h": 844,
+   "page": "reader"
+  }
+ ],
+ "annotations": [
+  {
+   "id": "intro-home",
+   "x": 0,
+   "y": -420,
+   "w": 1440,
+   "text": "PALScans \u2014 six design directions, three pages each.\nA and B follow the familiar dark-violet manga-site layout (marked ASURA-STYLE). C\u2013F are deliberate alternatives.\nSame content in every direction so they compare fairly. Pick one direction, or mix: e.g. home from B, series from A, reader from F.\nAd slots are drawn as dashed boxes at final size; footer carries Discord + socials. Covers are placeholders.",
+   "page": "home"
+  },
+  {
+   "id": "intro-series",
+   "x": 0,
+   "y": -420,
+   "w": 1440,
+   "text": "Series page for 'Return of the Frost Monarch' in all six directions. Same stats, chapters and actions everywhere.",
+   "page": "series"
+  },
+  {
+   "id": "intro-reader",
+   "x": 0,
+   "y": -460,
+   "w": 1440,
+   "text": "Reader on a phone (390\u00d7844) \u2014 where reading actually happens. One ad after the last page, never between pages. Chrome shown visible; it hides on tap.",
+   "page": "reader"
+  },
+  {
+   "id": "home-A",
+   "x": 0,
+   "y": -150,
+   "w": 700,
+   "text": "A \u00b7 Violet Classic (ASURA-STYLE)\nThe layout your readers already know: carousel hero, updates grid, popular sidebar. Familiar and dense.\nTradeoff: looks like the rest of the category.",
+   "page": "home"
+  },
+  {
+   "id": "home-B",
+   "x": 1560,
+   "y": -150,
+   "w": 700,
+   "text": "B \u00b7 Violet Refined (ASURA-STYLE)\nSame information architecture, calmer execution: one featured card, a card grid, hairlines and glass.\nTradeoff: less content above the fold than A.",
+   "page": "home"
+  },
+  {
+   "id": "home-C",
+   "x": 3120,
+   "y": -150,
+   "w": 700,
+   "text": "C \u00b7 Editorial Noir\nMagazine treatment: one featured story, oversized numerals, whitespace. The most distinctive.\nTradeoff: fewer titles per screen; needs strong art direction to stay fresh.",
+   "page": "home"
+  },
+  {
+   "id": "home-D",
+   "x": 0,
+   "y": 2110,
+   "w": 700,
+   "text": "D \u00b7 Catalog Grid\nSearch and filters are the hero. Maximum density, mono numerals. Best for a big catalog and power users.\nTradeoff: no curation on the front page; the least emotive.",
+   "page": "home"
+  },
+  {
+   "id": "home-E",
+   "x": 1560,
+   "y": 2110,
+   "w": 700,
+   "text": "E \u00b7 Daylight\nThe light theme, proven end to end including the reader. Friendly, broad appeal.\nTradeoff: dark is the category norm; many readers will toggle.",
+   "page": "home"
+  },
+  {
+   "id": "home-F",
+   "x": 3120,
+   "y": 2110,
+   "w": 700,
+   "text": "F \u00b7 Cinematic Rows\nStreaming-app feel: full-bleed hero, horizontal rails, glass chrome. Strong on phones and big screens.\nTradeoff: rails hide depth; harder to scan forty updates at once.",
+   "page": "home"
+  },
+  {
+   "id": "series-A",
+   "x": 0,
+   "y": -150,
+   "w": 700,
+   "text": "A \u00b7 Violet Classic (ASURA-STYLE)\nThe layout your readers already know: carousel hero, updates grid, popular sidebar. Familiar and dense.\nTradeoff: looks like the rest of the category.",
+   "page": "series"
+  },
+  {
+   "id": "series-B",
+   "x": 1560,
+   "y": -150,
+   "w": 700,
+   "text": "B \u00b7 Violet Refined (ASURA-STYLE)\nSame information architecture, calmer execution: one featured card, a card grid, hairlines and glass.\nTradeoff: less content above the fold than A.",
+   "page": "series"
+  },
+  {
+   "id": "series-C",
+   "x": 3120,
+   "y": -150,
+   "w": 700,
+   "text": "C \u00b7 Editorial Noir\nMagazine treatment: one featured story, oversized numerals, whitespace. The most distinctive.\nTradeoff: fewer titles per screen; needs strong art direction to stay fresh.",
+   "page": "series"
+  },
+  {
+   "id": "series-D",
+   "x": 0,
+   "y": 1910,
+   "w": 700,
+   "text": "D \u00b7 Catalog Grid\nSearch and filters are the hero. Maximum density, mono numerals. Best for a big catalog and power users.\nTradeoff: no curation on the front page; the least emotive.",
+   "page": "series"
+  },
+  {
+   "id": "series-E",
+   "x": 1560,
+   "y": 1910,
+   "w": 700,
+   "text": "E \u00b7 Daylight\nThe light theme, proven end to end including the reader. Friendly, broad appeal.\nTradeoff: dark is the category norm; many readers will toggle.",
+   "page": "series"
+  },
+  {
+   "id": "series-F",
+   "x": 3120,
+   "y": 1910,
+   "w": 700,
+   "text": "F \u00b7 Cinematic Rows\nStreaming-app feel: full-bleed hero, horizontal rails, glass chrome. Strong on phones and big screens.\nTradeoff: rails hide depth; harder to scan forty updates at once.",
+   "page": "series"
+  },
+  {
+   "id": "reader-A",
+   "x": 0,
+   "y": -190,
+   "w": 390,
+   "text": "A \u00b7 Violet Classic (ASURA-STYLE)\nThe layout your readers already know: carousel hero, updates grid, popular sidebar. Familiar and dense.",
+   "page": "reader"
+  },
+  {
+   "id": "reader-B",
+   "x": 560,
+   "y": -190,
+   "w": 390,
+   "text": "B \u00b7 Violet Refined (ASURA-STYLE)\nSame information architecture, calmer execution: one featured card, a card grid, hairlines and glass.",
+   "page": "reader"
+  },
+  {
+   "id": "reader-C",
+   "x": 1120,
+   "y": -190,
+   "w": 390,
+   "text": "C \u00b7 Editorial Noir\nMagazine treatment: one featured story, oversized numerals, whitespace. The most distinctive.",
+   "page": "reader"
+  },
+  {
+   "id": "reader-D",
+   "x": 1680,
+   "y": -190,
+   "w": 390,
+   "text": "D \u00b7 Catalog Grid\nSearch and filters are the hero. Maximum density, mono numerals. Best for a big catalog and power users.",
+   "page": "reader"
+  },
+  {
+   "id": "reader-E",
+   "x": 2240,
+   "y": -190,
+   "w": 390,
+   "text": "E \u00b7 Daylight\nThe light theme, proven end to end including the reader. Friendly, broad appeal.",
+   "page": "reader"
+  },
+  {
+   "id": "reader-F",
+   "x": 2800,
+   "y": -190,
+   "w": 390,
+   "text": "F \u00b7 Cinematic Rows\nStreaming-app feel: full-bleed hero, horizontal rails, glass chrome. Strong on phones and big screens.",
+   "page": "reader"
+  }
+ ],
+ "launch": {
+  "view": "canvas",
+  "page": "home"
+ }
+}
