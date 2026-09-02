@@ -1,0 +1,40 @@
+{
+  "name": "@palscans/db",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+    "./schema": { "types": "./dist/schema/index.d.ts", "default": "./dist/schema/index.js" },
+    "./client": { "types": "./dist/client.d.ts", "default": "./dist/client.js" },
+    "./migrate": { "types": "./dist/migrate.d.ts", "default": "./dist/migrate.js" },
+    "./queries": { "types": "./dist/queries/index.d.ts", "default": "./dist/queries/index.js" },
+    "./seed": { "types": "./dist/seed/index.d.ts", "default": "./dist/seed/index.js" }
+  },
+  "files": ["dist", "drizzle"],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "generate": "drizzle-kit generate",
+    "migrate": "node --env-file-if-exists=../../.env --import tsx src/migrate.ts",
+    "seed": "node --env-file-if-exists=../../.env --import tsx src/seed/run.ts",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.5.8",
+    "@node-rs/argon2": "^2.2.0",
+    "@palscans/core": "workspace:*",
+    "drizzle-orm": "^0.45.2",
+    "postgres": "^3.4.9"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.0",
+    "drizzle-kit": "^0.31.10",
+    "tsx": "^4.23.0",
+    "typescript": "^5.9.0",
+    "vitest": "^4.1.0"
+  }
+}
