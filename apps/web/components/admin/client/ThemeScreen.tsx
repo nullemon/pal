@@ -604,6 +604,17 @@ export function ThemeScreen({
                 </div>
               </div>
               <div className="flex flex-col gap-1">
+                <Label>{m.glow}</Label>
+                <div className="flex h-9 items-center">
+                  <Toggle
+                    size="sm"
+                    checked={doc.shape.glow}
+                    onChange={(v) => set((d) => ({ ...d, shape: { ...d.shape, glow: v } }))}
+                    label={m.glow}
+                  />
+                </div>
+              </div>
+              <div className="flex flex-col gap-1">
                 <Label>{m.cardStyle}</Label>
                 <Segmented
                   size="sm"

@@ -134,7 +134,8 @@
 
 :root {
   color-scheme: dark;
-  --glow-brand: 0 0 0 1px var(--color-brand-dim), 0 6px 24px -10px var(--color-brand);
+  /* Off by default; Appearance -> Theme turns it on (lib/appearance/resolve.ts overrides this). */
+  --glow-brand: none;
 }
 
 @layer base {

@@ -127,7 +127,9 @@ export const resolveAppearance = (doc: AppearanceDoc): ResolvedAppearance => {
     '--color-status-completed': doc.color.status.completed,
     '--color-status-hiatus': doc.color.status.hiatus,
     '--color-status-cancelled': doc.color.status.cancelled,
-    '--glow-brand': `0 0 0 1px ${hexOf(dim)}, 0 6px 24px -10px ${brandHex}`,
+    '--glow-brand': doc.shape.glow
+      ? `0 0 0 1px ${hexOf(dim)}, 0 6px 24px -10px ${brandHex}`
+      : 'none',
   }
 
   // ---- light --------------------------------------------------------------------------
@@ -171,7 +173,9 @@ export const resolveAppearance = (doc: AppearanceDoc): ResolvedAppearance => {
     '--color-status-cancelled': darkenFor(doc.color.status.cancelled),
     '--shadow-1': '0 1px 2px rgb(0 0 0 / 0.08)',
     '--shadow-2': '0 10px 30px -12px rgb(0 0 0 / 0.2)',
-    '--glow-brand': `0 0 0 1px ${hexOf({ ...brandLight, l: 0.8, c: brandLight.c * 0.5 })}, 0 6px 24px -10px ${brandLightHex}`,
+    '--glow-brand': doc.shape.glow
+      ? `0 0 0 1px ${hexOf({ ...brandLight, l: 0.8, c: brandLight.c * 0.5 })}, 0 6px 24px -10px ${brandLightHex}`
+      : 'none',
   }
 
   // ---- shared (typography, shape) -------------------------------------------------------

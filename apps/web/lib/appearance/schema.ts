@@ -66,6 +66,8 @@ export const appearanceSchema = z.object({
   shape: z.object({
     radius: z.enum(['sharp', 'soft', 'round']).catch('soft'),
     pill_buttons: z.boolean().catch(false),
+    /** Coloured outer glow on pinned rows and featured cards. Off by default: it reads as noise on a dense grid. */
+    glow: z.boolean().catch(false),
     card_style: z.enum(['flat', 'bordered', 'elevated']).catch('flat'),
     density: z.enum(['comfortable', 'compact']).catch('comfortable'),
     cover_grid: z.enum(['title-below', 'title-hover', 'title-always']).catch('title-below'),

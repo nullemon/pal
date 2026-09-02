@@ -1384,6 +1384,7 @@ export const messages = {
       radius: 'Corner radius',
       radii: { sharp: 'Sharp', soft: 'Soft', round: 'Round' },
       pillButtons: 'Pill buttons',
+      glow: 'Outer glow',
       cardStyle: 'Card style',
       cardStyles: { flat: 'Flat', bordered: 'Bordered', elevated: 'Elevated' },
       density: 'Density',
