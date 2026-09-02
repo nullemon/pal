@@ -39,9 +39,9 @@ export async function AppearanceStyle() {
       {/* docs/15 "Default theme": read by ThemeScript, which must come after this in <head>. */}
       <meta name={THEME_DEFAULT_META} content={themeDefault} />
       {css ? (
-        // biome-ignore lint/security/noDangerouslySetInnerHtml: token block from the resolver (validated hex/px values), not user markup
         <style
           id="appearance"
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: token block built by lib/appearance/resolve.ts from validated hex and px values, never user markup
           dangerouslySetInnerHTML={{ __html: css.replace(/<\/style/gi, '') }}
         />
       ) : null}
