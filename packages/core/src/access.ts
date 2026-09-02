@@ -1,4 +1,4 @@
-import { entitlement } from './entitlements.js'
+import { type EntitlementArg, entitlement, entitlementContext } from './entitlements.js'
 import { can, type SessionUser } from './permissions.js'
 
 export type ChapterState =
@@ -35,20 +35,23 @@ export const chapterLock = (chapter: ChapterAccessInput, now: Date = new Date())
 export const canReadChapter = (
   user: SessionUser | null | undefined,
   chapter: ChapterAccessInput,
-  now: Date = new Date(),
+  arg?: EntitlementArg,
 ): boolean => {
+  const { now } = entitlementContext(arg)
   switch (chapterLock(chapter, now)) {
     case 'unpublished':
       return can(user, 'chapter.read')
     case 'early_access':
-      return entitlement(user, 'early_access', now)
+      return entitlement(user, 'early_access', arg)
     case 'premium':
-      return entitlement(user, 'premium_content', now)
+      return entitlement(user, 'premium_content', arg)
     default:
       return true
   }
 }
 
 /** Ad-free is an entitlement granted by both tiers (docs/11). */
-export const showsAds = (user: SessionUser | null | undefined, now: Date = new Date()): boolean =>
-  !entitlement(user, 'no_ads', now)
+export const showsAds = (
+  user: SessionUser | null | undefined,
+  arg?: EntitlementArg,
+): boolean => !entitlement(user, 'no_ads', arg)

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { canReadChapter, chapterLock, showsAds } from '../access.js'
-import { activeFeatures, entitlement, hasActiveEntitlement } from '../entitlements.js'
+import { activeFeatures, entitlement, FEATURES, hasActiveEntitlement } from '../entitlements.js'
 import type { SessionUser } from '../permissions.js'
 
 const now = new Date('2026-09-02T12:00:00Z')
@@ -38,8 +38,18 @@ describe('entitlement', () => {
     expect(entitlement(mod, 'early_access', now)).toBe(true)
     expect(entitlement({ id: 9, role: 'admin' }, 'offline', now)).toBe(true)
     expect(entitlement(uploader, 'early_access', now)).toBe(false)
-    expect(activeFeatures(mod, now)).toHaveLength(4)
-    expect(activeFeatures(premium, now)).toEqual(['early_access', 'premium_content', 'no_ads'])
+    expect(activeFeatures(mod, now)).toHaveLength(FEATURES.length)
+    // premium_content carries the PREMIUM_PERKS with it; `offline` needs its own row
+    expect(activeFeatures(premium, now)).toEqual([
+      'early_access',
+      'premium_content',
+      'no_ads',
+      'priority_comments',
+      'see_reactors',
+      'custom_gifs',
+      'animated_avatar',
+      'profile_banner',
+    ])
   })
 })
 
