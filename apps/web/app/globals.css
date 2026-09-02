@@ -1,0 +1,163 @@
+@import "tailwindcss";
+
+/* Scan the shared component package for utilities. */
+@source "../../../packages/ui/src";
+
+/* Tokens — docs/16-build-plan.md (dark defaults, direction A/B palette). Tailwind v4 turns
+   every --color-* into bg-* / text-* / border-* utilities that reference the variable, so the
+   light block below and the Appearance resolver (docs/15) can swap values at runtime. */
+@theme {
+  --color-*: initial;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+  --color-white: #ffffff;
+  --color-black: #000000;
+
+  --color-bg: #100d17;
+  --color-bg-deep: #0d0b13;
+  --color-surface-1: #181423;
+  --color-surface-2: #1f1a2c;
+  --color-surface-3: #26203a;
+  --color-line: #2c2540;
+  --color-line-soft: #221d33;
+  --color-fg: #ece9f4;
+  --color-fg-muted: #9e97b8;
+  --color-fg-subtle: #6f6890;
+  --color-brand: #7c3aed;
+  --color-brand-hover: #8b5cf6;
+  --color-brand-dim: #4c2a8f;
+  --color-brand-wash: rgb(124 58 237 / 0.14);
+  --color-brand-ink: #ffffff;
+  --color-gold: #f5c451;
+  --color-ok: #22c55e;
+  --color-warn: #f59e0b;
+  --color-danger: #ef4444;
+  --color-type-manhwa: #e5484d;
+  --color-type-manhua: #12a594;
+  --color-type-manga: #3b82f6;
+  --color-type-comic: #a78bfa;
+  --color-status-ongoing: #3b82f6;
+  --color-status-completed: #22c55e;
+  --color-status-hiatus: #f59e0b;
+  --color-status-cancelled: #6f6890;
+
+  --font-display: "Archivo Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Plus Jakarta Sans Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-body);
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 14px;
+  --radius-full: 999px;
+
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 0.45);
+  --shadow-2: 0 10px 30px -12px rgb(0 0 0 / 0.7);
+
+  --breakpoint-sm: 480px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1536px;
+
+  --animate-sheet-in: sheet-in 320ms cubic-bezier(0.2, 0, 0, 1);
+  --animate-toast-in: toast-in 200ms cubic-bezier(0.2, 0, 0, 1);
+
+  @keyframes sheet-in {
+    from {
+      opacity: 0;
+      transform: translateY(24px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes toast-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+/* Light theme — docs/05-design-system.md. Only the tokens that differ. */
+:root[data-theme="light"] {
+  --color-bg: oklch(0.985 0.004 300);
+  --color-bg-deep: oklch(0.968 0.006 300);
+  --color-surface-1: oklch(1 0 300);
+  --color-surface-2: oklch(0.968 0.006 300);
+  --color-surface-3: oklch(0.94 0.01 300);
+  --color-line: oklch(0.89 0.012 300);
+  --color-line-soft: oklch(0.935 0.008 300);
+  --color-fg: oklch(0.2 0.02 300);
+  --color-fg-muted: oklch(0.45 0.022 300);
+  --color-fg-subtle: oklch(0.58 0.02 300);
+  --color-brand: oklch(0.51 0.21 300);
+  --color-brand-wash: oklch(0.96 0.03 300);
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 0.08);
+  --shadow-2: 0 10px 30px -12px rgb(0 0 0 / 0.2);
+  color-scheme: light;
+}
+
+:root {
+  color-scheme: dark;
+  --glow-brand: 0 0 0 1px var(--color-brand-dim), 0 6px 24px -10px var(--color-brand);
+}
+
+@layer base {
+  html {
+    background: var(--color-bg);
+    color: var(--color-fg);
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    touch-action: manipulation;
+    scrollbar-gutter: stable;
+  }
+  body {
+    min-height: 100dvh;
+    background: var(--color-bg);
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+  }
+  img {
+    display: block;
+  }
+  @media (prefers-contrast: more) {
+    :root {
+      --color-line: #4a4266;
+      --color-fg-muted: #c3bdd8;
+      --color-fg-subtle: #9a93b5;
+    }
+  }
+}
+
+@utility container-page {
+  width: 100%;
+  max-width: 1440px;
+  margin-inline: auto;
+  padding-inline: clamp(1rem, 4vw, 2.5rem);
+}
+
+@utility section-title {
+  font-family: var(--font-display);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+  font-size: 1.125rem;
+  line-height: 1.25;
+}

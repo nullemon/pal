@@ -1,0 +1,55 @@
+# Site host: the Next.js app. CDN host: object storage, with immutable caching for the
+# content-addressed covers and pages. In production the CDN host is Cloudflare R2 behind
+# Cloudflare's edge; this block is the self-hosted (MinIO) equivalent.
+
+{
+	email ops@palscans.org
+}
+
+palscans.org, www.palscans.org {
+	@www host www.palscans.org
+	redir @www https://palscans.org{uri} permanent
+
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options nosniff
+		X-Frame-Options SAMEORIGIN
+		Referrer-Policy strict-origin-when-cross-origin
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		-Server
+	}
+
+	# Next.js hashed assets are immutable.
+	@static path /_next/static/*
+	header @static Cache-Control "public, max-age=31536000, immutable"
+
+	reverse_proxy web:3000
+}
+
+cdn.palscans.org {
+	encode zstd gzip
+
+	@immutable path /pages/* /covers/*
+	header @immutable {
+		Cache-Control "public, max-age=31536000, immutable"
+		Access-Control-Allow-Origin "https://palscans.org"
+		X-Content-Type-Options nosniff
+		-Server
+	}
+
+	# Everything else (avatars, temp uploads) caches briefly.
+	@other not path /pages/* /covers/*
+	header @other Cache-Control "public, max-age=300"
+
+	# Only GET/HEAD reach the bucket; uploads go through presigned URLs on the app host.
+	@mutating not method GET HEAD OPTIONS
+	respond @mutating 405
+
+	# MinIO serves the bucket at /<bucket>/<key>.
+	rewrite * /palscans{uri}
+	reverse_proxy minio:9000 {
+		header_up Host {upstream_hostport}
+	}
+}

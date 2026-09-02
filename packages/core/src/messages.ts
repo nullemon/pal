@@ -77,6 +77,7 @@ export const messages = {
     emptyUpdates: 'No chapters yet — check back soon.',
   },
   series: {
+    chapterShort: 'Ch. {n}',
     readFirst: 'Read first',
     continue: 'Continue',
     continueChapter: 'Continue {chapter}',
@@ -381,6 +382,9 @@ export const messages = {
     rateLimited: 'Too many requests. Try again shortly.',
     network: 'Network error. Check your connection and retry.',
     serverError: 'Our servers hit a snag. We are on it.',
+  },
+  time: {
+    justNow: 'just now',
   },
 } as const
 
