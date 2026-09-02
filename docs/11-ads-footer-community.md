@@ -15,12 +15,15 @@ the layout from jumping when an ad loads.
 | `series_top` | under the series header, above chapters | 728×90 | 320×100 | always, unless ad-free |
 | `series_sidebar` | under the chapter list | 300×250 | 300×250 | always, unless ad-free |
 | `reader_end` | after the last page, before the Next Chapter control | 336×280 | 300×250 | always, unless ad-free |
-| `mobile_anchor` | sticky bottom bar on mobile | — | 320×50 | never inside the reader; dismissible |
+| `mobile_anchor` | sticky bottom bar on mobile | — | 320×50 | outside the reader only; dismissible |
 
-**Never inside the reading strip.** No interstitials between pages, no slot that a thumb
-can hit while scrolling a chapter. `reader_end` sits after the final page and above the
-navigation, so it is seen once per chapter, at a natural pause. This is the rule most sites
-in the category break, and it is why their readers install ad blockers.
+**In the reader, placements are fixed and every one is a switch.** Desktop skyscrapers
+sit in the gutters and never overlap the reading column; the mobile in-strip ad appears
+after every N pages with N set in admin (off / 2 / 4 / 6, default 4) and is inserted as
+its own full-width band so no page is ever partly covered; the end-of-chapter slot sits
+after the final page. Nothing floats over artwork, nothing autoplays, and the interval
+has a live preview in admin because it is the lever that most affects whether readers
+reach for an ad blocker.
 
 **Ad-free is an entitlement**, `no_ads`, granted by both subscription tiers. The slot
 components check `entitlement(user, 'no_ads')` server-side and render nothing — not a

@@ -86,42 +86,78 @@ real indexable URLs with unique copy — this is where organic discovery actuall
 
 ## The reader
 
-The most important screen in the product. It should feel like nothing at all.
+The most important screen in the product. Two modes, switchable from the settings sheet
+and remembered per device; the site-wide default is an admin setting.
 
-**Layout.** Single vertical column, `max-width: 820px`, pages stacked with zero gap. Every
-`<img>` carries `width`/`height` from `chapter_pages`, so the full document height is known
-before any image loads and the scrollbar never jumps.
+### Long strip
 
-**Loading.** First 3 pages eager with `fetchpriority="high"`; page 1 preloaded in the head.
-The rest lazy with `rootMargin: 150%`. BlurHash placeholder underneath each box. When the
-reader passes 80% of the chapter, prefetch the next chapter's first 3 pages and its data —
-so "Next" is instant, which is what makes a binge feel good.
+Every page of the chapter in one vertical column, `max-width: 820px` centred, pages
+touching with zero gap and zero radius. Every `<img>` carries `width`/`height` from
+`chapter_pages`, so the full document height is known before any image loads and the
+scrollbar never jumps. First 3 pages eager with `fetchpriority="high"`, page 1 preloaded;
+the rest lazy with `rootMargin: 150%` and a BlurHash placeholder underneath. At 80% of the
+chapter the next chapter's first 3 pages and its data are prefetched, so "Next" is instant.
 
-**Chrome.** Header and footer slide out on scroll-down, back on scroll-up, and toggle on tap
-in the centre 60% of the viewport. Left and right 20% edge zones page backwards/forwards for
-paged mode. A one-time hint pill teaches the tap gesture. Both bars respect
-`env(safe-area-inset-*)`.
+### Paged
 
-**Controls.** Prev / chapter dropdown (searchable full list) / Next in the footer. Keyboard:
-`←`/`→` chapters, `space`/`shift+space` scroll, `f` fullscreen, `c` comments, `s` settings.
+One page at a time, the way cubari-style readers work: the current page fit-to-height on
+desktop (fit-to-width on mobile), centred on the page colour, with only the pages around
+it loaded — the current page plus a configurable preload of 3 / 5 / 10 ahead. Navigation:
+click or tap the left / right 30% of the page, arrow keys, swipe on touch, and a chapter
+select plus a page select in the top bar. A scrubber with one tick per page sits along the
+bottom. Double-page spreads and **right-to-left** direction for manga are options of this
+mode. A first-run overlay shows the three tap zones (Previous · Menu · Next) once.
 
-**Settings sheet**, persisted per device: reading mode (long strip · single page · double
-page), image width (fit width · fit height · original · custom %), background (black ·
-dark · sepia · white), gap between pages (0–24px), and preload depth.
+Switching modes keeps your place: strip → paged opens on the page you were looking at,
+and back.
 
-**Progress.** An `IntersectionObserver` tracks the topmost visible page; progress is written
-at most once every 5 seconds and once more on `visibilitychange` via `navigator.sendBeacon`.
-Resume restores both chapter and scroll percentage.
+### Chrome
 
-**Offline** (entitlement-gated). A service worker caches a chapter's pages into the Cache API
-with a manifest in IndexedDB; the bookmarks screen shows downloaded chapters with sizes and
-a purge control. This is a real premium perk and it is also the single best reason for a
-reader to install the PWA.
+Top bar: back, series title + chapter, page counter, settings, comments. Bottom bar:
+Prev · chapter select · Next. Both slide out on scroll-down or on tap in the centre zone
+and back on scroll-up; `H` toggles them on desktop, and in the hidden state a floating
+glass pill carries Prev / chapter / Next. A 3px progress bar stays at the top in either
+state. All bars respect `env(safe-area-inset-*)`.
 
-**Locked chapters.** The reader route checks entitlement server-side. A non-entitled user
-gets a subscribe page carrying the series, cover, and chapter in the query string, so the
-page can say what they were trying to read and return them there after paying. Page URLs are
-never emitted for a chapter the user may not read.
+Keyboard: `←`/`→` pages or chapters, `space`/`shift+space` scroll, `f` fullscreen,
+`s` toggle strip/paged, `c` comments, `?` shortcut sheet.
+
+### Settings sheet
+
+Per device: **Mode** (long strip · single page · double page) · **Direction** (left-to-right
+· right-to-left) · **Fit** (width · height · original) · **Quality** (auto · high · saver) ·
+**Preload** (3 · 5 · 10) · **Background** (black · dark · sepia · white) · page gap for the
+strip · and a "Remove ads and unlock early access" row that goes to Premium.
+
+### Ads in the reader
+
+Placements are fixed; whether each is on, and the mobile interval, are admin settings
+(`04-admin-panel.md`, Appearance → Layouts):
+
+| Placement | Size | Behaviour |
+|---|---|---|
+| Desktop skyscrapers | 160×600 (or 300×600) | one in each gutter beside the reading column, `position: sticky`, vertically centred; only when the viewport is wide enough that they never overlap the column (≥ 1280px for 160, ≥ 1520px for 300) |
+| Mobile in-strip | 300×250 on a full-width band | after every **N** pages in long-strip mode, N = off / 2 / 4 / 6; in paged mode the same interval inserts an ad *page* between pages |
+| End of chapter | 336×280 desktop / 300×250 mobile | after the last page, before the Next Chapter control, in both modes |
+
+Every slot reserves its box before the ad loads, so nothing shifts under the reader's
+thumb. `no_ads` entitlement (both Premium tiers) renders none of them — not a collapsed
+box, nothing. The in-strip interval is the most sensitive lever on the site: it earns
+the most per reader and it is the reason readers reach for ad blockers, so it is a
+setting with a live preview rather than a constant, and the default is 4.
+
+### Progress and offline
+
+An `IntersectionObserver` (strip) or the page index (paged) tracks position; progress is
+written at most once every 5 seconds and once more on `visibilitychange` via
+`navigator.sendBeacon`. Resume restores chapter, mode and position. Offline downloads
+(Premium) cache a chapter's pages in the Cache API with a manifest in IndexedDB.
+
+### Locked chapters
+
+The reader route checks entitlement server-side. A non-entitled user gets the subscribe
+page carrying series, cover and chapter, and returns to the chapter after paying. Page URLs
+are never emitted for a chapter the user may not read.
 
 ## Mobile specifics
 

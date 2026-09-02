@@ -94,6 +94,7 @@ whether it ships in v1 or later. Items already covered in another doc point ther
 
 | Feature | Spec | When |
 |---|---|---|
+| Layout switcher | One-click choice of homepage, series-page and reader layout among the built versions, with preview — see `04-admin-panel.md` Appearance → Layouts | v1 |
 | Homepage layout editor | Reorder, enable and disable home sections (hero, continue reading, trending, latest, popular, rails, announcements) with per-section item counts — the control the old theme's widgets gave you, done properly | v1 |
 | Menu editor | Header and footer link groups editable without a deploy | v1 |
 | Theme settings | Logo, favicon, accent colour, default theme (dark / light / system), custom CSS box | v1 |

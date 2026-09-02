@@ -53,6 +53,7 @@ Dashboard
 Content ─ Series · Chapters · Upload queue · Announcements · Media library
 Community ─ Comments · Reports · Users
 Business ─ Subscriptions · Entitlements · Promo codes
+Appearance ─ Layouts · Homepage sections · Menus · Theme · Announcement bar
 System ─ SEO · Redirects · Audit log · Settings · Feature flags · Jobs
 ```
 
@@ -140,6 +141,34 @@ entitlement with an expiry, comment-ban, ban, force logout everywhere, resend ve
 
 Role changes require a typed confirmation of the username and are always audited. Nobody
 can change their own role.
+
+## Appearance → Layouts
+
+One click to switch the look of each page type, no deploy. Every page type has a set of
+registered layout implementations — the six mockup directions become six homepage layouts
+and six series-page layouts as they are built — and a single setting selects which one
+renders:
+
+```ts
+// settings.layouts
+{ home: 'B', series: 'A', reader: { default_mode: 'strip' } }
+```
+
+The screen shows a row of radio cards per page type (thumbnail, name, a **Live** pill on
+the current one, a Preview link that opens the page with `?layout=C` for staff only) and a
+Save button. Saving writes the setting, purges the HTML cache for that page type and
+records an audit row; the change is visible on the next request. Only layouts that have
+actually been built appear — a card for a direction that isn't implemented yet is shown
+disabled with "not built".
+
+The same screen carries the reader settings: **default mode** (long strip · paged),
+**desktop skyscrapers** on/off with size (160×600 · 300×600), **mobile in-strip ad every**
+(off · 2 · 4 · 6 pages) with a live preview of a strip, and the **end-of-chapter slot**
+on/off. Ad network tags per slot live in Business → Ads.
+
+Building and maintaining six layouts per page type is real front-end cost; the switcher
+is cheap. The recommendation is to build the chosen layouts first, ship the switcher with
+them, and add alternates when there is a reason to A/B them.
 
 ## SEO
 
