@@ -123,6 +123,13 @@ export const adminNav: readonly AdminNavGroup[] = [
     label: m.system,
     items: [
       { label: m.seo, href: '/admin/seo', icon: 'search', permission: 'settings.write' },
+      // E · Legacy site importer (docs/17 §E).
+      {
+        label: m.importer,
+        href: '/admin/import',
+        icon: 'upload',
+        permission: 'settings.write',
+      },
       {
         label: m.settings,
         href: '/admin/settings',

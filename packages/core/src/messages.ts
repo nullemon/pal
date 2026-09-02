@@ -960,6 +960,7 @@ export const messages = {
       jobs: 'Jobs',
       auditLog: 'Audit log',
       seo: 'SEO',
+      importer: 'Import',
       backToSite: 'Back to site',
     },
     dashboard: {
@@ -1696,6 +1697,108 @@ export const messages = {
       noInvites: 'No invite codes yet.',
       saved: 'Access settings saved',
     },
+    /** docs/17 §E — Admin → System → Import (the legacy WordPress importer). */
+    import: {
+      title: 'Import',
+      subtitle: 'Bring the legacy WordPress site across: discover, dry run, then import.',
+      sourceTitle: 'Source',
+      sourceHint:
+        'Where the legacy database lives. The password is stored on the server and never shown again.',
+      mode: 'Connection',
+      modes: {
+        dsn: 'MySQL DSN',
+        dump: 'SQL dump',
+        sample: 'Sample dataset',
+      },
+      dsn: 'Database DSN',
+      dsnHint: 'mysql://user:password@host:3306/wordpress — read-only credentials are enough.',
+      dsnPlaceholder: 'mysql://wp:password@10.0.0.4:3306/wordpress',
+      dumpPath: 'Uploaded SQL dump',
+      dumpHint: 'Path or storage key of a mysqldump taken from the live site.',
+      tablePrefix: 'Table prefix',
+      tablePrefixHint: 'The WordPress prefix, usually wp_.',
+      uploadsTitle: 'Page images',
+      uploadsHint:
+        'docs/09: rsync the uploads directory to this machine — never re-download through the public site.',
+      uploadsMode: 'Images',
+      uploadsModes: { path: 'Uploads path', archive: 'Uploaded archive' },
+      uploadsPath: 'Uploads directory',
+      uploadsPathPlaceholder: '/srv/legacy/wp-content/uploads',
+      uploadsArchive: 'Uploads archive',
+      batchSize: 'Series per batch',
+      batchSizeHint: 'How many series each resumable batch takes. Lower is gentler on the source.',
+      skipImages: 'Catalogue only, skip page images',
+      skipImagesHint: 'Import series, chapters and users now and re-run for the images later.',
+      saved: 'Source saved',
+      unconfiguredTitle: 'No source configured yet',
+      unconfigured:
+        'Point the importer at the legacy database, save, then run discovery. Nothing is written until you start an import.',
+      sampleNotice:
+        'The sample dataset is built in. It stands in for a legacy database so the reports can be checked before credentials exist.',
+      connectorMissing:
+        'The {mode} connector is not built yet — the reports below run against the sample dataset. Discovery and dry run write nothing either way.',
+      runDiscovery: 'Run discovery',
+      runningDiscovery: 'Reading the source…',
+      discoveryTitle: 'Discovery',
+      discoveryHint: 'What the source actually holds. This step writes nothing.',
+      discoveryEmpty: 'Run discovery to see what the legacy database holds.',
+      chapterStorage: 'Chapter storage',
+      chapterStorageValues: {
+        'custom-tables': 'Plugin custom tables (v1.7.x)',
+        postmeta: 'wp_postmeta',
+        unknown: 'Unknown',
+      },
+      postTypes: 'Post types',
+      taxonomies: 'Taxonomies',
+      metaKeys: 'Meta keys',
+      unmapped: 'Not mapped',
+      mapped: 'Mapped',
+      runDryRun: 'Run dry run',
+      runningDryRun: 'Mapping everything…',
+      dryRunTitle: 'Dry run',
+      dryRunHint:
+        'The full mapping, counted but not written. Fix the unparsed chapter names before importing.',
+      dryRunEmpty: 'Run a dry run to see what an import would write.',
+      totals: 'What an import would write',
+      unparsed: 'Chapter names needing a human',
+      unparsedHint:
+        'The parser never guesses a chapter number. Download the CSV, fill in the number column, and fix the names on the source.',
+      downloadCsv: 'Download CSV',
+      unparsedNone: 'Every chapter name parsed. Nothing needs review.',
+      warnings: 'Warnings',
+      runTitle: 'Import run',
+      runHint:
+        'Batched and resumable, keyed on manga_unique_id. Progress appears in System → Jobs.',
+      start: 'Start import',
+      runUnavailable:
+        'The import job is not wired up yet. Discovery and the dry run are safe to run as often as you like.',
+      neverRun: 'Not run yet',
+      lastRun: 'Last run {when}',
+      counts: {
+        series: 'Series',
+        seriesPublished: 'Published',
+        seriesSkipped: 'Skipped (trashed)',
+        chapters: 'Chapters',
+        chaptersParsed: 'Chapters parsed',
+        chaptersUnparsed: 'Chapters needing review',
+        chapterPages: 'Pages',
+        genres: 'Genres and tags',
+        people: 'Authors and artists',
+        altTitles: 'Alternative titles',
+        users: 'Users',
+        bookmarks: 'Bookmarks',
+        bookmarksOrphaned: 'Bookmarks with no series',
+        comments: 'Comments',
+        redirects: 'Redirect rows',
+        terms: 'Terms',
+      },
+      byType: 'By type',
+      byStatus: 'By status',
+      passwordsNote:
+        'Passwords are never converted: accounts import with no password and get a one-time set-password link at cutover.',
+      redirectsNote:
+        'Redirect rows are generated for every legacy URL and land in the existing redirects table.',
+    },
   },
   // P6 · SEO, feeds, legal pages, announcements, 404 — appended
   seo: {
@@ -2282,7 +2385,6 @@ export const messages = {
     detailsTitle: 'Details',
     comments: 'Comments',
   },
-
 } as const
 
 export type Messages = typeof messages
