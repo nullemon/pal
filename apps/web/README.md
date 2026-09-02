@@ -5,6 +5,7 @@ The Next.js 16 app: public site, reader, admin, and API route handlers.
 ## Run locally
 
 ```sh
+bash infra/dev-services.sh   # on a machine without Docker: local Postgres 16 + Redis
 pnpm install                       # from the repo root
 cp .env.example .env               # defaults: PGlite database, fs storage, no Redis
 pnpm db:migrate
