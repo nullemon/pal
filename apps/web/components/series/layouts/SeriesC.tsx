@@ -140,10 +140,7 @@ export function SeriesC({
                 {series.title}
               </h1>
               <div className="flex flex-wrap gap-x-6 gap-y-4">
-                <Stat
-                  label={messages.layouts.rank}
-                  value={rank ? `#${rank}` : messages.discovery.any}
-                />
+                <Stat label={messages.layouts.rank} value={rank ? `#${rank}` : '—'} />
                 <Stat
                   label={messages.layouts.rating}
                   value={series.ratingCount > 0 ? ratingAvg.toFixed(1) : '—'}
@@ -153,10 +150,7 @@ export function SeriesC({
                   label={messages.layouts.bookmarks}
                   value={series.bookmarkCount.toLocaleString('en')}
                 />
-                <Stat
-                  label={messages.series.chapters}
-                  value={String(series.chapterCount)}
-                />
+                <Stat label={messages.series.chapters} value={String(series.chapterCount)} />
               </div>
               {series.lastChapterAt ? (
                 <p className={cn(rule, 'm-0')}>
@@ -177,7 +171,10 @@ export function SeriesC({
             <div className="flex flex-wrap items-center gap-2.5">
               {continueChapter ? (
                 <>
-                  <Link href={chapterHref(series.slug, continueChapter.number)} className={paperBtn}>
+                  <Link
+                    href={chapterHref(series.slug, continueChapter.number)}
+                    className={paperBtn}
+                  >
                     {fmt(messages.series.continueChapter, {
                       chapter: fmt(messages.series.chapterShort, { n: continueChapter.number }),
                     })}

@@ -3,9 +3,9 @@ import { AdSlot, cn, RelativeTime } from '@palscans/ui'
 import { ArrowRight, Lock } from 'lucide-react'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
-import { Pagination } from '@/components/discovery/Pagination'
 import { homeHref } from '@/components/discovery/filters'
 import { COVER_HEIGHT, COVER_WIDTH } from '@/components/discovery/media'
+import { Pagination } from '@/components/discovery/Pagination'
 import type { ChapterSummary, HeroSlide, UpdateItem } from '@/components/discovery/types'
 import { AnnouncementCard } from '@/components/home/AnnouncementCard'
 import { ContinueReading } from '@/components/home/ContinueReading'
@@ -223,7 +223,9 @@ function FeedEntry({
             />
           ))}
           {item.chapters.length === 0 ? (
-            <span className="py-1.5 text-[13px] text-fg-subtle">{messages.series.emptyChapters}</span>
+            <span className="py-1.5 text-[13px] text-fg-subtle">
+              {messages.series.emptyChapters}
+            </span>
           ) : null}
         </div>
       </div>

@@ -33,13 +33,14 @@ describe('renderTemplate', () => {
   it('substitutes docs/12 §2 variables', () => {
     const out = renderSeo('series', {
       site: 'PALScans',
+      sep: '-',
       title: 'Return of the Frost Monarch',
       type: 'manhwa',
       chapter_count: 301,
       latest_chapter: 'Ch. 301',
       synopsis,
     })
-    expect(out.title).toBe('Return of the Frost Monarch — Read Online Free · PALScans')
+    expect(out.title).toBe('Return of the Frost Monarch - Read Online Free - PALScans')
     expect(
       out.description.startsWith(
         'Read Return of the Frost Monarch manhwa online. 301 chapters, latest Ch. 301. Executed by',
@@ -47,6 +48,13 @@ describe('renderTemplate', () => {
     ).toBe(true)
     expect(out.description.endsWith('…')).toBe(true)
   })
+  it('titles a chapter page as "<series> Chapter <n> - <site>"', () => {
+    const vars = { site: 'PALScans', sep: '-', title: 'Naruto', chapter: 208 }
+    expect(renderSeo('chapter', vars).title).toBe('Naruto Chapter 208 - PALScans')
+    // the separator is a setting, so switching it re-titles every page
+    expect(renderSeo('chapter', { ...vars, sep: '·' }).title).toBe('Naruto Chapter 208 · PALScans')
+  })
+
   it('drops unknown/empty variables and collapses whitespace', () => {
     expect(
       renderTemplate('Read {title} Chapter {chapter} at {site}. {next_prev_hint}', {

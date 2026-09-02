@@ -22,7 +22,7 @@ describe('metadataFor (docs/12 §2, §7)', () => {
       feed: '/series/solo-leveling/feed',
       image: '/_storage/covers/a.svg',
     })
-    expect(meta.title).toEqual({ absolute: 'Solo Leveling — Read Online Free · PALScans' })
+    expect(meta.title).toEqual({ absolute: 'Solo Leveling - Read Online Free - PALScans' })
     expect(meta.description).toMatch(
       /^Read Solo Leveling Manhwa online\. 179 chapters, latest Ch\. 179\./,
     )
@@ -64,12 +64,12 @@ describe('metadataFor (docs/12 §2, §7)', () => {
     expect(overridden.description).toBe('Custom.')
   })
 
-  it('static pages get "{title} · {site}" and the default description', () => {
+  it('static pages get "{title} {sep} {site}" and the default description', () => {
     const meta = metadataFor(settings(), env, 'page', {
       path: '/terms',
       override: { title: 'Terms of service' },
     })
-    expect(meta.title).toEqual({ absolute: 'Terms of service · PALScans' })
+    expect(meta.title).toEqual({ absolute: 'Terms of service - PALScans' })
     expect(meta.description).toBe(DEFAULT_SEO_SETTINGS.identity.default_description)
   })
 

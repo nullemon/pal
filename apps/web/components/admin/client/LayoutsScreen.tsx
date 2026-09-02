@@ -153,7 +153,7 @@ export function LayoutsScreen({
             name={names[d]}
             selected={s[kind] === d}
             live={saved[kind] === d}
-            built={BUILT_LAYOUTS[kind].includes(d)}
+            built={(BUILT_LAYOUTS[kind] as readonly Direction[]).includes(d)}
             previewHref={`${previewBase}?layout=${d}`}
             onSelect={() => setS({ ...s, [kind]: d })}
           />

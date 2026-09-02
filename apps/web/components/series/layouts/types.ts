@@ -1,9 +1,13 @@
 import type { ReactNode } from 'react'
-import type { ChapterRowData, ViewerSeriesState } from '@/app/(site)/series/[slug]/data'
-import type { getSeries, loadRecommended } from '@/app/(site)/series/[slug]/data'
+import type {
+  ChapterRowData,
+  getSeries,
+  loadRecommended,
+  ViewerSeriesState,
+} from '@/app/(site)/series/[slug]/data'
 import type { AdPlacement } from '@/components/home/layouts/types'
-import type { AppUser } from '@/lib/comments/viewer'
 import type { CommentSort } from '@/lib/comments/types'
+import type { AppUser } from '@/lib/comments/viewer'
 
 /** The series row every direction renders, as `seriesBySlug` returns it. */
 export type SeriesDetail = NonNullable<Awaited<ReturnType<typeof getSeries>>>
