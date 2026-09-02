@@ -1,0 +1,5 @@
+export * from './client.js'
+export { migrationsFolder, runMigrations } from './migrate.js'
+export * from './queries/index.js'
+export * as schema from './schema/index.js'
+export * from './schema/index.js'

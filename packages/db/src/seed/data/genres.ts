@@ -1,0 +1,95 @@
+export interface GenreSeed {
+  slug: string
+  name: string
+  kind: 'genre' | 'theme' | 'format'
+}
+
+const g = (name: string, kind: GenreSeed['kind'] = 'genre'): GenreSeed => ({
+  slug: name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, ''),
+  name,
+  kind,
+})
+
+/** The common 40 genres plus themes (tags) and formats (docs/13 "Tags alongside genres"). */
+export const GENRES: GenreSeed[] = [
+  ...[
+    'Action',
+    'Adventure',
+    'Comedy',
+    'Drama',
+    'Fantasy',
+    'Horror',
+    'Mystery',
+    'Psychological',
+    'Romance',
+    'Sci-Fi',
+    'Slice of Life',
+    'Sports',
+    'Supernatural',
+    'Thriller',
+    'Tragedy',
+    'Martial Arts',
+    'Historical',
+    'Isekai',
+    'Mecha',
+    'Military',
+    'Music',
+    'School Life',
+    'Shounen',
+    'Shoujo',
+    'Seinen',
+    'Josei',
+    'Harem',
+    'Reverse Harem',
+    'Medical',
+    'Cooking',
+    'Crime',
+    'Gore',
+    'Magic',
+    'Monsters',
+    'Post-Apocalyptic',
+    'Survival',
+    'Wuxia',
+    'Xianxia',
+    'Murim',
+    'Superhero',
+  ].map((n) => g(n)),
+  ...[
+    'Regression',
+    'Reincarnation',
+    'Revenge',
+    'System',
+    'Dungeon',
+    'Academy',
+    'Villainess',
+    'Overpowered MC',
+    'Weak to Strong',
+    'Tower',
+    'Hunter',
+    'Necromancer',
+    'Cultivation',
+    'Time Travel',
+    'Transmigration',
+    'Genius MC',
+    'Demons',
+    'Gods',
+    'Guild',
+    'Office',
+    'Royalty',
+    'Contract Marriage',
+    'Childcare',
+    'Cooking Battle',
+    'Streaming',
+    'Virtual Reality',
+    'Zombies',
+    'Swords',
+    'Magic Academy',
+    'Monster Tamer',
+  ].map((n) => g(n, 'theme')),
+  ...['Webtoon', 'Full Color', 'Long Strip', 'Oneshot', '4-Koma', 'Anthology', 'Adaptation'].map(
+    (n) => g(n, 'format'),
+  ),
+]
