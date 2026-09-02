@@ -53,7 +53,7 @@ Dashboard
 Content ─ Series · Chapters · Upload queue · Announcements · Media library
 Community ─ Comments · Reports · Users
 Business ─ Subscriptions · Entitlements · Promo codes
-System ─ Audit log · Settings · Feature flags · Jobs
+System ─ SEO · Redirects · Audit log · Settings · Feature flags · Jobs
 ```
 
 ## Dashboard
@@ -139,6 +139,17 @@ entitlement with an expiry, comment-ban, ban, force logout everywhere, resend ve
 
 Role changes require a typed confirmation of the username and are always audited. Nobody
 can change their own role.
+
+## SEO
+
+Its own page under System, specified in full in `12-seo.md`: title and description
+templates per page type with a live preview, the sitemap panel (enable/disable, custom
+sitemap URL, sections, regenerate now, IndexNow key), the feeds panel (enable/disable,
+custom feed URL), indexing rules (site, chapter pages, profiles), verification tags,
+Organization identity and social `sameAs` links, the redirects table with CSV import, the
+`robots.txt` editor, and the JSON-LD validator. The series editor gains an **SEO** tab
+(title, description, focus keyword with a checklist, the "About" rich-text block, noindex,
+canonical, OG image), and the genre editor gains an intro rich-text block and FAQ entries.
 
 ## Audit log
 

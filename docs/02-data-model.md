@@ -437,6 +437,11 @@ Setting a series to `state = 'removed'` must, in one transaction, hide it from e
 purge its CDN paths, and write both an `audit_log` and a `takedowns` row. A repeat-infringer
 policy needs the uploader attribution that `chapters.uploaded_by` already provides.
 
+## SEO tables
+
+The `seo_settings` singleton, per-series and per-genre SEO columns, `slug_history`,
+`redirects` and `sitemap_builds` are specified in `12-seo.md` §9.
+
 ## Counter maintenance
 
 `chapter_count`, `bookmark_count`, `rating_sum`, `rating_count`, and `last_chapter_at` are
