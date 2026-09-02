@@ -38,6 +38,7 @@ beside it, write the importer in week 2, and cut over with 301s preserving every
 | [10 — Roadmap](docs/10-roadmap.md) | 12 weeks, phase by phase |
 | [11 — Ads, footer, community](docs/11-ads-footer-community.md) | Ad slot inventory and rules, footer map, Discord and socials |
 | [12 — SEO](docs/12-seo.md) | URLs, metadata templates, rich SEO text, JSON-LD, sitemaps and feeds with admin controls, indexing rules |
+| [13 — Everything else](docs/13-everything-else.md) | The completeness checklist: reader extras, discovery, scanlation credits, safety, accounts, notifications, money, site management, legal, hygiene |
 
 ## Non-negotiables
 
