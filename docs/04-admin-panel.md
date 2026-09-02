@@ -53,7 +53,7 @@ Dashboard
 Content ─ Series · Chapters · Upload queue · Announcements · Media library
 Community ─ Comments · Reports · Users
 Business ─ Subscriptions · Entitlements · Promo codes
-Appearance ─ Layouts · Homepage sections · Menus · Theme · Announcement bar
+Appearance ─ Theme · Layouts · Homepage sections · Header & footer · Announcement bar   (see 15-appearance.md)
 System ─ SEO · Redirects · Audit log · Settings · Feature flags · Jobs
 ```
 

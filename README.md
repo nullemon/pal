@@ -40,6 +40,7 @@ beside it, write the importer in week 2, and cut over with 301s preserving every
 | [12 — SEO](docs/12-seo.md) | URLs, metadata templates, rich SEO text, JSON-LD, sitemaps and feeds with admin controls, indexing rules |
 | [13 — Everything else](docs/13-everything-else.md) | The completeness checklist: reader extras, discovery, scanlation credits, safety, accounts, notifications, money, site management, legal, hygiene |
 | [14 — Comments](docs/14-comments.md) | Reactions, replies, spoilers, mentions, images, premium perks, and the moderation pipeline that holds links by default |
+| [15 — Appearance](docs/15-appearance.md) | Accent colour and derived ramp, theme, typography, shape and density, layouts, header/footer/menus, reader defaults, copy, formatting, presets and history |
 
 ## Non-negotiables
 
