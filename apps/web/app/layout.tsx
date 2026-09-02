@@ -24,14 +24,14 @@ export const viewport: Viewport = {
 /**
  * Static: no `cookies()`/`headers()` here, or every route becomes dynamic (docs/06 wants `/`
  * and the series/chapter pages prerendered). The theme is applied by <ThemeScript> before
- * paint; pages that need the theme on the server read it themselves via `resolveTheme()`.
+ * paint (after <AppearanceStyle>, whose meta tag carries the admin default theme); pages that need the theme on the server read it themselves via `resolveTheme()`.
  */
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" data-theme="dark" className="font-body" suppressHydrationWarning>
       <head>
-        <ThemeScript />
         <AppearanceStyle />
+        <ThemeScript />
         {/* P6: Organization/WebSite JSON-LD, sitemap + feed links (cached, never throws) */}
         <SeoHead />
       </head>
