@@ -1,10 +1,10 @@
-# 09 — Migrating off the existing the legacy WordPress theme site
+# 09 — Migrating off the existing WordPress site
 
 You already run a legacy theme. The plan is **not** to throw it away and **not** to build on
 top of it. It stays live and earning while the new platform is built beside it, and a
 repeatable importer moves the data across.
 
-## Why not build on the legacy WordPress theme
+## Why not build on the legacy theme
 
 | | WordPress (legacy) | Bespoke |
 |---|---|---|
@@ -13,12 +13,12 @@ repeatable importer moves the data across.
 | Attack surface | Theme + a dozen plugins, each an update treadmill. Nulled builds in this niche are a well-known malware vector | Your dependencies, audited in CI |
 | Customising the reader | Fighting theme templates and hooks; every update risks the overrides | It is your component |
 | Subscriptions | WooCommerce Subscriptions plus glue plugins | Stripe Billing directly, two tiers, one webhook |
-| Differentiation | Instantly recognisable as a the legacy WordPress theme site | Yours |
+| Differentiation | Instantly recognisable as a template-theme site | Yours |
 
-Asura ran the legacy WordPress theme, publicly migrated off it, and rebuilt bespoke. That is the most relevant
+Asura ran the same class of WordPress theme, publicly migrated off it, and rebuilt bespoke. That is the most relevant
 data point available, and it came from someone with your exact catalog shape.
 
-**The honest counter-argument:** the legacy WordPress theme works *today* and the rebuild is roughly 10–14 weeks.
+**The honest counter-argument:** the old site works *today* and the rebuild is roughly 10–14 weeks.
 That is precisely why the old site keeps running until cutover.
 
 ## Confirmed against your own theme package
@@ -70,7 +70,7 @@ SHOW CREATE TABLE wp_manga_chapters;
 SELECT * FROM wp_manga_chapters LIMIT 5;
 ```
 
-Then find where the bytes live — the legacy WordPress theme can store pages in the media library or in its own
+Then find where the bytes live — the theme can store pages in the media library or in its own
 uploads folder:
 
 ```bash
@@ -100,7 +100,7 @@ Once discovery confirms the shapes, the mapping is mechanical:
 
 ### Two mappings that need care
 
-**Chapter numbers.** the legacy WordPress theme stores a display string (`"Chapter 154"`, `"Ch.12.5"`,
+**Chapter numbers.** The theme stores a display string (`"Chapter 154"`, `"Ch.12.5"`,
 `"Chapter 7 - The End"`). Parse with a strict regex into `number numeric(10,3)` plus a
 `title` remainder, and **write every unparsed row to a review CSV** rather than guessing.
 Expect 1–3% to need a human. Getting this wrong silently reorders a reader's chapter list,
@@ -137,7 +137,7 @@ T-14d  Full import into staging. Spot-check 100 random series against the live s
 T-7d   Announce the migration and the password reset. Freeze new features.
 T-3d   Import again. Verify counts: series, chapters, pages, users, bookmarks, comments.
 T-1d   Final delta import. Lower DNS TTL to 60s.
-T-0    Put the legacy WordPress theme in read-only (maintenance plugin). Final delta import. Flip DNS.
+T-0    Put the old site in read-only (maintenance plugin). Final delta import. Flip DNS.
        Keep the old stack running on old.palscans.org for 30 days, unindexed.
 T+0    301 every legacy URL to its new equivalent. This is not optional.
 T+7d   Verify Search Console coverage and index status; watch 404 reports daily.
