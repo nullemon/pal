@@ -2,7 +2,7 @@
 
 import { messages } from '@palscans/core/messages'
 import { Button, cn, useToast } from '@palscans/ui'
-import { BellRing, BellOff, Send } from 'lucide-react'
+import { BellOff, BellRing, Send } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 
 /**

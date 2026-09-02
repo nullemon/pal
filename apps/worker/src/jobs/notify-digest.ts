@@ -23,10 +23,7 @@ export interface DigestPassDeps {
   limit?: number
 }
 
-export const runDigestPass = async (
-  db: Db,
-  deps: DigestPassDeps,
-): Promise<DigestRunSummary> => {
+export const runDigestPass = async (db: Db, deps: DigestPassDeps): Promise<DigestRunSummary> => {
   const summary = await runDigests(db, {
     settings: deps.settings,
     site: { siteUrl: deps.site.siteUrl, siteName: deps.site.siteName, cdnUrl: deps.site.cdnUrl },

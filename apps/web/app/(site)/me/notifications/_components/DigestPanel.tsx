@@ -40,30 +40,35 @@ export function DigestPanel({
   return (
     <div className="flex flex-col gap-3">
       <p className="max-w-[62ch] text-[13px] text-fg-muted">{m.description}</p>
-      <div
-        role="radiogroup"
-        aria-label={m.frequency}
-        className="inline-flex gap-0.5 self-start rounded-[10px] border border-line bg-bg p-[3px]"
-      >
+      {/* Real radios: arrow-key navigation and form semantics come for free, and the visual
+          treatment is the same segmented control (the input itself is visually hidden). */}
+      <fieldset className="inline-flex gap-0.5 self-start rounded-[10px] border border-line bg-bg p-[3px]">
+        <legend className="sr-only">{m.frequency}</legend>
         {DIGEST_FREQUENCIES.map((f) => (
-          <button
+          <label
             key={f}
-            type="button"
-            role="radio"
-            aria-checked={value === f}
-            disabled={pending}
-            onClick={() => pick(f)}
             className={cn(
-              'h-8 rounded-[7px] px-3.5 text-[13px] font-semibold transition-colors disabled:opacity-50',
+              'flex h-8 cursor-pointer items-center rounded-[7px] px-3.5 text-[13px] font-semibold transition-colors',
+              'focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-brand',
+              pending && 'cursor-not-allowed opacity-50',
               value === f
                 ? 'bg-brand-wash text-brand-hover shadow-[inset_0_0_0_1px_var(--color-brand)]'
                 : 'text-fg-muted hover:text-fg',
             )}
           >
+            <input
+              type="radio"
+              name="digest-frequency"
+              value={f}
+              checked={value === f}
+              disabled={pending}
+              onChange={() => pick(f)}
+              className="sr-only"
+            />
             {labels[f]}
-          </button>
+          </label>
         ))}
-      </div>
+      </fieldset>
       {value !== 'off' && !emailChannelOn ? (
         <p className="text-[12px] text-warn">{m.needsEmailChannel}</p>
       ) : null}

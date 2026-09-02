@@ -4,9 +4,9 @@ import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { audit } from '@/components/admin/server/audit'
 import { fail, getRateLimiter, ok, parseJson, rateLimited, withPermission } from '@/lib/auth'
+import { postWebhook, testMessage } from '@/lib/discord'
 import { getMailer } from '@/lib/email'
 import { getEnv, pushStatus } from '@/lib/env'
-import { postWebhook, testMessage } from '@/lib/discord'
 import {
   previewDigest,
   readNotificationSettings,

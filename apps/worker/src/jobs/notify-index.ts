@@ -2,9 +2,9 @@ import type { Queue } from '@palscans/core/queue'
 import type { Db } from '@palscans/db'
 import { readNotificationSettings } from '../../../web/lib/notifications/index.js'
 import { log } from '../lib/log.js'
-import { sweepNewChapters, notifyOneChapter } from './notify-chapter.js'
-import { runRoleSyncPass } from './notify-discord.js'
+import { notifyOneChapter, sweepNewChapters } from './notify-chapter.js'
 import { runDigestPass } from './notify-digest.js'
+import { runRoleSyncPass } from './notify-discord.js'
 import { workerSite } from './notify-site.js'
 
 /**

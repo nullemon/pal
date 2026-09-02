@@ -5,8 +5,8 @@ import { getDb } from '@palscans/db'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { getSessionUser } from '@/lib/auth'
-import { discordStatus } from '@/lib/env'
 import { getLink, issueCode, unlink } from '@/lib/discord'
+import { discordStatus } from '@/lib/env'
 import { DIGEST_FREQUENCIES, setDigestFrequency } from '@/lib/notifications'
 
 /**
@@ -44,12 +44,17 @@ export interface LinkCodeResult {
 export async function createDiscordCode(): Promise<LinkCodeResult> {
   const user = await getSessionUser()
   if (!user) return { ok: false, message: messages.errors.unauthorized }
-  if (!discordStatus().configured)
-    return { ok: false, message: messages.notify.notConfigured }
+  if (!discordStatus().configured) return { ok: false, message: messages.notify.notConfigured }
   const db = await getDb()
   const existing = await getLink(db, user.id)
   if (existing?.discordId)
-    return { ok: false, message: messages.notify.discord.linked.replace('{name}', existing.discordUsername ?? existing.discordId) }
+    return {
+      ok: false,
+      message: messages.notify.discord.linked.replace(
+        '{name}',
+        existing.discordUsername ?? existing.discordId,
+      ),
+    }
   const { code, expiresAt } = await issueCode(db, user.id)
   revalidatePath(PAGE)
   return { ok: true, message: code, code, expiresAt: expiresAt.toISOString() }

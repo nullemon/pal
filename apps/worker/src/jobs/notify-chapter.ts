@@ -26,11 +26,7 @@ export interface ChapterSweepDeps {
   limit?: number
 }
 
-export const recentlyPublished = async (
-  db: Db,
-  since: Date,
-  limit: number,
-): Promise<number[]> => {
+export const recentlyPublished = async (db: Db, since: Date, limit: number): Promise<number[]> => {
   const rows = await db
     .select({ id: chapters.id })
     .from(chapters)
@@ -53,14 +49,22 @@ export const sweepNewChapters = async (
   deps: ChapterSweepDeps,
 ): Promise<ChapterFanoutSummary[]> => {
   const now = deps.now ?? new Date()
-  const ids = await recentlyPublished(db, new Date(now.getTime() - RECENT_WINDOW_MS), deps.limit ?? 50)
+  const ids = await recentlyPublished(
+    db,
+    new Date(now.getTime() - RECENT_WINDOW_MS),
+    deps.limit ?? 50,
+  )
   const out: ChapterFanoutSummary[] = []
   for (const id of ids) {
     try {
       out.push(
         await fanoutNewChapter(db, id, {
           settings: deps.settings,
-          site: { siteUrl: deps.site.siteUrl, siteName: deps.site.siteName, cdnUrl: deps.site.cdnUrl },
+          site: {
+            siteUrl: deps.site.siteUrl,
+            siteName: deps.site.siteName,
+            cdnUrl: deps.site.cdnUrl,
+          },
           now,
         }),
       )

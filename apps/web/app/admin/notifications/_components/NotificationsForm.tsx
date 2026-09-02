@@ -2,23 +2,20 @@
 
 import { messages } from '@palscans/core/messages'
 import { Button, useToast } from '@palscans/ui'
-import { Plus, Send, Trash2, RefreshCw } from 'lucide-react'
+import { Plus, RefreshCw, Send, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { postJson, putJson } from '@/components/admin/client/api'
 import { SaveBar, Toggle } from '@/components/admin/client/controls'
 import {
   Field,
   Hint,
+  inputClass,
   Panel,
   PanelHeader,
   Pill,
-  inputClass,
   selectClass,
 } from '@/components/admin/ui'
-import {
-  DISCORD_EVENTS,
-  type NotificationSettings,
-} from '@/lib/notifications/schema'
+import { DISCORD_EVENTS, type NotificationSettings } from '@/lib/notifications/schema'
 
 /**
  * `Admin → Community → Notifications` — the operator's controls (docs/17 §D).
@@ -99,12 +96,20 @@ export function NotificationsForm({
     setBusy('roles')
     const res = await postJson<{ message?: string }>('/api/admin/notifications/roles', {})
     setBusy(null)
-    toast({ title: res.ok ? (res.data.message ?? '') : res.message, tone: res.ok ? 'ok' : 'danger' })
+    toast({
+      title: res.ok ? (res.data.message ?? '') : res.message,
+      tone: res.ok ? 'ok' : 'danger',
+    })
   }
 
   return (
     <div className="flex flex-col gap-3.5">
-      <SaveBar dirty={dirty} saving={saving} onDiscard={() => setS(saved)} onSave={() => void save()} />
+      <SaveBar
+        dirty={dirty}
+        saving={saving}
+        onDiscard={() => setS(saved)}
+        onSave={() => void save()}
+      />
 
       <Panel>
         <PanelHeader
@@ -224,7 +229,10 @@ export function NotificationsForm({
               onChange={(e) =>
                 setS({
                   ...s,
-                  email: { ...s.email, maxItems: Math.min(50, Math.max(1, Number(e.target.value))) },
+                  email: {
+                    ...s.email,
+                    maxItems: Math.min(50, Math.max(1, Number(e.target.value))),
+                  },
                 })
               }
             />
@@ -349,9 +357,7 @@ export function NotificationsForm({
                     />
                   </Field>
                   <div className="flex flex-col gap-1">
-                    <span className="text-[12px] font-medium text-fg-muted">
-                      {m.webhookEvents}
-                    </span>
+                    <span className="text-[12px] font-medium text-fg-muted">{m.webhookEvents}</span>
                     <div className="flex h-9 items-center gap-3">
                       {DISCORD_EVENTS.map((event) => (
                         <label

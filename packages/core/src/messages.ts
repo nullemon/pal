@@ -2144,7 +2144,7 @@ export const messages = {
         'The digest also needs "New chapter · Email" switched on in the table below.',
       subject: '{n} new chapter(s) across {series} series',
       greeting: 'Hi {name},',
-      periodDaily: "Here is what went up since yesterday.",
+      periodDaily: 'Here is what went up since yesterday.',
       periodWeekly: 'Here is what went up this week.',
       chapter: 'Chapter {n}',
       locked: 'Premium',

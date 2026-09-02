@@ -40,7 +40,11 @@ const m = messages.notify.admin
 
 /** docs/17 §D: "what fires, to whom". Read straight off the senders, not a hand-written list. */
 const WHAT_FIRES = [
-  { event: m.eventNewChapter, audience: m.audienceBookmarkers, channels: 'in app · push · discord' },
+  {
+    event: m.eventNewChapter,
+    audience: m.audienceBookmarkers,
+    channels: 'in app · push · discord',
+  },
   { event: m.eventDigest, audience: m.audienceDigest, channels: 'email' },
   { event: m.eventReply, audience: m.audienceReply, channels: 'in app · push' },
   { event: m.eventReaction, audience: m.audienceReaction, channels: 'in app' },
@@ -89,7 +93,11 @@ export default async function AdminNotificationsPage() {
       <div className="mt-3.5 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatTile label={`${m.sent} · ${m.last7}`} value={total('push', 'sent')} hint="push" />
         <StatTile label={`${m.sent} · ${m.last7}`} value={total('email', 'sent')} hint="email" />
-        <StatTile label={`${m.sent} · ${m.last7}`} value={total('discord', 'sent')} hint="discord" />
+        <StatTile
+          label={`${m.sent} · ${m.last7}`}
+          value={total('discord', 'sent')}
+          hint="discord"
+        />
         <StatTile
           label={`${m.failed} · ${m.last7}`}
           value={total('push', 'failed') + total('email', 'failed') + total('discord', 'failed')}
@@ -181,7 +189,7 @@ export default async function AdminNotificationsPage() {
                     </Td>
                     <Td className="tabular-nums text-fg-muted">{d.userId ?? '—'}</Td>
                     <Td className="text-fg-muted">{d.target ?? '—'}</Td>
-                    <Td className="max-w-[280px] truncate text-fg-subtle" >{d.detail ?? '—'}</Td>
+                    <Td className="max-w-[280px] truncate text-fg-subtle">{d.detail ?? '—'}</Td>
                   </tr>
                 ))
               )}

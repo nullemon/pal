@@ -20,7 +20,9 @@ export interface WorkerSite {
   cdnUrl: string | null
 }
 
-export const workerSite = (source: Record<string, string | undefined> = process.env): WorkerSite => {
+export const workerSite = (
+  source: Record<string, string | undefined> = process.env,
+): WorkerSite => {
   const clean: Record<string, string> = {}
   for (const [k, v] of Object.entries(source)) if (v !== undefined && v !== '') clean[k] = v
   const env = siteSchema.parse(clean)

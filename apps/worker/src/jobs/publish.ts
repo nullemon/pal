@@ -1,4 +1,11 @@
-import { bookmarks, chapters, type Db, notificationPrefs, notifications, series } from '@palscans/db'
+import {
+  bookmarks,
+  chapters,
+  type Db,
+  notificationPrefs,
+  notifications,
+  series,
+} from '@palscans/db'
 import { and, asc, eq, inArray, isNull, lte, sql } from 'drizzle-orm'
 import { prefAllows } from '../../../web/lib/notifications/index.js'
 import { log } from '../lib/log.js'

@@ -1,5 +1,8 @@
 import { z } from 'zod'
-import { discordStatus as discordStatusOf, pushStatus as pushStatusOf } from './notifications/config'
+import {
+  discordStatus as discordStatusOf,
+  pushStatus as pushStatusOf,
+} from './notifications/config'
 
 /**
  * Server-side environment, parsed once. Keys mirror `.env.example`; the ones commented out

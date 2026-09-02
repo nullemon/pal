@@ -1,12 +1,10 @@
 import { messages } from '@palscans/core/messages'
 import { bookmarks, chapters, series } from '@palscans/db'
 import { and, eq, isNull } from 'drizzle-orm'
-import { DiscordBot } from '../discord/client'
+import { DiscordBot, postWebhook } from '../discord/client'
 import { newChapterMessage } from '../discord/embed'
 import { linkedAccounts } from '../discord/link'
-import { postWebhook } from '../discord/client'
 import { pushConfig } from './config'
-import type { DigestFrequency } from './settings'
 import { type DeliveryInput, deliveredKeys, recordDeliveries } from './deliveries'
 import {
   assembleDigest,
@@ -19,7 +17,7 @@ import {
 import type { Mailer } from './mail'
 import { loadPrefs, prefAllows } from './prefs'
 import { type PushPayload, type PushSender, sendPush } from './push'
-import type { NotificationSettings } from './settings'
+import type { DigestFrequency, NotificationSettings } from './settings'
 import type { FetchLike, NotifyDb } from './types'
 
 /**
@@ -103,7 +101,10 @@ export const fanoutNewChapter = async (
   const locked =
     chapter.isPremium ||
     (chapter.earlyAccessUntil !== null && chapter.earlyAccessUntil.getTime() > now.getTime())
-  const done = await deliveredKeys(db, [`chapter:${chapterId}:push`, `chapter:${chapterId}:discord`])
+  const done = await deliveredKeys(db, [
+    `chapter:${chapterId}:push`,
+    `chapter:${chapterId}:discord`,
+  ])
 
   // ── push ───────────────────────────────────────────────────────────────────────────────
   // A channel that cannot send is skipped *before* any query: an unconfigured deployment must
@@ -251,14 +252,14 @@ export interface DigestRunSummary {
  * One pass over everyone who opted in. A reader is mailed when their slot has passed, their
  * `new_chapter × email` preference is on, and the window actually holds something.
  */
-export const runDigests = async (
-  db: NotifyDb,
-  deps: DigestDeps,
-): Promise<DigestRunSummary> => {
+export const runDigests = async (db: NotifyDb, deps: DigestDeps): Promise<DigestRunSummary> => {
   const now = deps.now ?? new Date()
   const out: DigestRunSummary = { considered: 0, sent: 0, empty: 0, failed: 0, skipped: 0 }
   if (!deps.settings.email.enabled) return out
-  const schedule = { hourUtc: deps.settings.email.hourUtc, weeklyDay: deps.settings.email.weeklyDay }
+  const schedule = {
+    hourUtc: deps.settings.email.hourUtc,
+    weeklyDay: deps.settings.email.weeklyDay,
+  }
   const candidates = await digestCandidates(db, deps.limit ?? 500)
   for (const candidate of candidates) {
     const state = {

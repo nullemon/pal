@@ -1,9 +1,8 @@
-import { getDb } from '@palscans/db'
 import { timingSafeEqual } from 'node:crypto'
+import { getDb } from '@palscans/db'
 import { fail, ok, parseJson } from '@/lib/auth'
-import { discordStatus } from '@/lib/env'
-import { getEnv } from '@/lib/env'
 import { redeemCode } from '@/lib/discord'
+import { discordStatus, getEnv } from '@/lib/env'
 import { discordRedeemSchema } from '../../schemas'
 
 /**

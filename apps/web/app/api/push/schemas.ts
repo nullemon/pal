@@ -18,6 +18,9 @@ export const pushUnsubscribeSchema = z.object({
 export const discordRedeemSchema = z.object({
   code: z.string().trim().min(4).max(16),
   /** Discord snowflake. */
-  discordId: z.string().trim().regex(/^\d{5,25}$/, 'must be a Discord user id'),
+  discordId: z
+    .string()
+    .trim()
+    .regex(/^\d{5,25}$/, 'must be a Discord user id'),
   discordUsername: z.string().trim().max(64).optional(),
 })

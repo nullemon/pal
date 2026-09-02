@@ -37,8 +37,8 @@ export {
   isDigestDue,
   lastScheduledSlot,
   markDigestRun,
-  readDigestState,
   type RenderedDigest,
+  readDigestState,
   renderDigest,
   setDigestFrequency,
 } from './digest'
@@ -73,10 +73,10 @@ export {
   listSubscriptions,
   type PushPayload,
   type PushSender,
-  saveSubscription,
   type SendPushSummary,
-  sendPush,
   type StoredSubscription,
+  saveSubscription,
+  sendPush,
   webPushSender,
 } from './push'
 export {
