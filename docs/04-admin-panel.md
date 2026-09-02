@@ -129,8 +129,9 @@ to show the reported object in context with the actions that make sense for its 
 delete comment, warn, comment-ban for N days, ban user, dismiss. Keyboard: `j`/`k` to move,
 `d` to dismiss, `a` to action. A moderator clearing 200 reports should never touch a mouse.
 
-**Comments** gives a global stream with filters (new, most-reported, by user, containing a
-term) and a regex-based auto-flag list that quarantines rather than deletes.
+**Comments** is specified in full in `14-comments.md`: a Pending · Reported · Flagged · All
+queue, links held by default with a domain allowlist, word filters, automod scoring,
+shadow-bans, the community image collection, and per-page locks.
 
 **Users** — search by email, username, or id. The detail view shows role, entitlements,
 subscription status, sessions (each revocable individually), recent comments, uploads, and
