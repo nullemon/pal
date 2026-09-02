@@ -3,11 +3,15 @@ import { z } from 'zod'
 export const DIRECTIONS = ['A', 'B', 'C', 'D', 'E', 'F'] as const
 export type Direction = (typeof DIRECTIONS)[number]
 
-/** Which directions exist as layout implementations today (docs/04: unbuilt cards are disabled). */
-export const BUILT_LAYOUTS: Record<'home' | 'series', readonly Direction[]> = {
-  home: ['A'],
-  series: ['B'],
-}
+/**
+ * Which directions exist as layout implementations today (docs/04: unbuilt cards are
+ * disabled). Client-safe on purpose — `lib/layouts.ts` holds the components and its
+ * `satisfies` clauses fail the typecheck if this list and the registry disagree.
+ */
+export const BUILT_LAYOUTS = {
+  home: ['A', 'C', 'D'],
+  series: ['B', 'C', 'D'],
+} as const satisfies Record<'home' | 'series', readonly Direction[]>
 
 export const layoutsSettingSchema = z.object({
   home: z.enum(DIRECTIONS),

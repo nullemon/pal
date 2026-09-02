@@ -148,3 +148,18 @@ export const cachedSearch = unstable_cache((q: string) => search(q), ['search'],
   revalidate: HOME_REVALIDATE,
   tags: CATALOG,
 })
+
+/**
+ * `settings.layouts` — which direction each surface renders (docs/17 §F). Read through the
+ * same 60s settings cache as the rest, so an Appearance → Layouts save takes effect at once
+ * via `revalidateTag('settings')`.
+ */
+export const cachedLayoutsSetting = unstable_cache(
+  async (): Promise<{ home: string; series: string }> => {
+    const raw = await getSetting<{ home?: unknown; series?: unknown }>(await getDb(), 'layouts', {})
+    const pick = (v: unknown) => (typeof v === 'string' ? v : '')
+    return { home: pick(raw?.home), series: pick(raw?.series) }
+  },
+  ['settings', 'layouts'],
+  { revalidate: HOME_REVALIDATE, tags: SETTINGS },
+)

@@ -1,0 +1,36 @@
+import type { ReactNode } from 'react'
+import type { ChapterRowData, ViewerSeriesState } from '@/app/(site)/series/[slug]/data'
+import type { getSeries, loadRecommended } from '@/app/(site)/series/[slug]/data'
+import type { AdPlacement } from '@/components/home/layouts/types'
+import type { AppUser } from '@/lib/comments/viewer'
+import type { CommentSort } from '@/lib/comments/types'
+
+/** The series row every direction renders, as `seriesBySlug` returns it. */
+export type SeriesDetail = NonNullable<Awaited<ReturnType<typeof getSeries>>>
+export type RecommendedItems = Awaited<ReturnType<typeof loadRecommended>>
+
+/**
+ * Everything any series layout needs, loaded once by `loadSeriesView()` (docs/17 §F).
+ * Layouts are presentational — none of them queries, and all of them render the same ad
+ * slots, comments island, metadata and JSON-LD.
+ */
+export interface SeriesViewProps {
+  series: SeriesDetail
+  user: AppUser | null
+  /** Server render time; chapter countdowns and "NEW" windows are measured from it. */
+  now: Date
+  /** Comment sort from `?sort=`. */
+  sort: CommentSort
+  chapters: ChapterRowData[]
+  rank: number | null
+  recommended: RecommendedItems
+  state: ViewerSeriesState
+  coverUrl: string | null
+  coverAlt: string
+  /** The viewer holds `offline` (docs/17 §B overrides applied). */
+  canDownload: boolean
+  site: { url: string; name: string }
+  ads: { top: AdPlacement; mpu: AdPlacement }
+}
+
+export type SeriesLayoutComponent = (props: SeriesViewProps) => ReactNode
