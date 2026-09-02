@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { safeJobId } from '../queue/bullmq.js'
 import { createQueue, MemoryQueue } from '../queue/index.js'
 
 describe('MemoryQueue', () => {
@@ -56,5 +57,22 @@ describe('MemoryQueue', () => {
     const q = await createQueue({ redisUrl: '', kind: undefined })
     expect(q.kind).toBe('memory')
     await q.close()
+  })
+})
+
+describe('safeJobId', () => {
+  it('swaps the separator BullMQ reserves for its own keys', () => {
+    // BullMQ throws "Custom Id cannot contain :" — which every caller here would hit, since
+    // they all name their ids after the job.
+    expect(safeJobId('chapter.process:12:3')).toBe('chapter.process-12-3')
+    expect(safeJobId('import.run:7')).toBe('import.run-7')
+  })
+
+  it('leaves an unset id unset, so BullMQ still assigns one', () => {
+    expect(safeJobId(undefined)).toBeUndefined()
+  })
+
+  it('keeps distinct ids distinct', () => {
+    expect(safeJobId('series.art:4:cover')).not.toBe(safeJobId('series.art:4:banner'))
   })
 })

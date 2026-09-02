@@ -9,9 +9,9 @@ import {
 } from '@palscans/core/import'
 import { fmt, messages } from '@palscans/core/messages'
 import { Button, useToast } from '@palscans/ui'
-import { Download, Play, RefreshCw } from 'lucide-react'
-import { useState } from 'react'
-import { postJson, putJson } from '@/components/admin/client/api'
+import { Download, Pause, Play, RefreshCw, Square } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { api, patchJson, postJson, putJson } from '@/components/admin/client/api'
 import { SaveBar, Segmented, Toggle } from '@/components/admin/client/controls'
 import {
   EmptyRow,
@@ -26,7 +26,7 @@ import {
   Td,
   Th,
 } from '@/components/admin/ui'
-import type { ImportDoc } from './types'
+import type { ImportDoc, RunView } from './types'
 
 const m = messages.admin.import
 const nf = new Intl.NumberFormat('en-GB')
@@ -63,7 +63,145 @@ function CountGrid({
   )
 }
 
-export function ImportScreen({ initial }: { initial: ImportDoc }) {
+/** Status tones for the run banner: what the operator should feel at a glance. */
+const RUN_TONE: Record<RunView['status'], 'ok' | 'warn' | 'danger' | undefined> = {
+  queued: undefined,
+  running: undefined,
+  paused: 'warn',
+  done: 'ok',
+  cancelled: 'warn',
+  failed: 'danger',
+}
+
+const RUN_NOTE: Record<RunView['status'], string> = {
+  queued: m.queued,
+  running: m.runningNow,
+  paused: m.pausedNow,
+  done: m.doneNow,
+  cancelled: m.cancelledNow,
+  failed: m.failedNow,
+}
+
+/**
+ * The import run: start it, watch it, stop it. Progress is polled rather than streamed —
+ * the run outlives this page and any number of tabs may be watching, so the row in
+ * `import_runs` is the only source of truth about where it has got to.
+ */
+function RunPanel({ initial, ready }: { initial: RunView | null; ready: boolean }) {
+  const { toast } = useToast()
+  const [view, setView] = useState<RunView | null>(initial)
+  const [busy, setBusy] = useState(false)
+  const live = view !== null && (view.status === 'queued' || view.status === 'running')
+
+  useEffect(() => {
+    if (!live) return
+    let cancelled = false
+    const tick = async () => {
+      const res = await api<RunView | null>('/api/admin/import/run')
+      if (!cancelled && res.ok) setView(res.data)
+    }
+    const timer = setInterval(() => void tick(), 2000)
+    return () => {
+      cancelled = true
+      clearInterval(timer)
+    }
+  }, [live])
+
+  const send = async (action: 'start' | 'pause' | 'resume' | 'cancel') => {
+    if (action === 'cancel' && !window.confirm(m.confirmCancel)) return
+    setBusy(true)
+    const res =
+      action === 'start'
+        ? await postJson<RunView>('/api/admin/import/run', {})
+        : await patchJson<RunView>('/api/admin/import/run', { id: view?.id, action })
+    setBusy(false)
+    if (!res.ok) return toast({ title: m.startFailed, description: res.message, tone: 'danger' })
+    setView(res.data)
+  }
+
+  const counts = view?.counts ?? {}
+  const tiles = (
+    [
+      ['series', m.counts.series],
+      ['chapters', m.counts.chapters],
+      ['pages', m.counts.chapterPages],
+      ['users', m.counts.users],
+      ['comments', m.counts.comments],
+      ['bookmarks', m.counts.bookmarks],
+      ['redirects', m.counts.redirects],
+      ['skipped', m.skippedCount],
+    ] as const
+  ).map(([key, label]) => ({ label, value: counts[key] ?? 0 }))
+
+  return (
+    <Panel>
+      <PanelHeader title={m.runTitle} hint={m.runHint} />
+      <div className="flex flex-wrap items-center gap-2">
+        {live || view?.status === 'paused' ? (
+          <>
+            {view?.status === 'paused' ? (
+              <Button size="sm" disabled={busy} onClick={() => void send('resume')}>
+                <Play size={14} aria-hidden="true" />
+                {m.resume}
+              </Button>
+            ) : (
+              <Button size="sm" variant="ghost" disabled={busy} onClick={() => void send('pause')}>
+                <Pause size={14} aria-hidden="true" />
+                {m.pause}
+              </Button>
+            )}
+            <Button size="sm" variant="ghost" disabled={busy} onClick={() => void send('cancel')}>
+              <Square size={14} aria-hidden="true" />
+              {m.cancel}
+            </Button>
+          </>
+        ) : (
+          <Button size="sm" disabled={!ready || busy} onClick={() => void send('start')}>
+            <Play size={14} aria-hidden="true" />
+            {m.start}
+          </Button>
+        )}
+        {view ? (
+          <Pill tone={RUN_TONE[view.status]}>
+            {m.phase}: {m.phases[view.phase]}
+          </Pill>
+        ) : null}
+        {!ready && !view ? <Hint>{m.runUnavailable}</Hint> : null}
+      </div>
+
+      {view ? (
+        <>
+          <p className="mt-3 text-[12.5px] leading-[18px] text-fg-muted">
+            {view.stopping && live ? m.pausedNow : RUN_NOTE[view.status]}{' '}
+            {fmt(m.startedWhen, { when: when(view.startedAt) })}
+          </p>
+          <div className="mt-3.5">
+            <div className="mb-1.5 text-[12.5px] font-bold text-fg">{m.written}</div>
+            <CountGrid items={tiles} />
+          </div>
+          {view.errors.length > 0 ? (
+            <Warnings items={view.errors.map((e) => `${e.scope}: ${e.message}`)} />
+          ) : null}
+        </>
+      ) : null}
+
+      <div className="mt-3.5 flex flex-col gap-1 text-[12.5px] leading-[18px] text-fg-muted">
+        <p>{m.passwordsNote}</p>
+        <p>{m.redirectsNote}</p>
+        <p>{m.guestCommentsNote}</p>
+        <p>{m.imagesNote}</p>
+      </div>
+    </Panel>
+  )
+}
+
+export function ImportScreen({
+  initial,
+  run: initialRun,
+}: {
+  initial: ImportDoc
+  run: RunView | null
+}) {
   const { toast } = useToast()
   const [doc, setDoc] = useState(initial)
   const [saved, setSaved] = useState<ImportSetting>(initial.config)
@@ -392,20 +530,7 @@ export function ImportScreen({ initial }: { initial: ImportDoc }) {
         )}
       </Panel>
 
-      <Panel>
-        <PanelHeader title={m.runTitle} hint={m.runHint} />
-        <div className="flex flex-wrap items-center gap-2">
-          <Button size="sm" disabled>
-            <Play size={14} aria-hidden="true" />
-            {m.start}
-          </Button>
-          <Hint>{m.runUnavailable}</Hint>
-        </div>
-        <div className="mt-3.5 flex flex-col gap-1 text-[12.5px] leading-[18px] text-fg-muted">
-          <p>{m.passwordsNote}</p>
-          <p>{m.redirectsNote}</p>
-        </div>
-      </Panel>
+      <RunPanel initial={initialRun} ready={importSourceReady(saved)} />
     </div>
   )
 }

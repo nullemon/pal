@@ -2,6 +2,7 @@ import { messages } from '@palscans/core/messages'
 import { PageHeader } from '@/components/admin/ui'
 import { withPermission } from '@/lib/auth'
 import { ImportScreen } from './ImportScreen'
+import { latestRunView } from './run-service'
 import { maskImportDoc, readImportDoc } from './service'
 
 /**
@@ -10,12 +11,12 @@ import { maskImportDoc, readImportDoc } from './service'
  */
 export default async function ImportPage() {
   await withPermission('settings.write', { returnTo: '/admin/import' })
-  const doc = maskImportDoc(await readImportDoc())
+  const [doc, run] = await Promise.all([readImportDoc().then(maskImportDoc), latestRunView()])
   const m = messages.admin.import
   return (
     <>
       <PageHeader title={m.title} subtitle={m.subtitle} />
-      <ImportScreen initial={doc} />
+      <ImportScreen initial={doc} run={run} />
     </>
   )
 }

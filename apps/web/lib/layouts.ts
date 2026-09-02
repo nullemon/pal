@@ -1,10 +1,12 @@
 import { BUILT_LAYOUTS, DIRECTIONS, type Direction } from '@/components/admin/schemas-appearance'
 import { HomeA } from '@/components/home/layouts/HomeA'
+import { HomeB } from '@/components/home/layouts/HomeB'
 import { HomeC } from '@/components/home/layouts/HomeC'
 import { HomeD } from '@/components/home/layouts/HomeD'
 import { HomeE } from '@/components/home/layouts/HomeE'
 import { HomeF } from '@/components/home/layouts/HomeF'
 import type { HomeLayoutComponent } from '@/components/home/layouts/types'
+import { SeriesA } from '@/components/series/layouts/SeriesA'
 import { SeriesB } from '@/components/series/layouts/SeriesB'
 import { SeriesC } from '@/components/series/layouts/SeriesC'
 import { SeriesD } from '@/components/series/layouts/SeriesD'
@@ -24,6 +26,7 @@ type BuiltSeries = (typeof BUILT_LAYOUTS)['series'][number]
 
 const HOME_LAYOUTS = {
   A: HomeA,
+  B: HomeB,
   C: HomeC,
   D: HomeD,
   E: HomeE,
@@ -31,6 +34,7 @@ const HOME_LAYOUTS = {
 } satisfies Record<BuiltHome, HomeLayoutComponent>
 
 const SERIES_LAYOUTS = {
+  A: SeriesA,
   B: SeriesB,
   C: SeriesC,
   D: SeriesD,

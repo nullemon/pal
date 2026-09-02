@@ -30,6 +30,10 @@
       "types": "./dist/import/index.d.ts",
       "default": "./dist/import/index.js"
     },
+    "./import/sources": {
+      "types": "./dist/import/sources/index.d.ts",
+      "default": "./dist/import/sources/index.js"
+    },
     "./import/fixtures": {
       "types": "./dist/import/__fixtures__/index.d.ts",
       "default": "./dist/import/__fixtures__/index.js"

@@ -10,6 +10,15 @@ export interface BullQueueOptions {
 }
 
 /** BullMQ-backed queue; one BullMQ queue per logical queue, job names as BullMQ job names. */
+/**
+ * BullMQ builds its Redis keys by joining on `:` and rejects a custom job id containing one.
+ * Callers name their ids after the job (`chapter.process:12:3`), which reads far better than
+ * a flat string, so the separator is swapped here instead of at every call site. Ids in this
+ * codebase are structured (`name:id:variant`), so the swap cannot collide.
+ */
+export const safeJobId = (jobId: string | undefined): string | undefined =>
+  jobId === undefined ? undefined : jobId.replaceAll(':', '-')
+
 export class BullMqQueue implements Queue {
   readonly kind = 'bullmq' as const
   readonly name: string
@@ -38,7 +47,7 @@ export class BullMqQueue implements Queue {
   async add<N extends JobName>(name: N, data: JobMap[N], opts: JobOptions = {}): Promise<string> {
     const job = await this.queue.add(name, data, {
       delay: opts.delayMs,
-      jobId: opts.jobId,
+      jobId: safeJobId(opts.jobId),
       attempts: opts.attempts,
       priority: opts.priority,
     })

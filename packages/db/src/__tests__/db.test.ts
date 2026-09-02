@@ -1,7 +1,7 @@
 import { mkdtemp, rm } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
-import { FsStorage } from '@palscans/core'
+import { DEFAULT_SEO_TEMPLATES, FsStorage } from '@palscans/core'
 import { sql } from 'drizzle-orm'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createDb, type DbHandle, executeRows } from '../client.js'
@@ -152,8 +152,12 @@ describe('migrations + seed on PGlite', () => {
     expect(ch).not.toBeNull()
     expect(ch?.pages).toHaveLength(34)
     expect(ch?.pages[0]?.idx).toBe(0)
-    expect(ch?.pages[0]?.width).toBe(800)
-    expect(ch?.pages[0]?.height).toBe(1500)
+    // Dimensions are read off the seeded artwork rather than pinned to a number, so
+    // regenerating the art cannot turn a green suite red. What matters is that every page
+    // carries real intrinsic dimensions — that is what makes the reader layout-shift free.
+    expect(ch?.pages[0]?.width).toBeGreaterThan(0)
+    expect(ch?.pages[0]?.height).toBeGreaterThan(0)
+    expect(ch?.pages[0]?.variants[0]?.w).toBe(ch?.pages[0]?.width)
     expect(ch?.pages[0]?.key).toMatch(/^pages\/page-c-\d+\.svg$/)
     expect(ch?.chapter.pageCount).toBe(34)
     expect(ch?.prev?.number).toBe(300)
@@ -237,7 +241,10 @@ describe('migrations + seed on PGlite', () => {
       sql`select value from seo_settings where key = 'templates'`,
     )
     const templates = seo[0]?.value
-    expect(templates?.series.title).toBe('{title} — Read Online Free · {site}')
+    // Compared against the shipped defaults, not a copy of them: the separator is a
+    // variable now (docs/12 §2), and a duplicated literal here just goes stale.
+    expect(templates?.series.title).toBe(DEFAULT_SEO_TEMPLATES.series.title)
+    expect(templates?.series.title).toContain('{sep}')
     const premium = await executeRows<{ feature: string }>(
       handle.db,
       sql`select feature from entitlements e join users u on u.id = e.user_id where u.email = 'premium@palscans.org' order by feature`,

@@ -4,6 +4,8 @@ import { getStorage } from '@palscans/core/storage'
 import { chapters, closeDb, getDb, series } from '@palscans/db'
 import { and, eq, isNotNull, isNull, lt, sql } from 'drizzle-orm'
 import { processChapter } from './jobs/chapter-process.js'
+import { openSource, readImportConfig } from './jobs/import/resolve.js'
+import { runImport } from './jobs/import-run.js'
 import { registerNotifications } from './jobs/notify-index.js'
 import { publishDue } from './jobs/publish.js'
 import { type ArtKind, processSeriesArt } from './jobs/series-art.js'
@@ -66,6 +68,27 @@ const main = async () => {
   // D · Notifications (docs/17 §D): takes over `notify.new_chapter` and runs the push /
   // digest / Discord passes on its own timer. Inert when VAPID and the bot token are unset.
   const notifications = registerNotifications(db, queue)
+
+  // E · legacy importer (docs/17 §E). One run at a time — the `import_runs` live index
+  // enforces that — and the job body is the resumable walker, so a redelivered job picks up
+  // at the last committed batch instead of re-importing what already landed.
+  queue.process('import.run', async (job) => {
+    const config = await readImportConfig(db)
+    const source = await openSource(config)
+    try {
+      await runImport(job.data.runId, {
+        db,
+        storage,
+        queue,
+        source,
+        batchSize: config.batchSize,
+        skipImages: config.skipImages,
+      })
+    } finally {
+      await source.close?.()
+    }
+  })
+
   for (const name of [
     'sitemap.build',
     'notify.comment',

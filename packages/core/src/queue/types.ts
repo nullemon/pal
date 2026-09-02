@@ -13,6 +13,8 @@ export interface JobMap {
   'email.send': { to: string; template: string; vars: Record<string, string> }
   'stats.rollup': Record<string, never>
   'webhook.deliver': { webhookId: number; event: string; payload: Record<string, unknown> }
+  /** Walk the legacy WordPress site and import it, one resumable batch at a time (docs/17 §E). */
+  'import.run': { runId: number }
 }
 export type JobName = keyof JobMap
 

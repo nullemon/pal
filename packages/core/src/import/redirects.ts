@@ -38,8 +38,7 @@ export const legacyRedirects = (
 ): RedirectRow[] => {
   const seriesBase = options.seriesBase ?? 'manga'
   const genreBase = options.genreBase ?? 'manga-genre'
-  const chapterPath = options.chapterPath ?? ((slug, n) => `/series/${slug}/chapter-${n}`)
-
+  // The chapter rows are delegated to `chapterRedirects` below, options and all.
   const rows = new Map<string, RedirectRow>()
   const add = (fromPath: string, toPath: string): void => {
     if (!rows.has(fromPath)) rows.set(fromPath, { fromPath, toPath, status: 301 })
@@ -59,12 +58,35 @@ export const legacyRedirects = (
 
   for (const c of chapters) {
     const slug = bySlug.get(c.seriesLegacyId)
-    if (slug === undefined || c.number === null) continue
-    const to = chapterPath(slug, trimNumber(c.number))
-    add(`/${seriesBase}/${slug}/chapter-${c.number}/`, to)
-    if (c.legacySlug && c.legacySlug !== `chapter-${c.number}`)
-      add(`/${seriesBase}/${slug}/${c.legacySlug}/`, to)
+    if (slug === undefined) continue
+    for (const row of chapterRedirects(slug, [c], options)) add(row.fromPath, row.toPath)
   }
 
+  return [...rows.values()].sort((a, b) => a.fromPath.localeCompare(b.fromPath))
+}
+
+/**
+ * The chapter rows for one series. Split out so an import can emit them as each series
+ * finishes, instead of holding the whole catalogue in memory to call {@link legacyRedirects}.
+ */
+export const chapterRedirects = (
+  seriesSlug: string,
+  chapters: readonly MappedChapter[],
+  options: RedirectOptions = {},
+): RedirectRow[] => {
+  const seriesBase = options.seriesBase ?? 'manga'
+  const chapterPath = options.chapterPath ?? ((slug, n) => `/series/${slug}/chapter-${n}`)
+  const rows = new Map<string, RedirectRow>()
+  const add = (fromPath: string, toPath: string): void => {
+    if (!rows.has(fromPath)) rows.set(fromPath, { fromPath, toPath, status: 301 })
+  }
+  if (seriesSlug === '') return []
+  for (const c of chapters) {
+    if (c.number === null) continue
+    const to = chapterPath(seriesSlug, trimNumber(c.number))
+    add(`/${seriesBase}/${seriesSlug}/chapter-${c.number}/`, to)
+    if (c.legacySlug && c.legacySlug !== `chapter-${c.number}`)
+      add(`/${seriesBase}/${seriesSlug}/${c.legacySlug}/`, to)
+  }
   return [...rows.values()].sort((a, b) => a.fromPath.localeCompare(b.fromPath))
 }

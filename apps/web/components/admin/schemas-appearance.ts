@@ -9,8 +9,8 @@ export type Direction = (typeof DIRECTIONS)[number]
  * `satisfies` clauses fail the typecheck if this list and the registry disagree.
  */
 export const BUILT_LAYOUTS = {
-  home: ['A', 'C', 'D', 'E', 'F'],
-  series: ['B', 'C', 'D', 'E', 'F'],
+  home: ['A', 'B', 'C', 'D', 'E', 'F'],
+  series: ['A', 'B', 'C', 'D', 'E', 'F'],
 } as const satisfies Record<'home' | 'series', readonly Direction[]>
 
 export const layoutsSettingSchema = z.object({

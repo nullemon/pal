@@ -10,6 +10,7 @@ import {
   type UnparsedChapter,
 } from '@palscans/core/import'
 import { createFixtureSource } from '@palscans/core/import/fixtures'
+import { createDumpSourceFromSetting } from '@palscans/core/import/sources'
 import { getDb, getSetting, settings } from '@palscans/db'
 import { z } from 'zod'
 import type { ImportDoc, StoredDryRun } from './types'
@@ -80,14 +81,15 @@ export class ConnectorUnavailableError extends Error {
 /**
  * Resolve a {@link LegacySource} for the stored configuration.
  *
- * Only the built-in sample dataset is implemented today: the live MySQL and mysqldump
- * adapters land with the import job. Discovery and the dry run therefore fall back to the
- * sample source so the reports can be reviewed, and the screen says so plainly.
+ * The sample dataset and a mysqldump file are both real connectors. A live MySQL DSN needs a
+ * driver this build does not carry, so it falls back to the sample source and `fallback`
+ * tells the screen to say so rather than passing off sample numbers as the operator's own.
  */
 export const resolveSource = (
   config: ImportSetting,
 ): { source: LegacySource; fallback: ImportSetting['mode'] | null } => {
   if (config.mode === 'sample') return { source: createFixtureSource(), fallback: null }
+  if (config.mode === 'dump') return { source: createDumpSourceFromSetting(config), fallback: null }
   return {
     source: createFixtureSource({ name: 'Built-in sample dataset (stand-in)' }),
     fallback: config.mode,
