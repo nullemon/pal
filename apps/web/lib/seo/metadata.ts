@@ -88,7 +88,9 @@ export function metadataFor(
 ): Metadata {
   const site = settings.identity.site_name
   const sep = settings.identity.separator
-  const vars: TemplateVars = { site, ...(ctx.vars ?? {}) }
+  // {sep} is a variable so the operator's separator choice drives every template
+  // (docs/12 §2); previously it only reached the override-title path below.
+  const vars: TemplateVars = { site, sep, ...(ctx.vars ?? {}) }
 
   let title = ''
   let description = ''

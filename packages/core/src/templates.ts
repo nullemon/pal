@@ -1,6 +1,6 @@
 /**
  * SEO title/description templates (docs/12-seo.md §2).
- * Variables: {site} {title} {type} {chapter} {chapter_count} {latest_chapter} {genres}
+ * Variables: {site} {sep} {title} {type} {chapter} {chapter_count} {latest_chapter} {genres}
  * {author} {year} {synopsis:N} {genre} {count} {intro:N} {excerpt:N} {next_prev_hint}.
  * Any variable may take `:N` to truncate at a word boundary.
  */
@@ -15,35 +15,36 @@ export interface SeoTemplate {
 
 export const DEFAULT_SEO_TEMPLATES: Record<SeoPageType, SeoTemplate> = {
   home: {
-    title: '{site} — Read Manhwa, Manga and Manhua Online',
+    title: '{site} {sep} Read Manhwa, Manga and Manhua Online',
     description:
       'Read the latest manhwa, manga and manhua chapters on {site}, updated daily. Free, fast, mobile-friendly.',
   },
   series: {
-    title: '{title} — Read Online Free · {site}',
+    title: '{title} {sep} Read Online Free {sep} {site}',
     description:
       'Read {title} {type} online. {chapter_count} chapters, latest {latest_chapter}. {synopsis:160}',
   },
   chapter: {
-    title: '{title} Chapter {chapter} · {site}',
+    title: '{title} Chapter {chapter} {sep} {site}',
     description: 'Read {title} Chapter {chapter} online free at {site}. {next_prev_hint}',
   },
   genre: {
-    title: '{genre} Manhwa & Manga — Read Online · {site}',
+    title: '{genre} Manhwa & Manga {sep} Read Online {sep} {site}',
     description: 'Browse {count} {genre} series on {site}. {intro:160}',
   },
   rankings: {
-    title: 'Top Manhwa & Manga This Week · {site}',
+    title: 'Top Manhwa & Manga This Week {sep} {site}',
     description: 'The most-read manhwa, manga and manhua on {site} this week, month and all time.',
   },
   announcement: {
-    title: '{title} · {site}',
+    title: '{title} {sep} {site}',
     description: '{excerpt:160}',
   },
 }
 
 export const TEMPLATE_VARIABLES = [
   'site',
+  'sep',
   'title',
   'type',
   'chapter',

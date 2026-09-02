@@ -19,7 +19,7 @@ const nullableString = (max = 2000) => z.string().max(max).nullable().catch(null
 
 export const seoIdentitySchema = z.object({
   site_name: z.string().min(1).max(80).catch('PALScans'),
-  separator: z.enum(['·', '—', '|']).catch('·'),
+  separator: z.enum(['-', '·', '—', '|']).catch('-'),
   default_description: z.string().max(400).catch(DEFAULT_SEO_TEMPLATES.home.description),
   default_og_image_key: nullableString(500),
   logo_key: nullableString(500),

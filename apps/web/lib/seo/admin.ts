@@ -31,7 +31,7 @@ const template = z.object({
 export const strictSeoSchemas = {
   identity: z.object({
     site_name: z.string().trim().min(1).max(80),
-    separator: z.enum(['·', '—', '|']),
+    separator: z.enum(['-', '·', '—', '|']),
     default_description: z.string().trim().max(400),
     default_og_image_key: optionalText(500),
     logo_key: optionalText(500),
