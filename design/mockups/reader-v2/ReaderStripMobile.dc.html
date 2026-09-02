@@ -1,0 +1,118 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
+  <style>
+    html, body { background: #0b0a10; }
+    body { margin: 0; }
+    a { color: #c4b5fd; text-decoration: none; } a:hover { color: #ddd6fe; }
+    * { box-sizing: border-box; }
+    .ib:hover { background: #221c33; }
+    .btn:hover { background: #221c33; border-color: #3a3152; }
+    .sel:hover { background: #221c33; border-color: #3a3152; }
+    .num { font-variant-numeric: tabular-nums; }
+  </style>
+</helmet>
+<div style="position: relative; width: 390px; min-height: 1700px; background: #0b0a10; color: #ece9f4; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; overflow: hidden; -webkit-font-smoothing: antialiased;">
+
+  <!-- Reading strip: full width, pages touch (zero gap, zero radius); ad band after four pages -->
+  <div style="position: absolute; left: 0; top: 52px; width: 390px; display: flex; flex-direction: column; gap: 0; z-index: 1;">
+
+    <!-- Page 5 -->
+    <div style="position: relative; width: 390px; height: 240px; border-radius: 0; background: linear-gradient(180deg, #1a1626, #14111f); box-shadow: inset 0 0 0 1px rgba(255,255,255,.05); padding: 20px 22px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: 1.2fr 1fr; gap: 12px;">
+      <div style="grid-column: 1 / -1; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);"></div>
+      <div style="background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);"></div>
+      <div style="background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);"></div>
+    </div>
+
+    <!-- Page 6 -->
+    <div style="position: relative; width: 390px; height: 240px; border-radius: 0; background: linear-gradient(180deg, #1a1626, #14111f); box-shadow: inset 0 0 0 1px rgba(255,255,255,.05); padding: 20px 22px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: 1fr 1fr; gap: 12px;">
+      <div style="grid-row: 1 / -1; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);"></div>
+      <div style="background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);"></div>
+      <div style="background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);"></div>
+    </div>
+
+    <!-- Page 7 (labelled) -->
+    <div style="position: relative; width: 390px; height: 240px; border-radius: 0; background: linear-gradient(180deg, #1a1626, #14111f); box-shadow: inset 0 0 0 1px rgba(255,255,255,.05); padding: 20px 22px; display: grid; grid-template-columns: repeat(1, minmax(0, 1fr)); grid-template-rows: 1fr; gap: 12px;">
+      <div style="background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);"></div>
+      <div class="num" style="position: absolute; right: 12px; bottom: 8px; font-size: 12px; font-weight: 500; line-height: 16px; color: #9e97b8; opacity: .75; letter-spacing: .02em;">7 / 34</div>
+    </div>
+
+    <!-- Page 8 -->
+    <div style="position: relative; width: 390px; height: 240px; border-radius: 0; background: linear-gradient(180deg, #1a1626, #14111f); box-shadow: inset 0 0 0 1px rgba(255,255,255,.05); padding: 20px 22px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: 1fr 1.15fr; gap: 12px;">
+      <div style="grid-column: 1 / 3; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);"></div>
+      <div style="background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);"></div>
+      <div style="grid-column: 1 / -1; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);"></div>
+    </div>
+
+    <!-- In-strip ad band, after every 4 pages -->
+    <div style="width: 390px; padding: 24px; background: #0e0c14; display: flex; align-items: center; justify-content: center;">
+      <div style="width: 300px; height: 250px; border: 1px dashed #3a3152; background: rgba(31,26,44,.45); display: flex; align-items: center; justify-content: center; text-align: center; padding: 0 20px; font-size: 11px; line-height: 18px; font-weight: 500; font-variant: small-caps; letter-spacing: .08em; color: #9e97b8;">AD · 300×250 · after every 4 pages</div>
+    </div>
+
+    <!-- Page 9 -->
+    <div style="position: relative; width: 390px; height: 240px; border-radius: 0; background: linear-gradient(180deg, #1a1626, #14111f); box-shadow: inset 0 0 0 1px rgba(255,255,255,.05); padding: 20px 22px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: 1fr 1.2fr; gap: 12px;">
+      <div style="background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);"></div>
+      <div style="background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);"></div>
+      <div style="grid-column: 1 / -1; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);"></div>
+    </div>
+
+    <!-- Page 10 (cut by the frame bottom) -->
+    <div style="position: relative; width: 390px; height: 240px; border-radius: 0; background: linear-gradient(180deg, #1a1626, #14111f); box-shadow: inset 0 0 0 1px rgba(255,255,255,.05); padding: 20px 22px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: 1fr 1fr; gap: 12px;">
+      <div style="grid-column: 1 / -1; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);"></div>
+      <div style="background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);"></div>
+      <div style="background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);"></div>
+    </div>
+  </div>
+
+  <!-- Top bar 52px, compact -->
+  <div style="position: absolute; left: 0; top: 0; width: 390px; height: 52px; background: rgba(16,13,23,.94); border-bottom: 1px solid #2c2540; display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 0 4px; z-index: 3;">
+    <div style="display: flex; align-items: center; gap: 2px; min-width: 0; flex: 1 1 auto;">
+      <a class="ib" href="#" title="Back to series" style="display: flex; flex: 0 0 auto; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 10px; color: #9e97b8;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>
+      </a>
+      <div style="display: flex; flex-direction: column; gap: 1px; min-width: 0;">
+        <div style="font-size: 14px; font-weight: 600; line-height: 18px; color: #ece9f4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Return of the Frost Monarch</div>
+        <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; line-height: 15px; color: #9e97b8; white-space: nowrap;"><span>Chapter 301</span><span style="opacity: .55;">·</span><span class="num">7 / 34</span></div>
+      </div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 2px; flex: 0 0 auto;">
+      <a class="ib" href="#" title="Reader settings" style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 10px; color: #9e97b8;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+      </a>
+      <a class="ib" href="#" title="Comments" style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 10px; color: #9e97b8;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+      </a>
+    </div>
+    <!-- Progress, ~20% read, tucked into the bar's bottom edge -->
+    <div style="position: absolute; left: 0; bottom: 0; width: 390px; height: 2px; background: rgba(139,92,246,.14);">
+      <div style="width: 20%; height: 2px; background: #8b5cf6;"></div>
+    </div>
+  </div>
+
+  <!-- Bottom bar 60px, pinned at the frame bottom -->
+  <div style="position: absolute; left: 0; top: 1640px; width: 390px; height: 60px; background: rgba(16,13,23,.94); border-top: 1px solid #2c2540; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 0 12px; z-index: 3;">
+    <a class="btn" href="#" style="display: flex; flex: 0 0 auto; align-items: center; gap: 2px; height: 44px; padding: 0 14px 0 8px; border-radius: 10px; background: #181423; border: 1px solid #2c2540; color: #ece9f4; font-size: 14px; font-weight: 600; line-height: 1;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9e97b8" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>
+      <span>Prev</span>
+    </a>
+    <a class="sel" href="#" style="display: flex; flex: 1 1 auto; align-items: center; justify-content: space-between; gap: 8px; height: 44px; min-width: 0; padding: 0 10px 0 14px; border-radius: 10px; background: #181423; border: 1px solid #2c2540; color: #ece9f4; font-size: 14px; font-weight: 600; line-height: 1;">
+      <span>Chapter 301</span>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9e97b8" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"></path></svg>
+    </a>
+    <a class="btn" href="#" style="display: flex; flex: 0 0 auto; align-items: center; gap: 2px; height: 44px; padding: 0 8px 0 14px; border-radius: 10px; background: #181423; border: 1px solid #2c2540; color: #ece9f4; font-size: 14px; font-weight: 600; line-height: 1;">
+      <span>Next</span>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9e97b8" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>
+    </a>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

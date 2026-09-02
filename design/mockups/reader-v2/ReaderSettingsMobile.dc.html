@@ -1,0 +1,164 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
+  <style>
+    html, body { background: #0b0a10; }
+    body { margin: 0; }
+    a { color: #c4b5fd; text-decoration: none; } a:hover { color: #ddd6fe; }
+    *, *::before, *::after { box-sizing: border-box; }
+    .ibtn { color: #9e97b8; transition: background .15s ease, color .15s ease; }
+    .ibtn:hover { background: rgba(255,255,255,.06); color: #ece9f4; }
+    .seg { color: #9e97b8; transition: background .15s ease, color .15s ease; }
+    .seg:hover { background: rgba(255,255,255,.05); color: #ece9f4; }
+    .seg-on { background: #2b2440; color: #ece9f4; box-shadow: inset 0 0 0 1px rgba(255,255,255,.06), 0 1px 2px rgba(0,0,0,.35); }
+    .seg-on:hover { background: #2b2440; color: #ece9f4; }
+    .seg-on svg { color: #a78bfa; }
+    .sw { transition: transform .15s ease; }
+    .sw:hover { transform: scale(1.06); }
+    .prem { color: #ffffff; transition: background .15s ease; }
+    .prem:hover { background: #a78bfa; color: #ffffff; }
+    .done { color: #c4b5fd; }
+    .done:hover { color: #ddd6fe; background: rgba(255,255,255,.05); }
+  </style>
+</helmet>
+<div style="width: 390px; min-height: 844px; background: #0b0a10; color: #ece9f4; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; overflow: hidden; position: relative;">
+
+  <!-- The paged reader, behind the sheet -->
+  <header style="position: absolute; left: 0; right: 0; top: 0; height: 52px; display: flex; align-items: center; justify-content: space-between; gap: 4px; padding: 0 4px; background: rgba(16,13,23,.94); border-bottom: 1px solid #2c2540; z-index: 2;">
+    <a href="#" class="ibtn" title="Back to series" aria-label="Back to Return of the Frost Monarch" style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 12px; flex: 0 0 44px;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg></a>
+    <div style="flex: 1 1 0; min-width: 0; text-align: center; font-size: 15px; font-weight: 600; letter-spacing: -.005em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #ece9f4;">Frost Monarch &middot; Ch. 301</div>
+    <a href="#" class="ibtn" title="Reader settings" aria-label="Reader settings" aria-expanded="true" style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 12px; flex: 0 0 44px; color: #a78bfa; background: rgba(139,92,246,.12);"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></a>
+  </header>
+
+  <main style="position: absolute; left: 0; right: 0; top: 52px; bottom: 60px; display: flex; align-items: center; justify-content: center; z-index: 1;">
+    <div style="position: relative; width: 390px; height: 554px; background: linear-gradient(180deg, #1a1626, #14111f); box-shadow: inset 0 0 0 1px rgba(255,255,255,.05); overflow: hidden;">
+      <div style="position: absolute; left: 16px; right: 16px; top: 16px; height: 236px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 2px;"></div>
+      <div style="position: absolute; left: 16px; width: 173px; top: 268px; height: 256px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 2px;"></div>
+      <div style="position: absolute; left: 201px; right: 16px; top: 268px; height: 256px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 2px;"></div>
+      <span style="position: absolute; right: 12px; bottom: 8px; font-size: 13px; font-weight: 500; letter-spacing: .02em; color: #9e97b8; opacity: .75;">7 / 34</span>
+    </div>
+  </main>
+
+  <footer style="position: absolute; left: 0; right: 0; bottom: 0; height: 60px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 8px; background: rgba(16,13,23,.94); border-top: 1px solid #2c2540; z-index: 2;">
+    <a href="#" title="Previous chapter" style="display: flex; align-items: center; gap: 2px; height: 44px; padding: 0 12px 0 6px; border-radius: 12px; font-size: 15px; font-weight: 600; color: #ece9f4; flex: 0 0 auto;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg><span>Prev</span></a>
+    <a href="#" title="Choose chapter" style="display: flex; align-items: center; justify-content: center; gap: 8px; height: 44px; padding: 0 12px 0 14px; border-radius: 12px; background: #181423; border: 1px solid #2c2540; font-size: 15px; font-weight: 600; color: #ece9f4; white-space: nowrap; flex: 1 1 auto; max-width: 190px;"><span>Chapter 301</span><span style="display: flex; color: #9e97b8;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></span></a>
+    <a href="#" title="Next chapter" style="display: flex; align-items: center; gap: 2px; height: 44px; padding: 0 6px 0 12px; border-radius: 12px; font-size: 15px; font-weight: 600; color: #ece9f4; flex: 0 0 auto;"><span>Next</span><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+  </footer>
+
+  <!-- Scrim dimming the reader -->
+  <div role="presentation" style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: rgba(11,10,16,.64); z-index: 8;"></div>
+
+  <!-- Bottom sheet: reader settings, 620 tall -->
+  <section role="dialog" aria-modal="true" aria-label="Reader settings" style="position: absolute; left: 0; right: 0; bottom: 0; height: 620px; background: #181423; border-radius: 20px 20px 0 0; border-top: 1px solid #2c2540; box-shadow: 0 -16px 48px rgba(0,0,0,.55); padding: 8px 16px 24px; display: flex; flex-direction: column; gap: 0; z-index: 9;">
+
+    <!-- Handle -->
+    <div aria-hidden="true" style="width: 36px; height: 4px; border-radius: 999px; background: rgba(255,255,255,.18); margin: 0 auto 10px;"></div>
+
+    <!-- Header -->
+    <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 44px; margin-right: -8px;">
+      <h2 style="margin: 0; font-size: 16px; font-weight: 700; line-height: 20px; letter-spacing: -.005em; color: #ece9f4;">Reader settings</h2>
+      <a href="#" class="done" title="Close settings" style="display: flex; align-items: center; justify-content: center; height: 44px; padding: 0 8px; border-radius: 10px; font-size: 14px; font-weight: 600;">Done</a>
+    </div>
+
+    <!-- Mode -->
+    <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;">
+      <div style="font-size: 14px; font-weight: 600; line-height: 18px; color: #ece9f4;">Mode</div>
+      <div role="radiogroup" aria-label="Reading mode" style="display: flex; gap: 2px; height: 66px; padding: 2px; border-radius: 12px; background: #0b0a10; border: 1px solid #2c2540;">
+        <a href="#" class="seg" role="radio" aria-checked="false" style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; height: 60px; border-radius: 9px; font-size: 14px; font-weight: 500; line-height: 16px; white-space: nowrap;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2" width="10" height="8" rx="1"></rect><rect x="7" y="11" width="10" height="8" rx="1"></rect><path d="M7 22h10"></path></svg>
+          <span>Long strip</span>
+        </a>
+        <a href="#" class="seg seg-on" role="radio" aria-checked="true" style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; height: 60px; border-radius: 9px; font-size: 14px; font-weight: 600; line-height: 16px; white-space: nowrap;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="3" width="12" height="18" rx="1.5"></rect></svg>
+          <span>Single page</span>
+        </a>
+        <a href="#" class="seg" role="radio" aria-checked="false" style="flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; height: 60px; border-radius: 9px; font-size: 14px; font-weight: 500; line-height: 16px; white-space: nowrap;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="4" width="9" height="16" rx="1.5"></rect><rect x="12.5" y="4" width="9" height="16" rx="1.5"></rect></svg>
+          <span>Double page</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Inline rows -->
+    <div style="display: flex; flex-direction: column; gap: 0; margin-top: 14px;">
+
+      <!-- Direction -->
+      <div style="display: flex; align-items: center; gap: 12px; height: 64px; border-top: 1px solid rgba(255,255,255,.06);">
+        <div style="flex: 0 0 92px; font-size: 14px; font-weight: 600; line-height: 18px; color: #ece9f4;">Direction</div>
+        <div role="radiogroup" aria-label="Reading direction" style="flex: 1 1 0; min-width: 0; display: flex; gap: 2px; height: 50px; padding: 2px; border-radius: 12px; background: #0b0a10; border: 1px solid #2c2540;">
+          <a href="#" class="seg seg-on" role="radio" aria-checked="true" style="flex: 1 1 0; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 6px; height: 44px; border-radius: 9px; font-size: 14px; font-weight: 600; white-space: nowrap;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12h16m-6-6 6 6-6 6"></path></svg>
+            <span>Left to right</span>
+          </a>
+          <a href="#" class="seg" role="radio" aria-checked="false" style="flex: 1 1 0; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 6px; height: 44px; border-radius: 9px; font-size: 14px; font-weight: 500; white-space: nowrap;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12H4m6-6-6 6 6 6"></path></svg>
+            <span>Right to left</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Fit -->
+      <div style="display: flex; align-items: center; gap: 12px; height: 64px; border-top: 1px solid rgba(255,255,255,.06);">
+        <div style="flex: 0 0 92px; font-size: 14px; font-weight: 600; line-height: 18px; color: #ece9f4;">Fit</div>
+        <div role="radiogroup" aria-label="Page fit" style="flex: 1 1 0; min-width: 0; display: flex; gap: 2px; height: 50px; padding: 2px; border-radius: 12px; background: #0b0a10; border: 1px solid #2c2540;">
+          <a href="#" class="seg seg-on" role="radio" aria-checked="true" style="flex: 1 1 0; min-width: 0; display: flex; align-items: center; justify-content: center; height: 44px; border-radius: 9px; font-size: 14px; font-weight: 600;">Width</a>
+          <a href="#" class="seg" role="radio" aria-checked="false" style="flex: 1 1 0; min-width: 0; display: flex; align-items: center; justify-content: center; height: 44px; border-radius: 9px; font-size: 14px; font-weight: 500;">Height</a>
+          <a href="#" class="seg" role="radio" aria-checked="false" style="flex: 1 1 0; min-width: 0; display: flex; align-items: center; justify-content: center; height: 44px; border-radius: 9px; font-size: 14px; font-weight: 500;">Original</a>
+        </div>
+      </div>
+
+      <!-- Quality -->
+      <div style="display: flex; align-items: center; gap: 12px; height: 64px; border-top: 1px solid rgba(255,255,255,.06);">
+        <div style="flex: 0 0 92px; font-size: 14px; font-weight: 600; line-height: 18px; color: #ece9f4;">Quality</div>
+        <div role="radiogroup" aria-label="Image quality" style="flex: 1 1 0; min-width: 0; display: flex; gap: 2px; height: 50px; padding: 2px; border-radius: 12px; background: #0b0a10; border: 1px solid #2c2540;">
+          <a href="#" class="seg seg-on" role="radio" aria-checked="true" style="flex: 1 1 0; min-width: 0; display: flex; align-items: center; justify-content: center; height: 44px; border-radius: 9px; font-size: 14px; font-weight: 600;">Auto</a>
+          <a href="#" class="seg" role="radio" aria-checked="false" style="flex: 1 1 0; min-width: 0; display: flex; align-items: center; justify-content: center; height: 44px; border-radius: 9px; font-size: 14px; font-weight: 500;">High</a>
+          <a href="#" class="seg" role="radio" aria-checked="false" style="flex: 1 1 0; min-width: 0; display: flex; align-items: center; justify-content: center; height: 44px; border-radius: 9px; font-size: 14px; font-weight: 500;">Saver</a>
+        </div>
+      </div>
+
+      <!-- Preload -->
+      <div style="display: flex; align-items: center; gap: 12px; height: 64px; border-top: 1px solid rgba(255,255,255,.06);">
+        <div style="flex: 0 0 92px; font-size: 14px; font-weight: 600; line-height: 18px; color: #ece9f4;">Preload</div>
+        <div role="radiogroup" aria-label="Pages to preload" style="flex: 1 1 0; min-width: 0; display: flex; gap: 2px; height: 50px; padding: 2px; border-radius: 12px; background: #0b0a10; border: 1px solid #2c2540;">
+          <a href="#" class="seg" role="radio" aria-checked="false" style="flex: 1 1 0; min-width: 0; display: flex; align-items: center; justify-content: center; height: 44px; border-radius: 9px; font-size: 14px; font-weight: 500; white-space: nowrap;">3 pages</a>
+          <a href="#" class="seg seg-on" role="radio" aria-checked="true" style="flex: 1 1 0; min-width: 0; display: flex; align-items: center; justify-content: center; height: 44px; border-radius: 9px; font-size: 14px; font-weight: 600; white-space: nowrap;">5 pages</a>
+          <a href="#" class="seg" role="radio" aria-checked="false" style="flex: 1 1 0; min-width: 0; display: flex; align-items: center; justify-content: center; height: 44px; border-radius: 9px; font-size: 14px; font-weight: 500; white-space: nowrap;">10 pages</a>
+        </div>
+      </div>
+
+      <!-- Background -->
+      <div style="display: flex; align-items: center; gap: 12px; height: 64px; border-top: 1px solid rgba(255,255,255,.06);">
+        <div style="flex: 0 0 92px; font-size: 14px; font-weight: 600; line-height: 18px; color: #ece9f4;">Background</div>
+        <div role="radiogroup" aria-label="Page background" style="flex: 1 1 0; min-width: 0; display: flex; align-items: center; gap: 14px;">
+          <a href="#" class="sw" role="radio" aria-checked="false" title="Black" aria-label="Black" style="display: block; width: 44px; height: 44px; border-radius: 999px; background: #000000; border: 1px solid #2c2540;"></a>
+          <a href="#" class="sw" role="radio" aria-checked="true" title="Dark" aria-label="Dark" style="display: block; width: 44px; height: 44px; border-radius: 999px; background: #0b0a10; border: 1px solid #2c2540; box-shadow: 0 0 0 2px #181423, 0 0 0 4px #8b5cf6;"></a>
+          <a href="#" class="sw" role="radio" aria-checked="false" title="Sepia" aria-label="Sepia" style="display: block; width: 44px; height: 44px; border-radius: 999px; background: #f1e4c8; border: 1px solid rgba(0,0,0,.15);"></a>
+          <a href="#" class="sw" role="radio" aria-checked="false" title="White" aria-label="White" style="display: block; width: 44px; height: 44px; border-radius: 999px; background: #ffffff; border: 1px solid rgba(0,0,0,.15);"></a>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Premium row -->
+    <div style="display: flex; align-items: center; gap: 12px; margin-top: auto; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.06);">
+      <span style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 12px; background: rgba(242,193,78,.12); color: #f2c14e; flex: 0 0 40px;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 8 4.5 4L12 5l4.5 7L21 8l-2 11H5z"></path></svg>
+      </span>
+      <div style="flex: 1 1 0; min-width: 0; font-size: 14px; font-weight: 500; line-height: 18px; color: #ece9f4;">Remove ads and unlock early access</div>
+      <a href="#" class="prem" title="PALScans Premium" style="display: flex; align-items: center; justify-content: center; height: 44px; padding: 0 16px; border-radius: 12px; background: #8b5cf6; font-size: 14px; font-weight: 700; white-space: nowrap; flex: 0 0 auto;">Go Premium</a>
+    </div>
+
+  </section>
+
+</div>
+</x-dc>
+</body>
+</html>

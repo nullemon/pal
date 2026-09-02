@@ -10,13 +10,17 @@
   },
   {
    "id": "reader",
-   "name": "Readers \u00d76"
+   "name": "Reader v2 \u00d76"
+  },
+  {
+   "id": "admin",
+   "name": "Admin \u00b7 Layouts"
   }
  ],
  "artboards": [
   {
    "file": "Main.dc.html",
-   "title": "A \u00b7 Violet Classic (ASURA-STYLE) \u2014 Home",
+   "title": "A \u00b7 Violet Classic \u2014 Home  \u2713 CHOSEN (default)",
    "x": 0,
    "y": 0,
    "w": 1440,
@@ -79,11 +83,11 @@
   },
   {
    "file": "SeriesB.dc.html",
-   "title": "B \u00b7 Violet Refined (ASURA-STYLE) \u2014 Series page",
+   "title": "B \u00b7 Violet Refined \u2014 Series page  \u2713 CHOSEN (default) + comments",
    "x": 1560,
    "y": 0,
    "w": 1440,
-   "h": 2000,
+   "h": 2700,
    "page": "series"
   },
   {
@@ -99,7 +103,7 @@
    "file": "SeriesD.dc.html",
    "title": "D \u00b7 Catalog Grid \u2014 Series page",
    "x": 0,
-   "y": 2260,
+   "y": 2960,
    "w": 1440,
    "h": 2000,
    "page": "series"
@@ -108,7 +112,7 @@
    "file": "SeriesE.dc.html",
    "title": "E \u00b7 Daylight \u2014 Series page",
    "x": 1560,
-   "y": 2260,
+   "y": 2960,
    "w": 1440,
    "h": 2000,
    "page": "series"
@@ -117,64 +121,82 @@
    "file": "SeriesF.dc.html",
    "title": "F \u00b7 Cinematic Rows \u2014 Series page",
    "x": 3120,
-   "y": 2260,
+   "y": 2960,
    "w": 1440,
    "h": 2000,
    "page": "series"
   },
   {
-   "file": "ReaderA.dc.html",
-   "title": "A \u00b7 Violet Classic (ASURA-STYLE) \u2014 Reader",
+   "file": "ReaderStripDesktop.dc.html",
+   "title": "Long strip \u00b7 desktop",
    "x": 0,
    "y": 0,
-   "w": 390,
-   "h": 844,
+   "w": 1440,
+   "h": 1000,
    "page": "reader"
   },
   {
-   "file": "ReaderB.dc.html",
-   "title": "B \u00b7 Violet Refined (ASURA-STYLE) \u2014 Reader",
+   "file": "ReaderPagedDesktop.dc.html",
+   "title": "Paged \u00b7 desktop (cubari-style)",
+   "x": 1520,
+   "y": 0,
+   "w": 1440,
+   "h": 1000,
+   "page": "reader"
+  },
+  {
+   "file": "ReaderImmersiveDesktop.dc.html",
+   "title": "Long strip \u00b7 desktop \u00b7 chrome hidden",
+   "x": 3040,
+   "y": 0,
+   "w": 1440,
+   "h": 1000,
+   "page": "reader"
+  },
+  {
+   "file": "ReaderStripMobile.dc.html",
+   "title": "Long strip \u00b7 mobile \u00b7 ad every 4 pages",
+   "x": 0,
+   "y": 1160,
+   "w": 390,
+   "h": 1700,
+   "page": "reader"
+  },
+  {
+   "file": "ReaderPagedMobile.dc.html",
+   "title": "Paged \u00b7 mobile",
    "x": 560,
-   "y": 0,
+   "y": 1160,
    "w": 390,
    "h": 844,
    "page": "reader"
   },
   {
-   "file": "ReaderC.dc.html",
-   "title": "C \u00b7 Editorial Noir \u2014 Reader",
+   "file": "ReaderSettingsMobile.dc.html",
+   "title": "Reader settings sheet \u00b7 mobile",
    "x": 1120,
-   "y": 0,
+   "y": 1160,
    "w": 390,
    "h": 844,
    "page": "reader"
   },
   {
-   "file": "ReaderD.dc.html",
-   "title": "D \u00b7 Catalog Grid \u2014 Reader",
-   "x": 1680,
+   "file": "AdminLayouts.dc.html",
+   "title": "Admin \u00b7 Appearance \u00b7 Layouts",
+   "x": 0,
    "y": 0,
-   "w": 390,
-   "h": 844,
-   "page": "reader"
+   "w": 1440,
+   "h": 1000,
+   "page": "admin"
   },
   {
-   "file": "ReaderE.dc.html",
-   "title": "E \u00b7 Daylight \u2014 Reader",
-   "x": 2240,
+   "file": "AdminTheme.dc.html",
+   "title": "Admin \u00b7 Appearance \u00b7 Theme",
+   "x": 1520,
    "y": 0,
-   "w": 390,
-   "h": 844,
-   "page": "reader"
-  },
-  {
-   "file": "ReaderF.dc.html",
-   "title": "F \u00b7 Cinematic Rows \u2014 Reader",
-   "x": 2800,
-   "y": 0,
-   "w": 390,
-   "h": 844,
-   "page": "reader"
+   "w": 1440,
+   "h": 1000,
+   "page": "admin"
   }
  ],
  "annotations": [
@@ -195,19 +217,11 @@
    "page": "series"
   },
   {
-   "id": "intro-reader",
-   "x": 0,
-   "y": -460,
-   "w": 1440,
-   "text": "Reader on a phone (390\u00d7844) \u2014 where reading actually happens. One ad after the last page, never between pages. Chrome shown visible; it hides on tap.",
-   "page": "reader"
-  },
-  {
    "id": "home-A",
    "x": 0,
    "y": -150,
    "w": 700,
-   "text": "A \u00b7 Violet Classic (ASURA-STYLE)\nThe layout your readers already know: carousel hero, updates grid, popular sidebar. Familiar and dense.\nTradeoff: looks like the rest of the category.",
+   "text": "\u2713 CHOSEN as the default homepage.\nA \u00b7 Violet Classic (ASURA-STYLE)\nThe layout your readers already know: carousel hero, updates grid, popular sidebar. Familiar and dense.\nTradeoff: looks like the rest of the category.",
    "page": "home"
   },
   {
@@ -263,7 +277,7 @@
    "x": 1560,
    "y": -150,
    "w": 700,
-   "text": "B \u00b7 Violet Refined (ASURA-STYLE)\nSame information architecture, calmer execution: one featured card, a card grid, hairlines and glass.\nTradeoff: less content above the fold than A.",
+   "text": "\u2713 CHOSEN as the default series page \u2014 now with the comment system (composer, sort, pinned staff comment, reactions, replies, spoiler, Premium and Moderator badges).\nB \u00b7 Violet Refined (ASURA-STYLE)\nSame information architecture, calmer execution: one featured card, a card grid, hairlines and glass.\nTradeoff: less content above the fold than A.",
    "page": "series"
   },
   {
@@ -277,7 +291,7 @@
   {
    "id": "series-D",
    "x": 0,
-   "y": 1910,
+   "y": 2810,
    "w": 700,
    "text": "D \u00b7 Catalog Grid\nSearch and filters are the hero. Maximum density, mono numerals. Best for a big catalog and power users.\nTradeoff: no curation on the front page; the least emotive.",
    "page": "series"
@@ -285,7 +299,7 @@
   {
    "id": "series-E",
    "x": 1560,
-   "y": 1910,
+   "y": 2810,
    "w": 700,
    "text": "E \u00b7 Daylight\nThe light theme, proven end to end including the reader. Friendly, broad appeal.\nTradeoff: dark is the category norm; many readers will toggle.",
    "page": "series"
@@ -293,62 +307,86 @@
   {
    "id": "series-F",
    "x": 3120,
-   "y": 1910,
+   "y": 2810,
    "w": 700,
    "text": "F \u00b7 Cinematic Rows\nStreaming-app feel: full-bleed hero, horizontal rails, glass chrome. Strong on phones and big screens.\nTradeoff: rails hide depth; harder to scan forty updates at once.",
    "page": "series"
   },
   {
-   "id": "reader-A",
+   "id": "r-readerstripdesktop",
    "x": 0,
-   "y": -190,
-   "w": 390,
-   "text": "A \u00b7 Violet Classic (ASURA-STYLE)\nThe layout your readers already know: carousel hero, updates grid, popular sidebar. Familiar and dense.",
+   "y": -150,
+   "w": 700,
+   "text": "Long strip \u00b7 desktop\nEvery page in one column, 820 wide. Sticky skyscrapers left and right. Top bar, progress bar, bottom Prev \u00b7 Chapter \u00b7 Next.",
    "page": "reader"
   },
   {
-   "id": "reader-B",
+   "id": "r-readerpageddesktop",
+   "x": 1520,
+   "y": -150,
+   "w": 700,
+   "text": "Paged \u00b7 desktop (cubari-style)\nOne page at a time, fit to height. Click the left/right 30% to turn; chapter and page selects; scrubber with a tick per page. Skyscrapers left and right.",
+   "page": "reader"
+  },
+  {
+   "id": "r-readerimmersivedesktop",
+   "x": 3040,
+   "y": -150,
+   "w": 700,
+   "text": "Long strip \u00b7 desktop \u00b7 chrome hidden\nWhat the strip looks like once the bars slide away: a floating pill and a progress line. H shows the controls again. Skyscrapers stay.",
+   "page": "reader"
+  },
+  {
+   "id": "r-readerstripmobile",
+   "x": 0,
+   "y": 1010,
+   "w": 390,
+   "text": "Long strip \u00b7 mobile \u00b7 ad every 4 pages\nPages full width, zero gap. The in-strip ad band after page 8 \u2014 the interval (off / 2 / 4 / 6) is an admin setting.",
+   "page": "reader"
+  },
+  {
+   "id": "r-readerpagedmobile",
    "x": 560,
-   "y": -190,
+   "y": 1010,
    "w": 390,
-   "text": "B \u00b7 Violet Refined (ASURA-STYLE)\nSame information architecture, calmer execution: one featured card, a card grid, hairlines and glass.",
+   "text": "Paged \u00b7 mobile\nOne page fit to width, tap zones (Previous \u00b7 Menu \u00b7 Next) shown once on first run, page counter, scrubber.",
    "page": "reader"
   },
   {
-   "id": "reader-C",
+   "id": "r-readersettingsmobile",
    "x": 1120,
-   "y": -190,
+   "y": 1010,
    "w": 390,
-   "text": "C \u00b7 Editorial Noir\nMagazine treatment: one featured story, oversized numerals, whitespace. The most distinctive.",
+   "text": "Reader settings sheet \u00b7 mobile\nMode \u00b7 Direction \u00b7 Fit \u00b7 Quality \u00b7 Preload \u00b7 Background, plus the Go Premium row that removes ads.",
    "page": "reader"
   },
   {
-   "id": "reader-D",
-   "x": 1680,
-   "y": -190,
-   "w": 390,
-   "text": "D \u00b7 Catalog Grid\nSearch and filters are the hero. Maximum density, mono numerals. Best for a big catalog and power users.",
-   "page": "reader"
+   "id": "intro-reader2",
+   "x": 0,
+   "y": -420,
+   "w": 1440,
+   "page": "reader",
+   "text": "Reader v2 \u2014 two modes, both devices.\nLONG STRIP: every page loads in one vertical column. PAGED: one page at a time, click or tap to turn, pages load as you go (cubari-style).\nAds: sticky skyscrapers left and right on desktop; on mobile an ad after every N pages, N set in admin (off / 2 / 4 / 6); an end-of-chapter slot in both modes. Premium sees none.\nThe reader uses a neutral dark palette so it fits whichever homepage direction you pick."
   },
   {
-   "id": "reader-E",
-   "x": 2240,
-   "y": -190,
-   "w": 390,
-   "text": "E \u00b7 Daylight\nThe light theme, proven end to end including the reader. Friendly, broad appeal.",
-   "page": "reader"
+   "id": "intro-admin",
+   "x": 0,
+   "y": -260,
+   "w": 1440,
+   "page": "admin",
+   "text": "One-click layout switching.\nPick which homepage and series-page version is live (A\u2013F) with a radio card, preview it, save \u2014 the cache purges, no deploy. The same screen sets the reader default mode and the reader ad placements: desktop skyscrapers on/off and size, mobile in-strip ad interval, end-of-chapter slot."
   },
   {
-   "id": "reader-F",
-   "x": 2800,
-   "y": -190,
-   "w": 390,
-   "text": "F \u00b7 Cinematic Rows\nStreaming-app feel: full-bleed hero, horizontal rails, glass chrome. Strong on phones and big screens.",
-   "page": "reader"
+   "id": "note-admin-theme",
+   "x": 1520,
+   "y": -150,
+   "w": 700,
+   "page": "admin",
+   "text": "Accent colour for the whole site.\nPick one colour; the ramp (hover, dim, wash, text-on-brand, focus glow) is derived for dark and light, with live contrast checks and a component preview. Also: theme default, fonts, radius, density, chip colours."
   }
  ],
  "launch": {
   "view": "canvas",
-  "page": "home"
+  "page": "reader"
  }
 }

@@ -1,0 +1,130 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
+  <style>
+    html, body { background: #0b0a10; }
+    body { margin: 0; }
+    a { color: #c4b5fd; text-decoration: none; } a:hover { color: #ddd6fe; }
+    *, *::before, *::after { box-sizing: border-box; }
+    kbd { font-family: inherit; }
+    .ibtn { color: #9e97b8; transition: background .15s ease, color .15s ease; }
+    .ibtn:hover { background: rgba(255,255,255,.06); color: #ece9f4; }
+    .sel { color: #ece9f4; transition: border-color .15s ease, background .15s ease; }
+    .sel:hover { border-color: #8b5cf6; background: #1d1829; color: #ece9f4; }
+    .sel:hover svg { color: #a78bfa; }
+    .zone { transition: background .2s ease; }
+    .zone svg { transition: opacity .2s ease; }
+    .zone-l:hover { background: linear-gradient(90deg, rgba(139,92,246,.10), rgba(139,92,246,0)); }
+    .zone-r:hover { background: linear-gradient(270deg, rgba(139,92,246,.10), rgba(139,92,246,0)); }
+    .zone:hover svg { opacity: .35 !important; }
+    .tick { transition: background .15s ease, height .15s ease; }
+    .tick:hover { background: #a78bfa; height: 12px; }
+  </style>
+</helmet>
+<div style="width: 1440px; min-height: 1000px; background: #0b0a10; color: #ece9f4; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; overflow: hidden; position: relative; display: flex; flex-direction: column;">
+
+  <!-- Top bar, 48px, translucent -->
+  <header style="flex: 0 0 48px; height: 48px; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 0 12px; background: rgba(16,13,23,.94); border-bottom: 1px solid #2c2540; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); position: relative; z-index: 5;">
+    <div style="display: flex; align-items: center; gap: 6px; flex: 1 1 0; min-width: 0;">
+      <a href="#" class="ibtn" title="Back to series" aria-label="Back to Return of the Frost Monarch" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 10px;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg></a>
+      <span style="font-size: 14px; font-weight: 600; letter-spacing: -.005em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #ece9f4;">Return of the Frost Monarch</span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px; flex: 0 0 auto;">
+      <a href="#" class="sel" role="button" aria-haspopup="listbox" title="Choose chapter" style="display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px 0 12px; border-radius: 8px; background: #181423; border: 1px solid #2c2540; font-size: 13px; font-weight: 600; white-space: nowrap;"><span>Chapter 301</span><span style="display: flex; color: #9e97b8;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></span></a>
+      <a href="#" class="sel" role="button" aria-haspopup="listbox" title="Jump to page" style="display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px 0 12px; border-radius: 8px; background: #181423; border: 1px solid #2c2540; font-size: 13px; font-weight: 600; white-space: nowrap;"><span>Page 7 / 34</span><span style="display: flex; color: #9e97b8;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></span></a>
+    </div>
+    <div style="display: flex; align-items: center; justify-content: flex-end; gap: 6px; flex: 1 1 0; min-width: 0;">
+      <a href="#" class="ibtn" title="Reader settings" aria-label="Reader settings" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 10px;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></a>
+    </div>
+  </header>
+
+  <!-- Stage: one page fit to height -->
+  <main style="flex: 1 1 auto; position: relative; display: flex; align-items: center; justify-content: center;">
+    <div style="position: relative; width: 605px; height: 860px; background: linear-gradient(180deg, #1a1626, #14111f); box-shadow: inset 0 0 0 1px rgba(255,255,255,.05), 0 24px 64px rgba(0,0,0,.55); overflow: hidden;">
+      <!-- suggested comic panels -->
+      <div style="position: absolute; left: 28px; right: 28px; top: 28px; height: 380px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 2px;"></div>
+      <div style="position: absolute; left: 28px; width: 264px; top: 428px; height: 388px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 2px;"></div>
+      <div style="position: absolute; left: 313px; right: 28px; top: 428px; height: 388px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 2px;"></div>
+      <span style="position: absolute; right: 14px; bottom: 12px; font-size: 12px; font-weight: 500; letter-spacing: .02em; color: #9e97b8; opacity: .75;">7 / 34</span>
+      <!-- click zones: left / right 30% of the page -->
+      <a href="#" class="zone zone-l" title="Previous page" aria-label="Previous page" style="position: absolute; left: 0; top: 0; bottom: 0; width: 30%; display: flex; align-items: center; justify-content: flex-start; padding-left: 20px; cursor: w-resize;"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="opacity: .08;"><path d="M15 6l-6 6 6 6"></path></svg></a>
+      <a href="#" class="zone zone-r" title="Next page" aria-label="Next page" style="position: absolute; right: 0; top: 0; bottom: 0; width: 30%; display: flex; align-items: center; justify-content: flex-end; padding-right: 20px; cursor: e-resize;"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="opacity: .08;"><path d="M9 6l6 6-6 6"></path></svg></a>
+    </div>
+  </main>
+
+  <!-- Scrubber + keyboard hint -->
+  <footer style="flex: 0 0 72px; height: 72px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 0 24px;">
+    <div role="slider" aria-label="Page scrubber" aria-valuemin="1" aria-valuemax="34" aria-valuenow="7" style="position: relative; width: 605px; height: 14px;">
+      <div style="position: absolute; left: 0; right: 0; top: 6px; height: 2px; background: rgba(255,255,255,.12); border-radius: 1px;"></div>
+      <div style="position: absolute; left: 0; width: 18.18%; top: 6px; height: 2px; background: #8b5cf6; border-radius: 1px;"></div>
+      <div style="position: absolute; left: 0; right: 0; top: 0; bottom: 0; display: flex; justify-content: space-between; align-items: center;">
+            <span class="tick" style="width: 1px; height: 8px; background: rgba(255,255,255,.28); border-radius: 1px;"></span>
+            <span class="tick" style="width: 1px; height: 8px; background: rgba(255,255,255,.28); border-radius: 1px;"></span>
+            <span class="tick" style="width: 1px; height: 8px; background: rgba(255,255,255,.28); border-radius: 1px;"></span>
+            <span class="tick" style="width: 1px; height: 8px; background: rgba(255,255,255,.28); border-radius: 1px;"></span>
+            <span class="tick" style="width: 1px; height: 8px; background: rgba(255,255,255,.28); border-radius: 1px;"></span>
+            <span class="tick" style="width: 1px; height: 8px; background: rgba(255,255,255,.28); border-radius: 1px;"></span>
+            <span class="tick tick-on" style="width: 3px; height: 14px; background: #8b5cf6; border-radius: 2px; box-shadow: 0 0 8px rgba(139,92,246,.75);"></span>
+            <span class="tick" style="width: 1px; height: 8px; background: rgba(255,255,255,.28); border-radius: 1px;"></span>
+            <span class="tick" style="width: 1px; height: 8px; background: rgba(255,255,255,.28); border-radius: 1px;"></span>
+            <span class="tick" style="width: 1px; height: 8px; background: rgba(255,255,255,.28); border-radius: 1px;"></span>
+            <span class="tick" style="width: 1px; height: 8px; background: rgba(255,255,255,.28); border-radius: 1px;"></span>
+            <span class="tick" style="width: 1px; height: 8px; background: rgba(255,255,255,.28); border-radius: 1px;"></span>
+            <span class="tick" style="width: 1px; height: 8px; background: rgba(255,255,255,.28); border-radius: 1px;"></span>
+            <span class="tick" style="width: 1px; height: 8px; background: rgba(255,255,255,.28); border-radius: 1px;"></span>
+            <span class="tick" style="width: 1px; height: 8px; background: rgba(255,255,255,.28); border-radius: 1px;"></span>
+            <span class="tick" style="width: 1px; height: 8px; background: rgba(255,255,255,.28); border-radius: 1px;"></span>
+            <span class="tick" style="width: 1px; height: 8px; background: rgba(255,255,255,.28); border-radius: 1px;"></span>
+            <span class="tick" style="width: 1px; height: 8px; background: rgba(255,255,255,.28); border-radius: 1px;"></span>
+            <span class="tick" style="width: 1px; height: 8px; background: rgba(255,255,255,.28); border-radius: 1px;"></span>
+            <span class="tick" style="width: 1px; height: 8px; background: rgba(255,255,255,.28); border-radius: 1px;"></span>
+            <span class="tick" style="width: 1px; height: 8px; background: rgba(255,255,255,.28); border-radius: 1px;"></span>
+            <span class="tick" style="width: 1px; height: 8px; background: rgba(255,255,255,.28); border-radius: 1px;"></span>
+            <span class="tick" style="width: 1px; height: 8px; background: rgba(255,255,255,.28); border-radius: 1px;"></span>
+            <span class="tick" style="width: 1px; height: 8px; background: rgba(255,255,255,.28); border-radius: 1px;"></span>
+            <span class="tick" style="width: 1px; height: 8px; background: rgba(255,255,255,.28); border-radius: 1px;"></span>
+            <span class="tick" style="width: 1px; height: 8px; background: rgba(255,255,255,.28); border-radius: 1px;"></span>
+            <span class="tick" style="width: 1px; height: 8px; background: rgba(255,255,255,.28); border-radius: 1px;"></span>
+            <span class="tick" style="width: 1px; height: 8px; background: rgba(255,255,255,.28); border-radius: 1px;"></span>
+            <span class="tick" style="width: 1px; height: 8px; background: rgba(255,255,255,.28); border-radius: 1px;"></span>
+            <span class="tick" style="width: 1px; height: 8px; background: rgba(255,255,255,.28); border-radius: 1px;"></span>
+            <span class="tick" style="width: 1px; height: 8px; background: rgba(255,255,255,.28); border-radius: 1px;"></span>
+            <span class="tick" style="width: 1px; height: 8px; background: rgba(255,255,255,.28); border-radius: 1px;"></span>
+            <span class="tick" style="width: 1px; height: 8px; background: rgba(255,255,255,.28); border-radius: 1px;"></span>
+            <span class="tick" style="width: 1px; height: 8px; background: rgba(255,255,255,.28); border-radius: 1px;"></span>
+      </div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #9e97b8; white-space: nowrap;">
+      <kbd style="display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 4px; background: #181423; border: 1px solid #2c2540; color: #9e97b8; font-size: 12px; font-weight: 600;">&larr;</kbd>
+      <kbd style="display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 4px; background: #181423; border: 1px solid #2c2540; color: #9e97b8; font-size: 12px; font-weight: 600;">&rarr;</kbd>
+      <span>to turn</span>
+      <span style="opacity: .5; padding: 0 2px;">&middot;</span>
+      <kbd style="display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 4px; background: #181423; border: 1px solid #2c2540; color: #9e97b8; font-size: 12px; font-weight: 600;">F</kbd>
+      <span>fullscreen</span>
+      <span style="opacity: .5; padding: 0 2px;">&middot;</span>
+      <kbd style="display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 4px; background: #181423; border: 1px solid #2c2540; color: #9e97b8; font-size: 12px; font-weight: 600;">S</kbd>
+      <span>strip mode</span>
+    </div>
+  </footer>
+
+  <!-- Sticky skyscrapers, vertically centred in the gutters -->
+  <aside aria-label="Advertisement" style="position: absolute; left: 129px; top: 200px; width: 160px; height: 600px; border: 1px dashed #3a3152; background: rgba(31,26,44,.45); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 12px; text-align: center; z-index: 2;">
+    <span style="font-size: 13px; font-variant-caps: all-small-caps; letter-spacing: .08em; color: #9e97b8;">AD &middot; Skyscraper</span>
+    <span style="font-size: 13px; font-variant-caps: all-small-caps; letter-spacing: .08em; color: #9e97b8;">160&times;600 &middot; sticky</span>
+  </aside>
+  <aside aria-label="Advertisement" style="position: absolute; right: 129px; top: 200px; width: 160px; height: 600px; border: 1px dashed #3a3152; background: rgba(31,26,44,.45); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 12px; text-align: center; z-index: 2;">
+    <span style="font-size: 13px; font-variant-caps: all-small-caps; letter-spacing: .08em; color: #9e97b8;">AD &middot; Skyscraper</span>
+    <span style="font-size: 13px; font-variant-caps: all-small-caps; letter-spacing: .08em; color: #9e97b8;">160&times;600 &middot; sticky</span>
+  </aside>
+
+</div>
+</x-dc>
+</body>
+</html>

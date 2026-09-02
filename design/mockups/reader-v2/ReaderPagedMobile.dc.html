@@ -1,0 +1,84 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
+  <style>
+    html, body { background: #0b0a10; }
+    body { margin: 0; }
+    a { color: #c4b5fd; text-decoration: none; } a:hover { color: #ddd6fe; }
+    *, *::before, *::after { box-sizing: border-box; }
+    .ibtn { color: #9e97b8; transition: background .15s ease, color .15s ease; }
+    .ibtn:hover { background: rgba(255,255,255,.06); color: #ece9f4; }
+    .btn { color: #ece9f4; transition: background .15s ease, color .15s ease; }
+    .btn:hover { background: rgba(255,255,255,.06); color: #ece9f4; }
+    .sel { color: #ece9f4; transition: border-color .15s ease, background .15s ease; }
+    .sel:hover { border-color: #8b5cf6; background: #1d1829; color: #ece9f4; }
+    .sel:hover svg { color: #a78bfa; }
+    .tap { transition: background .2s ease; }
+    .tap:hover { background: rgba(255,255,255,.08); }
+  </style>
+</helmet>
+<div style="width: 390px; min-height: 844px; background: #0b0a10; color: #ece9f4; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; overflow: hidden; position: relative;">
+
+  <!-- Top bar, 52px -->
+  <header style="position: absolute; left: 0; right: 0; top: 0; height: 52px; display: flex; align-items: center; justify-content: space-between; gap: 4px; padding: 0 4px; background: rgba(16,13,23,.94); border-bottom: 1px solid #2c2540; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); z-index: 6;">
+    <a href="#" class="ibtn" title="Back to series" aria-label="Back to Return of the Frost Monarch" style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 12px; flex: 0 0 44px;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg></a>
+    <div style="flex: 1 1 0; min-width: 0; text-align: center; font-size: 15px; font-weight: 600; letter-spacing: -.005em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #ece9f4;">Frost Monarch &middot; Ch. 301</div>
+    <a href="#" class="ibtn" title="Reader settings" aria-label="Reader settings" style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 12px; flex: 0 0 44px;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg></a>
+  </header>
+
+  <!-- Stage: page fit to width, vertically centred between the bars -->
+  <main style="position: absolute; left: 0; right: 0; top: 52px; bottom: 60px; display: flex; align-items: center; justify-content: center;">
+    <div style="position: relative; width: 390px; height: 554px; background: linear-gradient(180deg, #1a1626, #14111f); box-shadow: inset 0 0 0 1px rgba(255,255,255,.05); overflow: hidden;">
+      <!-- suggested comic panels -->
+      <div style="position: absolute; left: 16px; right: 16px; top: 16px; height: 236px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 2px;"></div>
+      <div style="position: absolute; left: 16px; width: 173px; top: 268px; height: 256px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 2px;"></div>
+      <div style="position: absolute; left: 201px; right: 16px; top: 268px; height: 256px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); border-radius: 2px;"></div>
+      <span style="position: absolute; right: 12px; bottom: 8px; font-size: 13px; font-weight: 500; letter-spacing: .02em; color: #9e97b8; opacity: .75;">7 / 34</span>
+
+      <!-- First-run tap-zone overlay, 40% opacity -->
+      <div role="presentation" style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; display: flex; opacity: .4; z-index: 2;">
+        <a href="#" class="tap" aria-label="Previous page" style="flex: 0 0 30%; width: 30%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; background: rgba(139,92,246,.45); border-right: 1px solid rgba(255,255,255,.45); color: #ffffff;">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg>
+          <span style="font-size: 15px; font-weight: 600; letter-spacing: .01em;">Previous</span>
+        </a>
+        <a href="#" class="tap" aria-label="Show menu" style="flex: 0 0 40%; width: 40%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; background: rgba(255,255,255,.14); color: #ffffff;">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>
+          <span style="font-size: 15px; font-weight: 600; letter-spacing: .01em;">Menu</span>
+        </a>
+        <a href="#" class="tap" aria-label="Next page" style="flex: 0 0 30%; width: 30%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; background: rgba(139,92,246,.45); border-left: 1px solid rgba(255,255,255,.45); color: #ffffff;">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>
+          <span style="font-size: 15px; font-weight: 600; letter-spacing: .01em;">Next</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Floating counter pill -->
+    <div aria-live="polite" style="position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%); height: 28px; padding: 0 12px; border-radius: 999px; background: rgba(16,13,23,.94); border: 1px solid #2c2540; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: #ece9f4; white-space: nowrap; z-index: 4;">
+      <span>7</span><span style="color: #9e97b8; font-weight: 500;">/</span><span style="color: #9e97b8; font-weight: 500;">34</span>
+    </div>
+
+    <!-- 2px scrubber -->
+    <div role="slider" aria-label="Page scrubber" aria-valuemin="1" aria-valuemax="34" aria-valuenow="7" style="position: absolute; left: 16px; right: 16px; bottom: 12px; height: 2px; background: rgba(255,255,255,.14); border-radius: 1px; z-index: 4;">
+      <div style="position: absolute; left: 0; top: 0; height: 2px; width: 18.18%; background: #8b5cf6; border-radius: 1px;"></div>
+      <div style="position: absolute; left: 18.18%; top: 50%; width: 10px; height: 10px; margin-left: -5px; margin-top: -5px; border-radius: 999px; background: #8b5cf6; box-shadow: 0 0 0 3px rgba(139,92,246,.25), 0 0 10px rgba(139,92,246,.6);"></div>
+    </div>
+  </main>
+
+  <!-- Bottom bar, 60px -->
+  <footer style="position: absolute; left: 0; right: 0; bottom: 0; height: 60px; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0 8px; background: rgba(16,13,23,.94); border-top: 1px solid #2c2540; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); z-index: 6;">
+    <a href="#" class="btn" title="Previous chapter" aria-label="Previous chapter" style="display: flex; align-items: center; gap: 2px; height: 44px; padding: 0 12px 0 6px; border-radius: 12px; font-size: 15px; font-weight: 600; flex: 0 0 auto;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg><span>Prev</span></a>
+    <a href="#" class="sel" role="button" aria-haspopup="listbox" title="Choose chapter" style="display: flex; align-items: center; justify-content: center; gap: 8px; height: 44px; padding: 0 12px 0 14px; border-radius: 12px; background: #181423; border: 1px solid #2c2540; font-size: 15px; font-weight: 600; white-space: nowrap; flex: 1 1 auto; max-width: 190px;"><span>Chapter 301</span><span style="display: flex; color: #9e97b8;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></span></a>
+    <a href="#" class="btn" title="Next chapter" aria-label="Next chapter" style="display: flex; align-items: center; gap: 2px; height: 44px; padding: 0 6px 0 12px; border-radius: 12px; font-size: 15px; font-weight: 600; flex: 0 0 auto;"><span>Next</span><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+  </footer>
+
+</div>
+</x-dc>
+</body>
+</html>

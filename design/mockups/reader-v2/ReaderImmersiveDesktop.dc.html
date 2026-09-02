@@ -1,0 +1,90 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
+  <style>
+    html, body { background: #0b0a10; }
+    body { margin: 0; }
+    a { color: #c4b5fd; text-decoration: none; } a:hover { color: #ddd6fe; }
+    *, *::before, *::after { box-sizing: border-box; }
+    .pb { color: #ece9f4; transition: background .15s ease, color .15s ease; }
+    .pb:hover { background: rgba(255,255,255,.08); color: #ece9f4; }
+    .sel { color: #ece9f4; transition: border-color .15s ease, background .15s ease; }
+    .sel:hover { border-color: #8b5cf6; background: rgba(139,92,246,.12); color: #ece9f4; }
+    .sel:hover svg { stroke: #a78bfa; }
+    .num { font-variant-numeric: tabular-nums; }
+  </style>
+</helmet>
+<div style="position: relative; width: 1440px; min-height: 1000px; background: #0b0a10; color: #ece9f4; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; overflow: hidden; -webkit-font-smoothing: antialiased;">
+
+  <!-- Reading strip: same 820px column as ReaderStripDesktop, scrolled mid-chapter; pages touch (zero gap, zero radius) -->
+  <div style="position: absolute; left: 310px; top: -132px; width: 820px; display: flex; flex-direction: column; gap: 0; z-index: 1;">
+
+    <!-- Page 6 (upper part already scrolled past the top edge) -->
+    <div style="position: relative; width: 820px; height: 410px; border-radius: 0; background: linear-gradient(180deg, #1a1626, #14111f); box-shadow: inset 0 0 0 1px rgba(255,255,255,.05); padding: 30px 34px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: 1.3fr 1fr; gap: 18px;">
+      <div style="grid-column: 1 / -1; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);"></div>
+      <div style="background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);"></div>
+      <div style="background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);"></div>
+    </div>
+
+    <!-- Page 7 (labelled) -->
+    <div style="position: relative; width: 820px; height: 410px; border-radius: 0; background: linear-gradient(180deg, #1a1626, #14111f); box-shadow: inset 0 0 0 1px rgba(255,255,255,.05); padding: 30px 34px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: 1fr 1.15fr; gap: 18px;">
+      <div style="grid-column: 1 / 3; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);"></div>
+      <div style="background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);"></div>
+      <div style="grid-column: 1 / -1; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);"></div>
+      <div class="num" style="position: absolute; right: 14px; bottom: 10px; font-size: 12px; font-weight: 500; line-height: 16px; color: #9e97b8; opacity: .75; letter-spacing: .02em;">7 / 34</div>
+    </div>
+
+    <!-- Page 8 (continues past the frame bottom, under the floating pill) -->
+    <div style="position: relative; width: 820px; height: 410px; border-radius: 0; background: linear-gradient(180deg, #1a1626, #14111f); box-shadow: inset 0 0 0 1px rgba(255,255,255,.05); padding: 30px 34px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: 1fr 1fr; gap: 18px;">
+      <div style="grid-row: 1 / -1; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);"></div>
+      <div style="background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);"></div>
+      <div style="background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08);"></div>
+    </div>
+  </div>
+
+  <!-- Left skyscraper, sticky in the gutter, vertically centred -->
+  <div style="position: absolute; left: 75px; top: 200px; width: 160px; height: 600px; border: 1px dashed #3a3152; background: rgba(31,26,44,.45); display: flex; align-items: center; justify-content: center; text-align: center; padding: 0 14px; font-size: 11px; line-height: 18px; font-weight: 500; font-variant: small-caps; letter-spacing: .08em; color: #9e97b8; z-index: 2;">AD · Skyscraper 160×600 · sticky</div>
+
+  <!-- Right skyscraper -->
+  <div style="position: absolute; left: 1205px; top: 200px; width: 160px; height: 600px; border: 1px dashed #3a3152; background: rgba(31,26,44,.45); display: flex; align-items: center; justify-content: center; text-align: center; padding: 0 14px; font-size: 11px; line-height: 18px; font-weight: 500; font-variant: small-caps; letter-spacing: .08em; color: #9e97b8; z-index: 2;">AD · Skyscraper 160×600 · sticky</div>
+
+  <!-- Progress bar 3px at the very top, ~20% read -->
+  <div role="progressbar" aria-label="Chapter progress" aria-valuemin="0" aria-valuemax="34" aria-valuenow="7" style="position: absolute; left: 0; top: 0; width: 1440px; height: 3px; background: rgba(139,92,246,.14); z-index: 3;">
+    <div style="width: 20%; height: 3px; background: #8b5cf6; box-shadow: 0 0 8px rgba(139,92,246,.55);"></div>
+  </div>
+
+  <!-- Keyboard hint, top-right -->
+  <div style="position: absolute; right: 20px; top: 15px; display: flex; align-items: center; gap: 6px; font-size: 12px; line-height: 16px; font-weight: 500; color: #9e97b8; opacity: .85; z-index: 3;">
+    <span class="num" style="display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 5px; border: 1px solid #2c2540; background: rgba(16,13,23,.94); color: #ece9f4; font-size: 11px; font-weight: 600; line-height: 1;">H</span>
+    <span>· show controls</span>
+  </div>
+
+  <!-- Floating glass pill, bottom-centre: Prev · Chapter 301 · Next -->
+  <nav aria-label="Chapter navigation" style="position: absolute; left: 50%; bottom: 24px; transform: translateX(-50%); height: 56px; padding: 0 6px; border-radius: 999px; background: rgba(16,13,23,.78); border: 1px solid #2c2540; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); box-shadow: 0 12px 32px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.04); display: flex; align-items: center; gap: 4px; z-index: 4;">
+    <a class="pb" href="#" title="Previous chapter" style="display: flex; align-items: center; gap: 4px; height: 44px; padding: 0 16px 0 10px; border-radius: 999px; font-size: 14px; font-weight: 600; line-height: 1;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9e97b8" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg>
+      <span>Prev</span>
+    </a>
+    <span aria-hidden="true" style="display: block; width: 1px; height: 24px; background: rgba(255,255,255,.08);"></span>
+    <a class="sel" href="#" role="button" aria-haspopup="listbox" title="Choose chapter" style="display: flex; align-items: center; justify-content: space-between; gap: 10px; height: 44px; width: 210px; padding: 0 12px 0 16px; border-radius: 999px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); font-size: 14px; font-weight: 600; line-height: 1;">
+      <span>Chapter 301</span>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9e97b8" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+    </a>
+    <span aria-hidden="true" style="display: block; width: 1px; height: 24px; background: rgba(255,255,255,.08);"></span>
+    <a class="pb" href="#" title="Next chapter" style="display: flex; align-items: center; gap: 4px; height: 44px; padding: 0 10px 0 16px; border-radius: 999px; font-size: 14px; font-weight: 600; line-height: 1;">
+      <span>Next</span>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9e97b8" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg>
+    </a>
+  </nav>
+
+</div>
+</x-dc>
+</body>
+</html>
