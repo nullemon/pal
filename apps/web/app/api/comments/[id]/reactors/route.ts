@@ -4,6 +4,7 @@ import { commentReactions, db, users } from '@palscans/db'
 import { eq } from 'drizzle-orm'
 import { notFound, ok, requireUser } from '@/lib/comments/http'
 import { storageUrl } from '@/lib/comments/media'
+import { getCommentRow } from '@/lib/comments/queries'
 import { idParamSchema } from '@/lib/comments/schemas'
 
 type Params = { id: string }
@@ -12,6 +13,11 @@ type Params = { id: string }
 export const GET = requireUser<Params>(async (_request, ctx, user) => {
   const id = idParamSchema.safeParse((await ctx.params).id)
   if (!id.success) return notFound()
+  const row = await getCommentRow(db, id.data)
+  // Hidden (pending / shadow / rejected) or deleted comments answer exactly like a missing
+  // id, as the report and reactions routes do — before the perk check, so the 403 / 404
+  // split cannot enumerate held comments either.
+  if (!row || row.deletedAt || row.status !== 'published') return notFound()
   if (!(entitlement(user, 'premium_content') || isStaff(user)))
     return Response.json(
       { error: 'premium_required', message: messages.commentThread.reactorsPremium },
@@ -27,7 +33,7 @@ export const GET = requireUser<Params>(async (_request, ctx, user) => {
     })
     .from(commentReactions)
     .innerJoin(users, eq(users.id, commentReactions.userId))
-    .where(eq(commentReactions.commentId, id.data))
+    .where(eq(commentReactions.commentId, row.id))
     .limit(200)
   return ok({
     reactors: rows.map((r) => ({

@@ -26,6 +26,7 @@ export {
   ok,
   parseQuery,
   type RouteParams,
+  rateLimited,
   unauthorized,
 } from '@/lib/auth'
 

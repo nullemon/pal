@@ -49,6 +49,8 @@ export interface Storage {
   head(key: string): Promise<ObjectInfo | null>
   /** Bytes `[start, end]` inclusive (an HTTP Range), or null when the object is missing. */
   getRange(key: string, start: number, end: number): Promise<Uint8Array | null>
+  /** Every key that starts with `prefix` (S3 semantics, so `a/1/` never matches `a/12/`), sorted. */
+  list(prefix: string): Promise<string[]>
 }
 
 export const CONTENT_TYPES: Record<string, string> = {

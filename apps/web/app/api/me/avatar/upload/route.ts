@@ -1,6 +1,14 @@
 import { getStorage } from '@palscans/core/storage'
 import { z } from 'zod'
-import { fail, ok, parseQuery, readBody, requireUser } from '@/lib/auth'
+import {
+  fail,
+  getRateLimiter,
+  ok,
+  parseQuery,
+  rateLimited,
+  readBody,
+  requireUser,
+} from '@/lib/auth'
 import { AVATAR_MAX_BYTES, AVATAR_TYPES, storeAvatar } from '@/lib/auth/avatar'
 import { sniffImage } from '@/lib/storage'
 
@@ -14,7 +22,7 @@ const querySchema = z.object({
  * multi-gigabyte PUT is cut off instead of buffered. The bytes are never stored as
  * uploaded: `storeAvatar` decodes and re-encodes them (orientation applied, EXIF dropped,
  * 256×256 cover crop, WebP) under a content-addressed key returned as `data.key`; the
- * client confirms that one.
+ * client confirms that one. Upload + confirm share one per-user limit (10/hour).
  */
 export const PUT = requireUser(async (request, _ctx, user) => {
   const query = parseQuery(request, querySchema)
@@ -22,6 +30,8 @@ export const PUT = requireUser(async (request, _ctx, user) => {
   if (!query.data.key.startsWith(`avatars/${user.id}/`)) return fail(403, 'forbidden')
   const type = request.headers.get('content-type') ?? ''
   if (!AVATAR_TYPES.has(type)) return fail(415, 'unsupported_type')
+  const limit = await getRateLimiter().hit(`avatar:${user.id}`, 10, 3600)
+  if (!limit.ok) return rateLimited(limit.retryAfterSec)
   const read = await readBody(request, AVATAR_MAX_BYTES, { requireLength: true })
   if (!read.ok) return read.response
   const body = read.body

@@ -202,6 +202,36 @@ export const loadActiveBans = async (
   return new Set(rows.map((r) => r.kind as BanKind))
 }
 
+/**
+ * docs/14 §5 — every referenced image must be an approved community image the author may
+ * use: one from the collection, or their own approved upload. Shared by submit and edit.
+ */
+export const commentImagesUsable = async (
+  db: Db,
+  ids: readonly number[],
+  userId: number,
+  settings: CommentSettings,
+): Promise<boolean> => {
+  const unique = [...new Set(ids)]
+  if (unique.length === 0) return true
+  if (!settings.images.collection) return false
+  const rows = await db
+    .select({
+      id: communityImages.id,
+      status: communityImages.status,
+      uploadedBy: communityImages.uploadedBy,
+      isCollection: communityImages.isCollection,
+    })
+    .from(communityImages)
+    .where(inArray(communityImages.id, unique))
+  const usable = new Set(
+    rows
+      .filter((img) => img.status === 'approved' && (img.isCollection || img.uploadedBy === userId))
+      .map((img) => img.id),
+  )
+  return unique.every((id) => usable.has(id))
+}
+
 const isFreshAccount = (user: { createdAt: Date }, now: Date) =>
   now.getTime() - user.createdAt.getTime() < 7 * DAY
 
@@ -319,21 +349,8 @@ export const submitComment = async (input: SubmitInput): Promise<SubmitOutcome> 
     return { ok: false, code: 'misleading_link' }
 
   const imageId = input.imageId ?? imageIds(input.body)[0] ?? null
-  if (imageId !== null) {
-    if (!settings.images.collection) return { ok: false, code: 'invalid_image' }
-    const [img] = await db
-      .select({
-        id: communityImages.id,
-        status: communityImages.status,
-        uploadedBy: communityImages.uploadedBy,
-        isCollection: communityImages.isCollection,
-      })
-      .from(communityImages)
-      .where(eq(communityImages.id, imageId))
-      .limit(1)
-    if (img?.status !== 'approved' || (!img.isCollection && img.uploadedBy !== user.id))
-      return { ok: false, code: 'invalid_image' }
-  }
+  if (imageId !== null && !(await commentImagesUsable(db, [imageId], user.id, settings)))
+    return { ok: false, code: 'invalid_image' }
 
   // 2. rate limits (per user; stricter for accounts < 7 days); a hit flags the user for step 3
   if (!staff) {

@@ -7,24 +7,27 @@ import { extractJsonLd, jsonLdTypes, validateJsonLd } from '@/lib/seo/jsonld'
 /** Fetch a page on this site, pull out its JSON-LD and run the builders' required-field checks. */
 const m = messages.adminSeo.tools
 
+/** Outside production a dev server on another port may be validated too. */
+const LOCALHOST_HTTP = /^http:\/\/localhost(:\d+)?$/
+
 export const POST = withPermission('settings.write', async (request) => {
   const parsed = await parseJson(request, validateUrlSchema)
   if (!parsed.ok) return parsed.response
-  const origin = new URL(getEnv().SITE_URL).origin
+  const env = getEnv()
+  const origin = new URL(env.SITE_URL).origin
   let target: URL
   try {
     target = new URL(parsed.data.url, origin)
   } catch {
     return fail(400, 'validation', m.invalidUrl)
   }
-  const requestOrigin = new URL(request.url).origin
-  if (target.origin !== origin && target.origin !== requestOrigin)
-    return fail(400, 'same_origin_only')
-  // Fetch through the origin the request came in on (works on any port locally).
-  const fetchUrl = new URL(target.pathname + target.search, requestOrigin)
+  // Only the configured site origin is fetched — never whatever Host the request arrived
+  // with — so the validator cannot be pointed at internal addresses.
+  const localDev = env.NODE_ENV !== 'production' && LOCALHOST_HTTP.test(target.origin)
+  if (target.origin !== origin && !localDev) return fail(400, 'same_origin_only')
   let html: string
   try {
-    const res = await fetch(fetchUrl, {
+    const res = await fetch(target, {
       headers: { accept: 'text/html', 'user-agent': 'PALScans-JSONLD-Validator' },
       cache: 'no-store',
       signal: AbortSignal.timeout(10_000),

@@ -3,6 +3,7 @@ import {
   allAllowlisted,
   COMMENT_MAX_CHARS,
   detectLinks,
+  imageIds,
   linkHrefs,
   misleadingLinks,
   plainText,
@@ -16,6 +17,7 @@ import {
   accountGate,
   applyWordFilters,
   canEditComment,
+  commentImagesUsable,
   loadActiveBans,
 } from '@/lib/comments/pipeline'
 import { getCommentRow, getCommentView, viewerFor } from '@/lib/comments/queries'
@@ -77,6 +79,12 @@ export const PATCH = requireUser<Params>(async (request, ctx, user) => {
       { error: 'misleading_link', message: messages.commentThread.misleadingLink },
       { status: 400 },
     )
+  // the same approved / ownership check the submit pipeline runs on image nodes
+  const bodyImages = imageIds(parsed.data.body)
+  if (bodyImages.length > 0 && !(await commentImagesUsable(db, bodyImages, user.id, settings))) {
+    const r = rejectResponse('invalid_image')
+    return Response.json({ error: 'invalid_image', message: r.message }, { status: r.status })
+  }
 
   const filters = await db
     .select({

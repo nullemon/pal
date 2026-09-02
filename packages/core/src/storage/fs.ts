@@ -1,5 +1,5 @@
-import { existsSync } from 'node:fs'
-import { mkdir, open, readFile, rm, stat, writeFile } from 'node:fs/promises'
+import { type Dirent, existsSync } from 'node:fs'
+import { mkdir, open, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { getEnv } from '../env.js'
 import {
@@ -127,5 +127,26 @@ export class FsStorage implements Storage {
     } catch {
       return false
     }
+  }
+
+  async list(prefix: string): Promise<string[]> {
+    // Walk the deepest directory the prefix names in full, then filter by string prefix so
+    // the result matches the S3 driver (`avatars/1/` lists nothing from `avatars/12/`).
+    const dir = prefix.endsWith('/') ? prefix.slice(0, -1) : path.posix.dirname(prefix)
+    const base = dir && dir !== '.' ? this.pathFor(dir) : this.root
+    let entries: Dirent[]
+    try {
+      entries = await readdir(base, { recursive: true, withFileTypes: true })
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === 'ENOENT') return []
+      throw err
+    }
+    return entries
+      .filter((e) => e.isFile())
+      .map((e) =>
+        path.relative(this.root, path.join(e.parentPath, e.name)).split(path.sep).join('/'),
+      )
+      .filter((key) => key.startsWith(prefix))
+      .sort()
   }
 }

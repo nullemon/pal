@@ -7,6 +7,7 @@ import {
   communityImages,
   type Db,
   entitlements,
+  reports,
   userBlocks,
   users,
 } from '@palscans/db'
@@ -216,7 +217,7 @@ const enrich = async (db: Db, rows: Row[], viewer: CommentViewer | null): Promis
   }
   const images = new Map<number, CommentImage>()
   for (const img of imageRows) {
-    if (img.status === 'removed') continue
+    if (img.status !== 'approved') continue
     const src = storageUrl(img.key)
     if (src) images.set(img.id, { id: img.id, src, width: img.width, height: img.height })
   }
@@ -370,6 +371,29 @@ export const getCommentView = async (
 export const getCommentRow = async (db: Db, id: number) => {
   const [row] = await db.select(cols).from(comments).where(eq(comments.id, id)).limit(1)
   return (row as Row | undefined) ?? null
+}
+
+export const REPORTER_REJECTED_LIMIT = 5
+const REPORTER_WINDOW_MS = 30 * 24 * 3600 * 1000
+
+/** docs/14 §6 — ≥ 5 rejected reports in 30 days: the reporter no longer counts toward auto-hide. */
+export const isDeprioritisedReporter = async (
+  db: Db,
+  reporterId: number,
+  now: Date = new Date(),
+): Promise<boolean> => {
+  const since = new Date(now.getTime() - REPORTER_WINDOW_MS)
+  const [row] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(reports)
+    .where(
+      and(
+        eq(reports.reporterId, reporterId),
+        eq(reports.status, 'rejected'),
+        gt(reports.handledAt, since),
+      ),
+    )
+  return Number(row?.n ?? 0) >= REPORTER_REJECTED_LIMIT
 }
 
 export const isStaffUser = isStaff

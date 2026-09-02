@@ -2,6 +2,7 @@ import {
   DeleteObjectCommand,
   GetObjectCommand,
   HeadObjectCommand,
+  ListObjectsV2Command,
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3'
@@ -169,5 +170,18 @@ export class S3Storage implements Storage {
       if (isMissing(err)) return false
       throw err
     }
+  }
+
+  async list(prefix: string): Promise<string[]> {
+    const keys: string[] = []
+    let token: string | undefined
+    do {
+      const res = await this.client.send(
+        new ListObjectsV2Command({ Bucket: this.bucket, Prefix: prefix, ContinuationToken: token }),
+      )
+      for (const o of res.Contents ?? []) if (o.Key) keys.push(o.Key)
+      token = res.IsTruncated ? res.NextContinuationToken : undefined
+    } while (token)
+    return keys.sort()
   }
 }
