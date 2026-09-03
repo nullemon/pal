@@ -372,7 +372,7 @@ export function ImportScreen({
             <Play size={14} aria-hidden="true" />
             {run === 'dryRunning' ? m.runningDryRun : m.runDryRun}
           </Button>
-          {s.mode !== 'sample' ? (
+          {s.mode === 'dsn' ? (
             <Hint className="ml-1">{fmt(m.connectorMissing, { mode: m.modes[s.mode] })}</Hint>
           ) : null}
         </div>

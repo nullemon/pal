@@ -1766,7 +1766,7 @@ export const messages = {
       sampleNotice:
         'The sample dataset is built in. It stands in for a legacy database so the reports can be checked before credentials exist.',
       connectorMissing:
-        'The {mode} connector is not built yet — the reports below run against the sample dataset. Discovery and dry run write nothing either way.',
+        'The {mode} connector needs a database driver this build does not carry, so the reports below run against the sample dataset. Export a mysqldump and switch the source to SQL dump to read your own data.',
       runDiscovery: 'Run discovery',
       runningDiscovery: 'Reading the source…',
       discoveryTitle: 'Discovery',
