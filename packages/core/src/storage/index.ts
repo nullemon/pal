@@ -33,9 +33,40 @@ export const createStorage = async (opts: CreateStorageOptions = {}): Promise<St
   }
 }
 
+/**
+ * How `getStorage()` finds its configuration. The app registers one of these at startup so
+ * credentials entered in the admin panel take effect without a redeploy (docs/19).
+ *
+ * It is injected rather than imported because this package must not depend on the database:
+ * the worker and the web app each supply their own reader. `fingerprint` changes whenever
+ * the resolved settings change, which is the signal to rebuild the client — that is what
+ * makes a new R2 key live on the next request instead of the next deploy.
+ */
+export type StorageConfigResolver = () => Promise<CreateStorageOptions & { fingerprint: string }>
+
+let resolver: StorageConfigResolver | undefined
 let shared: Promise<Storage> | undefined
-/** Process-wide storage instance built from the environment on first use. */
-export const getStorage = (): Promise<Storage> => {
-  shared ??= createStorage()
+let builtFrom: string | undefined
+
+export const configureStorage = (next: StorageConfigResolver | undefined): void => {
+  resolver = next
+  shared = undefined
+  builtFrom = undefined
+}
+
+/**
+ * The process-wide storage instance. Built from the environment when no resolver is
+ * registered, and rebuilt whenever the resolver reports different settings.
+ */
+export const getStorage = async (): Promise<Storage> => {
+  if (!resolver) {
+    shared ??= createStorage()
+    return shared
+  }
+  const config = await resolver()
+  if (config.fingerprint !== builtFrom || !shared) {
+    builtFrom = config.fingerprint
+    shared = createStorage(config)
+  }
   return shared
 }

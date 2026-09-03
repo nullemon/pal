@@ -2,20 +2,27 @@
 # the local services on 5433/6379 stand in. See RUNBOOK.md.
 name: palscans
 
+# Only bootstrap values belong here. Storage keys, SMTP, OAuth, Stripe, Turnstile, push and
+# the Discord bot are entered in Admin → System → Integrations instead (docs/19). The S3
+# values below stay as the local MinIO fallback so this stack runs out of the box; in a real
+# deployment leave them unset and configure R2 in the panel.
 x-app-env: &app-env
   NODE_ENV: production
   DATABASE_URL: postgres://pal:${POSTGRES_PASSWORD:-pal}@postgres:5432/palscans
   REDIS_URL: redis://valkey:6379
-  STORAGE_DRIVER: s3
-  S3_ENDPOINT: http://minio:9000
-  S3_BUCKET: palscans
+  SITE_URL: ${SITE_URL:-http://localhost:3000}
+  SITE_NAME: PALScans
+  SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET}
+  # Seals the panel-stored credentials. Falls back to SESSION_SECRET, but then rotating
+  # sessions makes stored credentials unreadable — set it separately.
+  CREDENTIALS_KEY: ${CREDENTIALS_KEY:-}
+  STORAGE_DRIVER: ${STORAGE_DRIVER:-s3}
+  S3_ENDPOINT: ${S3_ENDPOINT:-http://minio:9000}
+  S3_BUCKET: ${S3_BUCKET:-palscans}
   S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-palscans}
   S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-palscans-dev-secret}
   S3_REGION: auto
   PUBLIC_CDN_URL: ${PUBLIC_CDN_URL:-http://localhost:9000/palscans}
-  SITE_URL: ${SITE_URL:-http://localhost:3000}
-  SITE_NAME: PALScans
-  SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET}
   # Caddy appends the real client address to X-Forwarded-For; nothing else is trusted.
   TRUSTED_PROXY: ${TRUSTED_PROXY:-xff}
   TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-1}
@@ -116,6 +123,14 @@ services:
         condition: service_completed_successfully
     ports:
       - "127.0.0.1:3000:3000"
+    healthcheck:
+      # Shallow on purpose: "can this process serve a request that reaches the database".
+      # Integration state belongs on the Integrations screen, not in a restart loop.
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   worker:
     build:

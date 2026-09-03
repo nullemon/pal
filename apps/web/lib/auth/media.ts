@@ -1,3 +1,4 @@
+import { cdnBase } from '@/lib/config/mirror'
 import { getEnv } from '../env'
 
 /**
@@ -6,12 +7,11 @@ import { getEnv } from '../env'
  * previews work on any port.
  */
 export const mediaUrl = (key: string): string => {
-  const env = getEnv()
   const path = key.split('/').map(encodeURIComponent).join('/')
-  const base = env.PUBLIC_CDN_URL.replace(/\/+$/, '')
+  const base = cdnBase()
   try {
     const cdn = new URL(base)
-    const site = new URL(env.SITE_URL)
+    const site = new URL(getEnv().SITE_URL)
     if (cdn.origin === site.origin) return `${cdn.pathname.replace(/\/+$/, '')}/${path}`
   } catch {
     // relative base

@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto'
 import type { SignedPutUrl, Storage } from '@palscans/core/storage'
 import { getStorage } from '@palscans/core/storage'
+import { configMirror } from '@/lib/config/mirror'
 import { getEnv } from '../env'
 
 export const UPLOAD_TTL_MS = 900_000
@@ -132,9 +133,9 @@ export const signedStorageUrl = async (
 /** Public URL for a key: path-only on the fs driver, CDN otherwise. */
 export const storageUrl = (key: string): string => {
   const safe = key.split('/').map(encodeURIComponent).join('/')
-  const env = getEnv()
-  if (env.STORAGE_DRIVER === 'fs') return `/_storage/${safe}`
-  return `${env.PUBLIC_CDN_URL.replace(/\/+$/, '')}/${safe}`
+  const { driver, cdnUrl } = configMirror()
+  if (driver === 'fs') return `/_storage/${safe}`
+  return `${cdnUrl.replace(/\/+$/, '')}/${safe}`
 }
 
 /** Magic-byte sniff (docs/03 step 4): the declared type must match the bytes. */

@@ -1,3 +1,4 @@
+import { cdnBase } from '@/lib/config/mirror'
 import { getEnv } from '@/lib/env'
 
 /** Intrinsic size of every cover the seed and the worker produce (2:3, docs/05). */
@@ -10,12 +11,11 @@ export const COVER_HEIGHT = 600
  * it; otherwise the absolute CDN URL.
  */
 export function mediaUrl(key: string): string {
-  const env = getEnv()
   const path = key.split('/').map(encodeURIComponent).join('/')
-  const base = env.PUBLIC_CDN_URL.replace(/\/+$/, '')
+  const base = cdnBase()
   try {
     const cdn = new URL(base)
-    const site = new URL(env.SITE_URL)
+    const site = new URL(getEnv().SITE_URL)
     if (cdn.origin === site.origin) return `${cdn.pathname.replace(/\/+$/, '')}/${path}`
   } catch {
     // relative PUBLIC_CDN_URL — use as-is

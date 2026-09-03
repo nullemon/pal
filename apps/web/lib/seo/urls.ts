@@ -1,4 +1,5 @@
 import { formatChapterNumber } from '@palscans/core'
+import { configMirror } from '../config/mirror'
 import { getEnv } from '../env'
 
 /**
@@ -18,9 +19,9 @@ export const absoluteUrl = (pathOrUrl: string, origin: string = siteOrigin()): s
 export const storagePublicUrl = (key: string | null | undefined): string | null => {
   if (!key) return null
   const safe = key.split('/').map(encodeURIComponent).join('/')
-  const env = getEnv()
-  if (env.STORAGE_DRIVER === 'fs') return `${siteOrigin()}/_storage/${safe}`
-  return `${env.PUBLIC_CDN_URL.replace(/\/+$/, '')}/${safe}`
+  const { driver, cdnUrl } = configMirror()
+  if (driver === 'fs') return `${siteOrigin()}/_storage/${safe}`
+  return `${cdnUrl.replace(/\/+$/, '')}/${safe}`
 }
 
 /**
@@ -30,15 +31,15 @@ export const storagePublicUrl = (key: string | null | undefined): string | null 
 export const storageSrc = (key: string | null | undefined): string | null => {
   if (!key) return null
   const safe = key.split('/').map(encodeURIComponent).join('/')
-  const env = getEnv()
-  if (env.STORAGE_DRIVER === 'fs') return `/_storage/${safe}`
+  const { driver, cdnUrl } = configMirror()
+  if (driver === 'fs') return `/_storage/${safe}`
   try {
-    const cdn = new URL(env.PUBLIC_CDN_URL)
+    const cdn = new URL(cdnUrl)
     if (cdn.origin === siteOrigin()) return `${cdn.pathname.replace(/\/+$/, '')}/${safe}`
   } catch {
     // fall through to the absolute URL
   }
-  return `${env.PUBLIC_CDN_URL.replace(/\/+$/, '')}/${safe}`
+  return `${cdnUrl.replace(/\/+$/, '')}/${safe}`
 }
 
 export const seriesPath = (slug: string): string => `/series/${slug}`

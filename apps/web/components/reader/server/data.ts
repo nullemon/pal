@@ -18,7 +18,7 @@ import {
 import { and, eq, isNull } from 'drizzle-orm'
 import { unstable_cache } from 'next/cache'
 import { cache } from 'react'
-import { getEnv } from '@/lib/env'
+import { configMirror } from '@/lib/config/mirror'
 import { signedStorageUrl } from '@/lib/storage'
 import type { PageVariantUrl, ReaderPage } from '../types'
 
@@ -227,9 +227,9 @@ export const chapterForApi = async (chapterId: number) => {
  */
 export const storageUrl = (key: string): string => {
   const safe = key.split('/').map(encodeURIComponent).join('/')
-  const env = getEnv()
-  if (env.STORAGE_DRIVER === 'fs') return `/_storage/${safe}`
-  return `${env.PUBLIC_CDN_URL.replace(/\/+$/, '')}/${safe}`
+  const { driver, cdnUrl } = configMirror()
+  if (driver === 'fs') return `/_storage/${safe}`
+  return `${cdnUrl.replace(/\/+$/, '')}/${safe}`
 }
 
 /**

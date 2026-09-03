@@ -63,6 +63,9 @@ Create the R2 bucket (`palscans`) and an API token scoped to it. Then:
 - connect `cdn.palscans.org` as the bucket's custom domain
 - leave versioning **on** for those two prefixes; `infra/RUNBOOK.md`'s restore step depends on it
 
+Keep the endpoint, bucket name, access key ID and secret to hand. **You do not put them in a
+file** — they go into the admin panel in step 6.
+
 Images are content-addressed, so a restored object is byte-identical and never needs a cache
 purge. That property is worth preserving.
 
@@ -77,48 +80,47 @@ cd /opt/palscans
 cp .env.example .env
 ```
 
-Fill `.env`. The application **refuses to boot in production** with placeholder values — that
-guard is in `apps/web/lib/env.ts` and it is deliberate. These five are mandatory:
+`.env` is short now. Only values needed *before* there is a database to read or a session to
+authenticate the panel with live here; everything else is entered in the panel. See
+`docs/19-credentials.md` for why each one cannot move.
 
 ```sh
 SITE_URL=https://palscans.org          # must be https:// — the session cookies are Secure
 SESSION_SECRET=$(openssl rand -base64 32)
 INTERNAL_API_SECRET=$(openssl rand -base64 32)
+CREDENTIALS_KEY=$(openssl rand -base64 32)
 TRUSTED_PROXY=cloudflare               # or `xff` if Cloudflare is not in front
-DATABASE_URL=postgres://pal:<password>@postgres:5432/palscans
+POSTGRES_PASSWORD=<a strong password>
+DATABASE_URL=postgres://pal:<that password>@postgres:5432/palscans
 ```
 
-`TRUSTED_PROXY` is not cosmetic: with it unset every visitor shares one rate-limit bucket and
-no IP is ever hashed. Use `cloudflare` when Cloudflare proxies the origin (it reads
-`CF-Connecting-IP`), `xff` when only Caddy is in front.
+The application **refuses to boot in production** with placeholder values — that guard is in
+`apps/web/lib/env.ts` and it is deliberate.
 
-Then storage and the rest:
+Two of these deserve a sentence each:
 
-```sh
-STORAGE_DRIVER=s3
-S3_ENDPOINT=https://<account>.r2.cloudflarestorage.com
-S3_BUCKET=palscans
-S3_ACCESS_KEY_ID=...
-S3_SECRET_ACCESS_KEY=...
-S3_REGION=auto
-PUBLIC_CDN_URL=https://cdn.palscans.org
-REDIS_URL=redis://valkey:6379
-POSTGRES_PASSWORD=<same password as in DATABASE_URL>
-```
+`TRUSTED_PROXY` is not cosmetic. With it unset every visitor shares one rate-limit bucket and
+no IP is ever hashed. Use `cloudflare` when Cloudflare proxies the origin, `xff` when only
+Caddy is in front.
 
-Secrets live only here, never in the repo or the image.
+`CREDENTIALS_KEY` seals the credentials you are about to type into the panel. It is optional —
+it falls back to `SESSION_SECRET` — but setting it separately now means you can rotate sessions
+later without making every stored credential unreadable. It costs one line today and saves a
+bad afternoon later.
 
 ---
 
 ## 4 · First boot
 
 `infra/docker-compose.yml` brings up Postgres, Valkey, MinIO, Mailpit, Caddy, web and worker.
-For an R2 deployment you do not need the `minio` / `minio-init` services — drop them and point
-`S3_ENDPOINT` at R2. Mailpit is a development mail catcher; replace it with real SMTP.
+For an R2 deployment you do not need `minio` / `minio-init` — drop them; you will point storage
+at R2 from the panel. Mailpit is a development mail catcher; you will point mail at real SMTP
+from the panel too.
 
 ```sh
 docker compose -f infra/docker-compose.yml up -d --build
 docker compose -f infra/docker-compose.yml exec web pnpm db:migrate
+curl -s localhost:3000/api/health     # {"status":"ok","db":"up",...}
 ```
 
 Migrations are additive by design — new columns and tables, never drops — which is what makes
@@ -126,8 +128,6 @@ the rollback procedure in the runbook safe.
 
 **Do not run `pnpm db:seed` in production.** The seeder writes a demo catalogue of ~137
 invented series. It exists for development and tests.
-
----
 
 ## 5 · Your admin account
 
@@ -152,7 +152,35 @@ so a prober cannot tell the difference between "wrong path" and "not allowed".
 
 ---
 
-## 6 · Settings worth doing on day one
+## 6 · Credentials, in the panel
+
+Everything below is **Admin → System → Integrations**. Each section has a **Test** button;
+each field shows whether its current value comes from the panel, from the environment, or is
+unset. Nothing here needs a redeploy.
+
+Do these in order:
+
+1. **Storage** — driver *S3 / Cloudflare R2*, then the endpoint, bucket, access key ID, secret
+   and region (`auto` for R2), and the public CDN URL (`https://cdn.palscans.org`). Press
+   **Test**: it writes a small object, reads it back, compares the bytes and deletes it. If
+   that passes, your bucket works. Save.
+2. **Email** — either a Resend API key, or SMTP host/port/username/password. Set the *from*
+   address to something on your domain. Press **Test** to send yourself a message.
+3. **Sign-in providers** *(optional)* — Google and Discord client IDs and secrets. The
+   redirect URL to register with each provider is `https://palscans.org/api/auth/<provider>/callback`.
+4. **Bot protection** *(recommended)* — Cloudflare Turnstile site key and secret. Without
+   these every bot check passes.
+5. **Payments** *(optional)* — the Stripe secret key and the webhook signing secret for an
+   endpoint pointed at `https://palscans.org/api/webhooks/stripe`. Skip this entirely if you
+   would rather make premium features free for everyone (see below).
+6. **Web push** *(optional)* — generate a pair with `npx web-push generate-vapid-keys`.
+7. **Discord** *(optional)* — bot token and server ID for new-chapter announcements.
+
+The worker picks credential changes up within five minutes, or immediately if you restart it.
+
+---
+
+## 7 · Settings worth doing on day one
 
 All in the admin panel, none require a redeploy:
 
@@ -162,15 +190,13 @@ All in the admin panel, none require a redeploy:
 - **System → SEO** — site name, title separator, the per-page-type templates
   (`{title} Chapter {chapter} {sep} {site}` gives `Naruto Chapter 208 - PALScans`), sitemap
   and feed URLs.
-- **Business → Ads** — skyscrapers on desktop, the mobile interval (every 2/4/6 pages), network tags.
-  Slots render as labelled placeholders until you paste a real tag.
+- **Business → Ads** — skyscrapers on desktop, the mobile interval (every 2/4/6 pages), network
+  tags. Slots render as labelled placeholders until you paste a real tag.
 - **Community → Comments** — link posts are held for review by default. Leave that on.
-- **Business → Premium** — every premium feature can be switched to *Free for everyone* here, with
-  no code change and no Stripe account.
+- **Business → Premium** — every premium feature can be switched to *Free for everyone* here,
+  with no code change and no Stripe account.
 
----
-
-## 7 · Migrating the old site
+## 8 · Migrating the old site
 
 Admin → System → Importer, in this order:
 
@@ -197,7 +223,7 @@ working and the search rankings transfer.
 
 ---
 
-## 8 · Before you announce it
+## 9 · Before you announce it
 
 Walk these in a private window:
 
@@ -209,6 +235,10 @@ Walk these in a private window:
 - [ ] `/sitemap.xml` and `/robots.txt` list your real domain
 - [ ] upload one chapter through Admin → Content → Chapters and watch it process
 - [ ] `docker compose logs worker` shows the scheduler ticking, no errors
+- [ ] `curl https://palscans.org/api/health` returns `{"status":"ok"}` — point your uptime
+      monitor at it
+- [ ] every section of Admin → System → Integrations that you configured shows source
+      **panel**, and its **Test** passes
 
 Then submit the sitemap to Google Search Console and set up a nightly `pg_dump` to R2 under
 `backups/pg/` — the runbook's restore step assumes it exists.
@@ -219,13 +249,15 @@ Then submit the sitemap to Google Search Console and set up a nightly `pg_dump` 
 
 Honest list of what is not there, so nothing surprises you at 2am:
 
-- **No `/api/health` endpoint.** Nothing depends on one today (the compose file does not
-  health-check `web`), but any uptime monitor will want one.
 - **No live MySQL DSN connector.** It needs the `mysql2` driver. The dump path covers the same
   ground and does not require exposing your old database to the internet.
 - **No uploads-archive reader.** A `.zip`/`.tar` of the uploads tree has to be extracted first
   and given as a path.
-- **Stripe, VAPID and the Discord bot are written but inert** until their credentials are set.
-  Every screen degrades to a clear "not configured" state rather than erroring.
+- **Stripe, VAPID and the Discord bot are written but inert** until their credentials are set
+  in the panel. Every screen degrades to a clear "not configured" state rather than erroring.
+- **A credential change reaches other processes within five minutes**, not instantly — the
+  store is cached for 300s per process. Restart the worker if you need it sooner.
+- **`CREDENTIALS_KEY` has no re-key command.** Rotating it means re-entering the credentials
+  in the panel.
 - **Deleting a reader's preference rows is a hard delete** (bookmarks, ratings, reactions,
   history). Everything else is soft-deleted and recoverable.

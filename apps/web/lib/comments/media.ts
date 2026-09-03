@@ -1,4 +1,4 @@
-import { getEnv } from '@/lib/env'
+import { configMirror } from '@/lib/config/mirror'
 
 /**
  * Public URL for a storage object key. The fs driver is served at `/_storage/<key>` by the
@@ -7,7 +7,7 @@ import { getEnv } from '@/lib/env'
 export const storageUrl = (key: string | null | undefined): string | null => {
   if (!key) return null
   const safe = key.split('/').map(encodeURIComponent).join('/')
-  const env = getEnv()
-  if (env.STORAGE_DRIVER === 'fs') return `/_storage/${safe}`
-  return `${env.PUBLIC_CDN_URL.replace(/\/+$/, '')}/${safe}`
+  const { driver, cdnUrl } = configMirror()
+  if (driver === 'fs') return `/_storage/${safe}`
+  return `${cdnUrl.replace(/\/+$/, '')}/${safe}`
 }
