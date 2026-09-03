@@ -9,6 +9,7 @@ import { runImport } from './jobs/import-run.js'
 import { registerNotifications } from './jobs/notify-index.js'
 import { publishDue } from './jobs/publish.js'
 import { type ArtKind, processSeriesArt } from './jobs/series-art.js'
+import { installWorkerConfig } from './lib/config.js'
 import { log } from './lib/log.js'
 import { revalidateWeb } from './lib/revalidate.js'
 
@@ -23,6 +24,10 @@ const PAGE_CONCURRENCY = getEnv().WORKER_PAGE_CONCURRENCY
 
 const main = async () => {
   const db = await getDb()
+  // docs/19: point storage — and the credentials the notification jobs read — at what the
+  // operator typed into the admin panel, before anything asks for a bucket. With nothing
+  // stored (or no database) every one of them falls back to the environment.
+  installWorkerConfig(db)
   const storage = await getStorage()
   const queue = await getQueue()
   const deps = { db, storage, pageConcurrency: PAGE_CONCURRENCY }

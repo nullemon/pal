@@ -196,7 +196,7 @@ export const sendPush = async (
 ): Promise<SendPushSummary> => {
   let sender = opts.sender
   if (!sender) {
-    const cfg = opts.config !== undefined ? opts.config : pushConfig()
+    const cfg = opts.config !== undefined ? opts.config : await pushConfig()
     // No VAPID keys: a silent, honest no-op rather than a throw (docs/17 §D).
     if (!cfg) return { configured: false, sent: 0, failed: 0, pruned: 0 }
     sender = webPushSender(cfg)

@@ -10,8 +10,8 @@ import { pushConfig } from '@/lib/notifications'
  * can say "not configured" instead of looking broken.
  */
 export const GET = async (): Promise<Response> => {
-  const status = pushStatus()
-  const cfg = pushConfig()
+  const status = await pushStatus()
+  const cfg = await pushConfig()
   return ok({
     configured: status.configured,
     missing: status.missing,

@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import {
-  type ConfigField,
   CONFIG_GROUPS,
+  type ConfigField,
   type ConfigGroup,
   FIELDS_BY_ID,
   fieldsIn,

@@ -56,7 +56,7 @@ export const sendBillingNotice = async (
 ): Promise<void> => {
   try {
     const { subject, text } = bodyFor(notice, target)
-    await getMailer().send({ to: target.email, subject, text })
+    await (await getMailer()).send({ to: target.email, subject, text })
   } catch (error) {
     console.warn('[billing] notice not sent', notice, error)
   }

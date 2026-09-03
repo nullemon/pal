@@ -1,4 +1,4 @@
-import { discordStatus, notificationEnv } from '../notifications/config'
+import { discordStatus, resolveNotificationEnv } from '../notifications/config'
 import type { FetchLike } from '../notifications/types'
 
 /**
@@ -6,9 +6,14 @@ import type { FetchLike } from '../notifications/types'
  *
  * - **Channel webhooks** are a URL the operator pastes in. They need no bot and no token,
  *   so `postWebhook` works on a deployment that has never heard of a bot.
- * - **The bot API** (DMs, role sync, resolving a linked account) needs `DISCORD_BOT_TOKEN`.
- *   Without it every call returns `{ ok: false, error: 'not_configured' }` — it never throws
- *   and never reaches the network, which is also what keeps the tests offline.
+ * - **The bot API** (DMs, role sync, resolving a linked account) needs a bot token — from
+ *   the admin panel first and `DISCORD_BOT_TOKEN` second (docs/19). Without one every call
+ *   returns `{ ok: false, error: 'not_configured' }` — it never throws and never reaches the
+ *   network, which is also what keeps the tests offline.
+ *
+ * Resolving the token is asynchronous, so `createDiscordBot()` is how both apps build one;
+ * the constructor stays synchronous for callers that already hold the credentials (tests,
+ * and anything that resolved them once for a batch).
  *
  * `fetch` is injected everywhere so no test ever leaves the process.
  */
@@ -80,9 +85,8 @@ export class DiscordBot {
   private readonly fetchImpl: FetchLike
 
   constructor(opts: BotOptions = {}) {
-    const env = notificationEnv()
-    this.token = opts.token ?? env.DISCORD_BOT_TOKEN
-    this.guildId = opts.guildId ?? env.DISCORD_GUILD_ID
+    this.token = opts.token || undefined
+    this.guildId = opts.guildId || undefined
     this.fetchImpl = opts.fetchImpl ?? fetch
     this.configured = !!this.token
   }
@@ -140,4 +144,18 @@ export class DiscordBot {
   }
 }
 
-export const discordConfigured = (): boolean => discordStatus().configured
+/**
+ * The bot with the operator's credentials filled in — panel first, environment second. Every
+ * caller that does not already hold a token builds one this way.
+ */
+export const createDiscordBot = async (opts: BotOptions = {}): Promise<DiscordBot> => {
+  if (opts.token) return new DiscordBot(opts)
+  const env = await resolveNotificationEnv()
+  return new DiscordBot({
+    token: opts.token ?? env.DISCORD_BOT_TOKEN,
+    guildId: opts.guildId ?? env.DISCORD_GUILD_ID,
+    fetchImpl: opts.fetchImpl,
+  })
+}
+
+export const discordConfigured = async (): Promise<boolean> => (await discordStatus()).configured

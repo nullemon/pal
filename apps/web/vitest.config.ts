@@ -5,8 +5,14 @@ import { defineConfig } from 'vitest/config'
 const root = path.dirname(fileURLToPath(import.meta.url))
 
 export default defineConfig({
-  // the `@/` alias from tsconfig, so route handlers can be imported by tests
-  resolve: { alias: [{ find: /^@\//, replacement: `${root}/` }] },
+  resolve: {
+    alias: [
+      // the `@/` alias from tsconfig, so route handlers can be imported by tests
+      { find: /^@\//, replacement: `${root}/` },
+      // `server-only` is resolved by Next, not by node — see test/server-only.ts
+      { find: /^server-only$/, replacement: `${root}/test/server-only.ts` },
+    ],
+  },
   test: {
     environment: 'node',
     include: ['lib/**/*.test.ts', 'app/**/*.test.ts'],

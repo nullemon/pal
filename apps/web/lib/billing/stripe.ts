@@ -2,19 +2,26 @@ import type { SessionUser } from '@palscans/core'
 import { billingCustomers, type Db, subscriptions } from '@palscans/db'
 import { desc, eq } from 'drizzle-orm'
 import type Stripe from 'stripe'
-import { billingKeyStatus, getEnv } from '../env'
+import { getEnv } from '../env'
+import { billingKeyStatus, stripeSecretKey } from './keys'
 
 /**
  * The Stripe client, created lazily and only when a secret key exists (docs/17 §A: the whole
  * feature is inert without keys). Import the SDK dynamically so a deployment with billing off
  * never loads it, and so unit tests can import the reducer without pulling in the package.
+ *
+ * The key comes from the admin panel first and `STRIPE_SECRET_KEY` second (docs/19), and the
+ * client is rebuilt whenever it changes — so an operator swapping test keys for live ones in
+ * the panel is charging cards on the next request, not the next deploy.
  */
 
 let client: Stripe | null = null
 let clientKey: string | null = null
+let override = false
 
 export const getStripe = async (): Promise<Stripe | null> => {
-  const key = getEnv().STRIPE_SECRET_KEY
+  if (override) return client
+  const key = await stripeSecretKey()
   if (!key) return null
   if (client && clientKey === key) return client
   const { default: StripeCtor } = await import('stripe')
@@ -29,10 +36,11 @@ export const getStripe = async (): Promise<Stripe | null> => {
   return client
 }
 
-/** Tests: swap or clear the shared client. */
+/** Tests: swap or clear the shared client. A `null` here means "billing is off". */
 export const setStripe = (next: Stripe | null): void => {
   client = next
-  clientKey = next ? (getEnv().STRIPE_SECRET_KEY ?? null) : null
+  clientKey = null
+  override = next !== null
 }
 
 export const billingStatus = () => billingKeyStatus()

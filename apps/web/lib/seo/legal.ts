@@ -167,7 +167,7 @@ export async function sendAcknowledgement(
   text: string,
 ): Promise<void> {
   try {
-    await getMailer().send({ to, subject, text })
+    await (await getMailer()).send({ to, subject, text })
   } catch {
     // best-effort
   }

@@ -28,7 +28,7 @@ export const POST = requireUser(async (request, _ctx, user) => {
     .set({ deletionRequestedAt: requestedAt, updatedAt: new Date() })
     .where(eq(users.id, user.id))
   await revokeAllSessions(user.id, (await getSessionId()) ?? undefined)
-  await getMailer().send(deletionScheduledMail(row.email, purgeAt))
+  await (await getMailer()).send(deletionScheduledMail(row.email, purgeAt))
   return ok({
     scheduled: true,
     purgeAt: purgeAt.toISOString(),

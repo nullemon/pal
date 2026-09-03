@@ -39,7 +39,7 @@ export const POST = withPermission('settings.write', async (request, _ctx, user)
   const site = { siteUrl: env.SITE_URL, siteName: env.SITE_NAME, cdnUrl: env.PUBLIC_CDN_URL }
 
   if (parsed.data.channel === 'push') {
-    const status = pushStatus()
+    const status = await pushStatus()
     if (!status.configured)
       return fail(
         503,
@@ -80,7 +80,7 @@ export const POST = withPermission('settings.write', async (request, _ctx, user)
       site,
       displayName: row.displayName ?? row.username ?? messages.notify.digest.reader,
     })
-    const mailer = getMailer()
+    const mailer = await getMailer()
     const sent = await mailer.send({
       to: row.email,
       subject: rendered.subject,

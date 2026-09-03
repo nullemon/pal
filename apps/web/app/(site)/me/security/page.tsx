@@ -7,7 +7,7 @@ import { notFound } from 'next/navigation'
 import { getSessionId, listSessions } from '@/lib/auth'
 import { describeDevice } from '@/lib/auth/device'
 import { listLoginEvents } from '@/lib/auth/login-events'
-import { OAUTH_PROVIDERS, providerConfigured } from '@/lib/auth/oauth'
+import { OAUTH_PROVIDERS, type OAuthProvider, providerConfigured } from '@/lib/auth/oauth'
 import { PageTitle, Section } from '../_components/Section'
 import {
   ChangePasswordForm,
@@ -57,6 +57,14 @@ export default async function SecurityPage({
       .where(eq(oauthAccounts.userId, user.id)),
   ])
   if (!row) notFound()
+  // docs/19: which providers have keys is resolved from the admin panel first, the
+  // environment second — so the buttons are computed once here rather than per row.
+  const configured = await Promise.all(
+    OAUTH_PROVIDERS.map(
+      async (p): Promise<[OAuthProvider, boolean]> => [p, await providerConfigured(p)],
+    ),
+  )
+  const configuredProviders = new Set(configured.filter(([, ok]) => ok).map(([p]) => p))
   const rows: SessionRow[] = sessions.map((s) => {
     const device = describeDevice(s.userAgent)
     return {
@@ -151,7 +159,7 @@ export default async function SecurityPage({
                     href={`/api/auth/${p}?return=%2Fme%2Fsecurity`}
                     variant="outline"
                     size="sm"
-                    aria-disabled={!providerConfigured(p)}
+                    aria-disabled={!configuredProviders.has(p)}
                   >
                     {messages.me.security.connect}
                   </Button>

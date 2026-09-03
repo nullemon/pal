@@ -44,7 +44,8 @@ export interface LinkCodeResult {
 export async function createDiscordCode(): Promise<LinkCodeResult> {
   const user = await getSessionUser()
   if (!user) return { ok: false, message: messages.errors.unauthorized }
-  if (!discordStatus().configured) return { ok: false, message: messages.notify.notConfigured }
+  if (!(await discordStatus()).configured)
+    return { ok: false, message: messages.notify.notConfigured }
   const db = await getDb()
   const existing = await getLink(db, user.id)
   if (existing?.discordId)

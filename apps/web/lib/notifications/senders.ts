@@ -1,7 +1,7 @@
 import { messages } from '@palscans/core/messages'
 import { bookmarks, chapters, series } from '@palscans/db'
 import { and, eq, isNull } from 'drizzle-orm'
-import { DiscordBot, postWebhook } from '../discord/client'
+import { createDiscordBot, type DiscordBot, postWebhook } from '../discord/client'
 import { newChapterMessage } from '../discord/embed'
 import { linkedAccounts } from '../discord/link'
 import { pushConfig } from './config'
@@ -110,7 +110,7 @@ export const fanoutNewChapter = async (
   // A channel that cannot send is skipped *before* any query: an unconfigured deployment must
   // not pay for a bookmarker scan on every tick, and it must not write a ledger row either.
   const canPush =
-    deps.settings.push.enabled && (deps.pushSender !== undefined || pushConfig() !== null)
+    deps.settings.push.enabled && (deps.pushSender !== undefined || (await pushConfig()) !== null)
   if (canPush && !done.has(`chapter:${chapterId}:push`)) {
     const readers = await db
       .select({ userId: bookmarks.userId })
@@ -156,7 +156,7 @@ export const fanoutNewChapter = async (
   }
 
   // ── discord ────────────────────────────────────────────────────────────────────────────
-  const bot = deps.bot ?? new DiscordBot({ fetchImpl: deps.fetchImpl })
+  const bot = deps.bot ?? (await createDiscordBot({ fetchImpl: deps.fetchImpl }))
   const liveHooks = deps.settings.discord.webhooks.filter(
     (w) => w.enabled && w.events.includes('new_chapter'),
   )

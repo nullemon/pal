@@ -43,6 +43,6 @@ export const POST = requireUser(async (request, _ctx, user) => {
   await revokeAllSessions(user.id)
   const created = await rotateSession(await getSessionId(), user.id, requestContext(request))
   await setSessionCookie(created)
-  await getMailer().send(passwordChangedMail(row.email))
+  await (await getMailer()).send(passwordChangedMail(row.email))
   return ok({ changed: true, message: messages.me.security.passwordChanged })
 })

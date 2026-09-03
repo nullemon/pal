@@ -1,5 +1,5 @@
 import { connect as netConnect, type Socket } from 'node:net'
-import { connect as tlsConnect, type TLSSocket } from 'node:tls'
+import { type TLSSocket, connect as tlsConnect } from 'node:tls'
 
 /**
  * Just enough SMTP to prove the operator's mail credentials actually work (docs/19).

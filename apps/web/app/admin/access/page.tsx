@@ -8,7 +8,8 @@ import {
   readMinAccountAgeMinutes,
   readRegistrationMode,
 } from '@/lib/auth/invites'
-import { getEnv, turnstileConfigured } from '@/lib/env'
+import { turnstileConfigured } from '@/lib/auth/turnstile'
+import { getEnv } from '@/lib/env'
 import { AccessScreen } from './AccessScreen'
 
 /**
@@ -18,11 +19,12 @@ import { AccessScreen } from './AccessScreen'
  */
 export default async function AccessPage() {
   await withPermission('settings.write', { returnTo: '/admin/access' })
-  const [registration, access, minAccountAgeMinutes, invites] = await Promise.all([
+  const [registration, access, minAccountAgeMinutes, invites, turnstile] = await Promise.all([
     readRegistrationMode(),
     readAccessSetting(),
     readMinAccountAgeMinutes(),
     listInvites(),
+    turnstileConfigured(),
   ])
   const now = new Date()
   const m = messages.admin.access
@@ -31,7 +33,7 @@ export default async function AccessPage() {
       <PageHeader title={m.title} subtitle={m.subtitle} />
       <AccessScreen
         initial={{ registration, access, minAccountAgeMinutes }}
-        turnstileConfigured={turnstileConfigured()}
+        turnstileConfigured={turnstile}
         trustedProxy={getEnv().TRUSTED_PROXY !== 'none'}
         invites={invites.map((i) => ({
           state: inviteState(i, now),

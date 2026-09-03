@@ -37,7 +37,7 @@ export async function POST(request: Request): Promise<Response> {
   if (hits.some((h) => !h.ok))
     return rateLimited(Math.max(...hits.map((h) => (h.ok ? 0 : h.retryAfterSec))))
 
-  const mailer = getMailer()
+  const mailer = await getMailer()
   if (mailer.kind === 'none') return fail(503, 'mail_unavailable', messages.errors.mailUnavailable)
   after(async () => {
     try {

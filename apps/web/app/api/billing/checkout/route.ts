@@ -3,9 +3,15 @@ import { getDb, plans } from '@palscans/db'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { fail, getRateLimiter, ok, parseJson, rateLimited, requireUser } from '@/lib/auth'
-import { ensureCustomer, getStripe, isSellable, planFeatures } from '@/lib/billing'
+import {
+  billingConfigured,
+  ensureCustomer,
+  getStripe,
+  isSellable,
+  planFeatures,
+} from '@/lib/billing'
 import { getBillingSettings } from '@/lib/billing/config'
-import { billingConfigured, getEnv } from '@/lib/env'
+import { getEnv } from '@/lib/env'
 
 /**
  * `POST /api/billing/checkout` — a hosted Stripe Checkout session for one plan (docs/07: the
@@ -16,7 +22,7 @@ import { billingConfigured, getEnv } from '@/lib/env'
 const schema = z.object({ planId: z.string().min(1).max(64) })
 
 export const POST = requireUser(async (request, _ctx, user) => {
-  if (!billingConfigured())
+  if (!(await billingConfigured()))
     return fail(503, 'billing_not_configured', messages.billing.notConfiguredLead)
 
   const limit = await getRateLimiter().hit(`billing-checkout:${user.id}`, 8, 60)

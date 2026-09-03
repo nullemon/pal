@@ -1,5 +1,6 @@
 import { Discord, decodeIdToken, Google, generateCodeVerifier, generateState } from 'arctic'
 import { z } from 'zod'
+import { resolveConfig } from '../config/store'
 import { getEnv } from '../env'
 import { secureCookies } from './session'
 import { signValue, verifyValue } from './signed'
@@ -18,29 +19,43 @@ export const OAUTH_LINK_COOKIE = 'oauth_link'
 export const OAUTH_STATE_TTL_MS = 10 * 60_000
 export const OAUTH_LINK_TTL_MS = 15 * 60_000
 
-export const providerConfigured = (provider: OAuthProvider): boolean => {
-  const env = getEnv()
+export interface OAuthCredentials {
+  clientId: string
+  clientSecret: string
+}
+
+/**
+ * The client id / secret pair, from the admin panel first and the environment second
+ * (docs/19). Both halves are needed: a deployment with only an id set is *not* configured,
+ * which is what keeps `/api/auth/google` answering "not configured" instead of bouncing the
+ * reader to a Google error page.
+ */
+export const oauthCredentials = async (provider: OAuthProvider): Promise<OAuthCredentials> => {
+  const { values } = await resolveConfig()
   return provider === 'google'
-    ? !!(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET)
-    : !!(env.DISCORD_CLIENT_ID && env.DISCORD_CLIENT_SECRET)
+    ? {
+        clientId: values['oauth.google_client_id'] ?? '',
+        clientSecret: values['oauth.google_client_secret'] ?? '',
+      }
+    : {
+        clientId: values['oauth.discord_client_id'] ?? '',
+        clientSecret: values['oauth.discord_client_secret'] ?? '',
+      }
+}
+
+export const providerConfigured = async (provider: OAuthProvider): Promise<boolean> => {
+  const { clientId, clientSecret } = await oauthCredentials(provider)
+  return !!(clientId && clientSecret)
 }
 
 export const redirectUri = (provider: OAuthProvider) =>
   `${getEnv().SITE_URL.replace(/\/+$/, '')}/api/auth/${provider}/callback`
 
-const client = (provider: OAuthProvider) => {
-  const env = getEnv()
-  if (provider === 'google')
-    return new Google(
-      env.GOOGLE_CLIENT_ID ?? '',
-      env.GOOGLE_CLIENT_SECRET ?? '',
-      redirectUri('google'),
-    )
-  return new Discord(
-    env.DISCORD_CLIENT_ID ?? '',
-    env.DISCORD_CLIENT_SECRET ?? '',
-    redirectUri('discord'),
-  )
+const client = async (provider: OAuthProvider) => {
+  const { clientId, clientSecret } = await oauthCredentials(provider)
+  return provider === 'google'
+    ? new Google(clientId, clientSecret, redirectUri('google'))
+    : new Discord(clientId, clientSecret, redirectUri('discord'))
 }
 
 const stateSchema = z.object({
@@ -53,11 +68,11 @@ const stateSchema = z.object({
 export type OAuthState = z.infer<typeof stateSchema>
 
 /** Build the provider URL and the signed cookie value that must accompany it. */
-export const beginOAuth = (provider: OAuthProvider, returnTo: string) => {
+export const beginOAuth = async (provider: OAuthProvider, returnTo: string) => {
   const state = generateState()
   const verifier = generateCodeVerifier()
   const scopes = provider === 'google' ? ['openid', 'email', 'profile'] : ['identify', 'email']
-  const url = client(provider).createAuthorizationURL(state, verifier, scopes)
+  const url = (await client(provider)).createAuthorizationURL(state, verifier, scopes)
   const cookie = signValue({
     p: provider,
     s: state,
@@ -100,7 +115,7 @@ export const completeOAuth = async (
   code: string,
   fetchImpl: typeof fetch = fetch,
 ): Promise<OAuthIdentity> => {
-  const tokens = await client(state.p).validateAuthorizationCode(code, state.v)
+  const tokens = await (await client(state.p)).validateAuthorizationCode(code, state.v)
   if (state.p === 'google') {
     const claims = googleClaims.parse(decodeIdToken(tokens.idToken()))
     return {

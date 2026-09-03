@@ -60,7 +60,7 @@ export const POST = requireUser(async (request, _ctx, user) => {
     ipHash: await ipHashFor(request),
     limiter: getRateLimiter(),
     challenge: {
-      enabled: turnstileEnabled(),
+      enabled: await turnstileEnabled(),
       token: parsed.data.turnstile,
       verify: (token) => verifyTurnstile(token, clientIp(request)),
     },

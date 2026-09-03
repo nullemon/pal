@@ -6,9 +6,9 @@ import { CircleAlert, FileText, LifeBuoy, Zap } from 'lucide-react'
 import type { Metadata } from 'next'
 import { type AccountSubscription, accountBilling } from '@/lib/billing/account'
 import { getBillingSettings } from '@/lib/billing/config'
+import { billingConfigured } from '@/lib/billing/keys'
 import { formatPrice } from '@/lib/billing/plans'
 import { entitlementGate } from '@/lib/entitlements'
-import { billingConfigured } from '@/lib/env'
 import { PageTitle, Section } from '../_components/Section'
 import { requireAccount } from '../_lib'
 import { PortalButton } from './PortalButton'
@@ -57,7 +57,7 @@ export default async function BillingPage() {
     getBillingSettings(db),
     entitlementGate(),
   ])
-  const configured = billingConfigured()
+  const configured = await billingConfigured()
   const sub = account.subscription
   const rows = user.entitlements ?? []
   const features = [...new Set(rows.filter((r) => rowActive(r)).map((r) => r.feature))]

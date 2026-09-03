@@ -1,5 +1,7 @@
 export {
+  type BotOptions,
   clamp,
+  createDiscordBot,
   DISCORD_API,
   DiscordBot,
   type DiscordEmbed,

@@ -1,3 +1,4 @@
+import { credentialValues } from '@palscans/core'
 import { z } from 'zod'
 
 /**
@@ -9,6 +10,13 @@ import { z } from 'zod'
  * only the keys this feature owns, and every one of them is optional — with none set, web
  * push and Discord are simply *not configured*: no route throws, no job sends, and every
  * surface says so.
+ *
+ * docs/19 adds a second source in front of that one: the operator can type these keys into
+ * Admin → System → Integrations instead of the environment. Both apps read them through
+ * `@palscans/core`'s credential slot — the web installs the panel store behind it
+ * (`lib/config/resolver.ts`), the worker its own reader (`apps/worker/src/lib/config.ts`) —
+ * which is why the status functions below are async. With no resolver installed the slot is
+ * empty and every one of them falls back to exactly the environment it read before.
  */
 export const notificationEnvSchema = z.object({
   /** VAPID application server keys (`npx web-push generate-vapid-keys`). */
@@ -43,6 +51,23 @@ export const resetNotificationEnv = (): void => {
   cached = undefined
 }
 
+/** Registry id ↔ environment variable, one place, used by every resolver below. */
+const CREDENTIAL_KEYS = {
+  VAPID_PUBLIC_KEY: ['push.vapid_public_key', 'VAPID_PUBLIC_KEY'],
+  VAPID_PRIVATE_KEY: ['push.vapid_private_key', 'VAPID_PRIVATE_KEY'],
+  VAPID_SUBJECT: ['push.vapid_subject', 'VAPID_SUBJECT'],
+  DISCORD_BOT_TOKEN: ['discord.bot_token', 'DISCORD_BOT_TOKEN'],
+  DISCORD_GUILD_ID: ['discord.guild_id', 'DISCORD_GUILD_ID'],
+} as const satisfies Record<keyof NotificationEnv, readonly [string, string]>
+
+/**
+ * The effective settings: the operator's panel values where they are set, the environment
+ * everywhere else. An empty string means unset, exactly as it does in a `.env` file, so
+ * every "is this configured?" check below reads the same either way.
+ */
+export const resolveNotificationEnv = async (): Promise<NotificationEnv> =>
+  notificationEnvSchema.parse(strip(await credentialValues(CREDENTIAL_KEYS)))
+
 export interface PushConfig {
   publicKey: string
   privateKey: string
@@ -55,15 +80,21 @@ export interface ChannelStatus {
   missing: readonly string[]
 }
 
-/** Web push needs both VAPID keys; the subject falls back to a mailto for the site. */
-export const pushStatus = (env: NotificationEnv = notificationEnv()): ChannelStatus => {
+/**
+ * Web push needs both VAPID keys; the subject falls back to a mailto for the site.
+ *
+ * `missing` names the **environment variables**, not the registry ids, because that is what
+ * the "not configured" copy in `messages.ts` tells the operator to set — and the environment
+ * still works. The panel labels the same fields.
+ */
+export const pushStatusOf = (env: NotificationEnv): ChannelStatus => {
   const missing: string[] = []
   if (!env.VAPID_PUBLIC_KEY) missing.push('VAPID_PUBLIC_KEY')
   if (!env.VAPID_PRIVATE_KEY) missing.push('VAPID_PRIVATE_KEY')
   return { configured: missing.length === 0, missing }
 }
 
-export const pushConfig = (env: NotificationEnv = notificationEnv()): PushConfig | null => {
+export const pushConfigOf = (env: NotificationEnv): PushConfig | null => {
   if (!env.VAPID_PUBLIC_KEY || !env.VAPID_PRIVATE_KEY) return null
   return {
     publicKey: env.VAPID_PUBLIC_KEY,
@@ -77,15 +108,32 @@ export const pushConfig = (env: NotificationEnv = notificationEnv()): PushConfig
  * while **linking, role sync and DMs** speak to the API as a bot and need `DISCORD_BOT_TOKEN`
  * (plus a guild for roles). Each surface asks for the half it needs.
  */
-export const discordStatus = (env: NotificationEnv = notificationEnv()): ChannelStatus => {
+export const discordStatusOf = (env: NotificationEnv): ChannelStatus => {
   const missing: string[] = []
   if (!env.DISCORD_BOT_TOKEN) missing.push('DISCORD_BOT_TOKEN')
   return { configured: missing.length === 0, missing }
 }
 
-export const discordRoleSyncStatus = (env: NotificationEnv = notificationEnv()): ChannelStatus => {
+export const discordRoleSyncStatusOf = (env: NotificationEnv): ChannelStatus => {
   const missing: string[] = []
   if (!env.DISCORD_BOT_TOKEN) missing.push('DISCORD_BOT_TOKEN')
   if (!env.DISCORD_GUILD_ID) missing.push('DISCORD_GUILD_ID')
   return { configured: missing.length === 0, missing }
 }
+
+/**
+ * The resolved forms every caller uses. Each takes an optional settings object so a test (or
+ * a caller that already resolved once) stays synchronous underneath; with none it reads the
+ * panel store, falling back to the environment.
+ */
+export const pushStatus = async (env?: NotificationEnv): Promise<ChannelStatus> =>
+  pushStatusOf(env ?? (await resolveNotificationEnv()))
+
+export const pushConfig = async (env?: NotificationEnv): Promise<PushConfig | null> =>
+  pushConfigOf(env ?? (await resolveNotificationEnv()))
+
+export const discordStatus = async (env?: NotificationEnv): Promise<ChannelStatus> =>
+  discordStatusOf(env ?? (await resolveNotificationEnv()))
+
+export const discordRoleSyncStatus = async (env?: NotificationEnv): Promise<ChannelStatus> =>
+  discordRoleSyncStatusOf(env ?? (await resolveNotificationEnv()))

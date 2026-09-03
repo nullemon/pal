@@ -25,6 +25,7 @@ export type AdminIcon =
   | 'search'
   | 'shield'
   | 'bell'
+  | 'plug'
 
 export interface AdminNavItem {
   label: string
@@ -138,6 +139,13 @@ export const adminNav: readonly AdminNavGroup[] = [
         exact: true,
       },
       { label: m.access, href: '/admin/access', icon: 'shield', permission: 'settings.write' },
+      // Credentials the operator can type in rather than deploy (docs/19).
+      {
+        label: m.integrations,
+        href: '/admin/integrations',
+        icon: 'plug',
+        permission: 'settings.write',
+      },
       { label: m.featureFlags, href: '/admin/flags', icon: 'toggle', permission: 'settings.write' },
       { label: m.jobs, href: '/admin/jobs', icon: 'cpu', permission: 'chapter.update' },
       { label: m.auditLog, href: '/admin/audit', icon: 'scroll', permission: 'audit.read' },

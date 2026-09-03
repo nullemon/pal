@@ -1,7 +1,6 @@
 import { messages } from '@palscans/core/messages'
 import { fail, ok, readBody } from '@/lib/auth'
-import { getStripe, handleStripeEvent } from '@/lib/billing'
-import { billingConfigured, getEnv } from '@/lib/env'
+import { billingConfigured, getStripe, handleStripeEvent, stripeWebhookSecret } from '@/lib/billing'
 
 /**
  * `POST /api/webhooks/stripe` — the only route that grants a paid entitlement.
@@ -16,7 +15,7 @@ import { billingConfigured, getEnv } from '@/lib/env'
 const MAX_EVENT_BYTES = 512 * 1024
 
 export const POST = async (request: Request): Promise<Response> => {
-  if (!billingConfigured())
+  if (!(await billingConfigured()))
     return fail(503, 'billing_not_configured', messages.billing.notConfiguredLead)
 
   const signature = request.headers.get('stripe-signature')
@@ -27,7 +26,7 @@ export const POST = async (request: Request): Promise<Response> => {
   const raw = new TextDecoder().decode(read.body)
 
   const stripe = await getStripe()
-  const secret = getEnv().STRIPE_WEBHOOK_SECRET
+  const secret = await stripeWebhookSecret()
   if (!stripe || !secret)
     return fail(503, 'billing_not_configured', messages.billing.notConfiguredLead)
 

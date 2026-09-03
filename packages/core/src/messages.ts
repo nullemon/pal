@@ -991,6 +991,7 @@ export const messages = {
       auditLog: 'Audit log',
       seo: 'SEO',
       importer: 'Import',
+      integrations: 'Integrations',
       backToSite: 'Back to site',
     },
     dashboard: {
@@ -1695,9 +1696,9 @@ export const messages = {
         'New accounts land on the verification screen instead of the site until they confirm the address.',
       turnstile: 'Cloudflare Turnstile',
       turnstileHint: 'Challenge the registration and sign-in forms.',
-      turnstileConfigured: 'Turnstile keys are set in the environment.',
+      turnstileConfigured: 'Turnstile keys are set.',
       turnstileMissing:
-        'Not configured — set TURNSTILE_SECRET_KEY and NEXT_PUBLIC_TURNSTILE_SITE_KEY to use it. The switch stays off until then.',
+        'Not configured — add the Turnstile site and secret keys under System → Integrations to use it. The switch stays off until then.',
       minAccountAge: 'Minimum account age before commenting (minutes)',
       minAccountAgeHint:
         'The same value as Comments → Settings; changing it here changes it there.',
@@ -1861,6 +1862,176 @@ export const messages = {
         'Passwords are never converted: accounts import with no password and get a one-time set-password link at cutover.',
       redirectsNote:
         'Redirect rows are generated for every legacy URL and land in the existing redirects table.',
+    },
+    // Admin → System → Integrations (docs/19) — appended
+    integrations: {
+      title: 'Integrations',
+      subtitle:
+        'The credentials this site runs on. Type them here instead of editing a .env file on the server — a value saved here wins over the environment and takes effect without a redeploy.',
+      saved: 'Saved',
+      savedNote: 'Saved. New values are in use from the next request.',
+      readOnly: 'Read-only until a sealing key is set.',
+      groups: {
+        storage: 'Storage',
+        email: 'Email',
+        oauth: 'Sign-in providers',
+        payments: 'Payments',
+        bot: 'Bot protection',
+        push: 'Web push',
+        discord: 'Discord',
+      },
+      groupHints: {
+        storage: 'Where covers and pages are kept, and the hostname readers load them from.',
+        email: 'Verification, password-reset and notification mail.',
+        oauth: 'The Google and Discord buttons on the sign-in page.',
+        payments: 'Stripe. Without a key the Premium screens stay visible but inert.',
+        bot: 'Cloudflare Turnstile on sign-up and on repeated failed sign-ins.',
+        push: 'Browser notifications for new chapters and replies.',
+        discord: 'The bot that posts releases, syncs roles and links accounts.',
+      },
+      state: {
+        ready: 'Configured',
+        partial: 'Incomplete',
+        off: 'Not configured',
+      },
+      stillNeeded: 'Still needed: {fields}',
+      source: {
+        panel: 'Panel',
+        env: 'Environment',
+        unset: 'Not set',
+      },
+      sourceEnvNote:
+        'Coming from {name} in the environment. Typing a value here overrides it; clearing the box falls back to the environment again.',
+      sourcePanelNote: 'Saved here. Clearing the box removes it and falls back to {name}.',
+      secretSet: 'Set',
+      secretStoredNote:
+        'Stored and encrypted. It is never sent back to this page, so leaving it alone keeps it exactly as it is.',
+      secretReplace: 'Replace',
+      secretRemove: 'Remove',
+      secretKeep: 'Keep the stored value',
+      secretReplacingNote: 'Type the new value, or keep the stored one.',
+      secretRemovedNote: 'Will be removed when you save.',
+      sealing: {
+        missingTitle: 'Credentials cannot be stored',
+        missingBody:
+          'Nothing on this page can be saved: the server has no key to encrypt credentials with. Set CREDENTIALS_KEY to at least 16 characters in the environment and restart. Until then every value below comes from the environment and is shown read-only.',
+        sessionTitle: 'Sealed with SESSION_SECRET',
+        sessionBody:
+          'No CREDENTIALS_KEY is set, so stored credentials are encrypted with SESSION_SECRET. Rotating that secret would make them unreadable and each one would have to be entered again — the site falls back to the environment rather than breaking. Setting CREDENTIALS_KEY avoids that.',
+        okTitle: 'Sealed with CREDENTIALS_KEY',
+        okBody: 'Credentials are encrypted before they reach the database.',
+      },
+      test: 'Test',
+      testing: 'Testing…',
+      testTitle: 'Connection test',
+      testPassed: 'Everything checked passed',
+      testFailed: 'Something is wrong',
+      testMixed: 'Checked what can be checked',
+      testError: 'The test could not be run',
+      testUnsaved:
+        'Tested against what is in the boxes above, including changes you have not saved.',
+      checkStates: { pass: 'Pass', fail: 'Fail', skip: 'Unverified' },
+      checks: {
+        cdnUrl: 'Public CDN URL',
+        write: 'Write an object',
+        readBack: 'Read it back',
+        bytes: 'Compare the bytes',
+        cleanup: 'Delete it again',
+        localFolder: 'Local folder',
+        resend: 'Send through Resend',
+        smtpConnect: 'Reach the SMTP server',
+        smtpTls: 'Encrypt the connection',
+        smtpAuth: 'Sign in',
+        smtpSend: 'Send the message',
+        mailProvider: 'Mail provider',
+        botIdentity: 'Bot token',
+        botGuild: 'Server access',
+        stripeAccount: 'Stripe secret key',
+        stripeWebhook: 'Webhook signing secret',
+        turnstileSecret: 'Turnstile secret key',
+        turnstileSiteKey: 'Turnstile site key',
+        googleOauth: 'Google client ID and secret',
+        discordOauth: 'Discord client ID and secret',
+        vapidPair: 'VAPID key pair',
+        vapidSubject: 'VAPID subject',
+        pushDelivery: 'Delivery to a browser',
+      },
+      results: {
+        nothingToTest: 'Nothing is configured in this group yet, so there is nothing to test.',
+        notSet: 'Not set, so there is nothing to check.',
+        unexpected: 'Unexpected failure: {detail}',
+        cdnUrlOk: 'Readers will load images from {url}.',
+        cdnUrlMissing:
+          'Not set. The S3 driver needs a public hostname to build image URLs from, so covers and pages would have no address.',
+        writeOk: 'Wrote {bytes} bytes to {key}.',
+        writeFailed: 'The bucket refused the write: {detail}',
+        readBackOk: 'Read the object back.',
+        readBackMissing:
+          'The write was accepted but the object is not there. The key may be going to a different bucket than the one being read.',
+        readBackFailed: 'Written, but it could not be read back: {detail}',
+        bytesOk: 'Byte for byte identical.',
+        bytesDiffer:
+          'What came back is not what went in. Something between here and the bucket is rewriting objects.',
+        cleanupOk: 'Removed the test object.',
+        cleanupFailed:
+          'Could not delete {key}. The credentials can write but not delete; remove that object by hand.',
+        localFolderOk: 'Wrote and removed a file in the local storage folder.',
+        localFolderFailed: 'The local storage folder is not writable: {detail}',
+        localFolderNote:
+          'The local folder driver is for development. Production should use S3 or Cloudflare R2.',
+        resendOk: 'Resend accepted a message for {email} (id {id}).',
+        resendFailed: 'Resend refused it: {detail}',
+        smtpConnectFailed: 'Could not reach {host} on port {port}: {detail}',
+        smtpConnectOk: 'Reached {host} on port {port}.',
+        smtpTlsOk: 'The connection is encrypted.',
+        smtpTlsFailed:
+          'The server offered no encryption, so the password was not sent. Use port 465, or a server that supports STARTTLS.',
+        smtpAuthOk: 'The server accepted the username and password.',
+        smtpAuthFailed: 'The server rejected the username or password: {detail}',
+        smtpSendOk: 'Delivered a test message to {email}.',
+        smtpSendFailed: 'Signed in, but the message was refused: {detail}',
+        mailNoProvider:
+          'Neither a Resend API key nor an SMTP host is set. In development mail is printed to the server console; in production nothing would be sent.',
+        mailNoFrom: 'Set a From address before testing — the message needs a sender.',
+        botIdentityOk: 'Discord knows this token as {name}.',
+        botIdentityFailed: 'Discord rejected the bot token: {detail}',
+        botGuildOk: 'The bot is a member of {name}.',
+        botGuildFailed:
+          'The bot cannot see server {id}. Invite it to that server, or check the ID. ({detail})',
+        botGuildSkipped: 'No server ID is set, so there is nothing to check the bot against.',
+        stripeAccountOk: 'Stripe accepted the key for account {id} ({mode}).',
+        stripeAccountChargesOff:
+          'Stripe accepted the key for account {id} ({mode}), but the account cannot take charges yet — finish onboarding in the Stripe dashboard.',
+        stripeAccountFailed: 'Stripe rejected the key: {detail}',
+        stripeWebhookSkipped:
+          'A signing secret can only be proved by a webhook Stripe actually sends. It is stored, and /api/webhooks/stripe will check the signature on the first event.',
+        stripeWebhookMissing:
+          'Not set. Every webhook Stripe sends would be rejected, so subscriptions would never activate.',
+        stripeLiveMode: 'live mode',
+        stripeTestMode: 'test mode',
+        turnstileSecretOk:
+          'Cloudflare accepted the secret key — it answered a deliberately invalid token with "invalid token" rather than "invalid secret".',
+        turnstileSecretFailed: 'Cloudflare says this secret key is not valid: {detail}',
+        turnstileSiteKeySkipped:
+          'The site key is public and is only proved by the widget rendering in a browser. Open the sign-up page to see it.',
+        turnstileSiteKeyMissing:
+          'Not set. Without it no challenge is rendered, so the secret key is never exercised.',
+        oauthOk:
+          'The provider accepted the client ID and secret — it refused a deliberately invalid code rather than the credentials.',
+        oauthFailed: 'The provider rejected the client ID or secret: {detail}',
+        oauthSkipped: 'Not set, so this button does not appear on the sign-in page.',
+        vapidPairOk:
+          'The private key matches the public key, so the push service will accept messages signed with it.',
+        vapidPublicInvalid:
+          'The public key is not a P-256 point in the form a browser expects (65 bytes, base64url).',
+        vapidPrivateInvalid: 'The private key is not a 32-byte base64url value.',
+        vapidMismatch:
+          'The private key does not match the public key — they are from two different pairs. Generate a new pair and paste both halves.',
+        vapidSubjectOk: 'Push services will identify you by {subject}.',
+        vapidSubjectInvalid: 'Must be a mailto: or https: URL, e.g. mailto:ops@example.org.',
+        pushDeliverySkipped:
+          'Delivering to a real browser needs a subscription. Use Send test push on the Notifications screen once you have allowed notifications.',
+      },
     },
   },
   // P6 · SEO, feeds, legal pages, announcements, 404 — appended
@@ -2147,7 +2318,7 @@ export const messages = {
     notConfiguredLead:
       'Subscriptions are switched off until the payment keys are in place. Nothing can be bought right now and no card is ever charged.',
     notConfiguredAdmin:
-      'Set STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET in the environment, then restart the app.',
+      'Add the Stripe secret key and webhook signing secret under System → Integrations. They take effect immediately — no redeploy.',
     checkout: 'Subscribe',
     checkoutBusy: 'Opening checkout…',
     checkoutFailed: 'Checkout could not be opened. Try again in a moment.',
@@ -2211,8 +2382,8 @@ export const messages = {
       subtitle: 'Stripe Checkout, the Customer Portal and webhook health.',
       keysTitle: 'Stripe connection',
       keysHint: 'Checkout, the Customer Portal and the webhook all need these two keys.',
-      secretKey: 'Secret key · STRIPE_SECRET_KEY',
-      webhookSecret: 'Webhook secret · STRIPE_WEBHOOK_SECRET',
+      secretKey: 'Secret key',
+      webhookSecret: 'Webhook signing secret',
       present: 'Set',
       missing: 'Missing',
       ready: 'Billing is live',

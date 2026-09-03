@@ -3,9 +3,9 @@ import { createECDH, randomUUID, timingSafeEqual } from 'node:crypto'
 import { fmt, messages } from '@palscans/core/messages'
 import { createStorage } from '@palscans/core/storage'
 import { getEnv } from '../env'
+import { liveConfig } from './live'
 import { type ConfigGroup, FIELDS_BY_ID, isMasked } from './registry'
 import { smtpSendTest } from './smtp'
-import { resolveConfig } from './store'
 
 /**
  * The connection tests behind Admin → System → Integrations (docs/19).
@@ -101,7 +101,7 @@ const errorText = async (res: Response): Promise<string> => {
 export const mergeSubmitted = async (
   submitted: Record<string, string>,
 ): Promise<Record<string, string>> => {
-  const { values } = await resolveConfig()
+  const { values } = await liveConfig()
   const merged: Record<string, string> = { ...values }
   for (const [id, raw] of Object.entries(submitted)) {
     const field = FIELDS_BY_ID.get(id)
@@ -124,7 +124,10 @@ const storageChecks = async (v: Record<string, string>): Promise<Check[]> => {
   if ((v['storage.driver'] ?? '') !== 's3') {
     const root = getEnv().STORAGE_FS_ROOT
     try {
-      const storage = await createStorage({ driver: 'fs', fs: { root, publicUrl: cdn || '/_storage' } })
+      const storage = await createStorage({
+        driver: 'fs',
+        fs: { root, publicUrl: cdn || '/_storage' },
+      })
       await storage.put(key, body, { contentType: 'text/plain' })
       const back = await storage.get(key)
       await storage.delete(key)
@@ -139,7 +142,9 @@ const storageChecks = async (v: Record<string, string>): Promise<Check[]> => {
   }
 
   checks.push(
-    cdn ? pass(m.checks.cdnUrl, fmt(R.cdnUrlOk, { url: cdn })) : fail(m.checks.cdnUrl, R.cdnUrlMissing),
+    cdn
+      ? pass(m.checks.cdnUrl, fmt(R.cdnUrlOk, { url: cdn }))
+      : fail(m.checks.cdnUrl, R.cdnUrlMissing),
   )
 
   // The bucket is exercised even when the CDN hostname is missing: they are two independent
@@ -211,7 +216,8 @@ const emailChecks = async (v: Record<string, string>, to: string): Promise<Check
         headers: { authorization: `Bearer ${resendKey}`, 'content-type': 'application/json' },
         body: JSON.stringify({ from, to: [to], subject, text }),
       })
-      if (!res.ok) return [fail(m.checks.resend, fmt(R.resendFailed, { detail: await errorText(res) }))]
+      if (!res.ok)
+        return [fail(m.checks.resend, fmt(R.resendFailed, { detail: await errorText(res) }))]
       const json = (await res.json().catch(() => ({}))) as { id?: string }
       return [pass(m.checks.resend, fmt(R.resendOk, { email: to, id: json.id ?? '—' }))]
     } catch (err) {
@@ -244,7 +250,8 @@ const emailChecks = async (v: Record<string, string>, to: string): Promise<Check
           ? pass(m.checks.smtpTls, R.smtpTlsOk)
           : fail(m.checks.smtpTls, R.smtpTlsFailed),
       )
-      if (result.failedAt === 'auth') checks.push(fail(m.checks.smtpAuth, fmt(R.smtpAuthFailed, { detail })))
+      if (result.failedAt === 'auth')
+        checks.push(fail(m.checks.smtpAuth, fmt(R.smtpAuthFailed, { detail })))
       else {
         checks.push(pass(m.checks.smtpAuth, R.smtpAuthOk))
         checks.push(
@@ -255,9 +262,6 @@ const emailChecks = async (v: Record<string, string>, to: string): Promise<Check
       }
     }
   }
-  // Proving the credentials is not the same as the site using them: nothing in this build
-  // speaks SMTP outside this test, so mail would still not go out.
-  checks.push(fail(m.checks.smtpUnused, R.smtpUnusedWarning))
   return checks
 }
 
@@ -273,9 +277,14 @@ const discordChecks = async (v: Record<string, string>): Promise<Check[]> => {
   const checks: Check[] = []
   try {
     const res = await call(`${DISCORD_API}/users/@me`, { headers: auth })
-    if (!res.ok) return [fail(m.checks.botIdentity, fmt(R.botIdentityFailed, { detail: await errorText(res) }))]
+    if (!res.ok)
+      return [
+        fail(m.checks.botIdentity, fmt(R.botIdentityFailed, { detail: await errorText(res) })),
+      ]
     const me = (await res.json()) as { username?: string; id?: string }
-    checks.push(pass(m.checks.botIdentity, fmt(R.botIdentityOk, { name: me.username ?? me.id ?? '—' })))
+    checks.push(
+      pass(m.checks.botIdentity, fmt(R.botIdentityOk, { name: me.username ?? me.id ?? '—' })),
+    )
   } catch (err) {
     return [fail(m.checks.botIdentity, fmt(R.botIdentityFailed, { detail: reason(err) }))]
   }
@@ -285,17 +294,24 @@ const discordChecks = async (v: Record<string, string>): Promise<Check[]> => {
     return checks
   }
   try {
-    const res = await call(`${DISCORD_API}/guilds/${encodeURIComponent(guildId)}`, { headers: auth })
+    const res = await call(`${DISCORD_API}/guilds/${encodeURIComponent(guildId)}`, {
+      headers: auth,
+    })
     if (!res.ok)
       checks.push(
-        fail(m.checks.botGuild, fmt(R.botGuildFailed, { id: guildId, detail: await errorText(res) })),
+        fail(
+          m.checks.botGuild,
+          fmt(R.botGuildFailed, { id: guildId, detail: await errorText(res) }),
+        ),
       )
     else {
       const guild = (await res.json()) as { name?: string }
       checks.push(pass(m.checks.botGuild, fmt(R.botGuildOk, { name: guild.name ?? guildId })))
     }
   } catch (err) {
-    checks.push(fail(m.checks.botGuild, fmt(R.botGuildFailed, { id: guildId, detail: reason(err) })))
+    checks.push(
+      fail(m.checks.botGuild, fmt(R.botGuildFailed, { id: guildId, detail: reason(err) })),
+    )
   }
   return checks
 }
@@ -313,7 +329,12 @@ const paymentsChecks = async (v: Record<string, string>): Promise<Check[]> => {
         headers: { authorization: `Bearer ${key}` },
       })
       if (!res.ok)
-        checks.push(fail(m.checks.stripeAccount, fmt(R.stripeAccountFailed, { detail: await errorText(res) })))
+        checks.push(
+          fail(
+            m.checks.stripeAccount,
+            fmt(R.stripeAccountFailed, { detail: await errorText(res) }),
+          ),
+        )
       else {
         const account = (await res.json()) as { id?: string; charges_enabled?: boolean }
         const vars = {
@@ -349,8 +370,7 @@ const botChecks = async (v: Record<string, string>): Promise<Check[]> => {
   const secret = v['bot.turnstile_secret_key'] ?? ''
   const siteKey = v['bot.turnstile_site_key'] ?? ''
   const checks: Check[] = []
-  if (!secret)
-    checks.push(fail(m.checks.turnstileSecret, R.notSet))
+  if (!secret) checks.push(fail(m.checks.turnstileSecret, R.notSet))
   else {
     try {
       const res = await call('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
@@ -366,11 +386,16 @@ const botChecks = async (v: Record<string, string>): Promise<Check[]> => {
       const badSecret = codes.some((c) => c.includes('secret'))
       checks.push(
         badSecret
-          ? fail(m.checks.turnstileSecret, fmt(R.turnstileSecretFailed, { detail: codes.join(', ') }))
+          ? fail(
+              m.checks.turnstileSecret,
+              fmt(R.turnstileSecretFailed, { detail: codes.join(', ') }),
+            )
           : pass(m.checks.turnstileSecret, R.turnstileSecretOk),
       )
     } catch (err) {
-      checks.push(fail(m.checks.turnstileSecret, fmt(R.turnstileSecretFailed, { detail: reason(err) })))
+      checks.push(
+        fail(m.checks.turnstileSecret, fmt(R.turnstileSecretFailed, { detail: reason(err) })),
+      )
     }
   }
   checks.push(
@@ -411,7 +436,10 @@ const exchangeProbe = async (
     const body = (await res.json().catch(() => ({}))) as { error?: string }
     const err = body.error ?? ''
     if (res.status === 401 || err === 'invalid_client' || err === 'unauthorized_client')
-      return fail(label, fmt(R.oauthFailed, { detail: clamp(`${res.status} ${err || 'rejected'}`) }))
+      return fail(
+        label,
+        fmt(R.oauthFailed, { detail: clamp(`${res.status} ${err || 'rejected'}`) }),
+      )
     return pass(label, R.oauthOk)
   } catch (err) {
     return fail(label, fmt(R.oauthFailed, { detail: reason(err) }))
@@ -459,9 +487,9 @@ const pushChecks = (v: Record<string, string>): Check[] => {
   const subject = v['push.vapid_subject'] ?? ''
   const checks: Check[] = []
 
-  if (!publicKey || publicKey.byteLength !== 65 || publicKey[0] !== 0x04)
+  if (publicKey?.byteLength !== 65 || publicKey[0] !== 0x04)
     checks.push(fail(m.checks.vapidPair, R.vapidPublicInvalid))
-  else if (!privateKey || privateKey.byteLength !== 32)
+  else if (privateKey?.byteLength !== 32)
     checks.push(fail(m.checks.vapidPair, R.vapidPrivateInvalid))
   else {
     try {

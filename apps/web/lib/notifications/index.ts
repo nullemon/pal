@@ -1,13 +1,19 @@
 export {
   type ChannelStatus,
   discordRoleSyncStatus,
+  discordRoleSyncStatusOf,
   discordStatus,
+  discordStatusOf,
+  type NotificationEnv,
   notificationEnv,
   notificationEnvSchema,
   type PushConfig,
   pushConfig,
+  pushConfigOf,
   pushStatus,
+  pushStatusOf,
   resetNotificationEnv,
+  resolveNotificationEnv,
 } from './config'
 export {
   alreadyDelivered,
@@ -49,6 +55,8 @@ export {
   type MailResult,
   mailerFromEnv,
   resendMailer,
+  resolveMailer,
+  smtpMailer,
 } from './mail'
 export {
   filterByPref,

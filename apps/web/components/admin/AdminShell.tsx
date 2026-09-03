@@ -65,11 +65,11 @@ export function AdminShell({ user, children }: { user: SessionUser; children: Re
         </aside>
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-30 flex h-[60px] shrink-0 items-center gap-3 border-b border-line bg-bg/95 px-4 backdrop-blur md:px-7">
-            <a href="/admin" className="text-[13px] font-semibold text-fg-muted md:hidden">
+            <a href="/admin" className="shrink-0 text-[13px] font-semibold text-fg-muted md:hidden">
               {messages.admin.badge}
             </a>
             <Breadcrumb />
-            <div id="admin-topbar-actions" className="ml-auto flex items-center gap-2.5" />
+            <div id="admin-topbar-actions" className="ml-auto flex shrink-0 items-center gap-2.5" />
           </header>
           <main className="flex flex-1 flex-col gap-3.5 px-4 pt-5 pb-7 md:px-7">{children}</main>
         </div>

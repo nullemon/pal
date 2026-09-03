@@ -2,9 +2,10 @@ import { getDb, plans, reports, subscriptions, webhookEvents } from '@palscans/d
 import { and, count, desc, eq, sql } from 'drizzle-orm'
 import { getBillingSettings } from '@/lib/billing/config'
 import { HANDLED_EVENT_TYPES } from '@/lib/billing/events'
+import { type BillingKeyStatus, billingKeyStatus } from '@/lib/billing/keys'
 import { type BillingPlan, listPlans } from '@/lib/billing/plans'
 import type { BillingSettings } from '@/lib/billing/settings'
-import { type BillingKeyStatus, billingKeyStatus, getEnv } from '@/lib/env'
+import { getEnv } from '@/lib/env'
 
 /** Server-side data for the billing half of Admin → Business → Premium (agent A). */
 
@@ -85,7 +86,7 @@ export const loadBillingAdmin = async (): Promise<BillingAdminData> => {
       .where(and(eq(reports.kind, 'billing'), eq(reports.status, 'open'))),
   ])
   return {
-    keys: billingKeyStatus(),
+    keys: await billingKeyStatus(),
     settings,
     plans: planRows,
     events: events.map((e) => ({

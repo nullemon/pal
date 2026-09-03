@@ -13,15 +13,15 @@ import { pushSubscriptionSchema, pushUnsubscribeSchema } from '../schemas'
  * shared device that changes accounts moves the row rather than duplicating it. With VAPID
  * unset both answer 503: the browser could not have produced a usable subscription anyway.
  */
-const notConfigured = () =>
+const notConfigured = async () =>
   fail(
     503,
     'push_not_configured',
-    messages.notify.notConfiguredHint.replace('{keys}', pushStatus().missing.join(', ')),
+    messages.notify.notConfiguredHint.replace('{keys}', (await pushStatus()).missing.join(', ')),
   )
 
 export const POST = requireUser(async (request, _ctx, user) => {
-  if (!pushStatus().configured) return notConfigured()
+  if (!(await pushStatus()).configured) return notConfigured()
   const parsed = await parseJson(request, pushSubscriptionSchema)
   if (!parsed.ok) return parsed.response
   const db = await getDb()

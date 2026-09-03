@@ -7,9 +7,9 @@ import type { ComponentType, ReactNode } from 'react'
 import { getSessionUser } from '@/lib/auth'
 import { accountBilling } from '@/lib/billing/account'
 import { getBillingSettings } from '@/lib/billing/config'
+import { billingConfigured } from '@/lib/billing/keys'
 import { type BillingPlan, formatPrice, isSellable, listPlans } from '@/lib/billing/plans'
 import { entitlementGate } from '@/lib/entitlements'
-import { billingConfigured } from '@/lib/env'
 import { CheckoutButton } from './CheckoutButton'
 
 const m = messages.premium
@@ -119,7 +119,7 @@ export default async function SubscribePage() {
     getBillingSettings(db),
     entitlementGate(),
   ])
-  const configured = billingConfigured()
+  const configured = await billingConfigured()
   const account = user ? await accountBilling(db, user.id) : null
   const currentPlanId =
     account?.subscription &&

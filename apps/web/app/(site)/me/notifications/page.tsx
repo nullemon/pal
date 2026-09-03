@@ -109,11 +109,11 @@ export default async function NotificationsPage() {
       enabled: prefRows.find((r) => r.kind === kind && r.channel === channel)?.enabled ?? true,
     })),
   )
-  // Channel availability, decided on the server (docs/17 §D): the environment says whether a
-  // channel *can* work, the settings document says whether the operator wants it to.
-  const push = pushStatus()
-  const pushKey = pushConfig()?.publicKey ?? null
-  const discord = discordStatus()
+  // Channel availability, decided on the server (docs/17 §D): the resolved credentials say
+  // whether a channel *can* work — the admin panel first, the environment second (docs/19) —
+  // and the settings document says whether the operator wants it to.
+  const [push, pushCfg, discord] = await Promise.all([pushStatus(), pushConfig(), discordStatus()])
+  const pushKey = pushCfg?.publicKey ?? null
   const emailChannelOn =
     prefs.find((p) => p.kind === 'new_chapter' && p.channel === 'email')?.enabled ?? true
 

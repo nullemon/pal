@@ -23,7 +23,7 @@ import {
   When,
 } from '@/components/admin/ui'
 import { withPermission } from '@/lib/auth'
-import { getMailer } from '@/lib/email'
+import { mailerStatus } from '@/lib/email'
 import { discordRoleSyncStatus, discordStatus, getEnv, pushStatus } from '@/lib/env'
 import {
   deliveryTotals,
@@ -77,6 +77,15 @@ export default async function AdminNotificationsPage() {
     .from(users)
     .where(eq(users.id, user.id))
     .limit(1)
+  // What each channel *can* do, from the resolved credentials: the admin panel first, the
+  // environment second (docs/19). `mailer.unsupported` is how the SMTP fields stay honest —
+  // this build cannot speak SMTP, so it names them rather than swallowing the mail.
+  const [push, discord, roleSync, mailer] = await Promise.all([
+    pushStatus(),
+    discordStatus(),
+    discordRoleSyncStatus(),
+    mailerStatus(),
+  ])
   // The preview is the operator's *own* digest over the last week — a real mail, real data.
   const { digest, rendered } = await previewDigest(db, user.id, {
     settings,
@@ -131,10 +140,10 @@ export default async function AdminNotificationsPage() {
         <NotificationsForm
           initial={settings}
           availability={{
-            push: pushStatus(),
-            discord: discordStatus(),
-            roleSync: discordRoleSyncStatus(),
-            mailer: getMailer().kind,
+            push,
+            discord,
+            roleSync,
+            mailer: mailer.kind,
           }}
           plans={planRows}
           counts={{

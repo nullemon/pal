@@ -49,7 +49,7 @@ export async function POST(request: Request): Promise<Response> {
   })
   if (!gate.ok) return fail(gate.status, gate.error, gate.message)
   // No provider in production: refuse before an unverifiable account exists.
-  if (getMailer().kind === 'none')
+  if ((await getMailer()).kind === 'none')
     return fail(503, 'mail_unavailable', messages.errors.mailUnavailable)
 
   const db = await getDb()

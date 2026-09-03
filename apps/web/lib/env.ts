@@ -1,8 +1,4 @@
 import { z } from 'zod'
-import {
-  discordStatus as discordStatusOf,
-  pushStatus as pushStatusOf,
-} from './notifications/config'
 
 /**
  * Server-side environment, parsed once. Keys mirror `.env.example`; the ones commented out
@@ -170,45 +166,23 @@ export function getEnv(): Env {
 }
 
 /**
- * Billing feature detection (docs/17 §A "Everything is inert without keys"). Stripe needs the
- * secret key to create Checkout / Portal sessions *and* the webhook secret to verify the
- * events that grant entitlements — with either missing the platform must not pretend to sell
- * anything, so `/subscribe`, `/me/billing` and Admin → Premium render a "not configured"
- * state and every billing route answers 503 instead of throwing.
- */
-export interface BillingKeyStatus {
-  secretKey: boolean
-  webhookSecret: boolean
-  configured: boolean
-}
-
-export const billingKeyStatus = (env: Env = getEnv()): BillingKeyStatus => {
-  const secretKey = !!env.STRIPE_SECRET_KEY
-  const webhookSecret = !!env.STRIPE_WEBHOOK_SECRET
-  return { secretKey, webhookSecret, configured: secretKey && webhookSecret }
-}
-
-export const billingConfigured = (env: Env = getEnv()): boolean => billingKeyStatus(env).configured
-
-/**
- * Turnstile feature detection (docs/17 §C). The switch on Admin → System → Access decides
- * whether the challenge is *asked for*; these keys decide whether it can be *shown and
- * verified*. Without both, `verifyTurnstile` passes everything through, so the screen says
- * "not configured" rather than pretending the site is protected.
- */
-export const turnstileConfigured = (env: Env = getEnv()): boolean =>
-  !!env.TURNSTILE_SECRET_KEY && !!env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
-
-/**
- * Notification feature detection (docs/17 §D). The keys themselves are parsed by
- * `lib/notifications/config.ts` — a schema of its own, because `apps/worker` reads the same
- * variables and must not be subjected to this file's web-server assertions. These re-exports
- * are the entry point web code uses, so "is push configured?" is answered in one place.
+ * Feature detection lives with each feature, not here (docs/19). Every credential below is
+ * only the *fallback* now: the operator can type the same value into Admin → System →
+ * Integrations, and resolving that store is asynchronous, which this synchronous parsed
+ * environment cannot express. So each feature owns its own resolver:
  *
- * - **Web push** needs `VAPID_PUBLIC_KEY` + `VAPID_PRIVATE_KEY`. Without them the subscribe
- *   panel says "not configured", `/api/push/*` answers 503, and the worker sends nothing.
- * - **Discord** channel webhooks need no key at all; linking, DMs and role sync need
- *   `DISCORD_BOT_TOKEN` (and `DISCORD_GUILD_ID` for roles).
+ * - **Billing** — `lib/billing/keys.ts` (`billingConfigured`, `billingKeyStatus`). Without
+ *   both Stripe keys `/subscribe`, `/me/billing` and Admin → Business → Premium render a
+ *   "not configured" state and every billing route answers 503 instead of throwing.
+ * - **Turnstile** — `lib/auth/turnstile.ts` (`turnstileConfigured`, `turnstileSiteKey`). The
+ *   switch on Admin → System → Access decides whether the challenge is *asked for*; the keys
+ *   decide whether it can be *shown and verified*. Without them `verifyTurnstile` passes
+ *   everything through, so the screen says "not configured" rather than pretending the site
+ *   is protected.
+ * - **Notifications** — `lib/notifications/config.ts`, a schema of its own because
+ *   `apps/worker` reads the same keys and must not be subjected to this file's web-server
+ *   assertions. Web push needs both VAPID keys; Discord channel webhooks need no key at all,
+ *   while linking, DMs and role sync need a bot token (and a guild id for roles).
  */
 export {
   type ChannelStatus as NotificationChannelStatus,
@@ -217,6 +191,3 @@ export {
   pushConfig,
   pushStatus,
 } from './notifications/config'
-
-export const pushConfigured = (): boolean => pushStatusOf().configured
-export const discordBotConfigured = (): boolean => discordStatusOf().configured

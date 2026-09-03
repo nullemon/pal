@@ -1,7 +1,7 @@
 import { isStaff } from '@palscans/core'
 import { COMMENT_MAX_CHARS } from '@palscans/core/comments'
 import { db } from '@palscans/db'
-import { turnstileEnabled } from '@/lib/auth/turnstile'
+import { turnstileEnabled, turnstileSiteKey } from '@/lib/auth/turnstile'
 import { challengeRequired } from '@/lib/comments/pipeline'
 import { listComments, PAGE_SIZE, viewerFor } from '@/lib/comments/queries'
 import { loadCommentSettings } from '@/lib/comments/settings'
@@ -9,7 +9,6 @@ import type { CommentSort, CommentTarget, CommentThreadConfig } from '@/lib/comm
 import { targetKey } from '@/lib/comments/types'
 import type { AppUser } from '@/lib/comments/viewer'
 import { entitlementGate } from '@/lib/entitlements'
-import { getEnv } from '@/lib/env'
 import { CommentThread } from './CommentThread'
 
 export interface CommentsSectionProps {
@@ -38,7 +37,7 @@ export async function CommentsSection({
   // docs/14 §2 step 3: the widget is only rendered when the server will verify tokens, and
   // up front for the viewers the pipeline is sure to challenge (a rate-limit hit adds the
   // widget on the client when the API answers `turnstile`).
-  const turnstile = turnstileEnabled() ? (getEnv().NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? null) : null
+  const turnstile = (await turnstileEnabled()) ? await turnstileSiteKey() : null
   const config: CommentThreadConfig = {
     editWindowMinutes: settings.edit_window_minutes,
     collapseThreshold: settings.collapse_threshold,

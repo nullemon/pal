@@ -12,7 +12,7 @@ import { readNotificationSettings, sendPush } from '@/lib/notifications'
  * its own — just a rate limit, because every call wakes a phone.
  */
 export const POST = requireUser(async (_request, _ctx, user) => {
-  const status = pushStatus()
+  const status = await pushStatus()
   if (!status.configured)
     return fail(
       503,

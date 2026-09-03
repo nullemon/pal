@@ -24,7 +24,7 @@ const secretMatches = (header: string | null): boolean => {
 }
 
 export const POST = async (request: Request): Promise<Response> => {
-  if (!discordStatus().configured) return fail(503, 'discord_not_configured')
+  if (!(await discordStatus()).configured) return fail(503, 'discord_not_configured')
   if (!secretMatches(request.headers.get('authorization'))) return fail(401, 'unauthorized')
   const parsed = await parseJson(request, discordRedeemSchema)
   if (!parsed.ok) return parsed.response

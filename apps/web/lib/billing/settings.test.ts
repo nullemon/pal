@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { billingKeyStatus, parseEnv } from '../env'
+import { billingKeyStatusOf } from './keys'
 import { DEFAULT_PLAN_FEATURES, isPlaceholderPrice, isSellable, planFeatures } from './plans'
 import { DEFAULT_BILLING_SETTINGS, parseBillingSettings } from './settings'
 
@@ -60,27 +60,32 @@ describe('plans', () => {
 })
 
 describe('billing feature detection', () => {
-  const env = (over: Record<string, string>) => parseEnv({ NODE_ENV: 'development', ...over })
+  const keys = (over: Partial<{ secretKey: string; webhookSecret: string }>) => ({
+    secretKey: '',
+    webhookSecret: '',
+    ...over,
+  })
 
   it('needs both keys before anything billing-related is live', () => {
-    expect(billingKeyStatus(env({}))).toEqual({
+    expect(billingKeyStatusOf(keys({}))).toEqual({
       secretKey: false,
       webhookSecret: false,
       configured: false,
     })
-    expect(billingKeyStatus(env({ STRIPE_SECRET_KEY: 'sk_test_1' }))).toEqual({
+    expect(billingKeyStatusOf(keys({ secretKey: 'sk_test_1' }))).toEqual({
       secretKey: true,
       webhookSecret: false,
       configured: false,
     })
-    expect(
-      billingKeyStatus(env({ STRIPE_SECRET_KEY: 'sk_test_1', STRIPE_WEBHOOK_SECRET: 'whsec_1' })),
-    ).toEqual({ secretKey: true, webhookSecret: true, configured: true })
+    expect(billingKeyStatusOf(keys({ secretKey: 'sk_test_1', webhookSecret: 'whsec_1' }))).toEqual({
+      secretKey: true,
+      webhookSecret: true,
+      configured: true,
+    })
   })
 
-  it('treats an empty string in a .env file as unset', () => {
-    expect(
-      billingKeyStatus(env({ STRIPE_SECRET_KEY: '', STRIPE_WEBHOOK_SECRET: '' })).configured,
-    ).toBe(false)
+  // An empty string is what both an unset .env line and a cleared panel field resolve to.
+  it('treats an empty value as unset', () => {
+    expect(billingKeyStatusOf(keys({ secretKey: '', webhookSecret: '' })).configured).toBe(false)
   })
 })

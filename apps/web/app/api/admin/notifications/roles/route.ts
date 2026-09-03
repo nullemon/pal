@@ -2,7 +2,7 @@ import { messages } from '@palscans/core/messages'
 import { getDb } from '@palscans/db'
 import { audit } from '@/components/admin/server/audit'
 import { fail, ok, withPermission } from '@/lib/auth'
-import { DiscordBot, syncRoles } from '@/lib/discord'
+import { createDiscordBot, syncRoles } from '@/lib/discord'
 import { discordRoleSyncStatus } from '@/lib/env'
 import { readNotificationSettings } from '@/lib/notifications'
 
@@ -13,7 +13,7 @@ import { readNotificationSettings } from '@/lib/notifications'
  * Without `DISCORD_BOT_TOKEN` + `DISCORD_GUILD_ID` it answers 503 rather than pretending.
  */
 export const POST = withPermission('settings.write', async (request, _ctx, user) => {
-  const status = discordRoleSyncStatus()
+  const status = await discordRoleSyncStatus()
   if (!status.configured)
     return fail(
       503,
@@ -22,7 +22,7 @@ export const POST = withPermission('settings.write', async (request, _ctx, user)
     )
   const db = await getDb()
   const settings = await readNotificationSettings(db)
-  const summary = await syncRoles(db, { bot: new DiscordBot(), settings })
+  const summary = await syncRoles(db, { bot: await createDiscordBot(), settings })
   await audit({
     actorId: user.id,
     action: 'notifications.role_sync',

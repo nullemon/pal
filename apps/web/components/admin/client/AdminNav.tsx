@@ -13,6 +13,7 @@ import {
   ListChecks,
   MessageSquare,
   Palette,
+  PlugZap,
   ScrollText,
   Search,
   Settings,
@@ -46,6 +47,7 @@ const icons: Record<AdminIcon, ComponentType<{ size?: number; className?: string
   scroll: ScrollText,
   search: Search,
   shield: ShieldCheck,
+  plug: PlugZap,
 }
 
 export function AdminNavLinks({ groups }: { groups: AdminNavGroup[] }) {
@@ -86,11 +88,13 @@ export function AdminNavLinks({ groups }: { groups: AdminNavGroup[] }) {
 export function Breadcrumb() {
   const pathname = usePathname()
   const { group, page } = breadcrumbFor(pathname)
+  // Narrow screens keep the page name and drop the group: the top bar also carries Save and
+  // Discard, and something has to give before the row overflows (390px is the floor).
   return (
-    <div className="flex items-center gap-2 text-[14px] leading-[18px]">
-      <span className="font-medium text-fg-muted">{group}</span>
-      <span className="text-fg-subtle">/</span>
-      <span className="font-semibold text-fg">{page}</span>
+    <div className="flex min-w-0 items-center gap-2 text-[14px] leading-[18px]">
+      <span className="hidden shrink-0 font-medium text-fg-muted sm:inline">{group}</span>
+      <span className="hidden shrink-0 text-fg-subtle sm:inline">/</span>
+      <span className="truncate font-semibold text-fg">{page}</span>
     </div>
   )
 }
