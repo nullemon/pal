@@ -3,7 +3,7 @@ import type { CreateStorageOptions } from '@palscans/core/storage'
 import { configureStorage } from '@palscans/core/storage'
 import { getEnv } from '../env'
 import { type ConfigMirror, configMirror } from './mirror'
-import { resolveConfig } from './store'
+import { credentialUnreadable, resolveConfig } from './store'
 
 /**
  * A synchronously-readable copy of the two settings that are needed outside async code
@@ -51,6 +51,16 @@ export const installStorageResolver = (): void => {
   configureStorage(async (): Promise<CreateStorageOptions & { fingerprint: string }> => {
     const { values } = await resolveConfig()
     const env = getEnv()
+    // An unreadable `storage.driver` row must not quietly become the env default (`fs`):
+    // that would send production uploads to the container's local disk, where they vanish on
+    // the next restart. Keep S3 selected so an upload fails loudly with missing credentials
+    // instead of appearing to succeed in the wrong place.
+    if (await credentialUnreadable('storage.driver'))
+      return {
+        driver: 's3',
+        s3: { bucket: undefined, endpoint: undefined },
+        fingerprint: 'unreadable-driver',
+      }
     const driver =
       values['storage.driver'] === 'fs'
         ? 'fs'

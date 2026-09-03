@@ -1,12 +1,11 @@
 import { messages } from '@palscans/core/messages'
 import { getDb, users } from '@palscans/db'
 import { eq } from 'drizzle-orm'
-import { revalidateTag } from 'next/cache'
 import { audit } from '@/components/admin/server/audit'
 import { fail, getRateLimiter, ok, parseJson, rateLimited, withPermission } from '@/lib/auth'
 import { integrationsPutSchema, integrationsTestSchema } from '@/lib/config/panel'
 import { refreshConfigSnapshot } from '@/lib/config/snapshot'
-import { CONFIG_CACHE_TAG, configView, writeConfig } from '@/lib/config/store'
+import { configView, writeConfig } from '@/lib/config/store'
 import { mergeSubmitted, runConnectionTest } from '@/lib/config/tests'
 
 /**
@@ -35,7 +34,9 @@ export const PUT = withPermission('settings.write', async (request, _ctx, user) 
   }
 
   // Next 16 wants a cache-life profile alongside the tag; 'max' expires it everywhere.
-  revalidateTag(CONFIG_CACHE_TAG, 'max')
+  // `writeConfig` has already dropped the credential memo — it is in-process and never
+  // touches Next's cache, which would write the decrypted values to disk (lib/config/store.ts).
+  // This re-reads the two mirrored values so the next render uses them.
   await refreshConfigSnapshot()
   const view = await configView()
 
@@ -68,8 +69,8 @@ export const POST = withPermission('settings.write', async (request, _ctx, user)
   const [row] = await db.select({ email: users.email }).from(users).where(eq(users.id, user.id))
   if (!row) return fail(404, 'not_found')
 
-  const values = await mergeSubmitted(parsed.data.values)
-  const report = await runConnectionTest(parsed.data.group, values, { email: row.email })
+  const { values, withheld } = await mergeSubmitted(parsed.data.values)
+  const report = await runConnectionTest(parsed.data.group, values, { email: row.email }, withheld)
 
   await audit({
     actorId: user.id,

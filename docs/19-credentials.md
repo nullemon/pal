@@ -109,6 +109,54 @@ read on every request that needs one. It does mean "I changed the R2 key and the
 still using the old one" is expected for up to five minutes, not a bug. Restart the worker if
 you need it immediately.
 
+## What an adversarial review found
+
+The design above was reviewed as an attacker would, after it was built. Five things were
+wrong, four of them security-relevant. They are fixed; recording them here because each one
+was invisible to the test suite and would come back the same way.
+
+**Decrypted credentials were written to disk in plaintext.** The store cached the unsealed map
+in Next's `unstable_cache`, which persists results under `.next/cache/fetch-cache/` as JSON —
+in production, not just dev. Verified by storing a canary and finding it in the cache file.
+Anything that could read the filesystem, a container layer, a mounted cache volume or a CI
+artifact had every credential in the clear, and a stale entry outlived the credential's
+deletion. Sealing them in the database achieved nothing against the most likely attacker. The
+store now uses an in-process TTL memo, the same shape the worker already used, and nothing
+decrypted reaches Next's cache.
+
+**A stored secret could be sent to a host of the caller's choosing.** The connection test
+substitutes the stored value when a secret comes back masked, but took the *destination* from
+the same request. Submitting a new `smtp_host` while leaving the password masked made the
+server open a session to that host and send `AUTH PLAIN` with the stored password. The browser
+never sees a secret, but it chose where one went. A secret is now bound to its destination:
+change the host or endpoint and it must be typed again.
+
+**The hand-written SMTP client could have commands injected into it.** `bareAddress` matched
+`[^>]+`, which includes CR and LF, and the result went unescaped into `MAIL FROM:` and
+`RCPT TO:`. A stored `From` of `a@b\r\nRCPT TO:<evil@x>` added a silent recipient to every
+verification and password-reset mail — a persistent interception of reset links that would
+survive the setter losing their account. Line and bracket characters are now stripped.
+
+**Rotation failed open for bot protection.** `verifyTurnstile` passes every request when no
+secret is configured, and an unreadable row (rotated sealing key) was indistinguishable from
+an unconfigured one — so the rotation this document calls safe would have silently switched
+Turnstile off. `readSealedCredentialsDetailed` now reports unreadable rows separately, and
+Turnstile fails closed on one. The storage driver had the same shape with a different cost:
+it would have quietly downgraded to the local-disk driver and written production uploads into
+the container, so it now stays on S3 and fails loudly instead.
+
+**The connection tests were an SSRF primitive.** Only an admin with TOTP can reach them, and
+CSRF cannot (Origin check, `SameSite=Lax`, and the response is unreadable cross-origin) — but
+that is a thin margin in front of the cloud metadata endpoint, and the SMTP test reflects a
+couple of hundred characters of whatever answers. Hosts are now resolved and internal targets
+refused, with loopback allowed for SMTP only because the shipped compose stack runs Mailpit
+there.
+
+Two smaller things were accepted rather than changed: ciphertexts are not bound to their row
+key (an attacker with database write access but no key could swap sealed blobs between fields
+or delete rows to force the environment fallback), and `s3.access_key_id` is treated as an
+identifier rather than a secret, so the panel echoes it.
+
 ## Rules the code holds to
 
 - A secret is never sent to the browser. The panel receives a mask, and submitting the mask

@@ -1,3 +1,4 @@
+import { credentialUnreadable } from '@/lib/config/store'
 import { resolveConfig } from '../config/store'
 
 /**
@@ -48,7 +49,14 @@ export const verifyTurnstile = async (
   fetchImpl: typeof fetch = fetch,
 ): Promise<boolean> => {
   const { secretKey: secret } = await turnstileKeys()
-  if (!secret) return true
+  if (!secret) {
+    // "No secret" normally means the operator has not enabled bot protection, and every
+    // request passes. But a stored secret that will not decrypt — a rotated sealing key —
+    // reads as absent too, and silently turning a security control off is the worst possible
+    // reading of that. When a row is present but unreadable, fail closed instead.
+    if (await credentialUnreadable('bot.turnstile_secret_key')) return false
+    return true
+  }
   if (!token) return false
   try {
     const res = await fetchImpl('https://challenges.cloudflare.com/turnstile/v0/siteverify', {

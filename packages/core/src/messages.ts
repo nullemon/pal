@@ -1955,6 +1955,8 @@ export const messages = {
         vapidPair: 'VAPID key pair',
         vapidSubject: 'VAPID subject',
         pushDelivery: 'Delivery to a browser',
+        secretWithheld:
+          'Re-enter this secret. The host it was saved for has changed, and a stored secret is never sent to a new destination.',
       },
       results: {
         nothingToTest: 'Nothing is configured in this group yet, so there is nothing to test.',
@@ -1981,6 +1983,8 @@ export const messages = {
           'The local folder driver is for development. Production should use S3 or Cloudflare R2.',
         resendOk: 'Resend accepted a message for {email} (id {id}).',
         resendFailed: 'Resend refused it: {detail}',
+        s3BadEndpoint:
+          'That endpoint is not a usable URL, or it points inside this network. Connection tests may only reach public addresses.',
         smtpConnectFailed: 'Could not reach {host} on port {port}: {detail}',
         smtpConnectOk: 'Reached {host} on port {port}.',
         smtpTlsOk: 'The connection is encrypted.',

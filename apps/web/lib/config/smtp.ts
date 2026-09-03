@@ -49,10 +49,19 @@ export interface SmtpOptions {
 
 const DEFAULT_TIMEOUT_MS = 12_000
 
-/** `Name <a@b>` → `a@b`; a bare address is returned as it is. */
+/**
+ * `Name <a@b>` → `a@b`; a bare address is returned as it is.
+ *
+ * Everything SMTP treats as structure is stripped, not escaped. The envelope commands built
+ * from this (`MAIL FROM:`, `RCPT TO:`) are line-oriented, so a CR or LF reaching them lets
+ * the caller append commands of their own — a stored `From` address of
+ * `a@b\r\nRCPT TO:<evil@x>` silently added a recipient to every verification and
+ * password-reset mail, which is a persistent interception of reset links. `<` and `>` go
+ * too, so a crafted value cannot close the angle brackets early.
+ */
 export const bareAddress = (value: string): string => {
-  const angled = /<([^>]+)>/.exec(value)
-  return (angled?.[1] ?? value).trim()
+  const angled = /<([^>\r\n]+)>/.exec(value)
+  return (angled?.[1] ?? value).replace(/[\r\n<>]/g, '').trim()
 }
 
 const clamp = (value: string, max = 200): string =>

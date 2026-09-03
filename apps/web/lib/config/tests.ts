@@ -3,6 +3,7 @@ import { createECDH, randomUUID, timingSafeEqual } from 'node:crypto'
 import { fmt, messages } from '@palscans/core/messages'
 import { createStorage } from '@palscans/core/storage'
 import { getEnv } from '../env'
+import { checkHost } from './net-guard'
 import { type ConfigGroup, FIELDS_BY_ID, isMasked } from './registry'
 import { isLocalHost, smtpSendTest } from './smtp'
 import { resolveConfig } from './store'
@@ -98,19 +99,56 @@ const errorText = async (res: Response): Promise<string> => {
  * box means "deleted", which is a fall back to the environment — the same thing saving would
  * do, so the test and the save agree.
  */
-export const mergeSubmitted = async (
-  submitted: Record<string, string>,
-): Promise<Record<string, string>> => {
+/**
+ * A stored secret may only be reused against the destination it was stored for.
+ *
+ * The browser never receives a secret, but it does choose where the test sends one. Without
+ * this, submitting a new `smtp_host` while leaving the password field masked made the server
+ * open a session to that host and send `AUTH PLAIN` with the *stored* password — a one
+ * request exfiltration of a credential the panel is careful never to show. The same shape
+ * applies to an S3 endpoint.
+ *
+ * So a secret is bound to its destination: change the destination and the secret must be
+ * typed again.
+ */
+const SECRET_DESTINATION: Record<string, string> = {
+  'email.smtp_password': 'email.smtp_host',
+  's3.secret_access_key': 's3.endpoint',
+}
+
+export interface MergedValues {
+  values: Record<string, string>
+  /** Secrets not reused because their destination changed; the caller must report these. */
+  withheld: string[]
+}
+
+export const mergeSubmitted = async (submitted: Record<string, string>): Promise<MergedValues> => {
   const { values } = await resolveConfig({ fresh: true })
   const merged: Record<string, string> = { ...values }
+  const withheld: string[] = []
+
+  const destinationChanged = (secretId: string): boolean => {
+    const destId = SECRET_DESTINATION[secretId]
+    if (!destId) return false
+    const submittedDest = submitted[destId]
+    if (submittedDest === undefined) return false
+    return submittedDest.trim() !== (values[destId] ?? '').trim()
+  }
+
   for (const [id, raw] of Object.entries(submitted)) {
     const field = FIELDS_BY_ID.get(id)
     if (!field) continue
     const value = raw.trim()
-    if (field.secret && isMasked(value)) continue
+    if (field.secret && isMasked(value)) {
+      if (destinationChanged(id)) {
+        merged[id] = ''
+        withheld.push(id)
+      }
+      continue
+    }
     merged[id] = value === '' ? (process.env[field.env] ?? '').trim() : value
   }
-  return merged
+  return { values: merged, withheld }
 }
 
 /* -------------------------------------------------------------------- storage */
@@ -146,6 +184,20 @@ const storageChecks = async (v: Record<string, string>): Promise<Check[]> => {
       ? pass(m.checks.cdnUrl, fmt(R.cdnUrlOk, { url: cdn }))
       : fail(m.checks.cdnUrl, R.cdnUrlMissing),
   )
+
+  // The endpoint is operator-supplied and this makes the server connect to it, so refuse
+  // anything inside the network before opening the connection (see ./net-guard).
+  const endpoint = v['s3.endpoint'] ?? ''
+  if (endpoint) {
+    let host = ''
+    try {
+      host = new URL(endpoint).hostname
+    } catch {
+      return [fail(m.checks.write, R.s3BadEndpoint)]
+    }
+    const verdict = await checkHost(host)
+    if (!verdict.allowed) return [fail(m.checks.write, verdict.reason ?? R.s3BadEndpoint)]
+  }
 
   // The bucket is exercised even when the CDN hostname is missing: they are two independent
   // mistakes and the operator should see both at once.
@@ -200,6 +252,12 @@ const emailChecks = async (v: Record<string, string>, to: string): Promise<Check
   const host = v['email.smtp_host'] ?? ''
   if (!resendKey && !host) return [fail(m.checks.mailProvider, R.mailNoProvider)]
   if (!from) return [fail(m.checks.mailProvider, R.mailNoFrom)]
+  if (!resendKey && host) {
+    // Loopback is allowed here and only here: the shipped compose stack runs Mailpit on
+    // localhost and testing it is legitimate.
+    const verdict = await checkHost(host, { allowLoopback: true })
+    if (!verdict.allowed) return [fail(m.checks.smtpConnect, verdict.reason ?? '')]
+  }
 
   const subject = `${messages.site.name} — integrations test`
   const text = [
@@ -561,7 +619,18 @@ export const runConnectionTest = async (
   group: ConfigGroup,
   values: Record<string, string>,
   ctx: TestContext,
+  withheld: readonly string[] = [],
 ): Promise<TestReport> => {
+  // A secret bound to a different destination is not reused (see `mergeSubmitted`). Say so
+  // rather than running a test that would fail for a reason the operator cannot see.
+  if (withheld.length)
+    return {
+      group,
+      ok: false,
+      checks: withheld.map((id) =>
+        fail(FIELDS_BY_ID.get(id)?.label ?? id, m.checks.secretWithheld),
+      ),
+    }
   let checks: Check[]
   try {
     switch (group) {
