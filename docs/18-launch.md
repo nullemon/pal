@@ -38,20 +38,30 @@ the platform does. 4 cores handles a normal release day comfortably.
 
 ## 1 · DNS
 
-Two records on Cloudflare, both proxied (orange cloud):
+You create **two** records by hand. The third one R2 creates for you.
 
 ```
-A     palscans.org       <server ip>     proxied
-A     cdn.palscans.org   <server ip>     proxied
-CNAME www                palscans.org    proxied
+A      palscans.org    <server ip>     proxied (orange cloud)
+CNAME  www             palscans.org    proxied (orange cloud)
 ```
 
 Set SSL/TLS mode to **Full (strict)**. Caddy gets a real certificate on the origin, so
 Flexible would be a downgrade.
 
-`cdn.palscans.org` points at the server only in the self-hosted (MinIO) shape. If you use R2
-— which you should — point it at the bucket's public hostname instead and let Cloudflare
-cache it. Either way `PUBLIC_CDN_URL` is what the app writes into image URLs.
+**`cdn.palscans.org` does not point at your server.** Do not add an A record for it. In the
+Cloudflare dashboard go to R2 → your bucket → *Settings* → *Public access* → **Connect
+Domain**, and enter `cdn.palscans.org`. Cloudflare writes the DNS record itself, pointing at
+R2's edge, and serves the bucket from its cache.
+
+That is the whole point of choosing R2 (docs/08): page images are served by Cloudflare
+directly from the bucket, so reader traffic — by far the largest thing this site does — never
+touches your server and R2 charges nothing for egress. Pointing `cdn.` at your own IP would
+route every page image through your box and throw that away.
+
+The A record for `palscans.org` is only for the app itself: HTML, the admin panel, the API.
+
+The `cdn.palscans.org` block in `infra/Caddyfile` is the self-hosted MinIO equivalent, for
+running without R2. With R2 connected you can ignore it — nothing will resolve to it.
 
 ---
 
@@ -60,7 +70,8 @@ cache it. Either way `PUBLIC_CDN_URL` is what the app writes into image URLs.
 Create the R2 bucket (`palscans`) and an API token scoped to it. Then:
 
 - make the `covers/` and `pages/` prefixes publicly readable — everything else stays private
-- connect `cdn.palscans.org` as the bucket's custom domain
+- connect `cdn.palscans.org` as the bucket's custom domain (this is what creates that DNS
+  record; see step 1 — it must not be an A record to your server)
 - leave versioning **on** for those two prefixes; `infra/RUNBOOK.md`'s restore step depends on it
 
 Keep the endpoint, bucket name, access key ID and secret to hand. **You do not put them in a
