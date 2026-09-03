@@ -106,6 +106,35 @@ export const countSubscriptions = async (db: NotifyDb, userId: number): Promise<
       .where(eq(pushSubscriptions.userId, userId))
   ).length
 
+/**
+ * Hosts a browser's Push API actually hands out. Anything else is refused.
+ *
+ * The endpoint is stored verbatim and the server later POSTs to it, so an unrestricted
+ * `z.string().url()` made every registered reader able to point the server at an address of
+ * their choosing and read the outcome back from `/api/push/test` — a stored SSRF with a
+ * service-detection oracle. A browser never produces an endpoint outside this list, so an
+ * allowlist costs nothing real.
+ */
+const PUSH_HOSTS = [
+  'fcm.googleapis.com',
+  'updates.push.services.mozilla.com',
+  'push.services.mozilla.com',
+  'notify.windows.com',
+  'web.push.apple.com',
+]
+
+export const pushEndpointAllowed = (endpoint: string): boolean => {
+  let url: URL
+  try {
+    url = new URL(endpoint)
+  } catch {
+    return false
+  }
+  if (url.protocol !== 'https:') return false
+  const host = url.hostname.toLowerCase()
+  return PUSH_HOSTS.some((allowed) => host === allowed || host.endsWith(`.${allowed}`))
+}
+
 export const saveSubscription = async (
   db: NotifyDb,
   input: {

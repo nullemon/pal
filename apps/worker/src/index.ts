@@ -11,7 +11,7 @@ import { publishDue } from './jobs/publish.js'
 import { type ArtKind, processSeriesArt } from './jobs/series-art.js'
 import { installWorkerConfig } from './lib/config.js'
 import { log } from './lib/log.js'
-import { revalidateWeb } from './lib/revalidate.js'
+import { revalidateWeb, runMaintenance } from './lib/revalidate.js'
 
 /**
  * The PALScans worker (docs/16 "apps/worker"): the image pipeline (`chapter.process`), the
@@ -110,6 +110,8 @@ const main = async () => {
   const tick = async () => {
     try {
       if ((await publishDue(db)).length) await revalidateWeb(['catalog'])
+      // Periodic jobs that live in the web app (account-deletion purges). Self-throttled.
+      void runMaintenance()
       // safety net: processing rows that never started (no Redis / lost job) or stalled for 30 minutes
       const stale = await db
         .select({ id: chapters.id })

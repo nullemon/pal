@@ -76,7 +76,12 @@ const proxyToken = (): string =>
 async function fetchSnapshot(request: NextRequest): Promise<ProxySnapshot> {
   const url = new URL('/api/seo/snapshot', request.nextUrl.origin)
   try {
-    const res = await fetch(url, { headers: { accept: 'application/json' }, cache: 'no-store' })
+    // The token is what entitles this fetch to the panel fields (staff path, IP allowlist).
+    // Without it the route serves the SEO rules only, so a public request cannot read them.
+    const res = await fetch(url, {
+      headers: { accept: 'application/json', 'x-proxy-token': proxyToken() },
+      cache: 'no-store',
+    })
     if (!res.ok) return snapshotCache?.value ?? EMPTY_SNAPSHOT
     const json = (await res.json()) as { data?: ProxySnapshot }
     return json.data ?? EMPTY_SNAPSHOT
@@ -153,7 +158,10 @@ export const seoRules: ProxyHandler = async (request, ctx) => {
  */
 export const staffAccess: ProxyHandler = async (request, ctx) => {
   const path = ctx.pathname
-  const isPanel = path === '/admin' || path.startsWith('/admin/')
+  // The admin API counts as the panel. It was not included, so an allowlist that 404'd every
+  // admin page still let every admin *mutation* through from any address — the control that
+  // is meant to be the real one, unlike the moved path, which is only obscurity.
+  const isPanel = path === '/admin' || path.startsWith('/admin/') || path.startsWith('/api/admin/')
   const snapshot = await getSnapshot(request)
   const staffPath = snapshot.staffPath || STAFF_PATH_DEFAULT
   const moved = staffPath !== STAFF_PATH_DEFAULT
@@ -186,6 +194,10 @@ export const config = {
   matcher: [
     '/_storage/:path*',
     '/api/storage/:path*',
+    // The admin API must go through `staffAccess` too. The catch-all below excludes `api/`,
+    // so without this the panel IP allowlist only ever 404'd admin *pages* while every
+    // mutation under /api/admin stayed reachable from any address.
+    '/api/admin/:path*',
     // Everything else except `/`, Next internals, the storage host, the API and static files
     // (README: the home page and its ISR data stay outside the proxy).
     '/((?!api/|_next/|_storage/|favicon\\.ico|.+\\.(?:png|jpg|jpeg|gif|svg|webp|avif|ico|css|js|map|woff2?|json|xml|gz)$)[^/].*)',

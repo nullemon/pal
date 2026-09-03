@@ -3,31 +3,47 @@
 name: palscans
 
 # Only bootstrap values belong here. Storage keys, SMTP, OAuth, Stripe, Turnstile, push and
-# the Discord bot are entered in Admin → System → Integrations instead (docs/19). The S3
-# values below stay as the local MinIO fallback so this stack runs out of the box; in a real
-# deployment leave them unset and configure R2 in the panel.
+# the Discord bot are entered in Admin → System → Integrations instead (docs/19).
+#
+# This file does NOT read the repo-root .env on its own: compose takes its project directory
+# from the first -f argument, so it would look in infra/. Always run it as
+#   docker compose --env-file .env -f infra/docker-compose.yml …
+# from the repo root. Every value below that has no safe default uses `:?` so a missing one
+# stops the deploy with its own name, rather than starting a subtly wrong site.
 x-app-env: &app-env
   NODE_ENV: production
-  DATABASE_URL: postgres://pal:${POSTGRES_PASSWORD:-pal}@postgres:5432/palscans
+  DATABASE_URL: postgres://pal:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/palscans
   REDIS_URL: redis://valkey:6379
-  SITE_URL: ${SITE_URL:-http://localhost:3000}
-  SITE_NAME: PALScans
+  SITE_URL: ${SITE_URL:?set SITE_URL (https:// in production)}
+  SITE_NAME: ${SITE_NAME:-PALScans}
   SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET}
+  # Required in production with no fallback (apps/web/lib/env.ts). Without it the web
+  # container refuses to boot and restarts forever.
+  INTERNAL_API_SECRET: ${INTERNAL_API_SECRET:?set INTERNAL_API_SECRET}
+  # The worker reaches the web app for cache revalidation over the internal network, not out
+  # through the CDN and back.
+  INTERNAL_URL: http://web:3000
   # Seals the panel-stored credentials. Falls back to SESSION_SECRET, but then rotating
   # sessions makes stored credentials unreadable — set it separately.
   CREDENTIALS_KEY: ${CREDENTIALS_KEY:-}
+  # Storage and mail are configured in the admin panel. These are only the fallbacks used
+  # before anything is saved there; the defaults deliberately point nowhere rather than at a
+  # local folder, because an unnoticed `fs` driver writes uploads into the container and
+  # loses them on the next deploy.
   STORAGE_DRIVER: ${STORAGE_DRIVER:-s3}
-  S3_ENDPOINT: ${S3_ENDPOINT:-http://minio:9000}
-  S3_BUCKET: ${S3_BUCKET:-palscans}
-  S3_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-palscans}
-  S3_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-palscans-dev-secret}
-  S3_REGION: auto
-  PUBLIC_CDN_URL: ${PUBLIC_CDN_URL:-http://localhost:9000/palscans}
-  # Caddy appends the real client address to X-Forwarded-For; nothing else is trusted.
-  TRUSTED_PROXY: ${TRUSTED_PROXY:-xff}
+  S3_ENDPOINT: ${S3_ENDPOINT:-}
+  S3_BUCKET: ${S3_BUCKET:-}
+  S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-}
+  S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-}
+  S3_REGION: ${S3_REGION:-auto}
+  PUBLIC_CDN_URL: ${PUBLIC_CDN_URL:-}
+  # Where the client address comes from. `cloudflare` when Cloudflare proxies the origin,
+  # `xff` when only Caddy is in front — guessing wrong puts every reader in one rate-limit
+  # bucket and records the proxy's address everywhere, silently, so it must be stated.
+  TRUSTED_PROXY: ${TRUSTED_PROXY:?set TRUSTED_PROXY (cloudflare or xff)}
   TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-1}
-  SMTP_HOST: mailpit
-  SMTP_PORT: "1025"
+  SMTP_HOST: ${SMTP_HOST:-}
+  SMTP_PORT: ${SMTP_PORT:-587}
 
 services:
   postgres:
@@ -51,7 +67,12 @@ services:
   valkey:
     image: valkey/valkey:8-alpine
     restart: unless-stopped
-    command: ["valkey-server", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru", "--appendonly", "yes"]
+    # noeviction, not allkeys-lru: this instance backs BullMQ as well as the session and
+    # rate-limit caches, and BullMQ requires that its keys are never evicted. Under LRU the
+    # server drops job hashes and the wait/active lists under memory pressure, so queued work
+    # simply disappears with no error — and import.run, notify.new_chapter and notify.comment
+    # have no database safety net to pick them back up.
+    command: ["valkey-server", "--maxmemory", "512mb", "--maxmemory-policy", "noeviction", "--appendonly", "yes"]
     volumes:
       - valkeydata:/data
     ports:
@@ -62,7 +83,10 @@ services:
       timeout: 3s
       retries: 20
 
+  # Self-hosted alternative to Cloudflare R2. Not started by default: bring it up with
+  # `--profile selfhosted`, and set S3_ENDPOINT/S3_ACCESS_KEY_ID/S3_SECRET_ACCESS_KEY to match.
   minio:
+    profiles: [selfhosted]
     image: minio/minio:latest
     restart: unless-stopped
     command: ["server", "/data", "--console-address", ":9001"]
@@ -82,6 +106,7 @@ services:
 
   # One-shot: create the bucket and make cover/page prefixes publicly readable.
   minio-init:
+    profiles: [selfhosted]
     image: minio/mc:latest
     depends_on:
       minio:
@@ -98,7 +123,9 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-palscans}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-palscans-dev-secret}
 
+  # A mail catcher for development. Production points at a real sender from the admin panel.
   mailpit:
+    profiles: [selfhosted]
     image: axllent/mailpit:latest
     restart: unless-stopped
     ports:
@@ -106,6 +133,7 @@ services:
       - "127.0.0.1:1025:1025"   # SMTP
 
   web:
+    init: true
     build:
       context: ..
       dockerfile: infra/Dockerfile
@@ -119,8 +147,6 @@ services:
         condition: service_healthy
       valkey:
         condition: service_healthy
-      minio-init:
-        condition: service_completed_successfully
     ports:
       - "127.0.0.1:3000:3000"
     healthcheck:
@@ -133,6 +159,7 @@ services:
       start_period: 30s
 
   worker:
+    init: true
     build:
       context: ..
       dockerfile: infra/Dockerfile
@@ -145,8 +172,6 @@ services:
         condition: service_healthy
       valkey:
         condition: service_healthy
-      minio-init:
-        condition: service_completed_successfully
 
   caddy:
     image: caddy:2-alpine
@@ -160,7 +185,6 @@ services:
       - caddyconfig:/config
     depends_on:
       - web
-      - minio
 
 volumes:
   pgdata:

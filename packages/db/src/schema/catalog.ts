@@ -75,7 +75,7 @@ export const series = pgTable(
     ratingSum: bigint('rating_sum', { mode: 'number' }).notNull().default(0),
     ratingCount: integer('rating_count').notNull().default(0),
     ratingAvg: numeric('rating_avg', { precision: 3, scale: 1, mode: 'number' }).generatedAlwaysAs(
-      sql`CASE WHEN rating_count > 0 THEN round(rating_sum::numeric / rating_count, 1) ELSE 0 END`,
+      sql`CASE WHEN rating_count > 0 THEN least(round(rating_sum::numeric / rating_count, 1), 10.0) ELSE 0 END`,
     ),
     lastChapterAt: timestamptz('last_chapter_at'),
     searchVector: tsvector('search_vector').generatedAlwaysAs(

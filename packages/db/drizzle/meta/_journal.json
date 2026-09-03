@@ -99,6 +99,13 @@
       "when": 1788380003000,
       "tag": "9013_credentials",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1788380004000,
+      "tag": "9014_rating_counter_safety",
+      "breakpoints": true
     }
   ]
 }

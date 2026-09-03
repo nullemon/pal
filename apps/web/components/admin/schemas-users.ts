@@ -26,5 +26,9 @@ export const userActionSchema = z.discriminatedUnion('action', [
   }),
   z.object({ action: z.literal('unban') }),
   z.object({ action: z.literal('resend_verification') }),
+  // The escape hatch for a reader who has lost their authenticator. Password reset must not
+  // clear a second factor — that would hand every account to whoever owns the mailbox — so
+  // without this there is no recovery from a lost phone at all.
+  z.object({ action: z.literal('clear_totp') }),
 ])
 export type UserAction = z.infer<typeof userActionSchema>

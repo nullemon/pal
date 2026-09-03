@@ -34,28 +34,41 @@ palscans.org, www.palscans.org {
 	reverse_proxy web:3000
 }
 
-cdn.palscans.org {
-	encode zstd gzip
-
-	@immutable path /pages/* /covers/*
-	header @immutable {
-		Cache-Control "public, max-age=31536000, immutable"
-		Access-Control-Allow-Origin "https://palscans.org"
-		X-Content-Type-Options nosniff
-		-Server
-	}
-
-	# Everything else (avatars, temp uploads) caches briefly.
-	@other not path /pages/* /covers/*
-	header @other Cache-Control "public, max-age=300"
-
-	# Only GET/HEAD reach the bucket; uploads go through presigned URLs on the app host.
-	@mutating not method GET HEAD OPTIONS
-	respond @mutating 405
-
-	# MinIO serves the bucket at /<bucket>/<key>.
-	rewrite * /palscans{uri}
-	reverse_proxy minio:9000 {
-		header_up Host {upstream_hostport}
-	}
-}
+# ---------------------------------------------------------------------------
+# Self-hosted CDN host (MinIO). Commented out because the documented deployment
+# uses Cloudflare R2, where cdn.palscans.org is the bucket's custom domain and
+# never resolves here.
+#
+# It must stay commented in that shape, not merely unused: a site block makes
+# Caddy try to obtain a certificate for the name, the ACME challenge goes to
+# R2's edge instead of this server, and the failures retry forever — burning the
+# account's Let's Encrypt failed-authorisation limit, which can then delay
+# re-issuing the certificate for palscans.org itself.
+#
+# Uncomment only when running the `selfhosted` compose profile.
+# ---------------------------------------------------------------------------
+# cdn.palscans.org {
+# 	encode zstd gzip
+#
+# 	@immutable path /pages/* /covers/*
+# 	header @immutable {
+# 		Cache-Control "public, max-age=31536000, immutable"
+# 		Access-Control-Allow-Origin "https://palscans.org"
+# 		X-Content-Type-Options nosniff
+# 		-Server
+# 	}
+#
+# 	# Everything else (avatars, temp uploads) caches briefly.
+# 	@other not path /pages/* /covers/*
+# 	header @other Cache-Control "public, max-age=300"
+#
+# 	# Only GET/HEAD reach the bucket; uploads go through presigned URLs on the app host.
+# 	@mutating not method GET HEAD OPTIONS
+# 	respond @mutating 405
+#
+# 	# MinIO serves the bucket at /<bucket>/<key>.
+# 	rewrite * /palscans{uri}
+# 	reverse_proxy minio:9000 {
+# 		header_up Host {upstream_hostport}
+# 	}
+# }

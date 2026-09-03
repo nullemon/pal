@@ -330,12 +330,20 @@ export const submitComment = async (input: SubmitInput): Promise<SubmitOutcome> 
         parentId: comments.parentId,
         locked: comments.locked,
         status: comments.status,
+        seriesId: comments.seriesId,
+        chapterId: comments.chapterId,
       })
       .from(comments)
       .where(and(eq(comments.id, input.parentId), isNull(comments.deletedAt)))
       .limit(1)
     if (parent?.status !== 'published') return { ok: false, code: 'not_found' }
     if (parent.parentId !== null) return { ok: false, code: 'not_found' } // one level only
+    // The parent has to live on the target the checks above were run against. Without this a
+    // reply could name any comment id and be stored against a *different* series — which
+    // walked straight past that series' comments-disabled gate, and left the row attributed
+    // to the wrong series for moderation, duplicate detection and notification routing.
+    if (parent.seriesId !== seriesId || parent.chapterId !== chapterId)
+      return { ok: false, code: 'not_found' }
     if (parent.locked && !staff) return { ok: false, code: 'locked' }
   }
 

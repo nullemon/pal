@@ -81,6 +81,7 @@ export {
   listSubscriptions,
   type PushPayload,
   type PushSender,
+  pushEndpointAllowed,
   type SendPushSummary,
   type StoredSubscription,
   saveSubscription,

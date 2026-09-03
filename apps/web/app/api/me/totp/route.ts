@@ -15,7 +15,7 @@ import {
 } from '@/lib/auth'
 import { requestContext } from '@/lib/auth/flows'
 import { verifyPassword } from '@/lib/auth/password'
-import { totpConfirmSchema, totpDisableSchema } from '@/lib/auth/schemas'
+import { totpConfirmSchema, totpDisableSchema, totpStartSchema } from '@/lib/auth/schemas'
 import { generateTotpSecret, totpQrDataUrl, totpUri, verifyTotp } from '@/lib/auth/totp'
 import { findUserById } from '@/lib/auth/users'
 
@@ -25,10 +25,22 @@ import { findUserById } from '@/lib/auth/users'
  * DELETE /api/me/totp {password} | {code}  turn off — re-authenticated with the password, or
  *        with a current code when the account has none (OAuth-only), never a bare request
  */
-export const POST = requireUser(async (_request, _ctx, user) => {
+export const POST = requireUser(async (request, _ctx, user) => {
+  const parsed = await parseJson(request, totpStartSchema)
+  if (!parsed.ok) return parsed.response
   const row = await findUserById(user.id)
   if (!row) return fail(404, 'not_found', messages.errors.notFound)
   if (row.totpEnabledAt) return fail(409, 'totp_enabled', messages.me.security.totpEnabled)
+  // Re-authenticate, exactly as DELETE below does. Enrolment ends with every other session
+  // revoked and the caller's kept, so a stolen session alone could enrol a factor, evict the
+  // owner and lock them out for good — a password reset would not undo it.
+  if (row.passwordHash) {
+    const limit = await getRateLimiter().hit(`totp:start:${user.id}`, 6, 300)
+    if (!limit.ok) return rateLimited(limit.retryAfterSec)
+    const { password } = parsed.data
+    if (!password || !(await verifyPassword(row.passwordHash, password)))
+      return fail(400, 'wrong_password', messages.me.security.wrongPassword)
+  }
   const secret = generateTotpSecret()
   const db = await getDb()
   await db

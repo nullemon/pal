@@ -6,7 +6,7 @@ import {
   notifications,
   series,
 } from '@palscans/db'
-import { and, asc, eq, inArray, isNull, lte, sql } from 'drizzle-orm'
+import { and, asc, eq, inArray, isNull, lte } from 'drizzle-orm'
 import { prefAllows } from '../../../web/lib/notifications/index.js'
 import { log } from '../lib/log.js'
 
@@ -45,7 +45,6 @@ export const publishDue = async (db: Db, now = new Date()): Promise<number[]> =>
         await tx
           .update(series)
           .set({
-            lastChapterAt: sql`greatest(coalesce(${series.lastChapterAt}, ${(c.publishedAt ?? now).toISOString()}::timestamptz), ${(c.publishedAt ?? now).toISOString()}::timestamptz)`,
             updatedAt: now,
           })
           .where(eq(series.id, c.seriesId))

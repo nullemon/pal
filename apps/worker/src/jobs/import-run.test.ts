@@ -255,3 +255,35 @@ describe('the mysqldump connector', () => {
     expect(await snapshot()).toEqual(viaSample)
   }, 180_000)
 })
+
+describe('every series gets its chapters', () => {
+  it('does not skip a series when the previous one runs out of chapters', async () => {
+    // Regression test. The chapter phase walks one series at a time; when a series ran out it
+    // advanced the stream *and* checkpointed the next series, and the following batch then
+    // asked for another one — so every other series was skipped and the run still reported
+    // `done`. The old assertion (`chapters > 0`) could not see it, because the surviving
+    // series still imported theirs.
+    await db.execute(
+      sql`truncate table ${series}, ${users}, ${comments}, ${redirects}, ${importMap}, ${importRuns} restart identity cascade`,
+    )
+    const runId = await startRun()
+    expect(await runImport(runId, depsFor({ skipImages: true, batchSize: 5 }))).toBe('done')
+
+    // The fixture spreads chapters over four legacy posts. Every one of them that has a
+    // parsable chapter must end up with chapters against its own series row.
+    const rows = await db
+      .select({ seriesId: chapters.seriesId })
+      .from(chapters)
+      .groupBy(chapters.seriesId)
+    expect(rows.length).toBe(4)
+
+    const mapped = await db
+      .select({ kind: importMap.kind, legacyId: importMap.legacyId })
+      .from(importMap)
+      .where(eq(importMap.kind, 'chapter'))
+    // 10 fixture chapters. Three have no parsable number ("Prologue", "Chapter 1-2",
+    // "Season 2 Finale") and are reported for review rather than guessed at, so 7 land.
+    // Before the fix this was 5, with legacy post 102 contributing none of its two.
+    expect(mapped.length).toBe(7)
+  }, 180_000)
+})

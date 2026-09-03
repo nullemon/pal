@@ -87,6 +87,12 @@ export function Reader({ data, comments }: ReaderProps) {
   const initialPage = useRef(data.viewer.resume?.pageIdx ?? 0)
   const prefetched = useRef(false)
 
+  // The sequence changes with the mode and the viewport (ad pages come and go); this keeps
+  // the reader on the same page through it. Declared here because the resume effect below
+  // writes to it — see the note there.
+  const pageRef = useRef(pageIdx)
+  pageRef.current = pageIdx
+
   // Anonymous readers resume from the device (signed-in ones from the server row), once
   // the stored settings are known.
   const resumed = useRef(false)
@@ -97,16 +103,18 @@ export function Reader({ data, comments }: ReaderProps) {
     const local = loadLocalResume(data.chapter.id)
     if (local && local.pageIdx > 0 && local.pageIdx < pageCount) {
       initialPage.current = local.pageIdx
+      // Move the ref with the state. It is written during render, so it still holds the old
+      // page here — and the `[items]` effect below runs later in this same commit, before any
+      // re-render. Without this the resume was immediately overwritten with page 1 while the
+      // counter, scrubber and progress bar all read the resumed page: paged readers lost
+      // their place and only saw it when the next arrow press jumped to page 2.
+      pageRef.current = local.pageIdx
       setPageIdx(local.pageIdx)
       setItemIndexRaw(itemIndexOfPage(items, local.pageIdx))
       setStripKey((k) => k + 1)
     }
   }, [hydrated, data.viewer.resume, data.chapter.id, pageCount, items])
 
-  // The sequence changes with the mode and the viewport (ad pages come and go); keep the
-  // reader on the same page through it.
-  const pageRef = useRef(pageIdx)
-  pageRef.current = pageIdx
   useEffect(() => {
     setItemIndexRaw(itemIndexOfPage(items, pageRef.current))
   }, [items])

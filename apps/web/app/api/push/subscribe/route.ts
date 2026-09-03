@@ -2,7 +2,7 @@ import { messages } from '@palscans/core/messages'
 import { getDb } from '@palscans/db'
 import { fail, ok, parseJson, requireUser } from '@/lib/auth'
 import { pushStatus } from '@/lib/env'
-import { deleteSubscription, saveSubscription } from '@/lib/notifications'
+import { deleteSubscription, pushEndpointAllowed, saveSubscription } from '@/lib/notifications'
 import { pushSubscriptionSchema, pushUnsubscribeSchema } from '../schemas'
 
 /**
@@ -24,6 +24,9 @@ export const POST = requireUser(async (request, _ctx, user) => {
   if (!(await pushStatus()).configured) return notConfigured()
   const parsed = await parseJson(request, pushSubscriptionSchema)
   if (!parsed.ok) return parsed.response
+  // The stored endpoint becomes an outbound request later, so it must be a real push service
+  // and not an address of the caller's choosing (see pushEndpointAllowed).
+  if (!pushEndpointAllowed(parsed.data.endpoint)) return fail(400, 'validation')
   const db = await getDb()
   await saveSubscription(db, {
     userId: user.id,

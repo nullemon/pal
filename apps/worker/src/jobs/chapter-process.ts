@@ -8,7 +8,7 @@ import {
   type ProcessedPage,
   series,
 } from '@palscans/db'
-import { eq, sql } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { processImage } from '../lib/image.js'
 import { log } from '../lib/log.js'
 import { pool } from '../lib/pool.js'
@@ -206,7 +206,6 @@ export const processChapter = async (
       await tx
         .update(series)
         .set({
-          lastChapterAt: sql`greatest(coalesce(${series.lastChapterAt}, ${at.toISOString()}::timestamptz), ${at.toISOString()}::timestamptz)`,
           updatedAt: at,
         })
         .where(eq(series.id, row.seriesId))

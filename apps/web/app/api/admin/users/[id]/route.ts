@@ -38,7 +38,9 @@ export const POST = withPermission<{ id: string }>('user.read', async (request, 
         ? 'entitlement.grant'
         : body.action === 'ban' || body.action === 'unban' || body.action === 'comment_ban'
           ? 'user.ban'
-          : 'user.update'
+          : body.action === 'clear_totp'
+            ? 'user.role'
+            : 'user.update'
   if (!can(actor, needs)) return fail(403, 'forbidden', messages.errors.forbidden)
   if (target.id === actor.id && body.action !== 'resend_verification')
     return fail(400, 'self', messages.admin.forbiddenSelf)
@@ -100,6 +102,19 @@ export const POST = withPermission<{ id: string }>('user.read', async (request, 
     case 'force_logout':
       after = { revoked: await revokeAllSessions(target.id) }
       break
+    case 'clear_totp': {
+      // Removes the second factor and ends every session, so the reader signs back in with
+      // their password alone and can enrol a new authenticator. Audited like every other
+      // action here; the secret itself is never recorded.
+      before = { totpEnabled: target.totpEnabledAt !== null }
+      await db
+        .update(users)
+        .set({ totpSecret: null, totpEnabledAt: null, updatedAt: now })
+        .where(eq(users.id, target.id))
+      await revokeAllSessions(target.id)
+      after = { totpEnabled: false }
+      break
+    }
     case 'comment_ban': {
       const until = body.until ? new Date(body.until) : null
       before = { commentBannedUntil: target.commentBannedUntil }

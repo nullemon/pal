@@ -103,6 +103,9 @@ export const totpConfirmSchema = z.object({ code: totpCodeSchema })
  * Turning TOTP off re-authenticates: the password for password accounts, a current code
  * for OAuth-only accounts (docs/07 — never a bare request). The route decides which applies.
  */
+/** Starting enrolment is re-authenticated exactly like turning it off. */
+export const totpStartSchema = z.object({ password: z.string().max(200).optional() })
+
 export const totpDisableSchema = z.object({
   password: z.string().max(200).optional(),
   code: totpCodeSchema.optional(),

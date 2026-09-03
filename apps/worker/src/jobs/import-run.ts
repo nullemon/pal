@@ -453,10 +453,16 @@ const chaptersBatch = async (
   let counts = run.counts
   let errors = run.errors
 
-  // Open the next series that has a local row.
+  // Open the series the cursor names, pulling a new one only when it names none.
+  //
+  // This used to also pull a new series whenever `chapterId` was 0, which silently skipped
+  // every other series: finishing a series already advances the stream and checkpoints the
+  // *next* series with `chapterId: 0`, so the following batch asked for another one and the
+  // series just checkpointed was never opened. The run still reported `done`, with roughly
+  // half the migrated catalogue holding no chapters at all.
   if (ctx.chapterStreamFor() !== seriesPostId || ctx.chapterStream() === null) {
     const next =
-      seriesPostId === 0 || (run.cursor.chapterId ?? 0) === 0
+      seriesPostId === 0
         ? await ctx.streams.seriesForChapters.next(seriesPostId)
         : { id: seriesPostId, name: '' as string }
     if (next === null) return { cursor: run.cursor, counts, errors, exhausted: true }

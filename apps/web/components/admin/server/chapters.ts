@@ -7,7 +7,7 @@ import {
   notifications,
   series,
 } from '@palscans/db'
-import { and, eq, inArray, isNull, sql } from 'drizzle-orm'
+import { and, eq, inArray, isNull } from 'drizzle-orm'
 
 /**
  * Chapter state transitions used by the bulk bar, the uploader and the retry button. The
@@ -48,7 +48,6 @@ export const publishChapters = async (ids: number[], now = new Date()): Promise<
         await tx
           .update(series)
           .set({
-            lastChapterAt: sql`greatest(coalesce(${series.lastChapterAt}, ${now.toISOString()}::timestamptz), ${now.toISOString()}::timestamptz)`,
             updatedAt: now,
           })
           .where(eq(series.id, r.seriesId))

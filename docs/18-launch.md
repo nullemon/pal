@@ -123,22 +123,42 @@ bad afternoon later.
 
 ## 4 · First boot
 
-`infra/docker-compose.yml` brings up Postgres, Valkey, MinIO, Mailpit, Caddy, web and worker.
-For an R2 deployment you do not need `minio` / `minio-init` — drop them; you will point storage
-at R2 from the panel. Mailpit is a development mail catcher; you will point mail at real SMTP
-from the panel too.
+`infra/docker-compose.yml` brings up Postgres, Valkey, Caddy, web and worker — which is the
+whole R2 deployment. MinIO and Mailpit exist for running without R2 and a real mail sender;
+they sit behind a `selfhosted` profile and do not start unless you ask for them, so there is
+nothing to delete.
 
 ```sh
-docker compose -f infra/docker-compose.yml up -d --build
-docker compose -f infra/docker-compose.yml exec web pnpm db:migrate
+docker compose --env-file .env -f infra/docker-compose.yml up -d --build
+docker compose --env-file .env -f infra/docker-compose.yml exec -w /repo web pnpm db:migrate
 curl -s localhost:3000/api/health     # {"status":"ok","db":"up",...}
 ```
+
+Two details in those commands are load-bearing, and both were wrong here until they were
+actually run:
+
+`--env-file .env` is required. Compose takes its project directory from the first `-f`
+argument, so without it, it looks for `infra/.env` and never sees the file you just wrote.
+The symptom is an immediate `required variable SESSION_SECRET is missing a value` and nothing
+starting at all. Consider `alias dc='docker compose --env-file .env -f infra/docker-compose.yml'`.
+
+`-w /repo` is required on the migrate command. The image's working directory is
+`/repo/apps/web`, and `db:migrate` is a script on the *root* package, so without it you get
+`Command "db:migrate" not found` — and, worse, a site that boots against an empty database
+while `/api/health` still answers `ok`, because that endpoint only proves the database is
+reachable, not that it has a schema.
+
+If a required value is missing, compose stops and names it. That is deliberate: every
+variable without a safe default is marked required, so a wrong deploy fails loudly instead of
+starting a subtly broken site.
 
 Migrations are additive by design — new columns and tables, never drops — which is what makes
 the rollback procedure in the runbook safe.
 
 **Do not run `pnpm db:seed` in production.** The seeder writes a demo catalogue of ~137
-invented series. It exists for development and tests.
+invented series *and* staff accounts whose password is a constant in this repository. It now
+refuses to run against anything that is not loopback or PGlite, but do not go looking for the
+override.
 
 ## 5 · Your admin account
 

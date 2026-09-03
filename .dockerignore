@@ -1,0 +1,33 @@
+# The build context is COPYed wholesale into the image, so anything here would end up in a
+# layer — readable by anyone who can pull the image or run `docker history`.
+
+# Secrets. The launch guide has the operator write .env before the first build, so without
+# this line SESSION_SECRET, CREDENTIALS_KEY, INTERNAL_API_SECRET and the database password
+# are baked into the image (infra/RUNBOOK.md promises the opposite).
+.env
+.env.*
+!.env.example
+
+# Host-built artefacts. node_modules is the dangerous one: a build from a working checkout
+# would layer the host's glibc sharp/argon2 binaries over the musl install and fail at
+# runtime in ways that look like application bugs.
+node_modules
+**/node_modules
+.next
+**/.next
+dist
+**/dist
+.turbo
+**/.turbo
+.data
+**/.data
+test-results
+**/test-results
+
+# History and local noise.
+.git
+.gitignore
+*.log
+*.zip
+coverage
+**/coverage

@@ -2,7 +2,11 @@
 #   docker build -f infra/Dockerfile --target web -t palscans-web .
 #   docker build -f infra/Dockerfile --target worker -t palscans-worker .
 FROM node:22-alpine AS base
-RUN corepack enable
+# `corepack enable` only shims pnpm — the real download happens on first use. Activating it
+# here puts pnpm in the image, so no container start ever reaches the registry for it (a
+# silent hang, then a restart loop, if egress is firewalled). Keep in step with
+# `packageManager` in the root package.json.
+RUN corepack enable && corepack prepare pnpm@11.25.0 --activate
 WORKDIR /repo
 
 FROM base AS deps
