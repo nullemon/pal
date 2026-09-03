@@ -8,7 +8,7 @@ import { resolveConfig } from './store'
  * `lib/notifications/config.ts` and `lib/discord/client.ts` are imported by both apps, so
  * neither may import `./store` — it is `server-only` and reads through Next's cache, and the
  * worker has neither. They read through `@palscans/core`'s credential slot instead, and this
- * is the web half of that: one call at process start (`instrumentation.ts`) points the slot
+ * is the web half of that: `lib/config/install.ts` points the slot
  * at `resolveConfig()`, which is tagged and purged on every admin save, so a VAPID key or a
  * bot token typed into the panel is live on the next request.
  *

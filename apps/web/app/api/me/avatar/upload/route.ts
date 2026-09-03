@@ -1,4 +1,3 @@
-import { getStorage } from '@palscans/core/storage'
 import { z } from 'zod'
 import {
   fail,
@@ -10,7 +9,7 @@ import {
   requireUser,
 } from '@/lib/auth'
 import { AVATAR_MAX_BYTES, AVATAR_TYPES, storeAvatar } from '@/lib/auth/avatar'
-import { sniffImage } from '@/lib/storage'
+import { getStorage, sniffImage } from '@/lib/storage'
 
 const querySchema = z.object({
   key: z.string().regex(/^avatars\/\d+\/[a-f0-9]{16}\.(png|jpg|webp)$/),

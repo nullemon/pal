@@ -18,6 +18,7 @@ import {
 import { and, eq, isNull } from 'drizzle-orm'
 import { unstable_cache } from 'next/cache'
 import { cache } from 'react'
+import { ensureConfig } from '@/lib/config/install'
 import { configMirror } from '@/lib/config/mirror'
 import { signedStorageUrl } from '@/lib/storage'
 import type { PageVariantUrl, ReaderPage } from '../types'
@@ -188,6 +189,7 @@ export const readerResume = async (
   seriesId: number,
   chapterId: number,
 ): Promise<{ pageIdx: number; scrollPct: number } | null> => {
+  await ensureConfig()
   if (!user) return null
   const db = await getDb()
   const [row] = await db
@@ -205,6 +207,7 @@ export const readerResume = async (
 
 /** Chapter id → its series id and access fields, for the progress and pages endpoints. */
 export const chapterForApi = async (chapterId: number) => {
+  await ensureConfig()
   const db = await getDb()
   const [row] = await db
     .select({
@@ -242,6 +245,7 @@ export const toReaderPages = async (
   pages: ChapterBundle['pages'],
   lock: ChapterLock,
 ): Promise<ReaderPage[]> => {
+  await ensureConfig()
   const url = lock === 'none' ? async (key: string) => storageUrl(key) : signedStorageUrl
   return Promise.all(
     pages.map(async (p) => {

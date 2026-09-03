@@ -36,6 +36,7 @@ import {
   type SQL,
   sql,
 } from 'drizzle-orm'
+import { ensureConfig } from '@/lib/config/install'
 import type { BrowseParams, BrowseSort } from './filters'
 import { BROWSE_PAGE_SIZE } from './filters'
 import { coverSrc } from './media'
@@ -132,6 +133,7 @@ export async function latestChaptersFor(
   slugs: Map<number, string>,
   perSeries = 1,
 ): Promise<Map<number, ChapterSummary[]>> {
+  await ensureConfig()
   const out = new Map<number, ChapterSummary[]>()
   if (ids.length === 0) return out
   const db = await getDb()
@@ -197,6 +199,7 @@ const slugMap = (rows: readonly { id: number; slug: string }[]) =>
 
 /** Hero carousel: `series.is_featured`, newest update first. */
 export async function heroSlides(limit: number): Promise<HeroSlide[]> {
+  await ensureConfig()
   const db = await getDb()
   const rows = await featuredSeries(db, limit)
   const latest = await latestChaptersFor(
@@ -216,6 +219,7 @@ export async function rankedSeries(
   window: PopularityWindow,
   limit: number,
 ): Promise<RankedSeries[]> {
+  await ensureConfig()
   const db = await getDb()
   let rows = await popular(db, window, { limit })
   if (rows.length === 0 && window !== 'all') rows = await popular(db, 'all', { limit })
@@ -234,6 +238,7 @@ export async function rankedSeries(
 export async function popularLists(
   limit: number,
 ): Promise<Record<PopularityWindow, RankedSeries[]>> {
+  await ensureConfig()
   const [weekly, monthly, all] = await Promise.all([
     rankedSeries('weekly', limit),
     rankedSeries('monthly', limit),
@@ -257,6 +262,7 @@ export interface LatestUpdatesOptions {
  * per row. Same shape as `homeFeed` in @palscans/db plus the type tab filter.
  */
 export async function latestUpdates(opts: LatestUpdatesOptions): Promise<PagedResult<UpdateItem>> {
+  await ensureConfig()
   const db = await getDb()
   const pageSize = Math.min(60, Math.max(1, opts.pageSize))
   const where = and(
@@ -292,6 +298,7 @@ export async function latestUpdates(opts: LatestUpdatesOptions): Promise<PagedRe
 }
 
 export async function newestSeries(limit: number): Promise<SeriesSummary[]> {
+  await ensureConfig()
   const db = await getDb()
   const rows = await recentlyAdded(db, limit)
   return rows.map(toSummary)
@@ -299,6 +306,7 @@ export async function newestSeries(limit: number): Promise<SeriesSummary[]> {
 
 /** The signed-in reader's most recently touched series, with the chapter they stopped in. */
 export async function continueReading(userId: number, limit: number): Promise<ContinueItem[]> {
+  await ensureConfig()
   const db = await getDb()
   const rows = await db
     .select({
@@ -333,6 +341,7 @@ export async function continueReading(userId: number, limit: number): Promise<Co
 }
 
 export async function latestAnnouncement(): Promise<AnnouncementSummary | null> {
+  await ensureConfig()
   const db = await getDb()
   const [row] = await db
     .select({
@@ -424,6 +433,7 @@ function orderFor(sort: BrowseSort, mean: number): SQL[] {
 
 /** The browse grid: filters (include AND exclude genres), sort, real pagination. */
 export async function browseSeries(q: BrowseQuery): Promise<PagedResult<SeriesSummary>> {
+  await ensureConfig()
   const db = await getDb()
   const pageSize = Math.min(60, Math.max(1, q.pageSize ?? BROWSE_PAGE_SIZE))
   const conditions: (SQL | undefined)[] = [
@@ -468,12 +478,14 @@ export async function genreIdsFor(
 }
 
 export async function allGenres(): Promise<GenreSummary[]> {
+  await ensureConfig()
   const db = await getDb()
   const rows = await genreCounts(db)
   return rows.map((g) => ({ ...g, href: `/genres/${g.slug}` }))
 }
 
 export async function genreDetail(slug: string) {
+  await ensureConfig()
   const db = await getDb()
   const row = await genreBySlug(db, slug)
   if (!row) return null
@@ -504,12 +516,14 @@ export interface SearchHit extends SeriesSummary {
 }
 
 export async function search(q: string, limit = 40): Promise<SearchHit[]> {
+  await ensureConfig()
   const db = await getDb()
   const rows = await searchSeries(db, q, { limit })
   return rows.map((r) => ({ ...toSummary(r), score: r.score, matchedTitle: r.matchedTitle }))
 }
 
 export async function randomSeriesSlug(): Promise<string | null> {
+  await ensureConfig()
   const db = await getDb()
   const [row] = await db
     .select({ slug: series.slug })
@@ -522,6 +536,7 @@ export async function randomSeriesSlug(): Promise<string | null> {
 
 /** True when the popularity windows have any rollup rows (used to label rankings). */
 export async function hasViewStats(): Promise<boolean> {
+  await ensureConfig()
   const db = await getDb()
   const [row] = await db.select({ one: sql<number>`1` }).from(seriesStatsDaily).limit(1)
   return !!row

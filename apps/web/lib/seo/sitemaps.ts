@@ -1,5 +1,5 @@
 import { gzipSync } from 'node:zlib'
-import { getStorage, type Storage } from '@palscans/core/storage'
+import type { Storage } from '@palscans/core/storage'
 import {
   announcements,
   chapters,
@@ -13,6 +13,7 @@ import {
   sitemapBuilds,
 } from '@palscans/db'
 import { and, desc, eq, gte, inArray, isNull, or, sql } from 'drizzle-orm'
+import { getStorage } from '@/lib/storage'
 import { getEnv } from '../env'
 import { type IndexNowResult, submitIndexNow } from './indexnow'
 import { loadSeoSettings, type SeoSettings, type SitemapSection } from './settings'

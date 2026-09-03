@@ -61,7 +61,8 @@ const clamp = (value: string, max = 200): string =>
 /** Only these are safe in a header we build from operator input. */
 const headerSafe = (value: string): string => value.replace(/[\r\n]+/g, ' ').trim()
 
-const isLocal = (host: string): boolean =>
+/** A server on this machine needs no TLS: nothing leaves the box. */
+export const isLocalHost = (host: string): boolean =>
   host === 'localhost' || host === '127.0.0.1' || host === '::1'
 
 interface Reply {
@@ -232,7 +233,7 @@ export const smtpSendTest = async (opts: SmtpOptions): Promise<SmtpResult> => {
     }
 
     if (opts.user && opts.password) {
-      if (!secure && !isLocal(opts.host))
+      if (!secure && !isLocalHost(opts.host))
         return fail('starttls', new Error('server does not offer STARTTLS'), secure)
       const b64 = (v: string) => Buffer.from(v, 'utf8').toString('base64')
       let auth: Reply

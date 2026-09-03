@@ -1,9 +1,9 @@
 import { randomBytes } from 'node:crypto'
-import { getStorage } from '@palscans/core/storage'
 import { getDb, users } from '@palscans/db'
 import { eq } from 'drizzle-orm'
 import { ok, parseJson, requireUser } from '@/lib/auth'
 import { avatarPresignSchema } from '@/lib/auth/schemas'
+import { getStorage } from '@/lib/storage'
 
 const EXT: Record<string, string> = {
   'image/png': 'png',

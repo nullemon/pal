@@ -21,7 +21,8 @@ describe('credential sealing', () => {
 
   it('rejects a tampered ciphertext', () => {
     const sealed = seal('secret', KEY)
-    sealed[sealed.length - 1] ^= 0xff // flip a bit in the auth tag
+    const last = sealed.length - 1
+    sealed[last] = (sealed[last] ?? 0) ^ 0xff // flip a bit in the auth tag
     expect(open(sealed, KEY)).toBeNull()
   })
 

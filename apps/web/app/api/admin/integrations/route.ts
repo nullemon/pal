@@ -4,10 +4,9 @@ import { eq } from 'drizzle-orm'
 import { revalidateTag } from 'next/cache'
 import { audit } from '@/components/admin/server/audit'
 import { fail, getRateLimiter, ok, parseJson, rateLimited, withPermission } from '@/lib/auth'
-import { liveConfigView } from '@/lib/config/live'
 import { integrationsPutSchema, integrationsTestSchema } from '@/lib/config/panel'
 import { refreshConfigSnapshot } from '@/lib/config/snapshot'
-import { CONFIG_CACHE_TAG, writeConfig } from '@/lib/config/store'
+import { CONFIG_CACHE_TAG, configView, writeConfig } from '@/lib/config/store'
 import { mergeSubmitted, runConnectionTest } from '@/lib/config/tests'
 
 /**
@@ -38,7 +37,7 @@ export const PUT = withPermission('settings.write', async (request, _ctx, user) 
   // Next 16 wants a cache-life profile alongside the tag; 'max' expires it everywhere.
   revalidateTag(CONFIG_CACHE_TAG, 'max')
   await refreshConfigSnapshot()
-  const view = await liveConfigView()
+  const view = await configView()
 
   if (changed.length > 0)
     await audit({

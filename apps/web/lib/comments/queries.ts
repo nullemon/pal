@@ -12,6 +12,7 @@ import {
   users,
 } from '@palscans/db'
 import { and, asc, desc, eq, gt, inArray, isNull, notInArray, or, sql } from 'drizzle-orm'
+import { ensureConfig } from '@/lib/config/install'
 import { type EntitlementGate, entitlementGate } from '@/lib/entitlements'
 import { storageUrl } from './media'
 import { MAX_CURSOR } from './schemas'
@@ -78,6 +79,7 @@ export const viewerFor = async (
   user: AppUser | null,
   gate?: EntitlementGate,
 ): Promise<CommentViewer | null> => {
+  await ensureConfig()
   if (!user) return null
   const g = gate ?? (await entitlementGate())
   const blocked = await db
@@ -309,6 +311,7 @@ export interface ListOptions {
 
 /** docs/14 §8 GET /api/comments — a page of top-level comments with reply previews. */
 export const listComments = async (db: Db, opts: ListOptions): Promise<CommentPage> => {
+  await ensureConfig()
   const limit = Math.min(50, Math.max(1, opts.limit ?? PAGE_SIZE))
   const offset = parseCursor(opts.cursor)
   const where = and(targetWhere(opts.target), isNull(comments.parentId), visibleWhere(opts.viewer))
@@ -351,6 +354,7 @@ export const listReplies = async (
   parentId: number,
   viewer: CommentViewer | null,
 ): Promise<CommentView[]> => {
+  await ensureConfig()
   const rows = (await db
     .select(cols)
     .from(comments)
@@ -367,6 +371,7 @@ export const getCommentView = async (
   id: number,
   viewer: CommentViewer | null,
 ): Promise<CommentView | null> => {
+  await ensureConfig()
   const [row] = (await db
     .select(cols)
     .from(comments)
@@ -379,6 +384,7 @@ export const getCommentView = async (
 
 /** Raw row for mutations (author checks, edit window); no visibility filter. */
 export const getCommentRow = async (db: Db, id: number) => {
+  await ensureConfig()
   const [row] = await db.select(cols).from(comments).where(eq(comments.id, id)).limit(1)
   return (row as Row | undefined) ?? null
 }
@@ -392,6 +398,7 @@ export const isDeprioritisedReporter = async (
   reporterId: number,
   now: Date = new Date(),
 ): Promise<boolean> => {
+  await ensureConfig()
   const since = new Date(now.getTime() - REPORTER_WINDOW_MS)
   const [row] = await db
     .select({ n: sql<number>`count(*)::int` })

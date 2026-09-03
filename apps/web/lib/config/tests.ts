@@ -3,9 +3,9 @@ import { createECDH, randomUUID, timingSafeEqual } from 'node:crypto'
 import { fmt, messages } from '@palscans/core/messages'
 import { createStorage } from '@palscans/core/storage'
 import { getEnv } from '../env'
-import { liveConfig } from './live'
 import { type ConfigGroup, FIELDS_BY_ID, isMasked } from './registry'
-import { smtpSendTest } from './smtp'
+import { isLocalHost, smtpSendTest } from './smtp'
+import { resolveConfig } from './store'
 
 /**
  * The connection tests behind Admin → System → Integrations (docs/19).
@@ -101,7 +101,7 @@ const errorText = async (res: Response): Promise<string> => {
 export const mergeSubmitted = async (
   submitted: Record<string, string>,
 ): Promise<Record<string, string>> => {
-  const { values } = await liveConfig()
+  const { values } = await resolveConfig({ fresh: true })
   const merged: Record<string, string> = { ...values }
   for (const [id, raw] of Object.entries(submitted)) {
     const field = FIELDS_BY_ID.get(id)
@@ -248,7 +248,10 @@ const emailChecks = async (v: Record<string, string>, to: string): Promise<Check
       checks.push(
         result.secure
           ? pass(m.checks.smtpTls, R.smtpTlsOk)
-          : fail(m.checks.smtpTls, R.smtpTlsFailed),
+          : isLocalHost(host)
+            ? // A server on this machine is not exposed, so plain text is not a finding.
+              skip(m.checks.smtpTls, R.smtpTlsLocal)
+            : fail(m.checks.smtpTls, R.smtpTlsFailed),
       )
       if (result.failedAt === 'auth')
         checks.push(fail(m.checks.smtpAuth, fmt(R.smtpAuthFailed, { detail })))
@@ -365,6 +368,10 @@ const paymentsChecks = async (v: Record<string, string>): Promise<Check[]> => {
  * Cloudflare answers a bad token with `invalid-input-response` and a bad secret with
  * `invalid-input-secret`. Sending a token that is certainly invalid therefore separates the
  * two without ever solving a challenge.
+ *
+ * Anything that is not one of those two answers — a proxy in the way, a 500, HTML instead of
+ * JSON — is reported as a failure rather than quietly counted as a pass. Silence from
+ * Cloudflare is not a working key; it is what a real sign-up would hit too.
  */
 const botChecks = async (v: Record<string, string>): Promise<Check[]> => {
   const secret = v['bot.turnstile_secret_key'] ?? ''
@@ -378,23 +385,35 @@ const botChecks = async (v: Record<string, string>): Promise<Check[]> => {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ secret, response: 'palscans-connection-test' }),
       })
-      const json = (await res.json().catch(() => ({}))) as {
-        success?: boolean
-        'error-codes'?: string[]
+      const raw = await res.text().catch(() => '')
+      let json: { success?: boolean; 'error-codes'?: string[] } | null = null
+      try {
+        json = JSON.parse(raw) as { success?: boolean; 'error-codes'?: string[] }
+      } catch {
+        // not JSON — handled below
       }
-      const codes = json['error-codes'] ?? []
-      const badSecret = codes.some((c) => c.includes('secret'))
-      checks.push(
-        badSecret
-          ? fail(
-              m.checks.turnstileSecret,
-              fmt(R.turnstileSecretFailed, { detail: codes.join(', ') }),
-            )
-          : pass(m.checks.turnstileSecret, R.turnstileSecretOk),
-      )
+      if (!res.ok || json === null || typeof json.success !== 'boolean')
+        checks.push(
+          fail(
+            m.checks.turnstileSecret,
+            fmt(R.turnstileUnreachable, { detail: clamp(raw || `HTTP ${res.status}`) }),
+          ),
+        )
+      else {
+        const codes = json['error-codes'] ?? []
+        const badSecret = codes.some((c) => c.includes('secret'))
+        checks.push(
+          badSecret
+            ? fail(
+                m.checks.turnstileSecret,
+                fmt(R.turnstileSecretFailed, { detail: codes.join(', ') }),
+              )
+            : pass(m.checks.turnstileSecret, R.turnstileSecretOk),
+        )
+      }
     } catch (err) {
       checks.push(
-        fail(m.checks.turnstileSecret, fmt(R.turnstileSecretFailed, { detail: reason(err) })),
+        fail(m.checks.turnstileSecret, fmt(R.turnstileUnreachable, { detail: reason(err) })),
       )
     }
   }
@@ -412,6 +431,11 @@ const botChecks = async (v: Record<string, string>): Promise<Check[]> => {
  * Both providers separate "I do not know this client" from "that code is no good", so asking
  * to exchange a code that cannot exist proves the client ID and secret without a browser and
  * without issuing anything.
+ *
+ * Only the two answers that mean something are graded. `invalid_grant` is the credentials
+ * working (the code was refused, not the client); `invalid_client` is them not working.
+ * Anything else — an error shape neither provider documents, a proxy, an outage — is
+ * reported as unverified, because a pass here has to mean the provider said so.
  */
 const exchangeProbe = async (
   label: string,
@@ -433,14 +457,21 @@ const exchangeProbe = async (
         client_secret: clientSecret,
       }).toString(),
     })
-    const body = (await res.json().catch(() => ({}))) as { error?: string }
-    const err = body.error ?? ''
+    const raw = await res.text().catch(() => '')
+    let body: { error?: string } | null = null
+    try {
+      body = JSON.parse(raw) as { error?: string }
+    } catch {
+      // not JSON — unverified below
+    }
+    const err = body?.error ?? ''
+    if (err === 'invalid_grant') return pass(label, R.oauthOk)
     if (res.status === 401 || err === 'invalid_client' || err === 'unauthorized_client')
       return fail(
         label,
         fmt(R.oauthFailed, { detail: clamp(`${res.status} ${err || 'rejected'}`) }),
       )
-    return pass(label, R.oauthOk)
+    return skip(label, fmt(R.oauthUnverified, { detail: clamp(raw || `HTTP ${res.status}`) }))
   } catch (err) {
     return fail(label, fmt(R.oauthFailed, { detail: reason(err) }))
   }

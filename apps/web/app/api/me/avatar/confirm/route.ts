@@ -1,12 +1,11 @@
 import { messages } from '@palscans/core/messages'
-import { getStorage } from '@palscans/core/storage'
 import { getDb, users } from '@palscans/db'
 import { eq } from 'drizzle-orm'
 import { fail, getRateLimiter, ok, parseJson, rateLimited, requireUser } from '@/lib/auth'
 import { AVATAR_MAX_BYTES, AVATAR_TYPES, storeAvatar } from '@/lib/auth/avatar'
 import { avatarUrl } from '@/lib/auth/media'
 import { avatarConfirmSchema } from '@/lib/auth/schemas'
-import { verifyUploadedObject } from '@/lib/storage'
+import { getStorage, verifyUploadedObject } from '@/lib/storage'
 
 /**
  * POST /api/me/avatar/confirm {key} — after the upload landed, point the profile at it.

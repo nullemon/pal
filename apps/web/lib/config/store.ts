@@ -48,17 +48,20 @@ const cachedStored = unstable_cache(
   { revalidate: 300, tags: [CONFIG_CACHE_TAG] },
 )
 
-/**
- * Every registry key resolved to its effective value, with where it came from.
- *
- * Resolving also refreshes the synchronous mirror (`./mirror`), which is why nothing has to
- * hook the root layout to keep it warm — that layout is deliberately synchronous so `/` and
- * the series pages stay prerendered, and a database read there would make every route
- * dynamic. Instead the mirror is a write-through cache of this function: any async path that
- * reads configuration keeps it current, and `instrumentation.ts` seeds it at process start.
- */
-export const resolveConfig = async (): Promise<ResolvedConfig> => {
-  const stored = await cachedStored()
+/** The same read, uncached — see `resolveConfig`'s `fresh` option for when that is needed. */
+const freshStored = async (): Promise<Record<string, string>> => {
+  try {
+    return await readSealedCredentials(
+      await getDb(),
+      CONFIG_FIELDS.map((f) => f.id),
+    )
+  } catch {
+    return {}
+  }
+}
+
+/** Merge stored rows over the environment. The one place precedence is decided. */
+const merge = (stored: Record<string, string>): ResolvedConfig => {
   const values: Record<string, string> = {}
   const sources: Record<string, ConfigSource> = {}
   for (const field of CONFIG_FIELDS) {
@@ -67,12 +70,33 @@ export const resolveConfig = async (): Promise<ResolvedConfig> => {
     values[field.id] = fromPanel || fromEnv
     sources[field.id] = fromPanel ? 'panel' : fromEnv ? 'env' : 'unset'
   }
-  const driver = values['storage.driver']
+  return { values, sources }
+}
+
+/**
+ * Every registry key resolved to its effective value, with where it came from.
+ *
+ * Resolving also refreshes the synchronous mirror (`./mirror`), which is why nothing has to
+ * hook the root layout to keep it warm — that layout is deliberately synchronous so `/` and
+ * the series pages stay prerendered, and a database read there would make every route
+ * dynamic. Instead the mirror is a write-through cache of this function: any async path that
+ * reads configuration keeps it current, and the loaders that build storage URLs await
+ * `ensureConfig()` (lib/config/install.ts) before doing so.
+ *
+ * `fresh` skips the cache. The admin panel needs it: `revalidateTag` marks an entry stale
+ * rather than deleting it, and Next serves the stale entry once while it refreshes, so the
+ * render straight after a save would show the value from *before* the save. On the one screen
+ * whose job is reporting what is stored, that is the mistake it cannot make. Everything else
+ * — every image URL, every Stripe key lookup — wants the cache.
+ */
+export const resolveConfig = async (opts: { fresh?: boolean } = {}): Promise<ResolvedConfig> => {
+  const resolved = merge(opts.fresh ? await freshStored() : await cachedStored())
+  const driver = resolved.values['storage.driver']
   setConfigMirror({
     driver: driver === 'fs' ? 'fs' : 's3',
-    cdnUrl: values['storage.public_cdn_url'] ?? '',
+    cdnUrl: resolved.values['storage.public_cdn_url'] ?? '',
   })
-  return { values, sources }
+  return resolved
 }
 
 /** One value, or '' when neither the panel nor the environment has it. */
@@ -91,7 +115,7 @@ export const configView = async (): Promise<{
   fields: ConfigFieldView[]
   sealingKey: ReturnType<typeof sealingKeySource>
 }> => {
-  const { values, sources } = await resolveConfig()
+  const { values, sources } = await resolveConfig({ fresh: true })
   return {
     fields: CONFIG_FIELDS.map((f) => ({
       id: f.id,

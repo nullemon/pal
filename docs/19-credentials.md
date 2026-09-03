@@ -66,8 +66,26 @@ there turns every route dynamic.
 So `lib/config/mirror.ts` holds those two values in a dependency-free module (no database, no
 `server-only`, safe to import anywhere), seeded from the environment at import so the site
 renders correctly before the first database read. `resolveConfig()` writes through to it, so
-any async path that touches configuration keeps it current, and `instrumentation.ts` seeds it
-at process start.
+any async path that touches configuration keeps it current, and the async loaders that build
+storage URLs `await ensureConfig()` first.
+
+## Why installation happens in `lib/config/install.ts`, not `instrumentation.ts`
+
+`instrumentation.ts` is the obvious home for "install a resolver once per process", and it
+does not work. Next bundles instrumentation in a separate module graph, so the module-level
+state written there — the storage resolver inside `@palscans/core/storage`, the mirror in
+`lib/config/mirror.ts` — is invisible to request handlers.
+
+This was measured, not reasoned about. With the resolver installed only from instrumentation,
+a request reported `driver: "fs"` while the panel held `s3`, and the homepage rendered image
+URLs from the environment's CDN while the store resolved the panel's. The failure is silent:
+nothing errors, uploads simply go to the wrong bucket.
+
+So installation is an import side effect of `lib/config/install.ts`, and the modules that need
+it import it — putting it in the same graph as the code that reads it. `@/lib/storage` pulls
+it in, which is why **application code must import `getStorage` from `@/lib/storage`, never
+from `@palscans/core/storage` directly**. `lib/config/install.test.ts` walks the source and
+fails if anything bypasses that, because no runtime test could catch it.
 
 ## Storage is rebuilt, not restarted
 

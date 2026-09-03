@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto'
 import type { SignedPutUrl, Storage } from '@palscans/core/storage'
 import { getStorage } from '@palscans/core/storage'
+import '../config/install'
 import { configMirror } from '@/lib/config/mirror'
 import { getEnv } from '../env'
 

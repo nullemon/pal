@@ -1984,6 +1984,8 @@ export const messages = {
         smtpConnectFailed: 'Could not reach {host} on port {port}: {detail}',
         smtpConnectOk: 'Reached {host} on port {port}.',
         smtpTlsOk: 'The connection is encrypted.',
+        smtpTlsLocal:
+          'Not encrypted, but the server is on this machine, so nothing crosses the network.',
         smtpTlsFailed:
           'The server offered no encryption, so the password was not sent. Use port 465, or a server that supports STARTTLS.',
         smtpAuthOk: 'The server accepted the username and password.',
@@ -2012,6 +2014,8 @@ export const messages = {
         turnstileSecretOk:
           'Cloudflare accepted the secret key — it answered a deliberately invalid token with "invalid token" rather than "invalid secret".',
         turnstileSecretFailed: 'Cloudflare says this secret key is not valid: {detail}',
+        turnstileUnreachable:
+          'Cloudflare did not answer, so the key is unproven — and sign-ups would fail the same way: {detail}',
         turnstileSiteKeySkipped:
           'The site key is public and is only proved by the widget rendering in a browser. Open the sign-up page to see it.',
         turnstileSiteKeyMissing:
@@ -2020,6 +2024,8 @@ export const messages = {
           'The provider accepted the client ID and secret — it refused a deliberately invalid code rather than the credentials.',
         oauthFailed: 'The provider rejected the client ID or secret: {detail}',
         oauthSkipped: 'Not set, so this button does not appear on the sign-in page.',
+        oauthUnverified:
+          'The provider answered in a way this check does not recognise, so the credentials are neither proved nor disproved: {detail}',
         vapidPairOk:
           'The private key matches the public key, so the push service will accept messages signed with it.',
         vapidPublicInvalid:
