@@ -51,7 +51,7 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
-  const target = (event.notification.data && event.notification.data.url) || FALLBACK.url
+  const target = event.notification.data?.url || FALLBACK.url
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
       const url = new URL(target, self.location.origin).href
@@ -73,7 +73,7 @@ self.addEventListener('notificationclick', (event) => {
  * so drop the old row and let the next visit to /me/notifications re-subscribe.
  */
 self.addEventListener('pushsubscriptionchange', (event) => {
-  const oldEndpoint = event.oldSubscription && event.oldSubscription.endpoint
+  const oldEndpoint = event.oldSubscription?.endpoint
   if (!oldEndpoint) return
   event.waitUntil(
     fetch('/api/push/subscribe', {

@@ -96,7 +96,7 @@ export const fanoutNewChapter = async (
 ): Promise<ChapterFanoutSummary> => {
   const chapter = await loadChapterForNotice(db, chapterId)
   const summary = emptySummary(chapterId)
-  if (!chapter || chapter.state !== 'published') return summary
+  if (chapter?.state !== 'published') return summary
   const now = deps.now ?? new Date()
   const locked =
     chapter.isPremium ||
