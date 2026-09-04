@@ -13,3 +13,6 @@ playwright-report/
 test-results/
 # uploaded theme packages are not source
 *.zip
+
+# Redis snapshot, written when a dev redis is started from the repo root
+dump.rdb

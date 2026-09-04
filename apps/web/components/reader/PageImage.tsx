@@ -50,7 +50,6 @@ export function PageImage({
         <BlurHash hash={page.blurHash} className="absolute inset-0 size-full" />
       ) : null}
       {active && !failed ? (
-        // biome-ignore lint/performance/noImgElement: pages are pre-encoded by the worker; the Next optimiser has nothing to add
         <img
           src={src}
           alt={alt}

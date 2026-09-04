@@ -1,10 +1,15 @@
-/* PALScans service worker — web push only (docs/17 §D).
+/* PALScans service worker — web push (docs/17 §D) and offline downloads (docs/17 §G).
  *
- * Deliberately minimal: it caches nothing and intercepts no fetch, so it cannot serve a stale
- * page or interfere with the reader. It exists to receive a push while the tab is closed and
- * to focus (or open) the right page when the notification is clicked. Offline downloads
- * (docs/17 §G) will extend this file rather than replace it.
+ * The fetch handler is deliberately narrow, because a service worker that guesses wrong
+ * serves a stale reader to everyone. It only ever answers from cache for:
+ *   1. a request whose exact URL a download put in `palscans-offline-v1`, and
+ *   2. immutable `/_next/static/*` build output, so the offline shell has its JS,
+ * and it falls back to the cached `/offline` document only for a navigation that the
+ * network has already refused. Everything else goes straight to the network, untouched.
  */
+const OFFLINE_CACHE = 'palscans-offline-v1'
+const SHELL_CACHE = 'palscans-shell-v1'
+const OFFLINE_URL = '/offline'
 
 const FALLBACK = {
   title: 'PALScans',
@@ -13,8 +18,87 @@ const FALLBACK = {
 }
 
 /** Take over immediately so a reader who just subscribed gets the next push. */
-self.addEventListener('install', () => self.skipWaiting())
-self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()))
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches
+      .open(SHELL_CACHE)
+      // `reload` so an install never adopts a stale copy from the HTTP cache.
+      .then((c) => c.add(new Request(OFFLINE_URL, { cache: 'reload' })))
+      .catch(() => undefined)
+      .then(() => self.skipWaiting()),
+  )
+})
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches
+      .keys()
+      .then((keys) =>
+        Promise.all(
+          keys
+            .filter((k) => k.startsWith('palscans-') && k !== OFFLINE_CACHE && k !== SHELL_CACHE)
+            .map((k) => caches.delete(k)),
+        ),
+      )
+      .then(() => self.clients.claim()),
+  )
+})
+
+/**
+ * Downloaded pages first, then the build output the offline shell needs, then — only when
+ * the network has actually failed — the offline document for a navigation.
+ */
+self.addEventListener('fetch', (event) => {
+  const req = event.request
+  if (req.method !== 'GET') return
+  const url = new URL(req.url)
+
+  // 1. A page a download stored. Cache-only: these URLs may be signed and expired.
+  event.respondWith(
+    caches.open(OFFLINE_CACHE).then((cache) =>
+      cache.match(req).then((hit) => {
+        if (hit) return hit
+
+        // 2. Immutable build output, so `/offline` can boot with no network.
+        if (url.origin === self.location.origin && url.pathname.startsWith('/_next/static/')) {
+          return caches.open(SHELL_CACHE).then((shell) =>
+            shell.match(req).then(
+              (cached) =>
+                cached ||
+                fetch(req).then((res) => {
+                  if (res.ok) shell.put(req, res.clone())
+                  return res
+                }),
+            ),
+          )
+        }
+
+        // 3. A navigation the network refused: hand over the offline library.
+        if (req.mode === 'navigate') {
+          return fetch(req).catch(() =>
+            caches
+              .open(SHELL_CACHE)
+              .then((shell) => shell.match(OFFLINE_URL))
+              .then((shell) => shell || Response.error()),
+          )
+        }
+
+        return fetch(req)
+      }),
+    ),
+  )
+})
+
+/** The downloads screen asks for the shell to be refreshed after it finishes a download. */
+self.addEventListener('message', (event) => {
+  if (event.data?.type !== 'cache-shell') return
+  event.waitUntil(
+    caches
+      .open(SHELL_CACHE)
+      .then((c) => c.add(new Request(OFFLINE_URL, { cache: 'reload' })))
+      .catch(() => undefined),
+  )
+})
 
 /** The payload the sender writes is JSON; anything else is treated as plain body text. */
 function readPayload(event) {

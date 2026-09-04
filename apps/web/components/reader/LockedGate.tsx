@@ -70,7 +70,6 @@ export function LockedGate(p: LockedGateProps) {
             style={{ aspectRatio: '2 / 3', background: p.coverColor ?? undefined }}
           >
             {p.coverUrl ? (
-              // biome-ignore lint/performance/noImgElement: covers are pre-encoded; the Next optimiser has nothing to add
               <img
                 src={p.coverUrl}
                 alt={fmt(messages.seriesDetail.coverAlt, { title: p.seriesTitle })}

@@ -4,6 +4,7 @@ import './globals.css'
 
 import type { Metadata, Viewport } from 'next'
 import type { ReactNode } from 'react'
+import { ServiceWorker } from '@/components/shell/ServiceWorker'
 import { ThemeScript } from '@/components/shell/ThemeScript'
 import { AppearanceStyle } from '@/lib/appearance/AppearanceStyle'
 import { SeoHead } from '@/lib/seo/SeoHead'
@@ -12,6 +13,16 @@ import { site } from '@/lib/site'
 export const metadata: Metadata = {
   title: { default: site.name, template: `%s · ${site.name}` },
   description: site.tagline,
+  // docs/06 "Mobile specifics" — installable, with the icon iOS uses on the home screen.
+  applicationName: site.name,
+  appleWebApp: { capable: true, title: site.name, statusBarStyle: 'black-translucent' },
+  icons: {
+    icon: [
+      { url: '/icons/icon.svg', type: 'image/svg+xml' },
+      { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+    ],
+    apple: '/icons/apple-touch-icon.png',
+  },
 }
 
 export const viewport: Viewport = {
@@ -35,7 +46,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         {/* P6: Organization/WebSite JSON-LD, sitemap + feed links (cached, never throws) */}
         <SeoHead />
       </head>
-      <body className="bg-bg text-fg">{children}</body>
+      <body className="bg-bg text-fg">
+        {children}
+        <ServiceWorker />
+      </body>
     </html>
   )
 }

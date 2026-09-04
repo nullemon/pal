@@ -10,7 +10,8 @@
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "e2e": "playwright test",
-    "lint": "biome check ."
+    "lint": "biome check .",
+    "verify:offline": "node scripts/verify-offline.mjs"
   },
   "dependencies": {
     "@fontsource-variable/archivo": "^5.3.0",

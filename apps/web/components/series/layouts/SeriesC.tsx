@@ -207,7 +207,7 @@ export function SeriesC({
                 signedIn={!!user}
                 initial={state.rating}
               />
-              <DownloadButton entitled={canDownload} />
+              <DownloadButton entitled={canDownload} chapters={chapters} />
             </div>
 
             {series.synopsis ? <Synopsis text={series.synopsis} title={series.title} /> : null}

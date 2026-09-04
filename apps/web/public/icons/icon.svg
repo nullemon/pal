@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="t">
+  <title id="t">PALScans</title>
+  <rect width="512" height="512" fill="none"/>
+  <rect x="0" y="0" width="512" height="512" rx="128" fill="#7c3aed"/>
+  <path d="M182.85714285714283 365.71428571428567V146.28571428571428h91.42857142857142a69.48571428571428 69.48571428571428 0 0 1 0 138.97142857142856h-91.42857142857142"
+    fill="none" stroke="#ffffff" stroke-width="43.88571428571428" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

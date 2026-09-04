@@ -74,7 +74,7 @@ export function LoginForm({ returnTo, email: initialEmail = '', linkProvider }: 
 
   if (step === 'totp') {
     return (
-      <form onSubmit={submitTotp} className="flex flex-col gap-4" noValidate>
+      <form method="post" onSubmit={submitTotp} className="flex flex-col gap-4" noValidate>
         <div>
           <h2 className="font-display text-lg font-bold text-fg">{messages.authPage.totpTitle}</h2>
           <p className="mt-1 text-[13px] text-fg-muted">{messages.authPage.totpLead}</p>
@@ -99,7 +99,7 @@ export function LoginForm({ returnTo, email: initialEmail = '', linkProvider }: 
   }
 
   return (
-    <form onSubmit={submitPassword} className="flex flex-col gap-4" noValidate>
+    <form method="post" onSubmit={submitPassword} className="flex flex-col gap-4" noValidate>
       {linkProvider ? (
         <Notice tone="info">{fmt(messages.authPage.linkLead, { email: initialEmail })}</Notice>
       ) : null}

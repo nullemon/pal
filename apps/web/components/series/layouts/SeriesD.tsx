@@ -197,7 +197,7 @@ export function SeriesD({
                   signedIn={!!user}
                   initial={state.rating}
                 />
-                <DownloadButton entitled={canDownload} />
+                <DownloadButton entitled={canDownload} chapters={chapters} />
               </div>
             </div>
 

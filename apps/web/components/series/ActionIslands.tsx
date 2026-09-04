@@ -2,9 +2,11 @@
 
 import { fmt, messages } from '@palscans/core/messages'
 import { cn, Sheet, useToast } from '@palscans/ui'
-import { Bookmark, Download, Lock, Star } from 'lucide-react'
+import { Bookmark, Check, Download, Lock, Star } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import type { ChapterRowData } from '@/app/(site)/series/[slug]/data'
 import { del, postJson } from '@/lib/comments/client'
+import { useChapterDownload, useIsDownloaded } from '@/lib/offline/useDownloads'
 
 const ghost =
   'inline-flex h-11 items-center gap-2 rounded-[12px] border border-line bg-transparent px-4 text-sm font-semibold text-fg transition-colors hover:border-brand hover:bg-brand-wash disabled:opacity-60'
@@ -170,16 +172,89 @@ export function RateButton({
   )
 }
 
-/** Download — entitlement-gated (docs/06). Non-entitled readers see the Premium gate. */
-export function DownloadButton({ entitled }: { entitled: boolean }) {
+/** One row in the download sheet: its own progress, so several can run in sequence. */
+function DownloadRow({ chapter, onChanged }: { chapter: ChapterRowData; onChanged: () => void }) {
+  const { downloaded, recheck } = useIsDownloaded(chapter.id)
+  const { state, start } = useChapterDownload()
+  const label = fmt(messages.series.chapterShort, {
+    n: String(Number.parseFloat(chapter.number.toFixed(3))),
+  })
+
+  const working = state.status === 'working'
+  return (
+    <li className="flex items-center gap-2 border-line border-b py-2 last:border-b-0">
+      <span className="min-w-0 flex-1 truncate text-sm">
+        <span className="font-semibold tabular-nums">{label}</span>
+        {chapter.title ? <span className="text-fg-muted"> · {chapter.title}</span> : null}
+      </span>
+      {downloaded ? (
+        <button
+          type="button"
+          className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[8px] px-2.5 font-semibold text-[12px] text-fg-muted hover:text-danger"
+          onClick={async () => {
+            const { removeChapter } = await import('@/lib/offline/cache')
+            await removeChapter(chapter.id).catch(() => undefined)
+            await recheck()
+            onChanged()
+          }}
+        >
+          <Check size={13} aria-hidden="true" className="text-ok" />
+          {messages.series.downloadDone}
+        </button>
+      ) : (
+        <button
+          type="button"
+          disabled={working}
+          className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[8px] border border-line px-2.5 font-semibold text-[12px] transition-colors hover:border-brand disabled:opacity-60"
+          onClick={async () => {
+            const done = await start(chapter.id)
+            if (done) {
+              await recheck()
+              onChanged()
+            }
+          }}
+        >
+          {working ? (
+            fmt(messages.series.downloadWorking, {
+              done: String(state.progress.done),
+              total: String(state.progress.total),
+            })
+          ) : (
+            <>
+              <Download size={13} aria-hidden="true" />
+              {messages.series.downloadStart}
+            </>
+          )}
+        </button>
+      )}
+    </li>
+  )
+}
+
+/**
+ * Download — entitlement-gated (docs/06, docs/17 §G). Entitled readers get a list of the
+ * chapters they can actually read, each downloadable on its own; everyone else gets the
+ * Premium gate. Only `canRead` chapters appear: offering a download that would 403 is worse
+ * than not offering one.
+ */
+export function DownloadButton({
+  entitled,
+  chapters = [],
+}: {
+  entitled: boolean
+  chapters?: ChapterRowData[]
+}) {
   const [open, setOpen] = useState(false)
+  const [version, setVersion] = useState(0)
+  const readable = chapters.filter((c) => c.canRead && c.pageCount > 0)
+
   return (
     <>
       <button type="button" className={ghost} onClick={() => setOpen(true)}>
         <Download size={18} aria-hidden="true" />
         {messages.series.download}
         {!entitled ? (
-          <span className="inline-flex h-5 items-center gap-1 rounded-full bg-gold/12 px-[7px] text-[11px] font-bold text-gold">
+          <span className="inline-flex h-5 items-center gap-1 rounded-full bg-gold/12 px-[7px] font-bold text-[11px] text-gold">
             <Lock size={10} aria-hidden="true" />
             {messages.seriesDetail.premium}
           </span>
@@ -192,10 +267,34 @@ export function DownloadButton({ entitled }: { entitled: boolean }) {
       >
         <div className="flex flex-col gap-4 p-4">
           {entitled ? (
-            <p className="text-sm text-fg-muted">{messages.seriesDetail.downloadHint}</p>
+            <>
+              <p className="text-fg-muted text-sm">{messages.seriesDetail.downloadHint}</p>
+              {readable.length === 0 ? (
+                <p className="text-fg-subtle text-sm">{messages.series.emptyChapters}</p>
+              ) : (
+                <ul
+                  key={version}
+                  className="m-0 max-h-[50vh] list-none overflow-y-auto overscroll-contain p-0"
+                >
+                  {readable.map((c) => (
+                    <DownloadRow
+                      key={c.id}
+                      chapter={c}
+                      onChanged={() => setVersion((v) => v + 1)}
+                    />
+                  ))}
+                </ul>
+              )}
+              <a
+                href="/me/downloads"
+                className="text-[13px] font-semibold text-brand-hover hover:underline"
+              >
+                {messages.me.downloads.title}
+              </a>
+            </>
           ) : (
             <>
-              <p className="text-sm text-fg-muted">{messages.seriesDetail.premiumGateBody}</p>
+              <p className="text-fg-muted text-sm">{messages.seriesDetail.premiumGateBody}</p>
               <ul className="flex flex-col gap-1.5 text-sm">
                 {[
                   messages.premium.bullets.adFree,
@@ -210,7 +309,7 @@ export function DownloadButton({ entitled }: { entitled: boolean }) {
               </ul>
               <a
                 href="/subscribe"
-                className="inline-flex h-11 items-center justify-center rounded-[12px] bg-brand px-5 text-[15px] font-bold text-brand-ink hover:bg-brand-hover"
+                className="inline-flex h-11 items-center justify-center rounded-[12px] bg-brand px-5 font-bold text-[15px] text-brand-ink hover:bg-brand-hover"
               >
                 {messages.seriesDetail.premiumGateCta}
               </a>

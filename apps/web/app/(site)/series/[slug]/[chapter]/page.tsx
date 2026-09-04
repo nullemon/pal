@@ -1,4 +1,4 @@
-import { type ChapterLock, can } from '@palscans/core'
+import { can } from '@palscans/core'
 import { fmt, messages } from '@palscans/core/messages'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
@@ -6,27 +6,25 @@ import { preload } from 'react-dom'
 import { ChapterComments } from '@/components/reader/ChapterComments'
 import { ChapterJsonLd } from '@/components/reader/ChapterJsonLd'
 import { LockedGate } from '@/components/reader/LockedGate'
-import {
-  chapterHref,
-  formatChapterNumber,
-  parseChapterSegment,
-  seriesHref,
-} from '@/components/reader/params'
+import { chapterHref, parseChapterSegment, seriesHref } from '@/components/reader/params'
 import { Reader } from '@/components/reader/Reader'
 import {
-  type ChapterListEntry,
   lockOf,
   readerChapter,
   readerChapterList,
-  readerResume,
   readerSeries,
   storageUrl,
   toReaderPages,
   viewerCanRead,
 } from '@/components/reader/server/data'
+import {
+  buildReaderData,
+  chapterLabel,
+  lockedForViewer,
+  toLink,
+} from '@/components/reader/server/payload'
 import { chapterJsonLd, chapterMetadata } from '@/components/reader/server/seo'
 import { cachedReaderSiteSettings } from '@/components/reader/server/settings'
-import type { ChapterLink, ReaderData } from '@/components/reader/types'
 import { ViewBeacon } from '@/components/views/ViewBeacon'
 import { getSessionUser } from '@/lib/auth/session'
 import { entitlementGate } from '@/lib/entitlements'
@@ -70,16 +68,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   })
 }
 
-const chapterLabel = (n: number) =>
-  fmt(messages.readerUi.chapterTitle, { n: formatChapterNumber(n) })
-
-const toLink = (slug: string, c: ChapterListEntry, locked: boolean): ChapterLink => ({
-  number: c.number,
-  label: chapterLabel(c.number),
-  href: chapterHref(slug, c.number),
-  locked,
-})
-
 export default async function ChapterPage({ params }: PageProps) {
   const ctx = await load(params)
   if (!ctx) notFound()
@@ -91,43 +79,20 @@ export default async function ChapterPage({ params }: PageProps) {
     cachedReaderSiteSettings(),
   ])
   const readable = viewerCanRead(user, bundle.chapter, { overrides: gate.overrides, now })
-  // docs/17 §B: the chapter select shows a lock only where *this* viewer is actually
-  // locked out, so a feature the operator made free renders as free here too.
-  const lockedFor = (lock: ChapterLock): boolean => {
-    switch (lock) {
-      case 'early_access':
-        return !gate.can('early_access', user, now)
-      case 'premium':
-        return !gate.can('premium_content', user, now)
-      case 'unpublished':
-        return !can(user, 'chapter.read')
-      default:
-        return false
-    }
-  }
-  const links = list.map((c) => toLink(series.slug, c, lockedFor(c.lock)))
-  const byNumber = new Map(links.map((l) => [l.number, l]))
-  const prev = bundle.prev ? (byNumber.get(bundle.prev.number) ?? null) : null
-  const next = bundle.next ? (byNumber.get(bundle.next.number) ?? null) : null
-  const number = formatChapterNumber(bundle.chapter.number)
-  const label = chapterLabel(bundle.chapter.number)
-  const here = chapterHref(series.slug, bundle.chapter.number)
-  const returnTo = encodeURIComponent(here)
-  const subscribe = `/subscribe?return=${returnTo}`
-  const signIn = `/login?next=${returnTo}`
-  const coverUrl = series.coverKey ? storageUrl(series.coverKey) : null
-  const relLinks = (
-    <>
-      {prev ? <link rel="prev" href={prev.href} /> : null}
-      {next ? <link rel="next" href={next.href} /> : null}
-    </>
-  )
+  const lock = lockOf(bundle.chapter, now)
 
   if (!readable) {
-    const lock = lockOf(bundle.chapter, now)
+    const links = list.map((c) => toLink(series.slug, c, lockedForViewer(gate, user, now, c.lock)))
+    const byNumber = new Map(links.map((l) => [l.number, l]))
+    const prev = bundle.prev ? (byNumber.get(bundle.prev.number) ?? null) : null
+    const next = bundle.next ? (byNumber.get(bundle.next.number) ?? null) : null
+    const label = chapterLabel(bundle.chapter.number)
+    const returnTo = encodeURIComponent(chapterHref(series.slug, bundle.chapter.number))
+    const coverUrl = series.coverKey ? storageUrl(series.coverKey) : null
     return (
       <>
-        {relLinks}
+        {prev ? <link rel="prev" href={prev.href} /> : null}
+        {next ? <link rel="next" href={next.href} /> : null}
         {/* A paywall gate is not a read of the chapter, but it is still interest in the
             series, so it counts as a series-page view (chapter_id 0). */}
         <ViewBeacon seriesId={series.id} />
@@ -144,57 +109,32 @@ export default async function ChapterPage({ params }: PageProps) {
           prev={prev}
           next={next}
           signedIn={!!user}
-          subscribeHref={subscribe}
-          signInHref={signIn}
+          subscribeHref={`/subscribe?return=${returnTo}`}
+          signInHref={`/login?next=${returnTo}`}
         />
       </>
     )
   }
 
-  const pages = await toReaderPages(bundle.pages, lockOf(bundle.chapter, now))
+  const pages = await toReaderPages(bundle.pages, lock)
   const first = pages[0]
   if (first) preload(first.url, { as: 'image', fetchPriority: 'high' })
-  const resume = await readerResume(user, series.id, bundle.chapter.id)
-  const noAds = !gate.showsAds(user, now)
-  const [w, h] = site.ads.sky_size === '300x600' ? [300, 600] : [160, 600]
-
-  const data: ReaderData = {
-    series: {
-      id: series.id,
-      slug: series.slug,
-      title: series.title,
-      href: seriesHref(series.slug),
-      readingDirection: series.readingDirection,
-    },
-    chapter: {
-      id: bundle.chapter.id,
-      number: bundle.chapter.number,
-      label,
-      labelWithTitle: bundle.chapter.title
-        ? fmt(messages.readerUi.chapterWithTitle, { n: number, title: bundle.chapter.title })
-        : label,
-      title: bundle.chapter.title,
-      href: here,
-      altTemplate: fmt(messages.reader.pageAlt, { title: series.title, chapter: number }),
-    },
+  const { data, coverUrl, prev, next, label, number } = await buildReaderData({
+    user,
+    series,
+    bundle,
+    list,
+    gate,
+    site,
+    now,
     pages,
-    prev,
-    next,
-    chapters: links,
-    defaults: { mode: site.layout.default_mode, background: site.layout.background },
-    ads: {
-      enabled: !noAds,
-      skyscrapers: site.ads.skyscrapers,
-      skySize: { w: w === 300 ? 300 : 160, h: h === 600 ? 600 : 600 },
-      mobileInterval: site.ads.mobile_interval,
-      endSlot: site.ads.end_slot,
-      placeholder: site.endTag === null,
-    },
-    viewer: { signedIn: !!user, resume },
-    links: { subscribe, signIn },
-    nextPagesEndpoint:
-      bundle.next && next && !next.locked ? `/api/chapters/${bundle.next.id}/pages?limit=3` : null,
-  }
+  })
+  const relLinks = (
+    <>
+      {prev ? <link rel="prev" href={prev.href} /> : null}
+      {next ? <link rel="next" href={next.href} /> : null}
+    </>
+  )
 
   const summary = bundle.chapter.publishedAt
     ? fmt(messages.readerUi.summary, {

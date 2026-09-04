@@ -27,7 +27,7 @@ export function ForgotForm() {
   if (sent) return <Notice tone="ok">{messages.auth.resetSent}</Notice>
 
   return (
-    <form onSubmit={submit} className="flex flex-col gap-4" noValidate>
+    <form method="post" onSubmit={submit} className="flex flex-col gap-4" noValidate>
       {error ? <Notice tone="error">{error}</Notice> : null}
       <Field
         label={messages.auth.email}
