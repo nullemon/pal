@@ -27,6 +27,7 @@ import {
 import { chapterJsonLd, chapterMetadata } from '@/components/reader/server/seo'
 import { cachedReaderSiteSettings } from '@/components/reader/server/settings'
 import type { ChapterLink, ReaderData } from '@/components/reader/types'
+import { ViewBeacon } from '@/components/views/ViewBeacon'
 import { getSessionUser } from '@/lib/auth/session'
 import { entitlementGate } from '@/lib/entitlements'
 
@@ -127,6 +128,9 @@ export default async function ChapterPage({ params }: PageProps) {
     return (
       <>
         {relLinks}
+        {/* A paywall gate is not a read of the chapter, but it is still interest in the
+            series, so it counts as a series-page view (chapter_id 0). */}
+        <ViewBeacon seriesId={series.id} />
         <ChapterJsonLd data={chapterJsonLd({ series, bundle, firstPageUrl: null, coverUrl })} />
         <LockedGate
           seriesTitle={series.title}
@@ -203,6 +207,8 @@ export default async function ChapterPage({ params }: PageProps) {
   return (
     <>
       {relLinks}
+      {/* docs/02 "Views and ranking": reported by the browser after a moment on the page. */}
+      <ViewBeacon seriesId={series.id} chapterId={bundle.chapter.id} />
       <ChapterJsonLd
         data={chapterJsonLd({ series, bundle, firstPageUrl: first?.url ?? null, coverUrl })}
       />

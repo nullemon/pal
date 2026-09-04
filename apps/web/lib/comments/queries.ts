@@ -105,7 +105,11 @@ export const viewerFor = async (
 
 /** Rows the viewer may see: published, or their own pending/shadow ones; deleted only as stubs. */
 const visibleWhere = (viewer: CommentViewer | null) => {
-  const alive = or(isNull(comments.deletedAt), gt(comments.replyCount, 0))
+  // `comments.visible` is the stored form of `deleted_at IS NULL OR reply_count > 0` — the
+  // same rule (a deleted comment stays as a stub while it has replies), written so the
+  // partial indexes in `9016_comment_listing_index.sql` can carry it. Emitted bare rather
+  // than as `visible = $n` so the index predicate matches even under a generic plan.
+  const alive = sql`${comments.visible}`
   const status = viewer
     ? or(
         eq(comments.status, 'published'),
@@ -124,9 +128,22 @@ const targetWhere = (t: CommentTarget) =>
     ? and(eq(comments.seriesId, t.id), isNull(comments.chapterId))
     : eq(comments.chapterId, t.id)
 
-/** docs/14 §1: score with a 24h half-life; Premium authors first among equals. */
-const decayed = sql<number>`(${comments.score} * power(0.5, extract(epoch from (now() - ${comments.createdAt})) / 86400.0))`
-const authorPremium = sql<boolean>`exists (select 1 from ${entitlements} e where e.user_id = ${comments.userId} and e.feature = 'premium_content' and (e.expires_at is null or e.expires_at > now()))`
+/**
+ * docs/14 §1: score with a 24h half-life, Premium authors first among equals.
+ *
+ * The decay is `comments.hot` — the same ranking with `now()` factored out (see the column's
+ * note in `@palscans/db`), so the order comes out of an index instead of being recomputed for
+ * every row in the table. The Premium tie-break is a join on the author's live entitlement,
+ * one indexed lookup per candidate row; as a correlated `EXISTS` the planner answered it by
+ * reading every live `premium_content` entitlement, once per page load.
+ */
+const premiumOn = and(
+  eq(entitlements.userId, comments.userId),
+  eq(entitlements.feature, 'premium_content'),
+  or(isNull(entitlements.expiresAt), gt(entitlements.expiresAt, sql`now()`)),
+)
+/** The entitlement is unique per (user, feature), so the join never duplicates a comment. */
+const authorPremium = sql<boolean>`(${entitlements.userId} is not null)`
 
 const orderFor = (sort: CommentSort) => {
   switch (sort) {
@@ -137,7 +154,7 @@ const orderFor = (sort: CommentSort) => {
     default:
       return [
         desc(comments.isPinned),
-        desc(decayed),
+        desc(comments.hot),
         desc(authorPremium),
         desc(comments.createdAt),
         desc(comments.id),
@@ -316,14 +333,28 @@ export const listComments = async (db: Db, opts: ListOptions): Promise<CommentPa
   const offset = parseCursor(opts.cursor)
   const where = and(targetWhere(opts.target), isNull(comments.parentId), visibleWhere(opts.viewer))
 
+  // "Best" carries the Premium tie-break, so it joins the author's live entitlement; the
+  // chronological sorts do not need it and skip the join entirely.
+  const ordered =
+    opts.sort === 'best'
+      ? db
+          .select(cols)
+          .from(comments)
+          .leftJoin(entitlements, premiumOn)
+          .where(where)
+          .orderBy(...orderFor(opts.sort))
+          .limit(limit + 1)
+          .offset(offset)
+      : db
+          .select(cols)
+          .from(comments)
+          .where(where)
+          .orderBy(...orderFor(opts.sort))
+          .limit(limit + 1)
+          .offset(offset)
+
   const [rows, [countRow]] = await Promise.all([
-    db
-      .select(cols)
-      .from(comments)
-      .where(where)
-      .orderBy(...orderFor(opts.sort))
-      .limit(limit + 1)
-      .offset(offset),
+    ordered,
     db.select({ n: sql<number>`count(*)::int` }).from(comments).where(where),
   ])
   const hasMore = rows.length > limit

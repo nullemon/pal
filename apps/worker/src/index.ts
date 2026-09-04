@@ -9,6 +9,7 @@ import { runImport } from './jobs/import-run.js'
 import { registerNotifications } from './jobs/notify-index.js'
 import { publishDue } from './jobs/publish.js'
 import { type ArtKind, processSeriesArt } from './jobs/series-art.js'
+import { runStatsRollup } from './jobs/stats-rollup.js'
 import { installWorkerConfig } from './lib/config.js'
 import { log } from './lib/log.js'
 import { revalidateWeb, runMaintenance } from './lib/revalidate.js'
@@ -19,6 +20,9 @@ import { revalidateWeb, runMaintenance } from './lib/revalidate.js'
  * job ever reached (the web app runs an in-process queue when REDIS_URL is unset).
  */
 const SCHEDULER_MS = getEnv().WORKER_SCHEDULER_MS
+/** How often `stats.rollup` is enqueued (docs/02: "every few minutes"). */
+const ROLLUP_MS = getEnv().WORKER_ROLLUP_MS
+let lastRollup = 0
 const CONCURRENCY = getEnv().WORKER_CONCURRENCY
 const PAGE_CONCURRENCY = getEnv().WORKER_PAGE_CONCURRENCY
 
@@ -94,11 +98,19 @@ const main = async () => {
     }
   })
 
+  // Views (docs/02 "Views and ranking"): fold `view_events` into the daily stats tables and
+  // the denormalised counters, keep tomorrow's partition ready and drop the ones past 90
+  // days. The producer is the scheduler tick below; the job exists as well so a backfill can
+  // be asked for by hand (`from` / `to`) and so a redelivery is harmless — the rollup is
+  // idempotent.
+  queue.process('stats.rollup', async (job) => {
+    await runStatsRollup(db, { from: job.data?.from, to: job.data?.to })
+  })
+
   for (const name of [
     'sitemap.build',
     'notify.comment',
     'email.send',
-    'stats.rollup',
     'webhook.deliver',
   ] as const) {
     queue.process(name, async (job) => {
@@ -112,6 +124,13 @@ const main = async () => {
       if ((await publishDue(db)).length) await revalidateWeb(['catalog'])
       // Periodic jobs that live in the web app (account-deletion purges). Self-throttled.
       void runMaintenance()
+      // The `stats.rollup` producer. Enqueued rather than called directly so a BullMQ
+      // deployment does the work on whichever worker is free, and so the job shows up in
+      // Admin → Jobs like every other one. `jobId` collapses a backlog into one pass.
+      if (Date.now() - lastRollup >= ROLLUP_MS) {
+        lastRollup = Date.now()
+        await queue.add('stats.rollup', {}, { jobId: `stats.rollup:${Math.floor(Date.now() / ROLLUP_MS)}` })
+      }
       // safety net: processing rows that never started (no Redis / lost job) or stalled for 30 minutes
       const stale = await db
         .select({ id: chapters.id })

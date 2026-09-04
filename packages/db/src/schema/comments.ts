@@ -4,6 +4,7 @@ import {
   bigint,
   boolean,
   check,
+  doublePrecision,
   index,
   integer,
   jsonb,
@@ -57,6 +58,37 @@ export const comments = pgTable(
     editedAt: timestamptz('edited_at'),
     createdAt: createdAt(),
     deletedAt: deletedAt(),
+    /**
+     * The listing rule in one indexable column: a comment is on the page while it is alive,
+     * and a deleted one stays as a "[deleted]" stub for as long as it has replies hanging off
+     * it (docs/14 §1). Written as `deleted_at IS NULL OR reply_count > 0` in the query it
+     * disqualified every partial index; as a column a partial index can be predicated on it.
+     */
+    visible: boolean('visible')
+      .generatedAlwaysAs(sql`(deleted_at IS NULL OR reply_count > 0)`)
+      .notNull(),
+    /**
+     * The "Best" order (docs/14 §1) with `now()` factored out, so it can live in an index.
+     *
+     * `score * 0.5^((now - created)/86400)` equals `K(now) * score * 2^(created/86400)` with
+     * the same positive `K(now)` for every row, so the ranking never changes as time passes —
+     * only when the score does. `hot` is the log of that surviving factor: for a positive
+     * score `ln(score) + days_since_epoch * ln 2`, for a negative one its mirror image (a
+     * negative score decays towards zero from below), and 0 for score 0, which decays to
+     * exactly 0 forever. Positives land near +14 000 and negatives near −14 000, so the
+     * three classes cannot cross. Ordering by `hot` DESC is ordering by the decayed score.
+     */
+    hot: doublePrecision('hot')
+      .generatedAlwaysAs(
+        sql`(CASE
+          WHEN score > 0 THEN ln(score::double precision)
+            + extract(epoch from (created_at - timestamptz '1970-01-01 00:00:00+00')) / 86400.0 * ln(2.0)
+          WHEN score < 0 THEN -(ln((-score)::double precision)
+            + extract(epoch from (created_at - timestamptz '1970-01-01 00:00:00+00')) / 86400.0 * ln(2.0))
+          ELSE 0
+        END)`,
+      )
+      .notNull(),
   },
   (t) => [
     check('comments_target_check', sql`${t.seriesId} IS NOT NULL OR ${t.chapterId} IS NOT NULL`),
@@ -71,6 +103,62 @@ export const comments = pgTable(
     index('comments_moderation_idx')
       .on(t.status, t.createdAt.desc())
       .where(sql`${t.status} IN ('pending', 'shadow')`),
+    // The thread listing (docs/14 §8 GET /api/comments): the whole default order lives in
+    // the index, so a page is a range scan of one target instead of a scan of the table.
+    // `status` and `user_id` trail the sort keys so the `count(*)` beside every page is an
+    // index-only scan; below the unique `id` they cannot affect the ordering. NULLS FIRST
+    // on the descending keys because that is what `desc()` in a query means.
+    index('comments_chapter_thread_idx')
+      .on(
+        t.chapterId,
+        t.isPinned.desc().nullsFirst(),
+        t.hot.desc().nullsFirst(),
+        t.createdAt.desc().nullsFirst(),
+        t.id.desc().nullsFirst(),
+        t.status,
+        t.userId,
+      )
+      .where(sql`${t.parentId} IS NULL AND ${t.chapterId} IS NOT NULL AND ${t.visible}`),
+    index('comments_series_thread_idx')
+      .on(
+        t.seriesId,
+        t.isPinned.desc().nullsFirst(),
+        t.hot.desc().nullsFirst(),
+        t.createdAt.desc().nullsFirst(),
+        t.id.desc().nullsFirst(),
+        t.status,
+        t.userId,
+      )
+      .where(
+        sql`${t.parentId} IS NULL AND ${t.chapterId} IS NULL AND ${t.seriesId} IS NOT NULL AND ${t.visible}`,
+      ),
+    // Newest / oldest: the same rows in `created_at` order.
+    index('comments_chapter_recent_idx')
+      .on(
+        t.chapterId,
+        t.isPinned.desc().nullsFirst(),
+        t.createdAt.desc().nullsFirst(),
+        t.id.desc().nullsFirst(),
+        t.status,
+        t.userId,
+      )
+      .where(sql`${t.parentId} IS NULL AND ${t.chapterId} IS NOT NULL AND ${t.visible}`),
+    index('comments_series_recent_idx')
+      .on(
+        t.seriesId,
+        t.isPinned.desc().nullsFirst(),
+        t.createdAt.desc().nullsFirst(),
+        t.id.desc().nullsFirst(),
+        t.status,
+        t.userId,
+      )
+      .where(
+        sql`${t.parentId} IS NULL AND ${t.chapterId} IS NULL AND ${t.seriesId} IS NOT NULL AND ${t.visible}`,
+      ),
+    // Reply previews and "show all N replies", under the same visibility rule.
+    index('comments_parent_visible_idx')
+      .on(t.parentId, t.createdAt, t.id, t.status)
+      .where(sql`${t.parentId} IS NOT NULL AND ${t.visible}`),
   ],
 )
 

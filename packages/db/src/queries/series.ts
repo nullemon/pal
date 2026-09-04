@@ -84,11 +84,18 @@ export const seriesBySlug = async (
   return { ...row, genres: g, people: p, titles: t, linked }
 }
 
-/** Rank of a series by all-time views among published series (1-based), for "Rank #2". */
+/**
+ * Rank of a series by all-time views among published series (1-based), for "Rank #2".
+ *
+ * The outer column has to be written out (`"series".view_count`) rather than interpolated
+ * as `${series.viewCount}`: Drizzle renders a column reference inside a raw `sql` fragment
+ * unqualified, which inside this subquery bound to `s2.view_count` — the comparison was
+ * `s2.view_count > s2.view_count`, always false, and every series ranked #1.
+ */
 export const seriesRank = async (db: Db, seriesId: number): Promise<number | null> => {
   const [row] = await db
     .select({
-      rank: sql<number>`(select count(*)::int + 1 from ${series} s2 where s2.state = 'published' and s2.deleted_at is null and s2.view_count > ${series.viewCount})`,
+      rank: sql<number>`(select count(*)::int + 1 from ${series} s2 where s2.state = 'published' and s2.deleted_at is null and s2.view_count > ${series}.view_count)`,
     })
     .from(series)
     .where(eq(series.id, seriesId))

@@ -11,7 +11,12 @@ export interface JobMap {
   'notify.new_chapter': { chapterId: number }
   'notify.comment': { commentId: number; kind: 'reply' | 'mention' | 'reaction' }
   'email.send': { to: string; template: string; vars: Record<string, string> }
-  'stats.rollup': Record<string, never>
+  /**
+   * Roll `view_events` into the daily stats tables and the denormalised view counters
+   * (docs/02). Empty payload = the default trailing window; `from` / `to` (YYYY-MM-DD) ask
+   * for a backfill over a wider one.
+   */
+  'stats.rollup': { from?: string; to?: string }
   'webhook.deliver': { webhookId: number; event: string; payload: Record<string, unknown> }
   /** Walk the legacy WordPress site and import it, one resumable batch at a time (docs/17 §E). */
   'import.run': { runId: number }

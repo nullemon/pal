@@ -55,6 +55,7 @@ export const envSchema = z.object({
   WORKER_CONCURRENCY: z.coerce.number().int().positive().default(1),
   WORKER_PAGE_CONCURRENCY: z.coerce.number().int().positive().default(4),
   WORKER_SCHEDULER_MS: z.coerce.number().int().positive().default(30_000),
+  WORKER_ROLLUP_MS: z.coerce.number().int().positive().default(120_000),
 
   // auth providers
   GOOGLE_CLIENT_ID: z.string().min(1).optional(),

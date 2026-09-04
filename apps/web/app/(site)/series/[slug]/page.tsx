@@ -2,6 +2,7 @@ import { renderSeo, truncateWords } from '@palscans/core'
 import { fmt, messages } from '@palscans/core/messages'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
+import { ViewBeacon } from '@/components/views/ViewBeacon'
 import { storageUrl } from '@/lib/comments/media'
 import { getEnv } from '@/lib/env'
 import { seriesLayout } from '@/lib/layouts'
@@ -78,5 +79,11 @@ export default async function SeriesPage({ params, searchParams }: PageProps) {
   const { layout, ...rest } = view
   const preview = typeof sp.layout === 'string' ? sp.layout : undefined
   const Layout = seriesLayout(layout, preview)
-  return <Layout {...rest} />
+  return (
+    <>
+      {/* docs/02 "Views and ranking": the browser reports the view, this render never writes. */}
+      <ViewBeacon seriesId={rest.series.id} />
+      <Layout {...rest} />
+    </>
+  )
 }

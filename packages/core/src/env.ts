@@ -26,6 +26,8 @@ export const envSchema = z.object({
   WORKER_CONCURRENCY: z.coerce.number().int().positive().default(1),
   WORKER_PAGE_CONCURRENCY: z.coerce.number().int().positive().default(4),
   WORKER_SCHEDULER_MS: z.coerce.number().int().positive().default(30_000),
+  /** How often the worker enqueues `stats.rollup` (docs/02: "every few minutes"). */
+  WORKER_ROLLUP_MS: z.coerce.number().int().positive().default(120_000),
 })
 
 export type Env = z.infer<typeof envSchema>

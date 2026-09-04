@@ -58,7 +58,9 @@ palscans.org, www.palscans.org {
 # 		-Server
 # 	}
 #
-# 	# Everything else (avatars, temp uploads) caches briefly.
+# 	# Everything else caches briefly. In practice that is /avatars/* and /banners/*: the
+# 	# private prefixes (/uploads/*, /sitemaps/*, /_healthcheck/*) are not in MinIO's
+# 	# anonymous-download policy, so MinIO refuses them here rather than Caddy.
 # 	@other not path /pages/* /covers/*
 # 	header @other Cache-Control "public, max-age=300"
 #
