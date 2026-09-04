@@ -6,8 +6,17 @@ import { configMirror } from '@/lib/config/mirror'
 import { getEnv } from '../env'
 
 export const UPLOAD_TTL_MS = 900_000
-/** docs/03 "Paid content": locked page URLs are signed for 10 minutes. */
-export const SIGNED_URL_TTL_SEC = 600
+/**
+ * How long a locked page's URL stays valid (docs/03 "Paid content").
+ *
+ * Sized to a reading session, not to a page render. Every page of a locked chapter is signed
+ * once when the page is built, but the reader lazy-loads them as they scroll — so at ten
+ * minutes a Premium reader working through a 60-page chapter, or simply pausing, started
+ * getting 403s on the rest of it, and the Retry button re-requested the same expired URL.
+ * Two hours covers a real read with room to stop and come back; the URL still expires, so a
+ * copied link is not a permanent leak.
+ */
+export const SIGNED_URL_TTL_SEC = 7200
 
 const hmac = (input: string, secret: string = getEnv().SESSION_SECRET): string =>
   createHmac('sha256', secret).update(input).digest('hex')

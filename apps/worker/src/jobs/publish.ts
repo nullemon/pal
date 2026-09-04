@@ -1,7 +1,9 @@
+import { parseEntitlementOverrides } from '@palscans/core'
 import {
   bookmarks,
   chapters,
   type Db,
+  getSetting,
   notificationPrefs,
   notifications,
   series,
@@ -11,16 +13,26 @@ import { prefAllows } from '../../../web/lib/notifications/index.js'
 import { log } from '../lib/log.js'
 
 /**
- * docs/04 "Scheduling": every 30 seconds publish anything whose `published_at` is due,
- * touch `series.last_chapter_at`, and fan out `new_chapter` notifications to bookmarkers.
+ * docs/04 "Scheduling": every 30 seconds publish anything whose `published_at` is due and fan
+ * out `new_chapter` notifications to bookmarkers. `series.last_chapter_at` is maintained by
+ * the counter trigger (migration 0002), which is its only owner.
+ *
+ * Publishing is also where the early-access window is applied: a chapter opens Premium-only
+ * for `entitlements.early_access_minutes` and then becomes free to everyone, without anyone
+ * having to remember to set a date. A window already set by hand on the chapter wins, so a
+ * longer run for one release still works.
  */
 export const publishDue = async (db: Db, now = new Date()): Promise<number[]> => {
+  const overrides = parseEntitlementOverrides(await getSetting<unknown>(db, 'entitlements', {}))
+  const windowMs = overrides.early_access_minutes * 60_000
+  const earlyUntil = windowMs > 0 ? new Date(now.getTime() + windowMs) : null
   const due = await db
     .select({
       id: chapters.id,
       seriesId: chapters.seriesId,
       number: chapters.number,
       publishedAt: chapters.publishedAt,
+      earlyAccessUntil: chapters.earlyAccessUntil,
     })
     .from(chapters)
     .where(
@@ -38,7 +50,12 @@ export const publishDue = async (db: Db, now = new Date()): Promise<number[]> =>
       await db.transaction(async (tx) => {
         const updated = await tx
           .update(chapters)
-          .set({ state: 'published', updatedAt: now })
+          .set({
+            state: 'published',
+            updatedAt: now,
+            // Only when the operator has not set one themselves.
+            ...(earlyUntil && !c.earlyAccessUntil ? { earlyAccessUntil: earlyUntil } : {}),
+          })
           .where(and(eq(chapters.id, c.id), eq(chapters.state, 'scheduled')))
           .returning({ id: chapters.id })
         if (updated.length === 0) return

@@ -115,6 +115,7 @@ export function SeriesE({
   coverUrl,
   coverAlt,
   canDownload,
+  earlyAccessMinutes,
   site,
   ads,
 }: SeriesViewProps) {
@@ -320,6 +321,7 @@ export function SeriesE({
               continueId={state.progress?.chapterId ?? null}
               now={now.toISOString()}
               signedIn={!!user}
+              earlyAccessMinutes={earlyAccessMinutes}
             />
           </Panel>
 

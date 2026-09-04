@@ -1,8 +1,8 @@
-import { countdown } from '@palscans/core'
 import { fmt, messages } from '@palscans/core/messages'
 import { ChevronLeft, ChevronRight, Lock } from 'lucide-react'
 import Link from 'next/link'
 import type { ChapterLink } from './types'
+import { UnlockCountdown } from './UnlockCountdown'
 
 export interface LockedGateProps {
   seriesTitle: string
@@ -23,7 +23,8 @@ export interface LockedGateProps {
 
 /**
  * docs/06 "Locked chapters": the subscribe gate carrying series, cover and chapter. Server
- * rendered, no client code, and — the whole point — not one page URL in the HTML.
+ * rendered and — the whole point — not one page URL in the HTML. The only client code is the
+ * early-access countdown, which is handed a deadline and nothing else.
  */
 export function LockedGate(p: LockedGateProps) {
   const body =
@@ -96,11 +97,7 @@ export function LockedGate(p: LockedGateProps) {
               {p.lock === 'early_access' && p.freeAt ? (
                 <>
                   {' '}
-                  {fmt(messages.readerUi.lockedFreeOn, { countdown: '' })}
-                  <time dateTime={p.freeAt} className="font-semibold text-fg">
-                    in {countdown(new Date(p.freeAt), p.now)}
-                  </time>
-                  .
+                  <UnlockCountdown freeAt={p.freeAt} now={p.now.toISOString()} />
                 </>
               ) : null}
             </p>

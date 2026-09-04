@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { canReadChapter, showsAds } from '../access.js'
 import {
   ANONYMOUS_FEATURES,
+  DEFAULT_EARLY_ACCESS_MINUTES,
   DEFAULT_ENTITLEMENT_OVERRIDES,
   type EntitlementOverrides,
   entitlement,
@@ -9,6 +10,7 @@ import {
   FEATURES,
   type FeatureMode,
   featureMode,
+  MAX_EARLY_ACCESS_MINUTES,
   parseEntitlementOverrides,
   promotionActive,
   promotionEndsIn,
@@ -182,6 +184,39 @@ describe('parsing settings.entitlements', () => {
     expect(parseEntitlementOverrides({ all_free: true, free_until: 'whenever' }).free_until).toBe(
       null,
     )
+  })
+  it('keeps the early-access window inside its bounds', () => {
+    expect(parseEntitlementOverrides({}).early_access_minutes).toBe(DEFAULT_EARLY_ACCESS_MINUTES)
+    expect(parseEntitlementOverrides({ early_access_minutes: 30 }).early_access_minutes).toBe(30)
+    // 0 is a real setting — it turns early access off — so it must survive the parse.
+    expect(parseEntitlementOverrides({ early_access_minutes: 0 }).early_access_minutes).toBe(0)
+    expect(parseEntitlementOverrides({ early_access_minutes: -5 }).early_access_minutes).toBe(0)
+    expect(parseEntitlementOverrides({ early_access_minutes: 99_999 }).early_access_minutes).toBe(
+      MAX_EARLY_ACCESS_MINUTES,
+    )
+    expect(parseEntitlementOverrides({ early_access_minutes: 10.6 }).early_access_minutes).toBe(11)
+    // A value written by hand as a string, or a NaN, must not take the catalogue down.
+    expect(parseEntitlementOverrides({ early_access_minutes: 'ten' }).early_access_minutes).toBe(
+      DEFAULT_EARLY_ACCESS_MINUTES,
+    )
+    expect(
+      parseEntitlementOverrides({ early_access_minutes: Number.NaN }).early_access_minutes,
+    ).toBe(DEFAULT_EARLY_ACCESS_MINUTES)
+  })
+  it('the admin schema rejects a window outside its bounds', () => {
+    const base = { ...DEFAULT_ENTITLEMENT_OVERRIDES }
+    expect(entitlementOverridesSchema.safeParse({ ...base, early_access_minutes: 0 }).success).toBe(
+      true,
+    )
+    expect(
+      entitlementOverridesSchema.safeParse({
+        ...base,
+        early_access_minutes: MAX_EARLY_ACCESS_MINUTES + 1,
+      }).success,
+    ).toBe(false)
+    expect(
+      entitlementOverridesSchema.safeParse({ ...base, early_access_minutes: -1 }).success,
+    ).toBe(false)
   })
   it('the admin schema demands a mode for every feature', () => {
     expect(entitlementOverridesSchema.safeParse(DEFAULT_ENTITLEMENT_OVERRIDES).success).toBe(true)

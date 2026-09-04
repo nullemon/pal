@@ -8,6 +8,7 @@ import {
   series,
 } from '@palscans/db'
 import { and, eq, inArray, isNull } from 'drizzle-orm'
+import { entitlementOverrides } from '@/lib/entitlements'
 
 /**
  * Chapter state transitions used by the bulk bar, the uploader and the retry button. The
@@ -15,10 +16,20 @@ import { and, eq, inArray, isNull } from 'drizzle-orm'
  */
 export const PUBLISHABLE = ['draft', 'ready', 'scheduled', 'published'] as const
 
-/** Publish now: state → published, published_at kept if already in the past, series touched, bookmarkers notified. */
+/**
+ * Publish now: state → published, published_at kept if already in the past, bookmarkers
+ * notified. `series.last_chapter_at` is the counter trigger's to maintain.
+ *
+ * Applies the early-access window the same way the scheduler does, so a chapter published
+ * from the panel behaves exactly like one that published on its own — Premium-only for
+ * `entitlements.early_access_minutes`, then free to everyone. A window already set by hand
+ * on the chapter wins.
+ */
 export const publishChapters = async (ids: number[], now = new Date()): Promise<number[]> => {
   if (ids.length === 0) return []
   const db = await getDb()
+  const { early_access_minutes: minutes } = await entitlementOverrides()
+  const earlyUntil = minutes > 0 ? new Date(now.getTime() + minutes * 60_000) : null
   const rows = await db
     .select({
       id: chapters.id,
@@ -27,6 +38,7 @@ export const publishChapters = async (ids: number[], now = new Date()): Promise<
       state: chapters.state,
       publishedAt: chapters.publishedAt,
       pageCount: chapters.pageCount,
+      earlyAccessUntil: chapters.earlyAccessUntil,
     })
     .from(chapters)
     .where(and(inArray(chapters.id, ids), isNull(chapters.deletedAt)))
@@ -42,7 +54,15 @@ export const publishChapters = async (ids: number[], now = new Date()): Promise<
           : now
       await tx
         .update(chapters)
-        .set({ state: 'published', publishedAt, updatedAt: now })
+        .set({
+          state: 'published',
+          publishedAt,
+          updatedAt: now,
+          // Only for a chapter that is newly going live, and only when none is set already.
+          ...(earlyUntil && r.state !== 'published' && !r.earlyAccessUntil
+            ? { earlyAccessUntil: earlyUntil }
+            : {}),
+        })
         .where(eq(chapters.id, r.id))
       if (r.state !== 'published') {
         await tx

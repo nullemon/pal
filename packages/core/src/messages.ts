@@ -111,7 +111,18 @@ export const messages = {
     releaseSchedule: 'Release schedule',
     nextChapterIn: '{chapter} in {countdown}',
     earlyAccess: 'Early access',
+    /** The chapter-row badge during the early-access window; `premiumOnly` below is the
+        shorter word the reader chrome uses. */
+    earlyAccessBadge: 'Premium only',
+    unlocksIn: 'Unlocks in {countdown}',
     earlyAccessFreeIn: 'free in {countdown}',
+    /** The strip above the chapter list that explains the countdown beside a number. */
+    earlyHowTitle: 'New chapters go Premium first',
+    earlyHowLead:
+      'A new chapter is Premium only for its first {minutes} minutes. The timer beside the chapter number counts down to the moment it turns free for everyone.',
+    earlyHowMine:
+      'You have early access, so you can open it now — {minutes} minutes before everyone else.',
+    earlyHowCta: 'Read it early',
     premiumOnly: 'Premium',
     locked: 'Locked',
     read: 'Read',
@@ -369,6 +380,19 @@ export const messages = {
       'Every Premium perk is unlocked for every reader. Subscribing still keeps the servers on.',
     allFreeEndsIn: 'Ends in {countdown}',
     someFreeLead: '{n} of these perks are free for everyone right now.',
+    earlyTitle: 'How early access works',
+    earlyLead: 'Every new chapter is Premium only for its first {minutes} minutes.',
+    earlyOffLead: 'New chapters are free for everyone the moment they go up.',
+    earlySteps: {
+      publishTitle: 'The chapter goes up',
+      publishLead:
+        'It is marked Premium only the moment it publishes, and a countdown appears beside its number on the series page.',
+      readTitle: 'You read it first',
+      readLead: 'Premium opens it straight away — no waiting, no ads, on every series.',
+      freeTitle: 'It unlocks for everyone',
+      freeLead:
+        'When the {minutes}-minute timer runs out the chapter turns free, for readers with an account and without.',
+    },
   },
   ads: {
     label: 'AD',
@@ -617,7 +641,8 @@ export const messages = {
     signInToUnlock: 'Sign in',
     goPremium: 'Go Premium',
     lockedEarlyAccessHint: 'Early access for Premium readers.',
-    lockedFreeOn: 'Free for everyone {countdown}',
+    lockedFreeIn: 'Free for everyone in {countdown}.',
+    lockedUnlocking: 'Unlocking…',
     lockedUnpublished: 'This chapter is not published yet.',
     shortcutsTitle: 'Keyboard shortcuts',
     shortcutTurn: 'Previous / next page (chapter in strip mode)',
@@ -1623,6 +1648,11 @@ export const messages = {
       masterTitle: 'All premium features free',
       masterHint:
         'Opens every feature still set to Premium only. Features you set to Disabled stay off.',
+      earlyLabel: 'Early access (minutes)',
+      earlyHint:
+        'How long a new chapter stays Premium-only before it opens to everyone. Applied automatically when a chapter publishes. 0 turns it off, so chapters go live free to all.',
+      earlyOff: 'Off — new chapters are free immediately',
+      earlyOn: 'New chapters are Premium-only for {minutes} minutes',
       windowLabel: 'Free until',
       windowHint:
         'Your local time. Leave it empty to keep the master switch on until you turn it off.',

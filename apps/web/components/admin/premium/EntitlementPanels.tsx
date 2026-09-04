@@ -7,6 +7,7 @@ import {
   type Feature,
   type FeatureMode,
   featureMode,
+  MAX_EARLY_ACCESS_MINUTES,
   promotionActive,
 } from '@palscans/core/entitlements'
 import { fmt, messages } from '@palscans/core/messages'
@@ -147,6 +148,36 @@ export function EntitlementPanels({ initial }: { initial: EntitlementOverrides }
               value={toLocalInput(s.free_until)}
               onChange={(e) => setS({ ...s, free_until: fromLocalInput(e.target.value) })}
             />
+          </Field>
+          <Field
+            label={m.earlyLabel}
+            hint={m.earlyHint}
+            htmlFor="early-access-minutes"
+            className="w-64"
+          >
+            <input
+              id="early-access-minutes"
+              type="number"
+              min={0}
+              max={MAX_EARLY_ACCESS_MINUTES}
+              step={1}
+              className={inputClass}
+              value={s.early_access_minutes}
+              onChange={(e) =>
+                setS({
+                  ...s,
+                  early_access_minutes: Math.min(
+                    Math.max(Math.round(Number(e.target.value) || 0), 0),
+                    MAX_EARLY_ACCESS_MINUTES,
+                  ),
+                })
+              }
+            />
+            <Hint>
+              {s.early_access_minutes === 0
+                ? m.earlyOff
+                : fmt(m.earlyOn, { minutes: String(s.early_access_minutes) })}
+            </Hint>
           </Field>
           <Field label={m.inForce}>
             <div className="flex h-9 items-center gap-2 text-[13px]">

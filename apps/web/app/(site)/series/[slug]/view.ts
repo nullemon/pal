@@ -52,6 +52,7 @@ export async function loadSeriesView(
     coverUrl: storageUrl(series.coverKey),
     coverAlt: fmt(messages.seriesDetail.coverAlt, { title: series.title }),
     canDownload: gate.can('offline', user, now),
+    earlyAccessMinutes: gate.overrides.early_access_minutes,
     site: { url: env.SITE_URL, name: env.SITE_NAME },
     ads: {
       top: { show, placeholder: AD_PLACEHOLDER },

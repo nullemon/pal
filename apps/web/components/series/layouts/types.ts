@@ -33,6 +33,12 @@ export interface SeriesViewProps {
   coverAlt: string
   /** The viewer holds `offline` (docs/17 §B overrides applied). */
   canDownload: boolean
+  /**
+   * `entitlements.early_access_minutes` — how long a new chapter stays Premium-only. Drives
+   * the countdown beside the chapter number and the strip that explains it; 0 means the
+   * window is off and neither is shown.
+   */
+  earlyAccessMinutes: number
   site: { url: string; name: string }
   ads: { top: AdPlacement; mpu: AdPlacement }
 }

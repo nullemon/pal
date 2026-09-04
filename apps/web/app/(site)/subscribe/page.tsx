@@ -1,7 +1,7 @@
 import { fmt, messages } from '@palscans/core/messages'
 import { getDb } from '@palscans/db'
 import { Button } from '@palscans/ui'
-import { Check, CircleAlert, Info, Lock, Zap } from 'lucide-react'
+import { Check, CircleAlert, Clock, Info, Lock, Unlock, Zap } from 'lucide-react'
 import type { Metadata } from 'next'
 import type { ComponentType, ReactNode } from 'react'
 import { getSessionUser } from '@/lib/auth'
@@ -107,6 +107,53 @@ function PlanCard({
 }
 
 /**
+ * "How early access works" — the one perk that needs explaining, because a reader who sees
+ * "Premium only" on a chapter that was free yesterday deserves to know it is a timer and not
+ * a paywall. `minutes` is `entitlements.early_access_minutes`, so the copy always matches
+ * what the site actually does.
+ */
+function EarlyAccess({ minutes, free }: { minutes: number; free: boolean }) {
+  const e = m.earlySteps
+  const mins = String(minutes)
+  const steps: Array<{
+    icon: ComponentType<{ size?: number; className?: string }>
+    title: string
+    lead: string
+  }> = [
+    { icon: Clock, title: e.publishTitle, lead: e.publishLead },
+    { icon: Zap, title: e.readTitle, lead: e.readLead },
+    { icon: Unlock, title: e.freeTitle, lead: fmt(e.freeLead, { minutes: mins }) },
+  ]
+  return (
+    <section className="mx-auto mt-12 max-w-[820px]">
+      <h2 className="font-display text-[22px] font-extrabold uppercase tracking-[-0.01em] text-fg">
+        {m.earlyTitle}
+      </h2>
+      <p className="mt-2 text-[14px] leading-6 text-fg-muted">
+        {free ? m.earlyOffLead : fmt(m.earlyLead, { minutes: mins })}
+      </p>
+      {free ? null : (
+        <ol className="mt-5 grid list-none gap-3 p-0 md:grid-cols-3">
+          {steps.map(({ icon: Icon, title, lead }, i) => (
+            <li
+              key={title}
+              className="flex flex-col gap-2 rounded-lg border border-line bg-surface-1 p-4"
+            >
+              <span className="inline-flex items-center gap-2 text-[12px] font-bold uppercase tracking-[0.06em] text-brand-hover">
+                <Icon size={14} className="shrink-0" />
+                {i + 1}
+              </span>
+              <p className="m-0 text-[14px] font-semibold text-fg">{title}</p>
+              <p className="m-0 text-[13px] leading-5 text-fg-muted">{lead}</p>
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
+  )
+}
+
+/**
  * `/subscribe` — the plans page every "Premium" link and the reader's locked-chapter gate point
  * at (docs/07). Checkout is Stripe's hosted page; with no keys configured the plans still
  * render, clearly marked as not for sale, and no route is called (docs/17 §A).
@@ -207,6 +254,11 @@ export default async function SubscribePage() {
           />
         ))}
       </div>
+
+      <EarlyAccess
+        minutes={gate.overrides.early_access_minutes}
+        free={gate.overrides.early_access_minutes === 0 || gate.isFree('early_access')}
+      />
 
       <ul className="mx-auto mt-8 flex max-w-[820px] flex-col gap-2 text-[13px] text-fg-subtle">
         <li className="flex items-start gap-2">

@@ -5,6 +5,7 @@ import { cn, RelativeTime } from '@palscans/ui'
 import { Check, Lock, Search } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ChapterRowData } from '@/app/(site)/series/[slug]/data'
+import { countdownSeconds } from '@/lib/countdown'
 
 export interface ChapterTableProps {
   seriesSlug: string
@@ -14,6 +15,11 @@ export interface ChapterTableProps {
   /** Server time, ISO — the first render uses it so countdowns match between server and client. */
   now: string
   signedIn: boolean
+  /**
+   * `entitlements.early_access_minutes`. Only used for the copy that explains the countdown —
+   * whether a row is actually locked is decided on the server, never from this number.
+   */
+  earlyAccessMinutes: number
 }
 
 type Sort = 'newest' | 'oldest'
@@ -27,16 +33,8 @@ const chapterLabel = (n: number) =>
 const longLabel = (n: number) =>
   fmt(messages.reader.chapterSelect, { n: String(Number.parseFloat(n.toFixed(3))) })
 
-/** "2d 4h" · "4h 12m" · "35m" (mirrors @palscans/core `countdown`, kept local so the island stays tiny). */
-const countdown = (untilIso: string, nowMs: number): string => {
-  const diff = Math.max(0, Math.round((new Date(untilIso).getTime() - nowMs) / 1000))
-  const d = Math.floor(diff / 86400)
-  const h = Math.floor((diff % 86400) / 3600)
-  const m = Math.floor((diff % 3600) / 60)
-  if (d > 0) return h > 0 ? `${d}d ${h}h` : `${d}d`
-  if (h > 0) return m > 0 ? `${h}h ${m}m` : `${h}h`
-  return `${Math.max(1, m)}m`
-}
+/** Under this, the countdown ticks every second instead of every minute. */
+const FINE_TICK_WITHIN_MS = 3_600_000
 
 /**
  * The chapter list (docs/06): sticky search + Newest/Oldest + "unread only", lock state with
@@ -50,6 +48,7 @@ export function ChapterTable({
   continueId,
   now,
   signedIn,
+  earlyAccessMinutes,
 }: ChapterTableProps) {
   const [sort, setSort] = useState<Sort>('newest')
   const [query, setQuery] = useState('')
@@ -60,11 +59,29 @@ export function ChapterTable({
   const listRef = useRef<HTMLDivElement>(null)
   const read = useMemo(() => new Set(readIds), [readIds])
 
+  // The soonest early-access deadline decides how often the clock has to move.
+  const soonestUnlock = useMemo(() => {
+    const times = chapters
+      .filter((c) => c.lock === 'early_access' && c.earlyAccessUntil)
+      .map((c) => new Date(c.earlyAccessUntil as string).getTime())
+    return times.length ? Math.min(...times) : null
+  }, [chapters])
+
+  // A live window is what the strip explains; `canRead` on the same row says whether this
+  // reader is the one already inside it.
+  const early = useMemo(
+    () => chapters.filter((c) => c.lock === 'early_access' && c.earlyAccessUntil),
+    [chapters],
+  )
+  const showEarlyNote = earlyAccessMinutes > 0 && early.length > 0
+  const readerHasEarly = showEarlyNote && early.every((c) => c.canRead)
+
   useEffect(() => {
     setNowMs(Date.now())
-    const id = window.setInterval(() => setNowMs(Date.now()), 60_000)
+    const fine = soonestUnlock !== null && soonestUnlock - Date.now() < FINE_TICK_WITHIN_MS
+    const id = window.setInterval(() => setNowMs(Date.now()), fine ? 1_000 : 60_000)
     return () => window.clearInterval(id)
-  }, [])
+  }, [soonestUnlock])
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -194,6 +211,28 @@ export function ChapterTable({
         ) : null}
       </div>
 
+      {/* Why the newest row says "Premium only" and carries a countdown. Shown only while a
+          window is actually live, so a back catalogue never carries an ad for Premium. */}
+      {showEarlyNote ? (
+        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-[12px] border border-gold/25 bg-gold/[0.07] px-4 py-3">
+          <Lock size={15} aria-hidden="true" className="shrink-0 text-gold" />
+          <p className="m-0 min-w-0 flex-1 text-[13px] leading-5 text-fg-muted">
+            <span className="font-semibold text-fg">{messages.series.earlyHowTitle}</span>{' '}
+            {readerHasEarly
+              ? fmt(messages.series.earlyHowMine, { minutes: String(earlyAccessMinutes) })
+              : fmt(messages.series.earlyHowLead, { minutes: String(earlyAccessMinutes) })}
+          </p>
+          {readerHasEarly ? null : (
+            <a
+              href="/subscribe"
+              className="inline-flex h-8 shrink-0 items-center rounded-[8px] bg-gold/15 px-3 text-[12px] font-bold text-gold transition-colors hover:bg-gold/25"
+            >
+              {messages.series.earlyHowCta}
+            </a>
+          )}
+        </div>
+      ) : null}
+
       <div className="mt-3 overflow-hidden rounded-[12px] border border-line bg-surface-1">
         <div className="hidden h-[34px] items-center border-b border-line bg-surface-2 px-4 text-[12px] font-semibold text-fg-muted md:flex">
           <span className="w-24">{messages.seriesDetail.colChapter}</span>
@@ -221,7 +260,7 @@ export function ChapterTable({
               const lockLabel =
                 c.lock === 'early_access' && c.earlyAccessUntil
                   ? fmt(messages.seriesDetail.freeIn, {
-                      countdown: countdown(c.earlyAccessUntil, nowMs),
+                      countdown: countdownSeconds(c.earlyAccessUntil, nowMs),
                     })
                   : c.lock === 'premium'
                     ? messages.seriesDetail.premium
@@ -251,12 +290,25 @@ export function ChapterTable({
                     ) : null}
                     {chapterLabel(c.number)}
                   </span>
+                  {/* Beside the number: how long this chapter stays Premium-only. Ticks every
+                      second while it is live (see FINE_TICK_WITHIN_MS). */}
+                  {c.lock === 'early_access' && c.earlyAccessUntil ? (
+                    <span
+                      className="mr-2 inline-flex h-5 shrink-0 items-center gap-1 rounded-full bg-gold/12 px-2 font-semibold text-[11px] text-gold tabular-nums"
+                      title={fmt(messages.series.unlocksIn, {
+                        countdown: countdownSeconds(c.earlyAccessUntil, nowMs),
+                      })}
+                    >
+                      <Lock size={11} aria-hidden="true" />
+                      {countdownSeconds(c.earlyAccessUntil, nowMs)}
+                    </span>
+                  ) : null}
                   <span className="flex min-w-0 flex-1 flex-col md:flex-row md:items-center md:gap-2.5">
                     <span className="flex min-w-0 items-center gap-2.5">
                       <span className="truncate font-medium">{c.title ?? longLabel(c.number)}</span>
                       {c.lock === 'early_access' ? (
-                        <span className="inline-flex h-5 shrink-0 items-center rounded-full bg-gold/12 px-2 text-[11px] font-bold text-gold">
-                          {messages.series.earlyAccess}
+                        <span className="inline-flex h-5 shrink-0 items-center rounded-full bg-gold/12 px-2 font-bold text-[11px] text-gold">
+                          {messages.series.earlyAccessBadge}
                         </span>
                       ) : null}
                     </span>

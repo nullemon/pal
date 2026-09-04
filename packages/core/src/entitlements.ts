@@ -65,8 +65,21 @@ export interface EntitlementOverrides {
   all_free: boolean
   /** ISO timestamp the master switch stops at, so a promotion ends by itself. */
   free_until: string | null
+  /**
+   * How long a newly published chapter stays Premium-only before it opens to everyone, in
+   * minutes. 0 turns early access off, so chapters publish free to all.
+   *
+   * Applied automatically when a chapter publishes; an `early_access_until` already set by
+   * hand on the chapter always wins, so a longer window for one release still works.
+   */
+  early_access_minutes: number
   features: Record<Feature, FeatureMode>
 }
+
+/** The shipped default: long enough to be worth paying for, short enough not to annoy. */
+export const DEFAULT_EARLY_ACCESS_MINUTES = 10
+/** A day. Beyond this it stops reading as "early" and starts reading as a paywall. */
+export const MAX_EARLY_ACCESS_MINUTES = 1440
 
 const modeSchema = z.enum(FEATURE_MODES)
 
@@ -74,6 +87,7 @@ const modeSchema = z.enum(FEATURE_MODES)
 export const entitlementOverridesSchema = z.object({
   all_free: z.boolean(),
   free_until: z.string().datetime({ offset: true }).nullable(),
+  early_access_minutes: z.number().int().min(0).max(MAX_EARLY_ACCESS_MINUTES),
   features: z.object(
     Object.fromEntries(FEATURES.map((f) => [f, modeSchema])) as Record<Feature, typeof modeSchema>,
   ),
@@ -82,12 +96,14 @@ export const entitlementOverridesSchema = z.object({
 export const DEFAULT_ENTITLEMENT_OVERRIDES: EntitlementOverrides = {
   all_free: false,
   free_until: null,
+  early_access_minutes: DEFAULT_EARLY_ACCESS_MINUTES,
   features: Object.fromEntries(FEATURES.map((f) => [f, 'premium'])) as Record<Feature, FeatureMode>,
 }
 
 const storedSchema = z.object({
   all_free: z.boolean().optional(),
   free_until: z.string().nullable().optional(),
+  early_access_minutes: z.number().optional(),
   features: z.record(z.string(), z.string()).optional(),
 })
 
@@ -107,9 +123,17 @@ export const parseEntitlementOverrides = (raw: unknown): EntitlementOverrides =>
       features[f] = value as FeatureMode
   }
   const until = parsed.data.free_until ?? null
+  // Clamped rather than rejected: a nonsense value stored by hand should fall back to the
+  // shipped window, not take the catalogue's premium behaviour down with it.
+  const storedMinutes = parsed.data.early_access_minutes
+  const minutes =
+    typeof storedMinutes === 'number' && Number.isFinite(storedMinutes)
+      ? Math.min(Math.max(Math.round(storedMinutes), 0), MAX_EARLY_ACCESS_MINUTES)
+      : DEFAULT_EARLY_ACCESS_MINUTES
   return {
     all_free: parsed.data.all_free ?? false,
     free_until: until && Number.isFinite(Date.parse(until)) ? until : null,
+    early_access_minutes: minutes,
     features,
   }
 }

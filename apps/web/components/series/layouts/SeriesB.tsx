@@ -31,6 +31,7 @@ export function SeriesB({
   coverUrl,
   coverAlt,
   canDownload,
+  earlyAccessMinutes,
   site,
   ads,
 }: SeriesViewProps) {
@@ -197,6 +198,7 @@ export function SeriesB({
                   continueId={state.progress?.chapterId ?? null}
                   now={now.toISOString()}
                   signedIn={!!user}
+                  earlyAccessMinutes={earlyAccessMinutes}
                 />
               </div>
 

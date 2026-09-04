@@ -53,6 +53,7 @@ export function SeriesD({
   coverUrl,
   coverAlt,
   canDownload,
+  earlyAccessMinutes,
   site,
   ads,
 }: SeriesViewProps) {
@@ -253,6 +254,7 @@ export function SeriesD({
                   continueId={state.progress?.chapterId ?? null}
                   now={now.toISOString()}
                   signedIn={!!user}
+                  earlyAccessMinutes={earlyAccessMinutes}
                 />
               </div>
             </section>

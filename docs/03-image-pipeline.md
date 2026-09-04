@@ -99,7 +99,8 @@ Free pages: plain immutable CDN URLs. Cacheable, shareable, cheap.
 
 Premium or early-access pages: the page URLs are **not in the HTML** for a non-entitled
 user. An entitled user's page fetches signed URLs from `/api/chapters/:id/pages`, which
-checks `entitlement(user, chapter)` server-side and returns URLs signed for 10 minutes.
+checks `entitlement(user, chapter)` server-side and returns URLs signed for a reading session
+(`SIGNED_URL_TTL_SEC`, 2h) — long enough that lazy-loaded pages later in a chapter still resolve.
 
 This costs you edge caching on paid pages — accept it. The alternative (ship real URLs and
 hide them with CSS, which several sites in this space do) is not a paywall; it is a blur
