@@ -54,7 +54,7 @@ export interface ViewRequest {
   now?: Date
 }
 
-export type ViewOutcome = 'recorded' | 'bot' | 'duplicate' | 'rate_limited' | 'buffered_full'
+export type ViewOutcome = 'recorded' | 'bot' | 'duplicate' | 'rate_limited' | 'buffer_full'
 
 export interface ViewRecorderOptions {
   /** Write a batch of hits (defaults to `view_events` through `@palscans/db`). */
@@ -133,6 +133,7 @@ export class ViewRecorder {
 
   async record(input: ViewRequest): Promise<ViewOutcome> {
     const now = input.now ?? new Date()
+    // 1. bots, before anything is computed or asked of Redis
     if (isBotUserAgent(input.userAgent)) return 'bot'
 
     const bucket = now.toISOString().slice(0, 10)
@@ -163,7 +164,8 @@ export class ViewRecorder {
       : this.local.claim(dedupe, ttlMs, t)
     if (!fresh) return 'duplicate'
 
-    return this.buffer.add(hit) ? 'recorded' : 'duplicate'
+    // The day was claimed above, so a refusal here can only be the buffer's ceiling.
+    return this.buffer.add(hit) ? 'recorded' : 'buffer_full'
   }
 
   private async claim(redis: RedisLike, key: string, ttlMs: number): Promise<boolean> {

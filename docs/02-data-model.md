@@ -265,6 +265,26 @@ partitions older than 90 days. Popular Weekly / Monthly / All-Time are then plai
 aggregates over `series_stats_daily`, cached in Redis for 5 minutes. `viewer_key` in the
 primary key gives you unique-visitor counting and free bot-inflation resistance.
 
+**As built** (migration `9015_view_pipeline`, `packages/core/src/views.ts`):
+
+- A view is reported by the browser — `ViewBeacon` posts to `POST /api/views` after the
+  page has been visible for 1.5 s. No page render writes, and a prefetch or a prerender
+  never counts because the script has not run.
+- The endpoint drops bot user agents, applies a per-address budget (40 views/minute), then
+  claims the viewer's day in Redis (`SET NX PX`, expiring with the bucket) and hands the hit
+  to an in-process buffer. Rows reach `view_events` as one multi-row INSERT every 2 s or
+  every 200 hits — about one statement per 200 views. The `view_events` primary key is the
+  authoritative dedupe, so the count is right across instances and across a Redis outage.
+- `chapter_stats_daily` is the per-chapter twin of `series_stats_daily`. Both hold the total
+  *already applied* to the denormalised counter, so `stats_rollup(from, to)` recomputes a
+  short trailing window and adds only the difference to `series.view_count` /
+  `chapters.view_count`: re-running it is a no-op, and a day with no events is never zeroed
+  (the numbers the seeder and the legacy importer wrote stay put).
+- `view_events_ensure_partitions(from, days)` creates today's and the next days' partitions
+  (draining anything that already landed in `view_events_default`);
+  `view_events_drop_partitions_before(cutoff)` is the 90-day retention. The worker runs both
+  from `stats.rollup`, and the web app ensures partitions once a day as a safety net.
+
 ## Comments
 
 ```sql

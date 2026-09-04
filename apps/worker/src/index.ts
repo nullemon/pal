@@ -129,7 +129,11 @@ const main = async () => {
       // Admin → Jobs like every other one. `jobId` collapses a backlog into one pass.
       if (Date.now() - lastRollup >= ROLLUP_MS) {
         lastRollup = Date.now()
-        await queue.add('stats.rollup', {}, { jobId: `stats.rollup:${Math.floor(Date.now() / ROLLUP_MS)}` })
+        await queue.add(
+          'stats.rollup',
+          {},
+          { jobId: `stats.rollup:${Math.floor(Date.now() / ROLLUP_MS)}` },
+        )
       }
       // safety net: processing rows that never started (no Redis / lost job) or stalled for 30 minutes
       const stale = await db
