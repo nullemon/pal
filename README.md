@@ -6,7 +6,21 @@ site.
 
 ## Status
 
-Design phase. No application code yet — `docs/` is the specification the build follows.
+**Built and verified; not deployed anywhere yet.** The front end, reader, admin panel, image
+pipeline, importer, comments and billing are implemented in `apps/` and `packages/`; `docs/`
+is the specification the build followed, and stays the reference for *why* things are the way
+they are.
+
+Deployment has not been started because it needs things only the operator can obtain — a
+server, the domain's DNS, and an R2 bucket. [docs/18 — Launch](docs/18-launch.md) is the
+ordered list, and [infra/RUNBOOK.md](infra/RUNBOOK.md) is what to do after.
+
+```sh
+pnpm install
+pnpm dev          # web on :3000, worker alongside it
+pnpm test         # vitest across the workspace
+pnpm typecheck && pnpm lint
+```
 
 ## The short version
 
@@ -41,6 +55,13 @@ beside it, write the importer in week 2, and cut over with 301s preserving every
 | [13 — Everything else](docs/13-everything-else.md) | The completeness checklist: reader extras, discovery, scanlation credits, safety, accounts, notifications, money, site management, legal, hygiene |
 | [14 — Comments](docs/14-comments.md) | Reactions, replies, spoilers, mentions, images, premium perks, and the moderation pipeline that holds links by default |
 | [15 — Appearance](docs/15-appearance.md) | Accent colour and derived ramp, theme, typography, shape and density, layouts, header/footer/menus, reader defaults, copy, formatting, presets and history |
+| [16 — Build plan](docs/16-build-plan.md) | The build contract: stack choices, repo layout, and the conventions every route, job and component follows |
+| [17 — Remaining scope](docs/17-remaining-scope.md) | Billing, notifications, the importer and the rest of the second pass over docs 00–15 |
+| [18 — Launch](docs/18-launch.md) | **Start here to deploy**: DNS, R2 and its WAF rule, the server, first boot, your admin account, credentials, backups |
+| [19 — Credentials](docs/19-credentials.md) | Which secrets live in the admin panel, which cannot, how they are sealed, and what goes stale for how long |
+
+Operational, not a design document: [infra/RUNBOOK.md](infra/RUNBOOK.md) — restore, rotate,
+take down a title, roll back.
 
 ## Non-negotiables
 
@@ -48,4 +69,6 @@ beside it, write the importer in week 2, and cut over with 301s preserving every
 2. Locked content is never sent to a client that may not read it.
 3. Image bytes never pass through the application server.
 4. Every destructive admin action writes an audit row.
-5. Nothing is hard-deleted.
+5. Content is soft-deleted and recoverable — series, chapters, comments, users. (The two
+   deliberate exceptions: a reader clearing their own preference rows, and objects you delete
+   from R2 by hand.)

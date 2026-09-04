@@ -51,6 +51,17 @@ A row that will not decrypt is treated as **absent**, not as an error: the envir
 fallback takes over. A rotated key therefore degrades to the previous behaviour instead of
 taking the site down.
 
+**The same property is a trap during a restore.** Bring a dump up on a host whose
+`CREDENTIALS_KEY` differs by one character and nothing fails loudly: every row is silently
+"absent", every integration falls back to an empty environment, `/api/health` still answers
+`ok`, and the panel still shows the green *Sealed with `CREDENTIALS_KEY`* banner — it reports
+where the key came from, not whether it opens anything. Storage, mail, OAuth, Stripe,
+Turnstile, push and Discord are all off, and the site looks fine. The tell is that every field
+on Integrations reads source **env** or **unset** while `select count(*) from app_credentials`
+is non-zero. So the key belongs in your password manager next to the R2 keys, not only in
+`.env` on a server that may not exist tomorrow — `infra/RUNBOOK.md` makes restoring it step 0
+of any restore.
+
 ## Two values need to be readable synchronously
 
 Nearly every credential is consumed from an async path, so those read the store directly.
@@ -100,13 +111,19 @@ can be compared and logged without ever carrying the key.
 
 ## What is stale, and for how long
 
-The store is cached for 300 seconds and tagged, so a save purges it immediately **in the
-process that handled the save**. Other processes — a second web instance, the worker — pick
-the change up within that 300-second window.
+The store is memoised **in process** for 30 seconds (`CACHE_TTL_MS` in
+`apps/web/lib/config/store.ts`, `CREDENTIAL_TTL_MS` in `apps/worker/src/lib/config.ts` — the
+same number in both). A save calls `purgeConfigCache()` and so takes effect immediately in the
+process that handled it. Other processes — a second web instance, the worker — pick the change
+up within that 30-second window.
+
+Note "in process": there is no cache tag to purge and nothing crosses process boundaries. The
+TTL *is* the invalidation mechanism, which is why it is short. (The original implementation
+used `unstable_cache`, which was both cross-process and a security hole — see below.)
 
 For credentials this is the right trade: they change rarely, and the alternative is a database
 read on every request that needs one. It does mean "I changed the R2 key and the worker is
-still using the old one" is expected for up to five minutes, not a bug. Restart the worker if
+still using the old one" is expected for up to 30 seconds, not a bug. Restart the worker if
 you need it immediately.
 
 ## What an adversarial review found

@@ -289,7 +289,11 @@ export interface MappedUser {
   email: string
   username: string
   displayName: string | null
-  /** Always null: phpass is never converted, users get a set-password mail (docs/09). */
+  /**
+   * Always null: phpass is never converted (docs/09). Nothing here mails the user — the only
+   * way back into an imported account is the reader starting "forgot password" themselves,
+   * which works because `/api/auth/forgot-password` does not require an existing hash.
+   */
   passwordHash: null
   role: UserRole
   createdAt: string | null

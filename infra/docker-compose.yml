@@ -104,7 +104,12 @@ services:
       timeout: 3s
       retries: 20
 
-  # One-shot: create the bucket and make cover/page prefixes publicly readable.
+  # One-shot: create the bucket and make the publicly-served prefixes anonymously readable.
+  # These are exactly the prefixes the browser fetches from PUBLIC_CDN_URL (see docs/18 §2):
+  # covers/ and banners/ (series art), pages/ (chapter images) and avatars/ (reader avatars).
+  # `uploads/` (raw originals), `sitemaps/` and `_healthcheck/` are deliberately left private.
+  # Per-prefix anonymous access is a MinIO feature; R2 has no equivalent, which is why the R2
+  # deployment restricts the CDN hostname with a WAF rule instead.
   minio-init:
     profiles: [selfhosted]
     image: minio/mc:latest
@@ -117,7 +122,9 @@ services:
         mc alias set local http://minio:9000 "$${MINIO_ROOT_USER}" "$${MINIO_ROOT_PASSWORD}" &&
         mc mb --ignore-existing local/palscans &&
         mc anonymous set download local/palscans/covers &&
+        mc anonymous set download local/palscans/banners &&
         mc anonymous set download local/palscans/pages &&
+        mc anonymous set download local/palscans/avatars &&
         echo "bucket ready"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-palscans}

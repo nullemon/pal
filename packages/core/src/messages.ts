@@ -1889,7 +1889,7 @@ export const messages = {
       byType: 'By type',
       byStatus: 'By status',
       passwordsNote:
-        'Passwords are never converted: accounts import with no password and get a one-time set-password link at cutover.',
+        'Passwords are never converted: WordPress hashes are dropped and accounts import with no password. Nothing is emailed to them — the import sends no mail at all. Tell your readers to use “Forgot password” on the sign-in page at cutover; it works for these accounts and sets a password on first use.',
       redirectsNote:
         'Redirect rows are generated for every legacy URL and land in the existing redirects table.',
     },
@@ -1944,7 +1944,7 @@ export const messages = {
       sealing: {
         missingTitle: 'Credentials cannot be stored',
         missingBody:
-          'Nothing on this page can be saved: the server has no key to encrypt credentials with. Set CREDENTIALS_KEY to at least 16 characters in the environment and restart. Until then every value below comes from the environment and is shown read-only.',
+          'Nothing on this page can be saved: the server has no key to encrypt credentials with. Set CREDENTIALS_KEY in the environment and restart. Sixteen characters is the minimum accepted, but generate a real one — `openssl rand -base64 32` — because anything shorter or guessable is the key protecting every secret below. Until then every value below comes from the environment and is shown read-only.',
         sessionTitle: 'Sealed with SESSION_SECRET',
         sessionBody:
           'No CREDENTIALS_KEY is set, so stored credentials are encrypted with SESSION_SECRET. Rotating that secret would make them unreadable and each one would have to be entered again — the site falls back to the environment rather than breaking. Setting CREDENTIALS_KEY avoids that.',
@@ -2484,7 +2484,8 @@ export const messages = {
   notify: {
     navLabel: 'Notifications',
     notConfigured: 'Not configured',
-    notConfiguredHint: 'Set {keys} in the environment and restart to switch this on.',
+    notConfiguredHint:
+      'Add {keys} in Admin → System → Integrations to switch this on. A saved value takes effect within 30 seconds; no restart or redeploy is needed.',
     channelOff: 'Turned off by the operator.',
     push: {
       title: 'Push notifications',
@@ -2574,7 +2575,8 @@ export const messages = {
       eventAnnouncement: 'Announcement published',
       audienceAnnouncement: 'Every reader with the announcement channel on',
       pushPanel: 'Web push',
-      pushHint: 'VAPID keys come from the environment; the switch here stops sending without them.',
+      pushHint:
+        'VAPID keys are set in Admin → System → Integrations (the environment is only a fallback); the switch here stops sending even when they are set.',
       pushTtl: 'Time to live (seconds)',
       pushTtlHint: 'How long a push service holds an undelivered message.',
       subscriptions: 'Subscribed devices',
