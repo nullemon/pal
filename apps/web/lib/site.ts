@@ -53,6 +53,9 @@ export const footerColumns: readonly FooterColumn[] = [
       { label: messages.footer.rankings, href: '/rankings' },
       { label: messages.nav.random, href: '/random' },
       { label: messages.home.announcements, href: '/announcements' },
+      // The request board (migration 9024). Filing a request is the header's modal; this is
+      // the link to the board itself, for readers who want to see what is already asked for.
+      { label: messages.requests.navLabel, href: '/requests' },
     ],
   },
   {

@@ -141,6 +141,13 @@
       "when": 1788380010000,
       "tag": "9020_h_series_follows",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1788380014000,
+      "tag": "9024_h_series_requests",
+      "breakpoints": true
     }
   ]
 }

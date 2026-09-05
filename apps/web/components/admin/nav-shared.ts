@@ -104,6 +104,15 @@ export const adminNav: readonly AdminNavGroup[] = [
         icon: 'shield',
         permission: 'report.handle',
       },
+      // The series request board (migration 9024). `report.handle` rather than a new
+      // permission: this is reader-submitted content staff answer publicly, the same job as
+      // the reports queue and the DMCA ledger sitting either side of it.
+      {
+        label: messages.requests.admin.title,
+        href: '/admin/requests',
+        icon: 'list-checks',
+        permission: 'report.handle',
+      },
       { label: m.users, href: '/admin/users', icon: 'users', permission: 'user.read' },
       // D · Notifications (docs/17 §D): what fires, to whom, and the send-test controls.
       {

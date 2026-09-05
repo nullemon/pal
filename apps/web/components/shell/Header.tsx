@@ -2,6 +2,7 @@ import { messages } from '@palscans/core/messages'
 import { buttonClasses } from '@palscans/ui'
 import { Bell, Search, Zap } from 'lucide-react'
 import Link from 'next/link'
+import { RequestTrigger } from '@/components/requests/RequestTrigger'
 import { NavLinks } from './NavLinks'
 import { Wordmark } from './Wordmark'
 
@@ -44,6 +45,10 @@ export function Header() {
           >
             <Search size={18} />
           </Link>
+          {/* "Request a series" opens a modal in place rather than navigating: a reader
+              forty chapters into something should not lose their place to ask for a title.
+              The board itself is /requests, linked from the modal and the footer. */}
+          <RequestTrigger />
           <Link
             href="/me/settings#notifications"
             aria-label={messages.nav.notifications}
