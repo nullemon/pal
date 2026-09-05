@@ -85,6 +85,12 @@ test('admin SEO screen', async ({ page, isMobile, baseURL }) => {
     headers: { origin: baseURL ?? '' },
   })
   expect(login.ok()).toBe(true)
+  // A seeded admin has no second factor, so the password alone signs them in. An admin who
+  // *has* enrolled one — which docs/07 requires of real administrators — gets `mfa: true`
+  // and no session, and this test has no way to know their secret. Skip rather than fail:
+  // the alternative is a spec that goes red the moment somebody secures their own account.
+  const body = (await login.json()) as { data?: { mfa?: boolean } }
+  test.skip(body.data?.mfa === true, 'the admin account has two-factor enrolled')
   await page.goto('/admin/seo')
   await expect(page.getByRole('heading', { level: 1, name: 'SEO' })).toBeVisible()
   await page.waitForLoadState('networkidle')

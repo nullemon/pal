@@ -156,6 +156,44 @@ Worth knowing before quoting the numbers:
   idle throughout. On a release day the worker and the web app compete for the same four
   cores — which is another argument for sizing by core count rather than by request rate.
 
+## Front-end budgets · docs/06's table, measured
+
+`pnpm --filter @palscans/web perf:budget` measures three routes on emulated mid-tier mobile
+(Pixel-class viewport, 4× CPU throttle) against a production build. Measured on the machine
+above:
+
+| Route | gzipped JS | docs/06 target | over by | CLS (≤0.02) | LCP (≤2.0s) |
+|---|---:|---:|---:|---:|---:|
+| `/` | 281.9 KB | 110 KB | +171.9 KB | 0.000 | 1.1 s |
+| `/series/[slug]` | 282.8 KB | 110 KB | +172.8 KB | 0.005 | 0.55 s |
+| reader | 286.4 KB | 60 KB | +226.4 KB | 0.005 | 0.35 s |
+
+**CLS and LCP pass comfortably.** The reader's CLS is 0.005 against a 0.02 budget, which is
+the number docs/06 cared most about ("the reader must be ~0"), and LCP has more than five
+times the headroom the budget allows.
+
+**The JS budgets do not pass, and are missed by 2.6× on the home page and 4.8× on the
+reader.** Nearly all of it is one shared client runtime: thirteen files, of which two account
+for over half the bytes, loaded identically on all three routes. The per-route figures barely
+differ, which is the tell — this is not the reader shipping too much reader code, it is every
+route paying for the same baseline. One of the large chunks contains `zod`, which suggests a
+schema module reachable from a client component; that is the first thing to pull on.
+
+### Why CI gates a ceiling rather than the target
+
+The check enforces a **ceiling** of 300 KB — today's number plus headroom — and prints the
+docs/06 target beside it with the distance still owed. Gating on the target itself would
+paint CI red on its first run for a gap nobody can close in one change, and docs/06 already
+names that failure mode: *"A budget nobody enforces is a wish."* A budget that is red from
+day one is switched off within a week, which is the same wish with extra steps.
+
+So the ceiling stops the bundle growing while the target stays visible on every run. **Lower
+the ceiling whenever a change earns it.** When it reaches the docs/06 numbers, delete it and
+gate on the target.
+
+LCP is reported rather than gated, because it moves with CPU contention on a shared runner.
+`PERF_STRICT=1` gates it, and should be set on a dedicated one.
+
 ## Re-running it
 
 ```sh

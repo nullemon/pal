@@ -48,3 +48,73 @@ jobs:
 
       - name: Build
         run: pnpm turbo run build
+
+  # End-to-end and the performance budgets docs/06 asks for. Split from `verify` because it
+  # needs a real Postgres and a browser: the unit suite runs on PGlite, which Next cannot
+  # share between a server component and a route handler in one process.
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/palscans
+      # No Redis on purpose: the app has to work without it, and the status page has to say
+      # so rather than fall over. A cache that is only ever exercised when present is a cache
+      # whose absence nobody has tested.
+      REDIS_URL: ""
+      E2E_PORT: "3100"
+      PERF_PORT: "3210"
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: palscans
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Migrate and seed
+        run: |
+          pnpm --filter @palscans/db build
+          pnpm --filter @palscans/db migrate
+          pnpm --filter @palscans/db seed
+
+      - name: Build
+        run: pnpm turbo run build
+
+      - name: Install Chromium
+        run: pnpm --filter @palscans/web exec playwright install --with-deps chromium
+
+      - name: End-to-end
+        run: pnpm --filter @palscans/web e2e
+
+      # Gated at the ceiling in the script, not at the docs/06 target — see
+      # docs/20-performance.md for the distance still owed.
+      - name: Performance budgets
+        run: pnpm --filter @palscans/web perf:budget
+
+      - name: Offline downloads work with no server
+        run: pnpm --filter @palscans/web verify:offline
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-failures
+          path: apps/web/test-results
+          retention-days: 7
