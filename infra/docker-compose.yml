@@ -174,6 +174,24 @@ services:
     restart: unless-stopped
     environment:
       <<: *app-env
+      # The nightly database dump (docs/18 §9). Deliberately *not* in x-app-env: only the
+      # worker takes a dump, so the key that can write to the backups bucket never reaches
+      # the web container. With BACKUP_S3_BUCKET unset the job records "not configured" on
+      # Admin → System → Backup rather than inventing a destination.
+      #
+      # This must be the SECOND bucket from docs/18 §2 — the one with no custom domain. The
+      # job refuses to write into the bucket the public cdn. hostname is attached to.
+      BACKUP_S3_BUCKET: ${BACKUP_S3_BUCKET:-}
+      # Default to the app's R2 endpoint/keys; set these when the token is scoped per bucket
+      # (an R2 token scoped to `palscans` cannot write to `palscans-backups`).
+      BACKUP_S3_ENDPOINT: ${BACKUP_S3_ENDPOINT:-}
+      BACKUP_S3_REGION: ${BACKUP_S3_REGION:-auto}
+      BACKUP_S3_ACCESS_KEY_ID: ${BACKUP_S3_ACCESS_KEY_ID:-}
+      BACKUP_S3_SECRET_ACCESS_KEY: ${BACKUP_S3_SECRET_ACCESS_KEY:-}
+      # Or write dumps to a mounted directory instead of a bucket.
+      BACKUP_DIR: ${BACKUP_DIR:-}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+      WORKER_BACKUP_MS: ${WORKER_BACKUP_MS:-86400000}
     depends_on:
       postgres:
         condition: service_healthy

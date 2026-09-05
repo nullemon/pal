@@ -1,8 +1,9 @@
 import { getEnv } from '@palscans/core/env'
 import { getQueue } from '@palscans/core/queue'
 import { getStorage } from '@palscans/core/storage'
-import { chapters, closeDb, getDb, series } from '@palscans/db'
+import { chapters, closeDb, getDb, getSetting, series } from '@palscans/db'
 import { and, eq, isNotNull, isNull, lt, sql } from 'drizzle-orm'
+import { BACKUP_SETTING_KEY, type BackupRun, backupEnv, runBackup } from './jobs/backup.js'
 import { processChapter } from './jobs/chapter-process.js'
 import { openSource, readImportConfig } from './jobs/import/resolve.js'
 import { runImport } from './jobs/import-run.js'
@@ -23,6 +24,13 @@ const SCHEDULER_MS = getEnv().WORKER_SCHEDULER_MS
 /** How often `stats.rollup` is enqueued (docs/02: "every few minutes"). */
 const ROLLUP_MS = getEnv().WORKER_ROLLUP_MS
 let lastRollup = 0
+/** How often `db.backup` is enqueued (docs/18 §9: nightly). */
+const BACKUP_MS = backupEnv().WORKER_BACKUP_MS
+/**
+ * Seeded from the recorded run at startup, unlike `lastRollup`: a dump is expensive, and a
+ * worker that restarts twice an hour during a deploy must not take a dump each time.
+ */
+let lastBackup = 0
 const CONCURRENCY = getEnv().WORKER_CONCURRENCY
 const PAGE_CONCURRENCY = getEnv().WORKER_PAGE_CONCURRENCY
 
@@ -31,7 +39,7 @@ const main = async () => {
   // docs/19: point storage — and the credentials the notification jobs read — at what the
   // operator typed into the admin panel, before anything asks for a bucket. With nothing
   // stored (or no database) every one of them falls back to the environment.
-  installWorkerConfig(db)
+  const credentials = installWorkerConfig(db)
   const storage = await getStorage()
   const queue = await getQueue()
   const deps = { db, storage, pageConcurrency: PAGE_CONCURRENCY }
@@ -107,6 +115,24 @@ const main = async () => {
     await runStatsRollup(db, { from: job.data?.from, to: job.data?.to })
   })
 
+  /**
+   * `db.backup` (docs/17 §G, docs/18 §9). Same producer/handler split as `stats.rollup`: the
+   * tick below is the nightly producer, and the job also exists so `Admin → System → Backup`
+   * can enqueue one by hand. The app's own bucket is passed in so the destination guard can
+   * refuse to write a dump into the bucket with the public CDN hostname attached — it is
+   * resolved from the panel credentials, which is where the operator actually sets it.
+   */
+  const appBucket = async (): Promise<string | undefined> =>
+    (await credentials())['s3.bucket']?.trim() || getEnv().S3_BUCKET
+  queue.process('db.backup', async (job) => {
+    lastBackup = Date.now()
+    await runBackup(db, {
+      trigger: job.data?.trigger ?? 'schedule',
+      actorId: job.data?.actorId ?? null,
+      appBucket: await appBucket(),
+    })
+  })
+
   for (const name of [
     'sitemap.build',
     'notify.comment',
@@ -117,6 +143,15 @@ const main = async () => {
       log.warn(`no handler for ${name} in apps/worker yet — acknowledged`, { id: job.id })
     })
   }
+  // Pick the backup clock back up where the last run left it, so restarts do not re-dump.
+  // No recorded run at all means "back this database up now", which is also how a fresh
+  // deployment finds out whether the destination is configured.
+  const recorded = await getSetting<BackupRun | null>(db, BACKUP_SETTING_KEY, null).catch(
+    () => null,
+  )
+  const recordedAt = recorded?.finishedAt ? Date.parse(recorded.finishedAt) : Number.NaN
+  lastBackup = Number.isNaN(recordedAt) ? 0 : recordedAt
+
   log.info('started', { queue: queue.kind, storage: storage.driver, concurrency: CONCURRENCY })
 
   const tick = async () => {
@@ -133,6 +168,17 @@ const main = async () => {
           'stats.rollup',
           {},
           { jobId: `stats.rollup:${Math.floor(Date.now() / ROLLUP_MS)}` },
+        )
+      }
+      // The `db.backup` producer, on the same pattern. `lastBackup` moves when the job is
+      // *enqueued* as well as when it runs, so a queue that is not draining cannot pile up
+      // dumps behind it.
+      if (Date.now() - lastBackup >= BACKUP_MS) {
+        lastBackup = Date.now()
+        await queue.add(
+          'db.backup',
+          { trigger: 'schedule' },
+          { jobId: `db.backup:${Math.floor(Date.now() / BACKUP_MS)}` },
         )
       }
       // safety net: processing rows that never started (no Redis / lost job) or stalled for 30 minutes

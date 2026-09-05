@@ -3,6 +3,120 @@
 Short, ordered, copy-pasteable. Every step that changes data or config also writes an
 `audit_log` row where the admin panel supports it; note the rest in the ops channel.
 
+## Backups
+
+Two separate things, and only one of them is automatic. **The database backs itself up; object
+storage does not, and will not until you schedule the `rclone sync` in §2 below.**
+
+### 1 · The database — the `db.backup` worker job
+
+The worker takes the dump. Nothing on the host is scheduled and there is no cron entry to
+install: `apps/worker/src/index.ts` enqueues `db.backup` every `WORKER_BACKUP_MS` (24 h by
+default, and the clock survives a restart — it is seeded from the last recorded run, so
+redeploying does not take a dump each time).
+
+Each run does exactly what the script in docs/18 §9 did, in the same order and for the same
+reasons:
+
+1. `pg_dump --format=custom --compress=9` — **`pg_restore` cannot read a plain SQL dump**, and
+   no restore flag fixes the wrong format.
+2. `pg_restore -l` on the result — a backup that has never been read back is not a backup.
+   A truncated file, a text dump or an empty archive all fail here, before anything is
+   uploaded.
+3. upload to the **private** backups bucket, under `pg/`.
+4. delete dumps older than `BACKUP_RETENTION_DAYS` (14 by default). The dump just written is
+   never a candidate, whatever the clock says.
+
+Then it writes the outcome to `settings['backup.last']`, which is what
+**Admin → System → Backup** shows: status, size, the number of objects in the archive,
+duration, destination and — when it failed — why.
+
+**Configure it in `.env`** (worker-only, see `.env.example`; the web container is deliberately
+not given a key that can write to the backups bucket):
+
+```sh
+BACKUP_S3_BUCKET=palscans-backups        # the SECOND bucket from docs/18 §2
+BACKUP_S3_ACCESS_KEY_ID=…                # optional: falls back to the app's S3_* values,
+BACKUP_S3_SECRET_ACCESS_KEY=…            # which is enough for an account-wide R2 token
+# BACKUP_DIR=/var/backups/palscans       # alternative: a mounted directory, not a bucket
+# BACKUP_RETENTION_DAYS=14
+# WORKER_BACKUP_MS=86400000
+```
+
+With none of them set the job records **Not configured** on the panel rather than pretending;
+that is also what a fresh deployment sees on its first tick, which is the point.
+
+Four things are load-bearing:
+
+- **The bucket must not be `palscans`.** The job refuses that one outright. `palscans` has
+  `cdn.palscans.org` attached, R2 has no per-prefix ACL, and a dump holds every user row,
+  every session and the sealed `app_credentials` table.
+- **The worker image needs `postgresql-client`.** `node:22-alpine` has no `pg_dump`;
+  `infra/Dockerfile`'s worker stage installs it. If it is missing, every run fails with
+  `pg_dump not found` and the panel says exactly that. The client must be at least the
+  server's major version.
+- **A manual run cannot overwrite the nightly one.** The scheduled dump is
+  `pg/palscans-YYYY-MM-DD.dump`; **Backup now** writes `pg/palscans-YYYY-MM-DDTHHMMZ.dump`.
+  Both are pruned on the same retention window.
+- **The job uploads the dump in one piece**, so it refuses anything over `BACKUP_MAX_BYTES`
+  (1 GiB). If the database ever grows past that, run the host script in docs/18 §9 from cron
+  instead — it streams to disk and hands the file to `rclone`.
+
+Checking it without the panel:
+
+```sh
+dc exec -T postgres psql -U pal -d palscans -tAc \
+  "select value from settings where key = 'backup.last'"
+rclone lsl r2-backups:palscans-backups/pg/ | tail -5
+```
+
+**Once a month, actually restore one and count the rows** — §**Restore → 1 · Database**,
+cautious variant. It takes about two minutes.
+
+### 2 · Object storage — you must schedule this
+
+**R2 has no object versioning** (`GetBucketVersioning` and `PutBucketVersioning` are both on
+Cloudflare's unimplemented list), so a deleted page image is gone. Nothing in the application
+copies objects anywhere. **If you do not install the job below, you have no object backup.**
+
+Put this in `/usr/local/bin/palscans-object-backup` (`chmod +x`):
+
+```sh
+#!/bin/sh
+# Second copy of every public object prefix, into the private backups bucket from docs/18 §2.
+# Keys are content-addressed, so re-runs transfer almost nothing.
+set -eu
+for prefix in covers banners pages avatars; do
+  rclone sync "r2:palscans/$prefix" "r2-backups:palscans-backups/objects/$prefix" \
+    --fast-list --transfers 16 --checkers 32 --retries 3
+done
+```
+
+and schedule it — `/etc/cron.d/palscans-object-backup`, one line, and note the **required
+trailing newline**:
+
+```
+41 5 * * 0  root  /usr/local/bin/palscans-object-backup >> /var/log/palscans-object-backup.log 2>&1
+```
+
+Weekly (Sunday 05:41 UTC) is usually enough. Both `rclone` remotes come from
+`~/.config/rclone/rclone.conf` for the user cron runs it as — `root` here, so configure them
+as root or add `HOME=/root` above the line.
+
+`sync` mirrors deletions: a title you take down disappears from the backup on the next run.
+That is what you want after a DMCA notice and not what you want after a mistake. If you would
+rather keep deleted objects, change `sync` to `copy` — it never deletes, and the bucket only
+grows.
+
+To restore one prefix:
+
+```sh
+rclone copy r2-backups:palscans-backups/objects/pages/<seriesId> r2:palscans/pages/<seriesId>
+```
+
+Images are content-addressed, so a restored file is byte-identical and the CDN cache needs no
+purge.
+
 ## Restore
 
 Every compose command below wants `--env-file .env`, run from `/opt/palscans`. Without it
@@ -61,8 +175,11 @@ Write it into `.env` on the new host before starting anything.
 
 ### 1 · Database
 
-The nightly job (docs/18 §9) writes a **custom-format** dump — `pg_dump --format=custom` — to
-the `palscans-backups` bucket under `pg/`. `pg_restore` cannot read a plain SQL dump; if
+The nightly `db.backup` job (**Backups → 1** above) writes a **custom-format** dump —
+`pg_dump --format=custom` — to the `palscans-backups` bucket under `pg/`. A scheduled run is
+`palscans-YYYY-MM-DD.dump`; one taken from **Admin → System → Backup** is
+`palscans-YYYY-MM-DDTHHMMZ.dump`. List what is actually there with
+`rclone lsf r2-backups:palscans-backups/pg/`. `pg_restore` cannot read a plain SQL dump; if
 `pg_restore -l <file>` says *"input file appears to be a text format dump"*, you have the
 wrong format and no amount of restore flags will help (`psql -f` reads that one instead).
 
@@ -120,28 +237,26 @@ dc exec -T postgres psql -U pal -d postgres -c "drop database palscans_old"
 
 **R2 has no object versioning** — `GetBucketVersioning` and `PutBucketVersioning` are both on
 Cloudflare's unimplemented list — so there is nothing to roll back to inside the bucket and a
-deleted object is gone. The only object backup is the copy you make yourself, into the private
-backups bucket from docs/18 §2:
+deleted object is gone. The only object backup is the `rclone sync` copy in
+**Backups → 2 · Object storage** above. If that cron job was never installed, there is nothing
+to restore from and this step is the whole story.
+
+To put one prefix back:
 
 ```sh
-# on a schedule (weekly is usually enough — the keys are content-addressed, so this is
-# almost pure append and re-runs transfer nothing)
-rclone sync r2:palscans/covers  r2-backups:palscans-backups/objects/covers
-rclone sync r2:palscans/banners r2-backups:palscans-backups/objects/banners
-rclone sync r2:palscans/pages   r2-backups:palscans-backups/objects/pages
-rclone sync r2:palscans/avatars r2-backups:palscans-backups/objects/avatars
-
-# to restore one prefix
 rclone copy r2-backups:palscans-backups/objects/pages/<seriesId> r2:palscans/pages/<seriesId>
+rclone copy r2-backups:palscans-backups/objects/covers/<slug>    r2:palscans/covers/<slug>
 ```
 
-Use `sync`, not `copy`, only if you accept that a deletion propagates to the backup — with
-`sync` a title you take down is also removed from the backup on the next run, which is what
-you want after a DMCA notice and not what you want after a mistake. If unsure, use `copy`.
+Check the copy is not itself stale before you rely on it — with `sync`, anything deleted from
+the live bucket since the last run is already gone from the backup too:
 
-If nothing like this is scheduled, you have no object backup and the paragraph above is the
-whole story. Images are content-addressed, so a restored file is byte-identical and the CDN
-cache needs no purge.
+```sh
+rclone lsl r2-backups:palscans-backups/objects/pages | tail -3
+```
+
+Images are content-addressed, so a restored file is byte-identical and the CDN cache needs no
+purge.
 
 ### 3 · Verify
 

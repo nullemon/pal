@@ -31,6 +31,12 @@ CMD ["pnpm", "start"]
 
 FROM base AS worker
 ENV NODE_ENV=production
+# The `db.backup` job (docs/18 §9, infra/RUNBOOK.md) shells out to pg_dump and pg_restore,
+# which node:22-alpine does not ship — without this every backup fails with "pg_dump not
+# found" and the panel says so. The client must be at least the server's major version;
+# Alpine's default client is newer than the postgres:16 image in docker-compose.yml, which
+# is the supported direction. Only the worker needs it: the web app never takes a dump.
+RUN apk add --no-cache postgresql-client
 COPY --from=build /repo /repo
 WORKDIR /repo/apps/worker
 CMD ["pnpm", "start"]

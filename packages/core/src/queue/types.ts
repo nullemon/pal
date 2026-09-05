@@ -20,6 +20,12 @@ export interface JobMap {
   'webhook.deliver': { webhookId: number; event: string; payload: Record<string, unknown> }
   /** Walk the legacy WordPress site and import it, one resumable batch at a time (docs/17 §E). */
   'import.run': { runId: number }
+  /**
+   * Dump the database, verify it with `pg_restore -l`, upload it to the private backups
+   * bucket and prune the retention window (docs/17 §G, docs/18 §9). The scheduler is the
+   * usual producer; `Admin → System → Backup` enqueues the same job with `trigger: 'manual'`.
+   */
+  'db.backup': { trigger?: 'schedule' | 'manual'; actorId?: number }
 }
 export type JobName = keyof JobMap
 

@@ -472,16 +472,45 @@ Walk these in a private window:
 - [ ] every section of Admin → System → Integrations that you configured shows source
       **panel**, and its **Test** passes
 
-Then submit the sitemap to Google Search Console and set up the nightly backup.
+- [ ] **Admin → System → Backup** shows a green run — press **Back up now** once and watch it
+- [ ] the `rclone sync` cron job from `infra/RUNBOOK.md` → **Backups → 2** is installed;
+      without it there is no object backup at all
+- [ ] you have read `docs/20-performance.md` and know what this box does per second
+
+Then submit the sitemap to Google Search Console.
 
 ### The nightly database backup
+
+**This one ships with the application.** The worker enqueues `db.backup` every
+`WORKER_BACKUP_MS` (24 h), and **Admin → System → Backup** runs the same job on demand and
+shows the last run's outcome. There is no cron entry to install; there are four lines to put
+in `.env`:
+
+```sh
+BACKUP_S3_BUCKET=palscans-backups        # the SECOND bucket from §2 — never `palscans`
+BACKUP_S3_ACCESS_KEY_ID=…                # optional; falls back to the app's S3_* values
+BACKUP_S3_SECRET_ACCESS_KEY=…
+# BACKUP_RETENTION_DAYS=14
+```
+
+Then `dc up -d worker`, open **Admin → System → Backup**, press **Back up now**, and watch the
+row turn green. With nothing configured the panel reads *Not configured* rather than pretending
+— which is the honest answer, and the reason to look at the screen once on launch day.
+
+Full details, including how to check it from the shell, are in `infra/RUNBOOK.md` under
+**Backups**.
 
 The format matters. `infra/RUNBOOK.md` restores with `pg_restore`, which **cannot read a plain
 SQL dump** — a default `pg_dump` writes SQL text, and `pg_restore` answers
 `input file appears to be a text format dump. Please use psql.` and exits 1. Use
-`--format=custom`.
+`--format=custom`. The job does; so does the script below.
 
-Put this in `/usr/local/bin/palscans-backup` (`chmod +x`):
+#### If you would rather run it on the host
+
+The job takes the dump inside the worker container and uploads it in one piece, so a database
+larger than `BACKUP_MAX_BYTES` (1 GiB) is the case it does not cover. This script is the
+equivalent on the host, and is what the job was modelled on. Put it in
+`/usr/local/bin/palscans-backup` (`chmod +x`):
 
 ```sh
 #!/bin/sh
@@ -522,10 +551,31 @@ Three things in the script are load-bearing:
 Once a month, actually restore it somewhere and count the rows. The exact command is in
 `infra/RUNBOOK.md` under **Restore**; it takes about two minutes.
 
-That covers the database. **Objects are not backed up by anything** — R2 has no versioning, so
-a deleted image is gone. If you want a second copy, schedule the `rclone sync` in
-`infra/RUNBOOK.md` under **Restore → 2 · Object storage**; it writes into the same private
-backups bucket.
+#### The restore test that was actually run
+
+Not a claim — a record, so the next person knows the procedure in the runbook has been walked
+end to end at least once. On **2026-09-05**, against the development database (137 series,
+4 968 chapters, 54 837 chapter pages, 38 users):
+
+1. `db.backup` ran and wrote `pg/palscans-2026-09-05T0013Z.dump` — **538 206 bytes**, **480**
+   objects reported by `pg_restore -l`, in **371 ms**.
+2. `pg_restore --exit-on-error` into a scratch database (the **cautious variant** in
+   `infra/RUNBOOK.md` → Restore → 1) exited **0** with no output.
+3. Row counts compared **table by table across all 70 tables**: identical, **69 729 rows**
+   before and after.
+4. The two things a restore of this schema can quietly get wrong were checked explicitly: the
+   partitioned `view_events` came back with its **5 partitions**, and `series.rating_avg` came
+   back as a **generated** column (`attgenerated = 's'`), not a plain one.
+
+The scratch database was dropped afterwards. What this does *not* prove is the
+`--clean --create` drop-and-recreate path in the runbook, which by design destroys the
+database it is pointed at; it was not run against a shared database. Walk that one on the real
+server the first time you need it, or on a throwaway host.
+
+That covers the database. **Objects are still not backed up by anything the application
+runs** — R2 has no versioning, so a deleted image is gone. The `rclone sync` cron job in
+`infra/RUNBOOK.md` under **Backups → 2 · Object storage** is a thing you install on the host,
+by hand, and it is the only object backup that will ever exist. Do it on launch day.
 
 ---
 
