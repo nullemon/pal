@@ -54,7 +54,13 @@ test.describe('offline downloads', () => {
     const row = sheet.locator('li button:has-text("Keep offline")').first()
     await expect(row).toBeVisible({ timeout: 15_000 })
     await row.click()
-    await expect(page.getByText('On this device').first()).toBeVisible({ timeout: 60_000 })
+    // Wait on the *row's own* button flipping to "On this device", not on the text
+    // appearing anywhere: `getByText` is a case-insensitive substring match, and the sheet's
+    // own description ("keep it on this device to read offline") matches it the moment the
+    // sheet opens — which let this assertion pass before the download had started.
+    await expect(sheet.locator('li button:has-text("On this device")').first()).toBeVisible({
+      timeout: 60_000,
+    })
 
     // What landed on disk: a manifest row, and one cached response per page plus the cover.
     const stored = await page.evaluate(async () => {

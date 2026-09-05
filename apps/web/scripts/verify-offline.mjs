@@ -18,7 +18,16 @@
  */
 import { spawn } from 'node:child_process'
 import { setTimeout as sleep } from 'node:timers/promises'
+import { messages } from '@palscans/core/messages'
 import { chromium } from '@playwright/test'
+
+/**
+ * The row's two labels, read from the catalogue rather than typed here. Renaming "Download"
+ * to "Keep offline" silently broke this script once: the locator stopped matching, and
+ * because it is not in CI nobody found out until the next manual run.
+ */
+const KEEP_OFFLINE = messages.series.downloadStart
+const ON_THIS_DEVICE = messages.series.downloadDone
 
 const PORT = Number(process.env.PORT ?? 3199)
 const BASE = `http://127.0.0.1:${PORT}`
@@ -78,10 +87,13 @@ try {
     await trigger.click().catch(() => undefined)
     await sleep(500)
   }
-  await sheet.locator('li button:has-text("Download")').first().click()
-  await page.waitForFunction(() => document.body.innerText.includes('Downloaded'), null, {
-    timeout: 90_000,
-  })
+  await sheet.locator(`li button:has-text("${KEEP_OFFLINE}")`).first().click()
+  // The row's own button, not any text on the page: the sheet's description also contains
+  // "on this device", and `has-text` would match it before the download had begun.
+  await sheet
+    .locator(`li button:has-text("${ON_THIS_DEVICE}")`)
+    .first()
+    .waitFor({ timeout: 90_000 })
   step('chapter downloaded')
 
   // Prime the shell while the network still works.
