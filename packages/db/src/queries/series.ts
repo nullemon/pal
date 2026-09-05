@@ -1,8 +1,11 @@
-import { and, desc, eq, inArray, ne, sql } from 'drizzle-orm'
+import { BAYESIAN_C } from '@palscans/core'
+import { and, desc, eq, inArray, ne, not, sql } from 'drizzle-orm'
 import type { Db } from '../client.js'
 import {
+  bookmarks,
   genres,
   people,
+  readingProgress,
   series,
   seriesGenres,
   seriesPeople,
@@ -103,29 +106,98 @@ export const seriesRank = async (db: Db, seriesId: number): Promise<number | nul
   return row ? Number(row.rank) : null
 }
 
-/** Recommended: published series sharing the most genres, then by popularity. */
-export const recommendedSeries = async (db: Db, seriesId: number, limit = 6) => {
+export interface RecommendedOptions {
+  limit?: number
+  /**
+   * Drop everything this reader has already opened (they have a `reading_progress` row for
+   * it). Recommending a series they finished last week is worse than recommending nothing —
+   * it is the one suggestion that proves the site was not paying attention.
+   */
+  excludeReadBy?: number | null
+  /** Drop what they have already bookmarked: they have found it, it is not a discovery. */
+  excludeBookmarkedBy?: number | null
+  /**
+   * Prior for the Bayesian rating, so a single 10/10 does not outrank a 9.2 with 4,000
+   * votes. Pass the site mean when the caller has it; 7.5 is `siteMean`'s own fallback.
+   */
+  ratingPrior?: number
+  /**
+   * When the genre-matched list comes back empty — a reader who has read everything in the
+   * genre — fall back to popular unread series instead of showing nothing. Off by default so
+   * the series page keeps its strictly on-genre rail.
+   */
+  fallbackToPopular?: boolean
+}
+
+/** Bayesian rating in SQL: `(sum + C·prior) / (count + C)`, the same shape browse sorts by. */
+const bayesRating = (prior: number) =>
+  sql<number>`((${series.ratingSum} + ${BAYESIAN_C} * ${prior}::float8) / (${series.ratingCount} + ${BAYESIAN_C})::float8)`
+
+/** `series` this reader has already opened / already bookmarked. */
+const alreadyRead = (userId: number) =>
+  sql`exists (select 1 from ${readingProgress} where ${readingProgress.userId} = ${userId} and ${readingProgress.seriesId} = ${series.id})`
+
+const alreadyBookmarked = (userId: number) =>
+  sql`exists (select 1 from ${bookmarks} where ${bookmarks.userId} = ${userId} and ${bookmarks.seriesId} = ${series.id})`
+
+const seenFilters = (opts: RecommendedOptions) => [
+  ...(opts.excludeReadBy ? [not(alreadyRead(opts.excludeReadBy))] : []),
+  ...(opts.excludeBookmarkedBy ? [not(alreadyBookmarked(opts.excludeBookmarkedBy))] : []),
+]
+
+/**
+ * Recommended: published series sharing the most genres, best-rated first, minus anything
+ * this reader has already read or bookmarked.
+ *
+ * The third argument still takes a bare `limit` so the series page's `recommendedSeries(db,
+ * id, 6)` keeps working; pass an options object for the personalised form.
+ */
+export const recommendedSeries = async (
+  db: Db,
+  seriesId: number,
+  limitOrOptions: number | RecommendedOptions = 6,
+) => {
+  const opts: RecommendedOptions =
+    typeof limitOrOptions === 'number' ? { limit: limitOrOptions } : limitOrOptions
+  const limit = opts.limit ?? 6
+  const prior = opts.ratingPrior ?? 7.5
+  const rating = bayesRating(prior)
+  const unseen = seenFilters(opts)
+
+  const popular = () =>
+    db
+      .select(seriesCardColumns)
+      .from(series)
+      .where(and(publishedSeries(), ne(series.id, seriesId), ...unseen))
+      .orderBy(desc(series.viewCount), desc(series.id))
+      .limit(limit)
+
   const genreIds = (
     await db
       .select({ id: seriesGenres.genreId })
       .from(seriesGenres)
       .where(eq(seriesGenres.seriesId, seriesId))
   ).map((r) => r.id)
-  if (genreIds.length === 0) {
-    return db
-      .select(seriesCardColumns)
-      .from(series)
-      .where(and(publishedSeries(), ne(series.id, seriesId)))
-      .orderBy(desc(series.viewCount))
-      .limit(limit)
-  }
-  const shared = sql<number>`count(${seriesGenres.genreId})::int`
-  return db
+  if (genreIds.length === 0) return popular()
+
+  const shared = sql<number>`count(distinct ${seriesGenres.genreId})::int`
+  const rows = await db
     .select({ ...seriesCardColumns, shared })
     .from(seriesGenres)
     .innerJoin(series, eq(series.id, seriesGenres.seriesId))
-    .where(and(inArray(seriesGenres.genreId, genreIds), ne(series.id, seriesId), publishedSeries()))
+    .where(
+      and(
+        inArray(seriesGenres.genreId, genreIds),
+        ne(series.id, seriesId),
+        publishedSeries(),
+        ...unseen,
+      ),
+    )
     .groupBy(series.id)
-    .orderBy(desc(shared), desc(series.viewCount))
+    // Overlap first (that is the actual signal), then quality, then reach as the tiebreak.
+    .orderBy(desc(shared), desc(rating), desc(series.viewCount), desc(series.id))
     .limit(limit)
+
+  if (rows.length === 0 && opts.fallbackToPopular) return popular()
+  return rows
 }

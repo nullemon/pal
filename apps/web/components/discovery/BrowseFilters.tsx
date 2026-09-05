@@ -1,7 +1,8 @@
 import { fmt, messages } from '@palscans/core/messages'
 import { buttonClasses, cn } from '@palscans/ui'
-import { X } from 'lucide-react'
+import { Shuffle, X } from 'lucide-react'
 import Link from 'next/link'
+import { randomLink } from '@/lib/site'
 import {
   BROWSE_SORTS,
   type BrowseParams,
@@ -147,6 +148,17 @@ export function BrowseFilters({ params, genres, className }: BrowseFiltersProps)
           {messages.browse.reset}
         </Link>
       </div>
+
+      {/* For the reader who came here to browse because they had nothing to read: a way out
+          of the filters entirely. Quiet — a text link under the buttons, not a third one. */}
+      <Link
+        href={randomLink.href}
+        prefetch={false}
+        className="-mt-1 inline-flex items-center gap-1.5 self-start text-[12px] font-semibold text-fg-muted transition-colors hover:text-brand-hover"
+      >
+        <Shuffle size={13} aria-hidden="true" />
+        {randomLink.label}
+      </Link>
     </form>
   )
 }

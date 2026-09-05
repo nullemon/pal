@@ -3322,6 +3322,16 @@ export const messages = {
     thanks: 'Thanks — that is with the team.',
     failed: 'That did not send. Try again in a moment.',
   },
+
+  /**
+   * Discovery doorways (docs/13 "Random series"): the "surprise me" entry point to `/random`,
+   * put where a reader with nothing left to read actually looks — the header, the browse
+   * filter panel, and the end of a chapter they have just caught up on.
+   */
+  discover: {
+    surpriseMe: 'Surprise me',
+    surpriseMeHint: 'Open a random series',
+  },
 } as const
 
 export type Messages = typeof messages

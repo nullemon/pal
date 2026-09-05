@@ -1,9 +1,10 @@
 import { cdnBase } from '@/lib/config/mirror'
 import { getEnv } from '@/lib/env'
+import { COVER_HEIGHT, COVER_WIDTH } from './cover'
 
-/** Intrinsic size of every cover the seed and the worker produce (2:3, docs/05). */
-export const COVER_WIDTH = 400
-export const COVER_HEIGHT = 600
+// Re-exported so server callers keep importing the pair from here; `./cover` holds them so
+// client components can size a cover without pulling this module's server imports in.
+export { COVER_HEIGHT, COVER_WIDTH }
 
 /**
  * Public URL for a storage key. When the CDN shares the site's origin (the local `fs`

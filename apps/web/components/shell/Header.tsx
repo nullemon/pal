@@ -1,8 +1,9 @@
 import { messages } from '@palscans/core/messages'
 import { buttonClasses } from '@palscans/ui'
-import { Bell, Search, Zap } from 'lucide-react'
+import { Bell, Search, Shuffle, Zap } from 'lucide-react'
 import Link from 'next/link'
 import { RequestTrigger } from '@/components/requests/RequestTrigger'
+import { randomLink } from '@/lib/site'
 import { NavLinks } from './NavLinks'
 import { Wordmark } from './Wordmark'
 
@@ -44,6 +45,17 @@ export function Header() {
             className={`${iconButton} md:hidden`}
           >
             <Search size={18} />
+          </Link>
+          {/* The doorway for a reader with nothing to read (docs/13 "Random series"). Never
+              prefetched: `/random` redirects, and a prefetch spends a roll nobody asked for. */}
+          <Link
+            href={randomLink.href}
+            prefetch={false}
+            aria-label={randomLink.hint}
+            title={randomLink.label}
+            className={iconButton}
+          >
+            <Shuffle size={18} />
           </Link>
           {/* "Request a series" opens a modal in place rather than navigating: a reader
               forty chapters into something should not lose their place to ask for a title.

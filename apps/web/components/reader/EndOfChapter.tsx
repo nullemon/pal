@@ -1,9 +1,10 @@
 'use client'
 
 import { fmt, messages } from '@palscans/core/messages'
-import { ArrowRight, Lock } from 'lucide-react'
+import { ArrowRight, Lock, Shuffle } from 'lucide-react'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
+import { RecommendedRail } from '@/components/discovery/RecommendedRail'
 import { EndSlot } from './ads'
 import type { ChapterLink, ReaderAds } from './types'
 
@@ -67,6 +68,17 @@ export function EndOfChapter(p: EndOfChapterProps) {
         >
           {messages.seriesDetail.breadcrumbSeries}: {p.seriesTitle}
         </Link>
+        {/* Nothing left in this series is the one moment a random title is a real answer. */}
+        {p.next ? null : (
+          <Link
+            href="/random"
+            prefetch={false}
+            className="inline-flex h-11 items-center gap-2 rounded-[10px] border border-line px-4 text-fg transition-colors hover:bg-surface-2"
+          >
+            <Shuffle size={15} aria-hidden="true" />
+            {messages.discover.surpriseMe}
+          </Link>
+        )}
         {p.ads.enabled ? (
           <Link
             href={p.subscribeHref}
@@ -76,6 +88,9 @@ export function EndOfChapter(p: EndOfChapterProps) {
           </Link>
         ) : null}
       </div>
+      {/* docs/12 §10 "recommended series … internal linking is structural" — below the Next
+          Chapter button, which must stay the first thing a thumb reaches. */}
+      <RecommendedRail seriesHref={p.seriesHref} className="pt-2" />
       {p.comments ? <div className="w-full pt-4">{p.comments}</div> : null}
     </section>
   )

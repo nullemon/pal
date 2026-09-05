@@ -5,6 +5,8 @@ import type { Metadata } from 'next'
 import { unstable_cache } from 'next/cache'
 import { z } from 'zod'
 import { getEnv } from '@/lib/env'
+import { OG_HEIGHT, OG_WIDTH } from '@/lib/seo/og-card'
+import { chapterOgUrl, ogSeriesBySlug } from '@/lib/seo/og-data'
 import { chapterHref, formatChapterNumber, seriesHref } from '../params'
 import type { ChapterBundle, ReaderSeriesRow } from './data'
 
@@ -78,8 +80,22 @@ export async function chapterMetadata(input: ChapterMetaInput): Promise<Metadata
   )
   const path = chapterHref(series.slug, bundle.chapter.number)
   const url = new URL(path, env.SITE_URL).toString()
-  const image = input.firstPageUrl ?? input.coverUrl
-  const absImage = image ? new URL(image, env.SITE_URL).toString() : undefined
+  const card = await chapterCardImage(series.slug, number)
+  // The generated card is the preview; the first page (or the cover) is only the fallback
+  // for the rare series the card endpoint cannot build one for.
+  const fallback = input.firstPageUrl ?? input.coverUrl
+  const absImage = card
+    ? card.url
+    : fallback
+      ? new URL(fallback, env.SITE_URL).toString()
+      : undefined
+  const image = absImage
+    ? {
+        url: absImage,
+        alt: rendered.title,
+        ...(card ? { width: OG_WIDTH, height: OG_HEIGHT, type: 'image/png' } : {}),
+      }
+    : undefined
   const noindex = !seo.indexChapters || series.noindex
   return {
     title: { absolute: rendered.title },
@@ -92,7 +108,7 @@ export async function chapterMetadata(input: ChapterMetaInput): Promise<Metadata
       title: rendered.title,
       description: rendered.description,
       url,
-      ...(absImage ? { images: [{ url: absImage, alt: rendered.title }] } : {}),
+      ...(image ? { images: [image] } : {}),
     },
     twitter: {
       card: 'summary_large_image',
@@ -100,6 +116,21 @@ export async function chapterMetadata(input: ChapterMetaInput): Promise<Metadata
       description: rendered.description,
       ...(absImage ? { images: [absImage] } : {}),
     },
+  }
+}
+
+/**
+ * The chapter's share card as an absolute URL (docs/12 §2: `og:image` at 1200×630). Null
+ * when the series row is not readable from here — metadata must never fail over an image,
+ * so the caller falls back to the first page.
+ */
+const chapterCardImage = async (slug: string, chapter: string): Promise<{ url: string } | null> => {
+  try {
+    const row = await ogSeriesBySlug(slug)
+    if (!row) return null
+    return { url: new URL(chapterOgUrl(row, chapter), getEnv().SITE_URL).toString() }
+  } catch {
+    return null
   }
 }
 

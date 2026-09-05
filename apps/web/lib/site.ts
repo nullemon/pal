@@ -29,6 +29,18 @@ export const headerNav: readonly NavLink[] = [
   { label: messages.nav.bookmarks, href: '/me/bookmarks', prefix: true },
 ]
 
+/**
+ * The "surprise me" doorway to `/random` (docs/13 "Random series"). One definition, used by
+ * the header, the browse filter panel and the end-of-chapter card, so the label and the
+ * destination cannot drift apart. `/random` is a 307 to a series — never prefetch it: a
+ * prefetch would spend a roll the reader never asked for and cache the wrong destination.
+ */
+export const randomLink: NavLink & { hint: string } = {
+  label: messages.discover.surpriseMe,
+  href: '/random',
+  hint: messages.discover.surpriseMeHint,
+}
+
 export type BottomNavIcon = 'home' | 'browse' | 'library' | 'profile'
 
 export const bottomNav: ReadonlyArray<NavLink & { icon: BottomNavIcon }> = [

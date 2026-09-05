@@ -6,8 +6,24 @@ import { ViewBeacon } from '@/components/views/ViewBeacon'
 import { storageUrl } from '@/lib/comments/media'
 import { getEnv } from '@/lib/env'
 import { seriesLayout } from '@/lib/layouts'
+import { OG_HEIGHT, OG_WIDTH } from '@/lib/seo/og-card'
+import { ogSeriesBySlug, seriesOgUrl } from '@/lib/seo/og-data'
 import { chapterRows, getSeries } from './data'
 import { loadSeriesView } from './view'
+
+/**
+ * The series share card as an absolute URL, or null when the row is not readable from here.
+ * Metadata never fails over an image: the caller falls back to the stored cover.
+ */
+const ogSeriesCard = async (slug: string): Promise<string | null> => {
+  try {
+    const row = await ogSeriesBySlug(slug)
+    if (!row) return null
+    return new URL(seriesOgUrl(row), getEnv().SITE_URL).toString()
+  } catch {
+    return null
+  }
+}
 
 interface PageProps {
   params: Promise<{ slug: string }>
@@ -36,9 +52,24 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const title = series.seoTitle ?? seo.title
   const description = series.seoDescription ?? seo.description
   const canonical = series.canonicalUrl ?? `${env.SITE_URL}/series/${series.slug}`
+  // docs/12 §2: a generated 1200×630 card, so a shared series link previews as the cover,
+  // the title and the PALScans mark rather than a bare 2:3 cover cropped by the network.
+  const card = await ogSeriesCard(series.slug)
   const ogKey = series.ogImageKey ?? series.coverKey
   const ogUrl = storageUrl(ogKey)
-  const image = ogUrl ? (ogUrl.startsWith('http') ? ogUrl : `${env.SITE_URL}${ogUrl}`) : undefined
+  const fallback = ogUrl
+    ? ogUrl.startsWith('http')
+      ? ogUrl
+      : `${env.SITE_URL}${ogUrl}`
+    : undefined
+  const image = card ?? fallback
+  const imageEntry = image
+    ? {
+        url: image,
+        alt: fmt(messages.seriesDetail.coverAlt, { title: series.title }),
+        ...(card ? { width: OG_WIDTH, height: OG_HEIGHT, type: 'image/png' } : {}),
+      }
+    : undefined
   return {
     title: { absolute: title },
     description: truncateWords(description, 300),
@@ -50,13 +81,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       title,
       description,
       url: canonical,
-      ...(image
-        ? {
-            images: [
-              { url: image, alt: fmt(messages.seriesDetail.coverAlt, { title: series.title }) },
-            ],
-          }
-        : {}),
+      ...(imageEntry ? { images: [imageEntry] } : {}),
     },
     twitter: {
       card: 'summary_large_image',
