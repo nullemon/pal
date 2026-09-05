@@ -103,7 +103,7 @@ describe('publishing a chapter', () => {
       })
       .returning({ id: chapters.id })
     if (!c) throw new Error('chapter not inserted')
-    expect(await publishDue(db, now)).toContain(c.id)
+    expect((await publishDue(db, now)).map((r) => r.id)).toContain(c.id)
 
     const rows = await db
       .select({ userId: notifications.userId })

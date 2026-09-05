@@ -11,11 +11,21 @@ import { runImport } from './jobs/import-run.js'
 import { registerNotifications } from './jobs/notify-index.js'
 import { publishDue } from './jobs/publish.js'
 import { type ArtKind, processSeriesArt } from './jobs/series-art.js'
+import {
+  createSitemapCoalescer,
+  lastFullSitemapBuildAt,
+  runSitemapBuild,
+  sitemapEnv,
+} from './jobs/sitemap.js'
 import { runStatsRollup } from './jobs/stats-rollup.js'
 import { readWatermarkRun, runWatermarkReapply } from './jobs/watermark-reapply.js'
+import { createBackgroundTasks } from './lib/background.js'
 import { installWorkerConfig } from './lib/config.js'
+import { installCrashGuards } from './lib/crash.js'
+import { createHeartbeat, heartbeatStaleMs } from './lib/health.js'
 import { log } from './lib/log.js'
 import { revalidateWeb, runMaintenance } from './lib/revalidate.js'
+import { createShutdown } from './lib/shutdown.js'
 
 /**
  * The PALScans worker (docs/16 "apps/worker"): the image pipeline (`chapter.process`), the
@@ -33,8 +43,16 @@ const BACKUP_MS = backupEnv().WORKER_BACKUP_MS
  * worker that restarts twice an hour during a deploy must not take a dump each time.
  */
 let lastBackup = 0
+/** How often a *full* `sitemap.build` is enqueued (docs/12 §5: nightly). Seeded, like backups. */
+const SITEMAP_MS = sitemapEnv().WORKER_SITEMAP_MS
+let lastSitemap = 0
 const CONCURRENCY = getEnv().WORKER_CONCURRENCY
 const PAGE_CONCURRENCY = getEnv().WORKER_PAGE_CONCURRENCY
+const SHUTDOWN_TIMEOUT_MS = getEnv().WORKER_SHUTDOWN_TIMEOUT_MS
+
+// Before anything can reject: startup itself does database and network work, and Node 22
+// ends the process on an unhandled rejection.
+installCrashGuards()
 
 const main = async () => {
   const db = await getDb()
@@ -44,7 +62,20 @@ const main = async () => {
   const credentials = installWorkerConfig(db)
   const storage = await getStorage()
   const queue = await getQueue()
-  const deps = { db, storage, pageConcurrency: PAGE_CONCURRENCY }
+  // Everything this process starts and does not await, so `shutdown` can wait for it.
+  const tasks = createBackgroundTasks()
+  /**
+   * The publish → incremental `sitemap.build` producer (docs/12 §5). Both publish paths feed
+   * it — the scheduler pass below and a chapter that goes live the moment its encode finishes
+   * — and it collapses a release's worth of them into one build and one IndexNow submission.
+   */
+  const sitemaps = createSitemapCoalescer(queue)
+  const deps = {
+    db,
+    storage,
+    pageConcurrency: PAGE_CONCURRENCY,
+    onPublished: ({ seriesId }: { seriesId: number }) => sitemaps.note([seriesId]),
+  }
   const inflight = new Set<number>()
 
   const run = async (chapterId: number) => {
@@ -55,6 +86,15 @@ const main = async () => {
     } finally {
       inflight.delete(chapterId)
     }
+  }
+
+  /** Publish what is due and tell the catalogue and the sitemap about it. */
+  const publishPass = async () => {
+    const published = await publishDue(db)
+    if (published.length === 0) return published
+    await revalidateWeb(['catalog'])
+    sitemaps.note(published.map((c) => c.seriesId))
+    return published
   }
 
   queue.process(
@@ -79,7 +119,7 @@ const main = async () => {
     await runArt(job.data.seriesId, job.data.kind)
   })
   queue.process('chapter.publish', async (job) => {
-    if ((await publishDue(db)).length) await revalidateWeb(['catalog'])
+    await publishPass()
     log.info('chapter.publish handled by the scheduler pass', { chapterId: job.data.chapterId })
   })
   // The shared queue carries every job name (docs/16); the ones outside this scope are
@@ -163,12 +203,19 @@ const main = async () => {
     })
   })
 
-  for (const name of [
-    'sitemap.build',
-    'notify.comment',
-    'email.send',
-    'webhook.deliver',
-  ] as const) {
+  /**
+   * `sitemap.build` (docs/12 §5). Producer/handler split again: the tick is the nightly full
+   * producer, the publish paths are the incremental producer through `sitemaps`, and the job
+   * exists on its own so Admin → SEO could hand a rebuild to the worker instead of running it
+   * inside a request. The builder is `apps/web/lib/seo/sitemaps.ts` — one implementation,
+   * handed this process's database and storage (see the note at the top of that file).
+   */
+  queue.process('sitemap.build', async (job) => {
+    if (job.data.kind === 'full') lastSitemap = Date.now()
+    await runSitemapBuild({ db, storage }, { kind: job.data.kind, seriesIds: job.data.seriesIds })
+  })
+
+  for (const name of ['notify.comment', 'email.send', 'webhook.deliver'] as const) {
     queue.process(name, async (job) => {
       log.warn(`no handler for ${name} in apps/worker yet — acknowledged`, { id: job.id })
     })
@@ -181,14 +228,29 @@ const main = async () => {
   )
   const recordedAt = recorded?.finishedAt ? Date.parse(recorded.finishedAt) : Number.NaN
   lastBackup = Number.isNaN(recordedAt) ? 0 : recordedAt
+  // Same for the nightly sitemap, read from `sitemap_builds` rather than a setting.
+  const builtAt = await lastFullSitemapBuildAt(db).catch(() => null)
+  lastSitemap = builtAt?.getTime() ?? 0
 
-  log.info('started', { queue: queue.kind, storage: storage.driver, concurrency: CONCURRENCY })
+  const heartbeat = createHeartbeat({
+    staleMs: heartbeatStaleMs(SCHEDULER_MS),
+    queue: queue.kind,
+    storage: storage.driver,
+    onError: (err) => log.warn('heartbeat write failed', { error: String(err) }),
+  })
+
+  log.info('started', {
+    queue: queue.kind,
+    storage: storage.driver,
+    concurrency: CONCURRENCY,
+    heartbeat: heartbeat.file,
+  })
 
   const tick = async () => {
     try {
-      if ((await publishDue(db)).length) await revalidateWeb(['catalog'])
+      await publishPass()
       // Periodic jobs that live in the web app (account-deletion purges). Self-throttled.
-      void runMaintenance()
+      tasks.start('maintenance', () => runMaintenance())
       // The `stats.rollup` producer. Enqueued rather than called directly so a BullMQ
       // deployment does the work on whichever worker is free, and so the job shows up in
       // Admin → Jobs like every other one. `jobId` collapses a backlog into one pass.
@@ -211,6 +273,18 @@ const main = async () => {
           { jobId: `db.backup:${Math.floor(Date.now() / BACKUP_MS)}` },
         )
       }
+      // The nightly full `sitemap.build`, same pattern again. The incremental builds keep the
+      // series and chapters files current between these; this one is what picks up everything
+      // else — a genre renamed, an announcement published, a series unlisted — and repairs
+      // anything an incremental build missed because the process died inside its window.
+      if (Date.now() - lastSitemap >= SITEMAP_MS) {
+        lastSitemap = Date.now()
+        await queue.add(
+          'sitemap.build',
+          { kind: 'full' },
+          { jobId: `sitemap.build:${Math.floor(Date.now() / SITEMAP_MS)}` },
+        )
+      }
       // safety net: processing rows that never started (no Redis / lost job) or stalled for 30 minutes
       const stale = await db
         .select({ id: chapters.id })
@@ -229,7 +303,7 @@ const main = async () => {
         .limit(5)
       for (const s of stale) {
         log.warn('picking up stale processing chapter', { chapterId: s.id })
-        void run(s.id)
+        tasks.start(`chapter.process ${s.id}`, () => run(s.id))
       }
       // A watermark re-apply whose worker died, or that was started with no queue behind it
       // (the web app's in-process queue does not survive a restart). The run row carries its
@@ -243,7 +317,7 @@ const main = async () => {
           (queue.kind === 'memory' ? 10_000 : 120_000)
       ) {
         log.warn('picking up a cold watermark re-apply', { runId: reapply.id })
-        void runReapply(reapply.id)
+        tasks.start(`watermark.reapply ${reapply.id}`, () => runReapply(reapply.id))
       }
       // cover / banner originals waiting for `series.art` (in-process web queue, lost job);
       // entries carrying an error are left for the admin to re-upload
@@ -261,9 +335,13 @@ const main = async () => {
       for (const s of art) {
         for (const kind of ['cover', 'banner'] as const) {
           const entry = s.artPending?.[kind]
-          if (entry && !entry.error) void runArt(s.id, kind)
+          if (entry && !entry.error)
+            tasks.start(`series.art ${s.id}:${kind}`, () => runArt(s.id, kind))
         }
       }
+      // Last, and only on the way out of a pass that did not throw: this file *is* the health
+      // check (lib/health.ts), so a tick that keeps failing must let it go stale.
+      await heartbeat.touch()
     } catch (err) {
       log.error('scheduler tick failed', err)
     }
@@ -271,16 +349,23 @@ const main = async () => {
   await tick()
   const timer = setInterval(() => void tick(), SCHEDULER_MS)
 
-  const shutdown = async () => {
-    clearInterval(timer)
-    notifications.stop()
-    log.info('shutting down')
-    await queue.close()
-    await closeDb()
-    process.exit(0)
-  }
-  process.on('SIGINT', () => void shutdown())
-  process.on('SIGTERM', () => void shutdown())
+  const shutdown = createShutdown({
+    tasks,
+    stopProducers: async () => {
+      clearInterval(timer)
+      notifications.stop()
+      // Before the queue closes: a chapter published seconds ago still has its incremental
+      // sitemap build waiting out its window, and after `queue.close()` nothing can be added.
+      await sitemaps.flush()
+      sitemaps.stop()
+    },
+    closeQueue: () => queue.close(),
+    closeDb: () => closeDb(),
+    timeoutMs: SHUTDOWN_TIMEOUT_MS,
+    exit: (code) => process.exit(code),
+  })
+  for (const signal of ['SIGINT', 'SIGTERM'] as const)
+    process.on(signal, () => void shutdown(signal))
 }
 
 main().catch((err) => {

@@ -28,6 +28,13 @@ export const envSchema = z.object({
   WORKER_SCHEDULER_MS: z.coerce.number().int().positive().default(30_000),
   /** How often the worker enqueues `stats.rollup` (docs/02: "every few minutes"). */
   WORKER_ROLLUP_MS: z.coerce.number().int().positive().default(120_000),
+  /**
+   * How long a SIGTERM gives in-flight work to finish before the worker exits anyway.
+   * A page encode is the long pole, so this is minutes-tolerant rather than seconds; the
+   * compose `stop_grace_period` for the worker must be larger, or Docker sends SIGKILL first
+   * and the drain never completes.
+   */
+  WORKER_SHUTDOWN_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
 })
 
 export type Env = z.infer<typeof envSchema>

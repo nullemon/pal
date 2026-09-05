@@ -266,6 +266,14 @@ purge.
 - **Admin → System → Integrations**: every section you configured reads source **panel**, and
   its **Test** passes. Storage first.
 - `/admin` dashboard shows the last publish; `dc logs worker` shows the scheduler ticking.
+- `dc ps` shows **both** `web` and `worker` as `healthy`. The worker serves no requests, so its
+  check reads the heartbeat file the scheduler tick writes after every pass that completed
+  (`apps/worker/src/lib/health.ts`); `dc exec worker node scripts/healthcheck.mjs` prints why
+  when it is failing. Unhealthy means the tick is throwing — almost always the database or the
+  queue — and nothing restarts the container on it, so the logs are still there to read.
+- **Admin → SEO → Sitemap** shows a build from the last day, and an `incremental` one within a
+  minute of the most recent publish (docs/12 §5). A build log that stops at one `full` row from
+  launch day means the worker is not running the publish path.
 
 ## Rotate secrets
 

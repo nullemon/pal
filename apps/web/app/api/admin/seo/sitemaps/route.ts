@@ -3,6 +3,7 @@ import { audit } from '@/components/admin/server/audit'
 import { ok, withPermission } from '@/lib/auth'
 import { indexNowLog, sitemapBuildViews } from '@/lib/seo/admin-data'
 import { buildSitemaps } from '@/lib/seo/sitemaps'
+import { getStorage } from '@/lib/storage'
 
 /** GET: the build log. POST: "Regenerate now" — a full build, synchronously. */
 export const GET = withPermission('settings.write', async () => {
@@ -12,7 +13,7 @@ export const GET = withPermission('settings.write', async () => {
 
 export const POST = withPermission('settings.write', async (request, _ctx, user) => {
   const db = await getDb()
-  const result = await buildSitemaps({ kind: 'full', db })
+  const result = await buildSitemaps({ kind: 'full', db, storage: await getStorage() })
   await audit({
     actorId: user.id,
     action: 'seo.sitemap.rebuild',

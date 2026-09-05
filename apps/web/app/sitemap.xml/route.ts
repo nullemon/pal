@@ -1,5 +1,6 @@
 import { cachedSeoSettings } from '@/lib/seo/settings'
 import { buildSitemaps, readSitemapIndex } from '@/lib/seo/sitemaps'
+import { getStorage } from '@/lib/storage'
 
 /**
  * The sitemap index (docs/12 §5). Served from the last build in storage; when nothing has
@@ -9,11 +10,12 @@ import { buildSitemaps, readSitemapIndex } from '@/lib/seo/sitemaps'
 export async function GET() {
   const settings = await cachedSeoSettings()
   if (!settings.sitemap.enabled) return Response.json({ error: 'not_found' }, { status: 404 })
-  let xml = await readSitemapIndex()
+  const storage = await getStorage()
+  let xml = await readSitemapIndex(storage)
   if (!xml) {
-    const result = await buildSitemaps({ kind: 'full' })
+    const result = await buildSitemaps({ kind: 'full', storage })
     if (result.error) return Response.json({ error: 'build_failed' }, { status: 503 })
-    xml = await readSitemapIndex()
+    xml = await readSitemapIndex(storage)
   }
   if (!xml) return Response.json({ error: 'not_found' }, { status: 404 })
   return new Response(xml, {

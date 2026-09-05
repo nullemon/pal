@@ -88,7 +88,7 @@ describe('the early-access window at publish', () => {
     const now = new Date('2026-09-04T12:00:00Z')
     await setSetting('entitlements', { early_access_minutes: 30 })
     const id = await addChapter(101, at(-1, now))
-    expect(await publishDue(db, now)).toContain(id)
+    expect((await publishDue(db, now)).map((c) => c.id)).toContain(id)
     const row = await read(id)
     expect(row.state).toBe('published')
     expect(row.earlyAccessUntil?.toISOString()).toBe(at(30, now).toISOString())
@@ -99,7 +99,7 @@ describe('the early-access window at publish', () => {
     const byHand = at(240, now)
     await setSetting('entitlements', { early_access_minutes: 30 })
     const id = await addChapter(102, at(-1, now), byHand)
-    expect(await publishDue(db, now)).toContain(id)
+    expect((await publishDue(db, now)).map((c) => c.id)).toContain(id)
     expect((await read(id)).earlyAccessUntil?.toISOString()).toBe(byHand.toISOString())
   })
 
@@ -107,7 +107,7 @@ describe('the early-access window at publish', () => {
     const now = new Date('2026-09-04T14:00:00Z')
     await setSetting('entitlements', { early_access_minutes: 0 })
     const id = await addChapter(103, at(-1, now))
-    expect(await publishDue(db, now)).toContain(id)
+    expect((await publishDue(db, now)).map((c) => c.id)).toContain(id)
     expect((await read(id)).earlyAccessUntil).toBe(null)
   })
 
@@ -115,7 +115,7 @@ describe('the early-access window at publish', () => {
     const now = new Date('2026-09-04T15:00:00Z')
     await setSetting('entitlements', {})
     const id = await addChapter(104, at(-1, now))
-    expect(await publishDue(db, now)).toContain(id)
+    expect((await publishDue(db, now)).map((c) => c.id)).toContain(id)
     expect((await read(id)).earlyAccessUntil?.toISOString()).toBe(
       at(DEFAULT_EARLY_ACCESS_MINUTES, now).toISOString(),
     )
@@ -125,7 +125,7 @@ describe('the early-access window at publish', () => {
     const now = new Date('2026-09-04T16:00:00Z')
     await setSetting('entitlements', { early_access_minutes: 30 })
     const id = await addChapter(105, at(60, now))
-    expect(await publishDue(db, now)).not.toContain(id)
+    expect((await publishDue(db, now)).map((c) => c.id)).not.toContain(id)
     const row = await read(id)
     expect(row.state).toBe('scheduled')
     expect(row.earlyAccessUntil).toBe(null)

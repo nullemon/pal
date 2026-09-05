@@ -205,11 +205,34 @@ services:
       BACKUP_DIR: ${BACKUP_DIR:-}
       BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
       WORKER_BACKUP_MS: ${WORKER_BACKUP_MS:-86400000}
+      # The nightly full sitemap rebuild (docs/12 §5). Incremental builds are enqueued by the
+      # publish path itself and need no schedule.
+      WORKER_SITEMAP_MS: ${WORKER_SITEMAP_MS:-86400000}
+      # How long in-flight jobs get on SIGTERM. `stop_grace_period` below must exceed it —
+      # Docker's default grace is 10 s, which is shorter than one chapter encode.
+      WORKER_SHUTDOWN_TIMEOUT_MS: ${WORKER_SHUTDOWN_TIMEOUT_MS:-30000}
     depends_on:
       postgres:
         condition: service_healthy
       valkey:
         condition: service_healthy
+    stop_grace_period: 45s
+    healthcheck:
+      # The worker answers no requests, so there is nothing to probe: it writes a heartbeat
+      # file after every scheduler tick that completed and this reads it (docs/12 §5 has the
+      # publish path; apps/worker/src/lib/health.ts has the reasoning). Alive-but-wedged — the
+      # tick throwing on every pass because Postgres is refusing connections — was invisible
+      # before this, because the container was still up and the process was still running.
+      #
+      # Nothing restarts the container on a failure (plain compose only reports), which is the
+      # behaviour we want: restarting a worker does not fix a database that is down.
+      test: ["CMD", "node", "scripts/healthcheck.mjs"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      # The first tick has to finish before there is anything to read, and it runs after the
+      # credential read and the queue connect.
+      start_period: 60s
 
   caddy:
     image: caddy:2-alpine

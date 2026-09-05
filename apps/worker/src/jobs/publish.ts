@@ -22,8 +22,18 @@ import { log } from '../lib/log.js'
  * for `entitlements.early_access_minutes` and then becomes free to everyone, without anyone
  * having to remember to set a date. A window already set by hand on the chapter wins, so a
  * longer run for one release still works.
+ *
+ * The series id travels back with each published chapter because the callers act on the
+ * *series*: the catalogue cache purge, and the incremental sitemap build that has to know
+ * which series/chapters files changed (docs/12 §5).
  */
-export const publishDue = async (db: Db, now = new Date()): Promise<number[]> => {
+export interface PublishedChapter {
+  id: number
+  seriesId: number
+  number: number
+}
+
+export const publishDue = async (db: Db, now = new Date()): Promise<PublishedChapter[]> => {
   const overrides = parseEntitlementOverrides(await getSetting<unknown>(db, 'entitlements', {}))
   const windowMs = overrides.early_access_minutes * 60_000
   const earlyUntil = windowMs > 0 ? new Date(now.getTime() + windowMs) : null
@@ -45,7 +55,7 @@ export const publishDue = async (db: Db, now = new Date()): Promise<number[]> =>
     )
     .orderBy(asc(chapters.publishedAt))
     .limit(200)
-  const published: number[] = []
+  const published: PublishedChapter[] = []
   for (const c of due) {
     try {
       await db.transaction(async (tx) => {
@@ -67,13 +77,13 @@ export const publishDue = async (db: Db, now = new Date()): Promise<number[]> =>
           })
           .where(eq(series.id, c.seriesId))
         await notifyFollowers(tx, c.id, c.seriesId, c.number)
-        published.push(c.id)
+        published.push({ id: c.id, seriesId: c.seriesId, number: c.number })
       })
     } catch (err) {
       log.error(`publish ${c.id} failed`, err)
     }
   }
-  if (published.length) log.info('published due chapters', { ids: published })
+  if (published.length) log.info('published due chapters', { ids: published.map((c) => c.id) })
   return published
 }
 

@@ -28,6 +28,12 @@ export interface ProcessDeps {
   /** Pages processed at once inside one chapter (docs/03: ~4 on a 4-core box). */
   pageConcurrency?: number
   now?: () => Date
+  /**
+   * Called when this run put a chapter live, next to the catalogue purge below. The worker
+   * hands it to the sitemap coalescer (docs/12 §5: incrementally on every publish); tests
+   * and the admin re-run path can leave it out.
+   */
+  onPublished?: (published: { chapterId: number; seriesId: number }) => void
 }
 
 const errorMessage = (err: unknown): string =>
@@ -134,7 +140,18 @@ export const processChapter = async (
   const flush = setInterval(() => {
     if (dirty) {
       dirty = false
-      void persist()
+      // A progress write is the least important statement this job makes, and it is the one
+      // that runs most often: every 750 ms for the whole length of an encode. Unhandled, a
+      // transient `too many clients` or a Postgres restart mid-deploy rejected here and took
+      // the *process* down (Node 22 exits on an unhandled rejection), leaving this chapter in
+      // `processing` for the 30 minutes the stale sweep waits. Progress is cosmetic; the next
+      // flush writes the same document again, and the run's real writes are awaited.
+      persist().catch((err) => {
+        log.warn('chapter.process progress write failed', {
+          chapterId,
+          error: errorMessage(err),
+        })
+      })
     }
   }, 750)
   flush.unref()
@@ -257,6 +274,9 @@ export const processChapter = async (
     }
   })
   log.info('chapter.process done', { chapterId, pages: rows.length, state: nextState })
-  if (nextState === 'published') await revalidateWeb(['catalog'])
+  if (nextState === 'published') {
+    await revalidateWeb(['catalog'])
+    deps.onPublished?.({ chapterId, seriesId: row.seriesId })
+  }
   return 'done'
 }

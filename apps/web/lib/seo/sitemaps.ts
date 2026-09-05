@@ -12,8 +12,7 @@ import {
   series,
   sitemapBuilds,
 } from '@palscans/db'
-import { and, desc, eq, gte, inArray, isNull, or, sql } from 'drizzle-orm'
-import { getStorage } from '@/lib/storage'
+import { and, desc, eq, gte, inArray, isNotNull, isNull, lt, or, sql } from 'drizzle-orm'
 import { getEnv } from '../env'
 import { type IndexNowResult, submitIndexNow } from './indexnow'
 import { loadSeoSettings, type SeoSettings, type SitemapSection } from './settings'
@@ -30,6 +29,21 @@ import { chunk, SITEMAP_MAX_URLS, type SitemapUrl, sitemapIndexXml, urlsetXml } 
  * series-N and chapters-N files (one query each, ordered so the files stay stable) and keep
  * the other sections from the last successful build, then submit the changed URLs to
  * IndexNow.
+ *
+ * ## Why `storage` is a parameter and not a default
+ *
+ * `apps/worker` imports this module the same way the notification jobs import
+ * `lib/notifications` — a relative path into `apps/web/lib`, running in plain Node under
+ * `tsx`. That works for everything here (`next/cache` and `@palscans/db` both load fine
+ * outside Next) except one import: `@/lib/storage` pulls in `lib/config/install`, which
+ * imports `server-only`. That package is an alias Next's bundler provides and nothing
+ * installs, so importing it outside Next throws `ERR_MODULE_NOT_FOUND` at load time —
+ * verified by execution, not assumed.
+ *
+ * So the caller passes the `Storage` it already has: the web app the panel-configured one
+ * from `@/lib/storage`, the worker the one `installWorkerConfig` resolved from the same
+ * `app_credentials` rows. Both end up in the same bucket, and neither process has to import
+ * the other's configuration graph.
  */
 
 export const SITEMAP_PREFIX = 'sitemaps/'
@@ -41,8 +55,9 @@ export interface SitemapBuildOptions {
   kind: 'full' | 'incremental'
   /** Incremental builds: the series whose pages changed (IndexNow gets their URLs). */
   seriesIds?: number[]
+  /** Where the gzipped files go. Required: see the note above. */
+  storage: Storage
   db?: Db
-  storage?: Storage
   settings?: SeoSettings
   siteUrl?: string
   now?: Date
@@ -216,11 +231,23 @@ export async function collectSitemapUrls(
 }
 
 /** The last successful build's file list, for merging incremental builds. */
-export async function lastSitemapBuild(db: Db) {
+export async function lastSitemapBuild(db: Db, before?: number) {
+  // `finishedAt is not null` is load-bearing, not tidiness. `buildSitemaps` inserts its own
+  // row before it starts, with no error and an empty file list, so without this the merge
+  // below found *itself* and kept nothing: every incremental build dropped pages, genres,
+  // announcements and images out of the index until the next full one put them back. Nobody
+  // saw it because no incremental build had ever run. `before` excludes a concurrent build
+  // (the admin "Regenerate now" button landing on top of a publish) for the same reason.
   const [row] = await db
     .select()
     .from(sitemapBuilds)
-    .where(isNull(sitemapBuilds.error))
+    .where(
+      and(
+        isNull(sitemapBuilds.error),
+        isNotNull(sitemapBuilds.finishedAt),
+        before === undefined ? undefined : lt(sitemapBuilds.id, before),
+      ),
+    )
     .orderBy(desc(sitemapBuilds.id))
     .limit(1)
   return row ?? null
@@ -240,9 +267,42 @@ async function writeIndexNowLog(db: Db, log: IndexNowLog): Promise<void> {
     })
 }
 
+/**
+ * IndexNow, after the files are already written and the build row is already closed.
+ *
+ * Three ways this does nothing, none of which may fail the build the caller just paid for:
+ * no key stored (the operator never filled it in), nothing to submit, or the endpoint being
+ * unreachable — `submitIndexNow` catches its own transport errors and reports `ok: false`.
+ * The two database reads around it can still throw (a Postgres that went away between the
+ * build and now), so the whole thing is wrapped: the files are written and the build row is
+ * closed by the time this runs, and losing one "last submitted" line on the SEO screen is
+ * not a reason to report a good sitemap as failed. This function never throws.
+ */
+async function notifyIndexNow(
+  db: Db,
+  origin: string,
+  opts: SitemapBuildOptions,
+  key: string | null,
+): Promise<IndexNowResult | null> {
+  if (!key || opts.kind !== 'incremental' || !opts.seriesIds?.length) return null
+  try {
+    const urls = await changedUrls(db, origin, opts.seriesIds)
+    const result = await submitIndexNow({ siteUrl: origin, key, urls, fetchImpl: opts.fetchImpl })
+    await writeIndexNowLog(db, { at: new Date().toISOString(), ...result }).catch(() => {})
+    return result
+  } catch (err) {
+    return {
+      submitted: 0,
+      status: null,
+      ok: false,
+      error: err instanceof Error ? err.message : 'indexnow failed',
+    }
+  }
+}
+
 export async function buildSitemaps(opts: SitemapBuildOptions): Promise<SitemapBuildResult> {
   const db = opts.db ?? (await getDb())
-  const storage = opts.storage ?? (await getStorage())
+  const storage = opts.storage
   const settings = opts.settings ?? (await loadSeoSettings(db))
   const origin = new URL(opts.siteUrl ?? getEnv().SITE_URL).origin
   const startedAt = opts.now ?? new Date()
@@ -273,7 +333,7 @@ export async function buildSitemaps(opts: SitemapBuildOptions): Promise<SitemapB
 
     // Incremental: keep the other sections' files from the previous successful build.
     if (opts.kind === 'incremental') {
-      const previous = await lastSitemapBuild(db)
+      const previous = await lastSitemapBuild(db, id)
       const rebuilt = new Set(sections)
       for (const f of previous?.files ?? []) {
         const section = sectionOf(f.name)
@@ -299,18 +359,7 @@ export async function buildSitemaps(opts: SitemapBuildOptions): Promise<SitemapB
       .set({ urlCount, files, finishedAt })
       .where(eq(sitemapBuilds.id, id))
 
-    let indexNow: IndexNowResult | null = null
-    const key = settings.sitemap.indexnow_key
-    if (key && opts.kind === 'incremental' && opts.seriesIds?.length) {
-      const urls = await changedUrls(db, origin, opts.seriesIds)
-      indexNow = await submitIndexNow({
-        siteUrl: origin,
-        key,
-        urls,
-        fetchImpl: opts.fetchImpl,
-      })
-      await writeIndexNowLog(db, { at: new Date().toISOString(), ...indexNow })
-    }
+    const indexNow = await notifyIndexNow(db, origin, opts, settings.sitemap.indexnow_key)
 
     return { id, kind: opts.kind, urlCount, files, indexNow, error: null, startedAt, finishedAt }
   } catch (err) {
@@ -360,13 +409,11 @@ async function changedUrls(db: Db, origin: string, seriesIds: number[]): Promise
 }
 
 /** Read a built file from storage (null when never built). */
-export async function readSitemapFile(name: string, storage?: Storage): Promise<Uint8Array | null> {
-  const s = storage ?? (await getStorage())
-  return s.get(`${SITEMAP_PREFIX}${name}`)
+export async function readSitemapFile(name: string, storage: Storage): Promise<Uint8Array | null> {
+  return storage.get(`${SITEMAP_PREFIX}${name}`)
 }
 
-export async function readSitemapIndex(storage?: Storage): Promise<string | null> {
-  const s = storage ?? (await getStorage())
-  const bytes = await s.get(SITEMAP_INDEX_KEY)
+export async function readSitemapIndex(storage: Storage): Promise<string | null> {
+  const bytes = await storage.get(SITEMAP_INDEX_KEY)
   return bytes ? Buffer.from(bytes).toString('utf8') : null
 }
