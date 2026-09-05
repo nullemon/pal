@@ -1,6 +1,6 @@
 'use client'
 
-import { messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { useToast } from '@palscans/ui'
 import { useState } from 'react'
 import type { SiteSetting } from '../schemas-system'
@@ -9,7 +9,7 @@ import { putJson } from './api'
 import { SaveBar, Segmented, Toggle } from './controls'
 
 export function SettingsForm({ initial }: { initial: SiteSetting }) {
-  const m = messages.admin.settings
+  const m = adminMessages.admin.settings
   const { toast } = useToast()
   const [saved, setSaved] = useState(initial)
   const [s, setS] = useState(initial)
@@ -27,7 +27,7 @@ export function SettingsForm({ initial }: { initial: SiteSetting }) {
           setSaving(false)
           if (!res.ok)
             return toast({
-              title: messages.admin.errorSaving,
+              title: adminMessages.admin.errorSaving,
               description: res.message,
               tone: 'danger',
             })

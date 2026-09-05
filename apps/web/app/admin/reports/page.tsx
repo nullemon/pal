@@ -1,4 +1,5 @@
 import { messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { getDb, reports, users } from '@palscans/db'
 import { and, count, desc, eq } from 'drizzle-orm'
 import { z } from 'zod'
@@ -69,7 +70,7 @@ export default async function ReportsPage({
       .offset((p.page - 1) * PAGE_SIZE),
     db.select({ n: count() }).from(reports).where(where),
   ])
-  const m = messages.admin.reportsQueue
+  const m = adminMessages.admin.reportsQueue
   return (
     <>
       <PageHeader title={m.title} subtitle={m.subtitle} />

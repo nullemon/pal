@@ -1,5 +1,6 @@
 import { chapterLabel, compactNumber } from '@palscans/core'
-import { fmt, messages } from '@palscans/core/messages'
+import { fmt } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import type { BucketRange, TopChapterRow, TopSeriesRow, ViewTotals } from '@palscans/db'
 import { ANALYTICS_WINDOWS } from '@palscans/db'
 import { cn } from '@palscans/ui'
@@ -24,7 +25,7 @@ import { ViewsChart } from './ViewsChart'
  * to keep in sync and a shareable URL for every view.
  */
 
-const m = messages.admin.analytics
+const m = adminMessages.admin.analytics
 
 /**
  * The fixed-period totals. Deliberately above the window filter: these four never change

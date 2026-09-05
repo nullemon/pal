@@ -1,4 +1,4 @@
-import { messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { notFound } from 'next/navigation'
 import { PageEditor } from '@/components/admin/content/PageEditor'
 import { loadPageEditor } from '@/components/admin/content/queries'
@@ -12,7 +12,7 @@ export default async function AdminPageEditorPage({ params }: { params: Promise<
   await withPermission('settings.write', { returnTo: `/admin/pages/${id.data}` })
   const data = await loadPageEditor(id.data)
   if (!data) notFound()
-  const m = messages.adminContent.pages
+  const m = adminMessages.adminContent.pages
   return (
     <>
       <PageHeader title={data.doc.title} subtitle={`${m.editor} · /${data.doc.slug}`} />

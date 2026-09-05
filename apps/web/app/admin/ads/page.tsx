@@ -1,4 +1,4 @@
-import { messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { getDb, getSetting } from '@palscans/db'
 import { AdsForm } from '@/components/admin/client/AdsForm'
 import { AD_SLOTS, type AdsSetting } from '@/components/admin/schemas-system'
@@ -23,7 +23,7 @@ export default async function AdsPage() {
     ) as AdsSetting['slots'],
     ads_txt: typeof raw.ads_txt === 'string' ? raw.ads_txt : '',
   }
-  const m = messages.admin.ads
+  const m = adminMessages.admin.ads
   return (
     <>
       <PageHeader title={m.title} subtitle={m.subtitle} />

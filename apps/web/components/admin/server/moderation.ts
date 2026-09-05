@@ -1,4 +1,5 @@
-import { isCommentBody, plainText } from '@palscans/core/comments'
+import { plainText } from '@palscans/core/comments'
+import { isCommentBody } from '@palscans/core/comments/schema'
 import {
   auditLog,
   type CommentBodyJson,

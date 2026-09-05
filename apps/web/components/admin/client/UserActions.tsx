@@ -1,6 +1,6 @@
 'use client'
 
-import { messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { Button, useToast } from '@palscans/ui'
 import { useState } from 'react'
 import type { UserAction } from '../schemas-users'
@@ -63,7 +63,7 @@ export function UserActions({
   perms,
   self,
 }: Props) {
-  const m = messages.admin.users
+  const m = adminMessages.admin.users
   const { toast } = useToast()
   const [role, setRole] = useState(user.role)
   const [pendingRole, setPendingRole] = useState<string | null>(null)
@@ -87,7 +87,7 @@ export function UserActions({
     )
     if (!res.ok) {
       toast({
-        title: messages.admin.errorSaving,
+        title: adminMessages.admin.errorSaving,
         description: res.message || res.error,
         tone: 'danger',
       })
@@ -139,7 +139,9 @@ export function UserActions({
             </select>
           </Field>
           {self ? (
-            <span className="pb-2 text-[12px] text-fg-subtle">{messages.admin.forbiddenSelf}</span>
+            <span className="pb-2 text-[12px] text-fg-subtle">
+              {adminMessages.admin.forbiddenSelf}
+            </span>
           ) : null}
           <div className="ml-auto flex gap-2">
             {perms.update && !user.emailVerifiedAt ? (
@@ -186,7 +188,7 @@ export function UserActions({
           }
         />
         <ul className="mb-3 flex flex-col gap-1.5 text-[13px]">
-          {ents.length === 0 ? <li className="text-fg-muted">{messages.admin.none}</li> : null}
+          {ents.length === 0 ? <li className="text-fg-muted">{adminMessages.admin.none}</li> : null}
           {ents.map((e) => (
             <li
               key={e.feature}
@@ -265,7 +267,9 @@ export function UserActions({
       <Panel>
         <PanelHeader title={m.sessions} />
         <ul className="flex flex-col gap-1.5 text-[13px]">
-          {sessions.length === 0 ? <li className="text-fg-muted">{messages.admin.none}</li> : null}
+          {sessions.length === 0 ? (
+            <li className="text-fg-muted">{adminMessages.admin.none}</li>
+          ) : null}
           {sessions.map((s) => (
             <li
               key={s.id}

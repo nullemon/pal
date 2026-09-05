@@ -1,4 +1,4 @@
-import { messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { getDb, pages } from '@palscans/db'
 import { eq } from 'drizzle-orm'
 import { pageSlugTaken } from '@/components/admin/content/queries'
@@ -26,7 +26,7 @@ export const PUT = withPermission<{ id: string }>('settings.write', async (reque
   const [before] = await db.select().from(pages).where(eq(pages.id, id.data)).limit(1)
   if (!before) return notFound()
   if (doc.slug !== before.slug && (await pageSlugTaken(doc.slug, id.data)))
-    return fail(409, 'slug_taken', messages.adminContent.pages.fields.slugCollision)
+    return fail(409, 'slug_taken', adminMessages.adminContent.pages.fields.slugCollision)
   const changed =
     JSON.stringify(before.body) !== JSON.stringify(body.body) || before.title !== doc.title
   await db

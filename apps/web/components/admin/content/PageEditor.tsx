@@ -1,6 +1,7 @@
 'use client'
 
-import { fmt, messages } from '@palscans/core/messages'
+import { fmt } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { useToast } from '@palscans/ui'
 import { ExternalLink } from 'lucide-react'
 import { useRouter } from 'next/navigation'
@@ -26,7 +27,7 @@ export function PageEditor({
   doc: PageDoc
   version: number | null
 }) {
-  const m = messages.adminContent.pages
+  const m = adminMessages.adminContent.pages
   const f = m.fields
   const { toast } = useToast()
   const router = useRouter()
@@ -49,7 +50,7 @@ export function PageEditor({
       : await postJson<{ id: number }>('/api/admin/pages', doc)
     setSaving(false)
     if (!res.ok) {
-      toast({ title: messages.admin.errorSaving, description: res.message, tone: 'danger' })
+      toast({ title: adminMessages.admin.errorSaving, description: res.message, tone: 'danger' })
       return
     }
     setSaved(doc)

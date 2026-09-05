@@ -1,7 +1,7 @@
 /** biome-ignore-all lint/suspicious/noArrayIndexKey: the strip preview is a static illustration */
 'use client'
 
-import { messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { cn, useToast } from '@palscans/ui'
 import { ExternalLink, Info, Rows3, ScrollText } from 'lucide-react'
 import { useMemo, useState } from 'react'
@@ -17,8 +17,8 @@ import { SaveBar, Segmented, Toggle } from './controls'
 import { LayoutThumb } from './LayoutThumbs'
 import { formatChapterNumber } from './util'
 
-const copy = messages.admin.layouts
-const common = messages.admin
+const copy = adminMessages.admin.layouts
+const common = adminMessages.admin
 
 function RadioCard({
   direction,

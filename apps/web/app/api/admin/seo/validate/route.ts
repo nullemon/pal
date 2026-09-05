@@ -1,11 +1,12 @@
-import { fmt, messages } from '@palscans/core/messages'
+import { fmt } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { fail, ok, parseJson, withPermission } from '@/lib/auth'
 import { getEnv } from '@/lib/env'
 import { validateUrlSchema } from '@/lib/seo/admin'
 import { extractJsonLd, jsonLdTypes, validateJsonLd } from '@/lib/seo/jsonld'
 
 /** Fetch a page on this site, pull out its JSON-LD and run the builders' required-field checks. */
-const m = messages.adminSeo.tools
+const m = adminMessages.adminSeo.tools
 
 /** Outside production a dev server on another port may be validated too. */
 const LOCALHOST_HTTP = /^http:\/\/localhost(:\d+)?$/

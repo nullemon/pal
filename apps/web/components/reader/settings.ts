@@ -1,19 +1,25 @@
-import { z } from 'zod'
 import { localResume } from '@/lib/progress/local'
 import type { ReaderBackground, ReaderDirection, ReaderMode, ReaderSettings } from './types'
 
 /** localStorage key; bump the suffix when the shape changes incompatibly. */
 export const SETTINGS_KEY = 'palscans.reader.v1'
 
-export const readerSettingsSchema = z.object({
-  mode: z.enum(['strip', 'single', 'double']),
-  direction: z.enum(['ltr', 'rtl']),
-  fit: z.enum(['width', 'height', 'original']),
-  quality: z.enum(['auto', 'high', 'saver']),
-  preload: z.union([z.literal(3), z.literal(5), z.literal(10)]),
-  background: z.enum(['black', 'dark', 'sepia', 'white']),
-  gap: z.union([z.literal(0), z.literal(8), z.literal(16)]),
-})
+/**
+ * The allowed value of every stored preference. A plain table rather than a schema object:
+ * this module is imported by the reader island, and a validation library costs 83 KB
+ * gzipped in the browser for what is, here, seven `includes` calls (docs/20 "Front-end
+ * budgets"). Untrusted *input* is still parsed on the server; this only reads back this
+ * device's own localStorage, where the worst case is a stale or hand-edited value.
+ */
+export const READER_SETTING_VALUES = {
+  mode: ['strip', 'single', 'double'],
+  direction: ['ltr', 'rtl'],
+  fit: ['width', 'height', 'original'],
+  quality: ['auto', 'high', 'saver'],
+  preload: [3, 5, 10],
+  background: ['black', 'dark', 'sepia', 'white'],
+  gap: [0, 8, 16],
+} as const satisfies { [K in keyof ReaderSettings]: readonly ReaderSettings[K][] }
 
 export interface SettingsDefaults {
   /** Admin default from `settings.layouts.reader.default_mode`. */
@@ -42,11 +48,10 @@ export const defaultSettings = (d: SettingsDefaults): ReaderSettings => ({
 export const parseStoredSettings = (raw: unknown, defaults: ReaderSettings): ReaderSettings => {
   if (!raw || typeof raw !== 'object') return defaults
   const out: ReaderSettings = { ...defaults }
-  const shape = readerSettingsSchema.shape
-  for (const key of Object.keys(shape) as Array<keyof ReaderSettings>) {
+  for (const key of Object.keys(READER_SETTING_VALUES) as Array<keyof ReaderSettings>) {
     const value = (raw as Record<string, unknown>)[key]
-    const r = shape[key].safeParse(value)
-    if (r.success) (out as unknown as Record<string, unknown>)[key] = r.data
+    const allowed: readonly unknown[] = READER_SETTING_VALUES[key]
+    if (allowed.includes(value)) (out as unknown as Record<string, unknown>)[key] = value
   }
   return out
 }
@@ -97,17 +102,20 @@ export const isLightBackground = (bg: ReaderBackground): boolean => bg === 'sepi
  */
 export const RESUME_KEY = 'palscans.reader.resume.v1'
 
-export const resumeSchema = z.object({
-  pageIdx: z.number().int().min(0),
-  scrollPct: z.number().min(0).max(1),
-})
+/** `{ pageIdx: int ≥ 0, scrollPct: 0…1 }`, or null for anything else. */
+export const parseResume = (raw: unknown): { pageIdx: number; scrollPct: number } | null => {
+  if (!raw || typeof raw !== 'object') return null
+  const { pageIdx, scrollPct } = raw as Record<string, unknown>
+  if (typeof pageIdx !== 'number' || !Number.isInteger(pageIdx) || pageIdx < 0) return null
+  if (typeof scrollPct !== 'number' || Number.isNaN(scrollPct)) return null
+  if (scrollPct < 0 || scrollPct > 1) return null
+  return { pageIdx, scrollPct }
+}
 
 const legacyResume = (chapterId: number): { pageIdx: number; scrollPct: number } | null => {
   try {
     const raw = window.localStorage.getItem(`${RESUME_KEY}:${chapterId}`)
-    if (!raw) return null
-    const r = resumeSchema.safeParse(JSON.parse(raw))
-    return r.success ? r.data : null
+    return raw ? parseResume(JSON.parse(raw)) : null
   } catch {
     return null
   }

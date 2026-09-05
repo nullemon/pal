@@ -283,32 +283,132 @@ above:
 
 | Route | gzipped JS | docs/06 target | over by | CLS (≤0.02) | LCP (≤2.0s) |
 |---|---:|---:|---:|---:|---:|
-| `/` | 281.9 KB | 110 KB | +171.9 KB | 0.000 | 1.1 s |
-| `/series/[slug]` | 282.8 KB | 110 KB | +172.8 KB | 0.005 | 0.55 s |
-| reader | 286.4 KB | 60 KB | +226.4 KB | 0.005 | 0.35 s |
+| `/` | 170.6 KB | 110 KB | +60.6 KB | 0.000 | 0.87 s |
+| `/series/[slug]` | 187.2 KB | 110 KB | +77.2 KB | 0.005 | 0.42 s |
+| reader | 198.9 KB | 60 KB | +138.9 KB | 0.005 | 0.32 s |
 
 **CLS and LCP pass comfortably.** The reader's CLS is 0.005 against a 0.02 budget, which is
 the number docs/06 cared most about ("the reader must be ~0"), and LCP has more than five
 times the headroom the budget allows.
 
-**The JS budgets do not pass, and are missed by 2.6× on the home page and 4.8× on the
-reader.** Nearly all of it is one shared client runtime: thirteen files, of which two account
-for over half the bytes, loaded identically on all three routes. The per-route figures barely
-differ, which is the tell — this is not the reader shipping too much reader code, it is every
-route paying for the same baseline. One of the large chunks contains `zod`, which suggests a
-schema module reachable from a client component; that is the first thing to pull on.
+**The JS budgets still do not pass**, but the shared client runtime is now 122 KB smaller on
+the home page than it was, and the three routes no longer weigh the same:
+
+| Route | was | now | saved |
+|---|---:|---:|---:|
+| `/` | 281.9 KB | **170.6 KB** | −111.3 KB (−39 %) |
+| `/series/[slug]` | 282.8 KB | **187.2 KB** | −95.6 KB (−34 %) |
+| reader | 286.4 KB | **198.9 KB** | −87.5 KB (−31 %) |
+
+The "now" column is this feature set, not the one the cuts were first measured against:
+follows, the request modal in the header, device-local reading progress, the report sheet
+and the recommendation rail all landed alongside them and cost about 12 KB between them.
+
+### What was in there
+
+Three things, all of them a client component reaching through a module boundary for one
+symbol and dragging everything behind it into the browser:
+
+1. **`zod`, 83.6 KB gzipped on every route** — a validation library in a reader's phone.
+   Five client modules reached it, each for one symbol:
+
+   - the comment composer imports `plainText` and `hasSpoiler` from `@palscans/core/comments`,
+     whose barrel also re-exported the zod schemas that parse untrusted comment bodies on the
+     server — those moved to `@palscans/core/comments/schema` and are not re-exported;
+   - `components/reader/settings.ts` used zod to validate the seven preferences it reads back
+     out of this device's own localStorage, and `lib/progress/journal.ts` did the same for the
+     reading-position journal — both are now a table of allowed values and a hand-written row
+     parser, keeping the per-field fallback semantics the schemas encoded (a bad `scrollPct`
+     falls back, a bad `chapterId` drops the row) and asserting them in tests;
+   - the request modal lives in the **site header**, so it is on every page: it imported
+     `SERIES_TYPES` from `components/discovery/filters.ts` and the board's view models from a
+     module that also held its submission schemas. The vocabulary moved to
+     `components/discovery/taxonomy.ts`, which imports nothing, and the schemas to
+     `components/requests/schemas.ts`, which only route handlers import;
+   - the follow button renders on every series page and imported the follow modes from
+     `lib/notifications/schema.ts`, whose other half parses the operator's settings — the
+     modes are now `lib/notifications/follow-modes.ts`.
+
+   Untrusted *input* is still parsed with zod on the server, which is where it was always
+   doing the work. The pattern in all five: a client module reaching through a boundary for
+   one constant and dragging a validation library behind it.
+
+2. **The copy catalogue, 34.5 KB gzipped on every route.** `packages/core/src/messages.ts`
+   is one frozen object, so a client component that reads `messages.nav.close` pulls
+   the whole thing — including the ~60 KB of admin-panel copy no reader ever sees. The admin
+   half now lives in `@palscans/core/messages/admin` as `adminMessages`. The remaining
+   catalogue is 19.8 KB gzipped.
+
+   The boundary is "does the public site render it", and the leak is easy to reintroduce:
+   `queueHealth`, `duplicates` and `merge` were added later without an `admin` prefix and
+   went straight back onto every page until they were moved. The split is proven lossless
+   mechanically — every top-level section of the original object appears in exactly one half,
+   byte for byte — but nothing yet *prevents* a new admin-only section from landing in the
+   public half. Grep for `messages.` in `apps/web/app/admin/**` before adding one.
+
+3. **The layout registry.** `lib/layouts.ts` held both the six home directions and the six
+   series directions and imported all twelve, so the home page's client bundle contained the
+   chapter table, the action islands and the entire comment thread, and the series page
+   contained the hero carousel. It is now `lib/layouts/home.ts` and `lib/layouts/series.ts`,
+   which never import each other — worth 21 KB gzipped on the home page.
+
+`lucide-react` was checked and was already fine: the icons arrive as individual modules, a
+few hundred bytes each, not as a barrel.
+
+### What is left
+
+Of the 171 KB the home page still ships, **about 132 KB is the Next.js App Router client
+runtime** and is identical on all three routes:
+
+| | gzipped |
+|---|---:|
+| `react-dom-client` | 70.0 KB |
+| router + segment cache + PPR navigation | 34.1 KB |
+| `react-server-dom-turbopack` client | 8.3 KB |
+| `react` | 8.3 KB |
+| Turbopack runtime | 4.3 KB |
+| layout router | 3.8 KB |
+| error boundaries | 3.5 KB |
+| **framework total** | **132.3 KB** |
+
+**That number is above docs/06's 110 KB home target on its own, and more than twice the
+60 KB reader target.** Neither target is reachable while the site is a React App Router
+application; they would need a different rendering strategy, not a different import. Worth
+saying plainly rather than leaving the gap looking like an outstanding chore.
+
+What *is* still ours, on the home page: 17.3 KB of copy catalogue, 6.0 KB of shell (`Link`,
+the toast provider, the nav config, the bottom nav) and 3.9 KB of home components.
+
+The next honest saving is the rest of the catalogue. Splitting the admin half off took it
+from 34.5 KB to 17.3 KB; splitting the account area (`me`, `billing`, `notify`, the auth
+pages — about 40 % of what remains) would take perhaps 7 KB more. It was not done here
+because `lib/site.ts`, which every route loads for the header and footer links, reads four
+labels out of `messages.me` and `messages.account`, so the account catalogue would follow it
+back into every bundle. Doing it properly means one module per section rather than two
+catalogues, and rewriting ~300 call sites; worth doing deliberately, not as a byte-hunt.
+
+Two things were deliberately **not** done:
+
+- **Lazy-loading the comment thread** below the reader (12.5 KB gzipped). `next/dynamic`
+  would defer the chunk past `load` — which the budget script stops counting at — so the
+  number would improve while the reader's experience did not, and replacing server-rendered
+  comments with a client-side fallback costs SEO and shifts layout. A budget you win by
+  moving bytes past the measurement is not a budget.
+- **Splitting `messages` by route.** See above: real, but it needs a structural change to the
+  catalogue rather than another boundary drawn through it.
 
 ### Why CI gates a ceiling rather than the target
 
-The check enforces a **ceiling** of 300 KB — today's number plus headroom — and prints the
-docs/06 target beside it with the distance still owed. Gating on the target itself would
-paint CI red on its first run for a gap nobody can close in one change, and docs/06 already
-names that failure mode: *"A budget nobody enforces is a wish."* A budget that is red from
-day one is switched off within a week, which is the same wish with extra steps.
+The check enforces a **ceiling** — today's number plus a little headroom: 170 KB for the home
+page, 190 KB for the series page, 195 KB for the reader — and prints the docs/06 target
+beside it with the distance still owed. Gating on the target itself would paint CI red on its
+first run for a gap nobody can close in one change, and docs/06 already names that failure
+mode: *"A budget nobody enforces is a wish."* A budget that is red from day one is switched
+off within a week, which is the same wish with extra steps.
 
 So the ceiling stops the bundle growing while the target stays visible on every run. **Lower
-the ceiling whenever a change earns it.** When it reaches the docs/06 numbers, delete it and
-gate on the target.
+the ceiling whenever a change earns it** — it has come down from 300 KB once already. When it
+reaches the docs/06 numbers, delete it and gate on the target.
 
 LCP is reported rather than gated, because it moves with CPU contention on a shared runner.
 `PERF_STRICT=1` gates it, and should be set on a dedicated one.

@@ -1,5 +1,6 @@
 import { compactNumber, formatChapterNumber } from '@palscans/core'
-import { fmt, messages } from '@palscans/core/messages'
+import { fmt } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import {
   type ChapterOverlap,
   getDb,
@@ -47,7 +48,7 @@ const schema = z.object({
   loser: z.coerce.number().int().positive().optional().catch(undefined),
 })
 
-const m = messages.merge
+const m = adminMessages.merge
 
 export default async function MergePage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   await withPermission('series.delete', { returnTo: '/admin/series/merge' })
@@ -62,7 +63,7 @@ export default async function MergePage({ searchParams }: { searchParams: Promis
             href="/admin/series/duplicates"
             className="mt-2 inline-flex h-8 items-center rounded-md border border-line px-3 text-[13px] font-semibold hover:bg-surface-2"
           >
-            {messages.duplicates.title}
+            {adminMessages.duplicates.title}
           </a>
         </Panel>
       </>

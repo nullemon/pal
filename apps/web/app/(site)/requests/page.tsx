@@ -1,4 +1,5 @@
 import { fmt, messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { cn } from '@palscans/ui'
 import type { Metadata } from 'next'
 import Link from 'next/link'
@@ -108,7 +109,10 @@ export default async function RequestsPage({ searchParams }: PageProps<'/request
       {board.pages > 1 ? (
         <nav className="flex items-center justify-between text-[13px] text-fg-muted">
           <span>
-            {fmt(messages.admin.page, { page: String(board.page), pages: String(board.pages) })}
+            {fmt(adminMessages.admin.page, {
+              page: String(board.page),
+              pages: String(board.pages),
+            })}
           </span>
           <div className="flex gap-2">
             {board.page > 1 ? (
@@ -116,7 +120,7 @@ export default async function RequestsPage({ searchParams }: PageProps<'/request
                 href={boardHref(filter, sort, board.page - 1)}
                 className="inline-flex h-8 items-center rounded-md border border-line px-3 hover:bg-surface-2"
               >
-                {messages.admin.previousPage}
+                {adminMessages.admin.previousPage}
               </Link>
             ) : null}
             {board.page < board.pages ? (
@@ -124,7 +128,7 @@ export default async function RequestsPage({ searchParams }: PageProps<'/request
                 href={boardHref(filter, sort, board.page + 1)}
                 className="inline-flex h-8 items-center rounded-md border border-line px-3 hover:bg-surface-2"
               >
-                {messages.admin.nextPage}
+                {adminMessages.admin.nextPage}
               </Link>
             ) : null}
           </div>

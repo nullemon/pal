@@ -1,6 +1,7 @@
 'use client'
 
 import { messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { Button, useToast } from '@palscans/ui'
 import { useId, useState } from 'react'
 import { putJson } from '../client/api'
@@ -56,7 +57,7 @@ export function BillingSettingsForm({
     setBusy(null)
     if (!res.ok)
       return toast({
-        title: messages.admin.errorSaving,
+        title: adminMessages.admin.errorSaving,
         description: res.message,
         tone: 'danger',
       })
@@ -73,7 +74,7 @@ export function BillingSettingsForm({
     setBusy(null)
     if (!res.ok)
       return toast({
-        title: messages.admin.errorSaving,
+        title: adminMessages.admin.errorSaving,
         description: res.message,
         tone: 'danger',
       })
@@ -173,7 +174,7 @@ export function BillingSettingsForm({
             onClick={savePlans}
             className="h-9 rounded-[9px] px-4 font-bold"
           >
-            {busy === 'plans' ? messages.admin.saving : messages.admin.saveChanges}
+            {busy === 'plans' ? adminMessages.admin.saving : adminMessages.admin.saveChanges}
           </Button>
         </div>
       </Panel>
@@ -256,7 +257,7 @@ export function BillingSettingsForm({
             onClick={saveSettings}
             className="h-9 rounded-[9px] px-4 font-bold"
           >
-            {busy === 'settings' ? messages.admin.saving : messages.admin.saveChanges}
+            {busy === 'settings' ? adminMessages.admin.saving : adminMessages.admin.saveChanges}
           </Button>
         </div>
       </Panel>

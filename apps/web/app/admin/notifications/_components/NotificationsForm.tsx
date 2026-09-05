@@ -1,6 +1,7 @@
 'use client'
 
 import { messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { Button, useToast } from '@palscans/ui'
 import { Plus, RefreshCw, Send, Trash2 } from 'lucide-react'
 import { useState } from 'react'
@@ -76,7 +77,11 @@ export function NotificationsForm({
     const res = await putJson<NotificationSettings>('/api/admin/notifications', s)
     setSaving(false)
     if (!res.ok)
-      return toast({ title: messages.admin.errorSaving, description: res.message, tone: 'danger' })
+      return toast({
+        title: adminMessages.admin.errorSaving,
+        description: res.message,
+        tone: 'danger',
+      })
     setSaved(res.data)
     setS(res.data)
     toast({ title: m.saved, tone: 'ok' })
@@ -118,7 +123,9 @@ export function NotificationsForm({
           aside={
             <>
               <Pill tone={availability.push.configured ? 'ok' : 'warn'}>
-                {availability.push.configured ? messages.admin.on : messages.notify.notConfigured}
+                {availability.push.configured
+                  ? adminMessages.admin.on
+                  : messages.notify.notConfigured}
               </Pill>
               <span>
                 {m.subscriptions}: {counts.devices}
@@ -129,7 +136,9 @@ export function NotificationsForm({
         {availability.push.configured ? null : <Unavailable missing={availability.push.missing} />}
         <div className="mt-3 flex flex-wrap items-end gap-5">
           <div className="flex flex-col gap-1">
-            <span className="text-[12px] font-medium text-fg-muted">{messages.admin.enabled}</span>
+            <span className="text-[12px] font-medium text-fg-muted">
+              {adminMessages.admin.enabled}
+            </span>
             <Toggle
               checked={s.push.enabled}
               ariaLabel={m.pushPanel}
@@ -179,7 +188,9 @@ export function NotificationsForm({
         />
         <div className="flex flex-wrap items-end gap-5">
           <div className="flex flex-col gap-1">
-            <span className="text-[12px] font-medium text-fg-muted">{messages.admin.enabled}</span>
+            <span className="text-[12px] font-medium text-fg-muted">
+              {adminMessages.admin.enabled}
+            </span>
             <Toggle
               checked={s.email.enabled}
               ariaLabel={m.emailPanel}
@@ -257,7 +268,7 @@ export function NotificationsForm({
             <>
               <Pill tone={availability.discord.configured ? 'ok' : 'warn'}>
                 {availability.discord.configured
-                  ? messages.admin.on
+                  ? adminMessages.admin.on
                   : messages.notify.notConfigured}
               </Pill>
               <span>
@@ -270,7 +281,7 @@ export function NotificationsForm({
           <div className="flex flex-wrap items-center gap-5">
             <div className="flex flex-col gap-1">
               <span className="text-[12px] font-medium text-fg-muted">
-                {messages.admin.enabled}
+                {adminMessages.admin.enabled}
               </span>
               <Toggle
                 checked={s.discord.enabled}
@@ -320,7 +331,7 @@ export function NotificationsForm({
               </Button>
             </div>
             {s.discord.webhooks.length === 0 ? (
-              <Hint>{messages.admin.noResults}</Hint>
+              <Hint>{adminMessages.admin.noResults}</Hint>
             ) : (
               s.discord.webhooks.map((hook, i) => (
                 <div
@@ -384,7 +395,7 @@ export function NotificationsForm({
                   </div>
                   <div className="flex flex-col gap-1">
                     <span className="text-[12px] font-medium text-fg-muted">
-                      {messages.admin.enabled}
+                      {adminMessages.admin.enabled}
                     </span>
                     <div className="flex h-9 items-center">
                       <Toggle

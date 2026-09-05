@@ -1,4 +1,5 @@
 import { messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import {
   EmptyRow,
   Pagination,
@@ -47,7 +48,7 @@ export function LoginHistory({
   hrefFor: (page: number) => string
   liveSessionIds: ReadonlySet<string>
 }) {
-  const m = messages.admin.users
+  const m = adminMessages.admin.users
   return (
     <Panel className="p-0 md:px-0">
       <div className="px-5 pt-4">

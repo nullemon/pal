@@ -1,6 +1,7 @@
 'use client'
 
-import { fmt, messages } from '@palscans/core/messages'
+import { fmt } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { cn } from '@palscans/ui'
 import { CheckCircle2 } from 'lucide-react'
 import { useState } from 'react'
@@ -23,7 +24,7 @@ interface Result {
   winnerSlug: string
 }
 
-const m = messages.merge
+const m = adminMessages.merge
 
 export function MergeConfirm({
   winnerId,
@@ -75,7 +76,7 @@ export function MergeConfirm({
                 href="/admin/series/duplicates"
                 className="inline-flex h-8 items-center rounded-md border border-line px-3 text-[13px] font-semibold hover:bg-surface-2"
               >
-                {messages.duplicates.title}
+                {adminMessages.duplicates.title}
               </a>
             </div>
           </div>

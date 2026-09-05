@@ -1,6 +1,7 @@
 'use client'
 
-import { fmt, messages } from '@palscans/core/messages'
+import { fmt } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { WATERMARK_CORNERS, WATERMARK_LIMITS, type WatermarkConfig } from '@palscans/core/watermark'
 import { cn, useToast } from '@palscans/ui'
 import { ExternalLink, TriangleAlert } from 'lucide-react'
@@ -9,8 +10,8 @@ import { Field, Hint, inputClass, PageHeader, Panel, PanelHeader } from '../ui'
 import { putJson } from './api'
 import { SaveBar, Segmented, Toggle } from './controls'
 
-const copy = messages.admin.watermark
-const common = messages.admin
+const copy = adminMessages.admin.watermark
+const common = adminMessages.admin
 
 const PREVIEW_WIDTHS = [480, 720, 1080, 1440] as const
 

@@ -1,5 +1,6 @@
 import { can } from '@palscans/core'
-import { fmt, messages } from '@palscans/core/messages'
+import { fmt } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import {
   getDb,
   loadModerationMetrics,
@@ -44,7 +45,7 @@ export default async function ModerationHealthPage({
   const now = new Date()
   const db = await getDb()
   const metrics = await loadModerationMetrics(db, days, now)
-  const m = messages.queueHealth
+  const m = adminMessages.queueHealth
 
   const opened = metrics.flow.reduce((t, p) => t + p.opened, 0)
   const resolved = metrics.flow.reduce((t, p) => t + p.resolved, 0)

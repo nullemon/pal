@@ -2,6 +2,7 @@
 'use client'
 
 import { messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { Button, cn } from '@palscans/ui'
 import { Check } from 'lucide-react'
 import { type ReactNode, useEffect, useId, useState } from 'react'
@@ -22,7 +23,7 @@ export function SaveBar({
   saving,
   onSave,
   onDiscard,
-  saveLabel = messages.admin.saveChanges,
+  saveLabel = adminMessages.admin.saveChanges,
   status,
 }: {
   dirty: boolean
@@ -38,7 +39,7 @@ export function SaveBar({
       {dirty ? (
         <div className="mr-1.5 flex items-center gap-2 text-[13px] text-fg-muted">
           <span className="size-[7px] rounded-full bg-gold" aria-hidden="true" />
-          {messages.admin.unsaved}
+          {adminMessages.admin.unsaved}
         </div>
       ) : null}
       {onDiscard ? (
@@ -49,7 +50,7 @@ export function SaveBar({
           disabled={!dirty || saving}
           onClick={onDiscard}
         >
-          {messages.admin.discard}
+          {adminMessages.admin.discard}
         </Button>
       ) : null}
       <Button
@@ -59,7 +60,7 @@ export function SaveBar({
         onClick={onSave}
       >
         <Check size={14} aria-hidden="true" />
-        {saving ? messages.admin.saving : saveLabel}
+        {saving ? adminMessages.admin.saving : saveLabel}
       </Button>
     </TopBarActions>
   )
@@ -111,7 +112,7 @@ export function Toggle({
       </button>
       {label ? (
         <span className={cn('text-[13px] font-semibold', checked ? 'text-fg' : 'text-fg-muted')}>
-          {checked ? messages.admin.on : messages.admin.off}
+          {checked ? adminMessages.admin.on : adminMessages.admin.off}
         </span>
       ) : null}
     </span>
@@ -219,7 +220,7 @@ export function ConfirmTyped({
         </h2>
         {body ? <div className="mt-2 text-[13px] leading-5 text-fg-muted">{body}</div> : null}
         <label htmlFor={`${id}-i`} className="mt-4 block text-[12px] font-medium text-fg-muted">
-          {messages.admin.confirmTyped.replace('{value}', expected)}
+          {adminMessages.admin.confirmTyped.replace('{value}', expected)}
         </label>
         <input
           id={`${id}-i`}
@@ -228,7 +229,7 @@ export function ConfirmTyped({
           className="mt-1 h-9 w-full rounded-md border border-line bg-bg px-3 text-[13px] focus-visible:border-brand focus-visible:outline-none"
           autoComplete="off"
         />
-        <p className="mt-1 text-[12px] text-fg-subtle">{messages.admin.confirmTypedHint}</p>
+        <p className="mt-1 text-[12px] text-fg-subtle">{adminMessages.admin.confirmTypedHint}</p>
         <div className="mt-4 flex justify-end gap-2">
           <Button variant="outline" size="sm" onClick={onClose}>
             {messages.common.cancel}

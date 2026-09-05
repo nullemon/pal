@@ -1,6 +1,7 @@
 'use client'
 
-import { fmt, messages } from '@palscans/core/messages'
+import { fmt } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { Button, cn, useToast } from '@palscans/ui'
 import {
   CircleAlert,
@@ -50,7 +51,7 @@ import type { TestReport } from '@/lib/config/tests'
  * and reports each step separately, so a wrong bucket looks different from a wrong key.
  */
 
-const m = messages.admin.integrations
+const m = adminMessages.admin.integrations
 
 const sourceTone: Record<ConfigSource, PillTone> = {
   panel: 'brand',
@@ -188,7 +189,7 @@ function SettingRow({ field, value, source, editing, disabled, onChange, onEdit 
         value={value}
         onChange={(e) => onChange(e.target.value)}
       >
-        <option value="">{messages.admin.none}</option>
+        <option value="">{adminMessages.admin.none}</option>
         {field.options?.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}
@@ -207,7 +208,7 @@ function SettingRow({ field, value, source, editing, disabled, onChange, onEdit 
           onChange={(e) => onChange(e.target.checked ? 'true' : 'false')}
         />
         <span className="text-[13px] font-semibold text-fg-muted">
-          {value === 'true' ? messages.admin.on : messages.admin.off}
+          {value === 'true' ? adminMessages.admin.on : adminMessages.admin.off}
         </span>
       </div>
     )
@@ -363,7 +364,11 @@ export function IntegrationsScreen({
     })
     setSaving(false)
     if (!res.ok)
-      return toast({ title: messages.admin.errorSaving, description: res.message, tone: 'danger' })
+      return toast({
+        title: adminMessages.admin.errorSaving,
+        description: res.message,
+        tone: 'danger',
+      })
     setSaved(byId(res.data.fields))
     setValues(byId(res.data.fields))
     setSources(sourcesById(res.data.fields))

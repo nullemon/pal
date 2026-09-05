@@ -1,4 +1,4 @@
-import { messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { announcements, getDb } from '@palscans/db'
 import { eq } from 'drizzle-orm'
 import { announcementSlugTaken } from '@/components/admin/content/queries'
@@ -28,7 +28,7 @@ export const PUT = withPermission<{ id: string }>(
       .limit(1)
     if (!before) return notFound()
     if (doc.slug !== before.slug && (await announcementSlugTaken(doc.slug, id.data)))
-      return fail(409, 'slug_taken', messages.adminContent.announcements.fields.slugCollision)
+      return fail(409, 'slug_taken', adminMessages.adminContent.announcements.fields.slugCollision)
     await db
       .update(announcements)
       .set({

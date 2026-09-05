@@ -1,4 +1,4 @@
-import { messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { announcements, getDb } from '@palscans/db'
 import { announcementSlugTaken } from '@/components/admin/content/queries'
 import { announcementDocSchema } from '@/components/admin/content/schemas'
@@ -15,7 +15,7 @@ export const POST = withPermission('announcement.write', async (request, _ctx, u
   const body = bodyFrom(doc.body)
   if (!body.ok) return body.response
   if (await announcementSlugTaken(doc.slug, null))
-    return fail(409, 'slug_taken', messages.adminContent.announcements.fields.slugCollision)
+    return fail(409, 'slug_taken', adminMessages.adminContent.announcements.fields.slugCollision)
   const db = await getDb()
   const publishedAt = publishAt(doc, null)
   const [row] = await db

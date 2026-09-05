@@ -1,4 +1,5 @@
-import { fmt, messages } from '@palscans/core/messages'
+import { fmt } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { Plus } from 'lucide-react'
 import { z } from 'zod'
 import { loadAnnouncementList } from '@/components/admin/content/queries'
@@ -38,7 +39,7 @@ export default async function AdminAnnouncementsPage({
   await withPermission('announcement.write', { returnTo: '/admin/announcements' })
   const p = parseSearch(schema, await searchParams)
   const { rows, total, pages } = await loadAnnouncementList(p)
-  const m = messages.adminContent.announcements
+  const m = adminMessages.adminContent.announcements
   const hrefFor = (page: number) => {
     const u = new URLSearchParams()
     if (p.q) u.set('q', p.q)
@@ -78,7 +79,7 @@ export default async function AdminAnnouncementsPage({
           className={`${selectClass} w-40`}
           aria-label={m.colState}
         >
-          <option value="">{messages.admin.all}</option>
+          <option value="">{adminMessages.admin.all}</option>
           {STATES.map((s) => (
             <option key={s} value={s}>
               {s}
@@ -89,7 +90,7 @@ export default async function AdminAnnouncementsPage({
           type="submit"
           className="h-9 rounded-md border border-line bg-surface-1 px-3 text-[13px] font-semibold hover:bg-surface-2"
         >
-          {messages.admin.apply}
+          {adminMessages.admin.apply}
         </button>
       </form>
       <Table>

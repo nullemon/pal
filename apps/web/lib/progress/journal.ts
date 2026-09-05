@@ -1,4 +1,3 @@
-import { z } from 'zod'
 import { type LocalProgress, MAX_LOCAL_ROWS } from './types'
 
 /**
@@ -27,33 +26,82 @@ export const JOURNAL_KEY = 'palscans.progress.journal.v1'
  */
 export const JOURNAL_LIMIT = 60
 
-const rowSchema = z.object({
-  chapterId: z.number().int().positive(),
-  seriesId: z.number().int().positive(),
-  seriesSlug: z.string().min(1),
-  seriesTitle: z.string(),
-  seriesHref: z.string(),
-  seriesType: z.string(),
-  coverSrc: z.string().nullable().catch(null),
-  chapterNumber: z.number(),
-  chapterLabel: z.string(),
-  chapterHref: z.string(),
-  pageIdx: z.number().int().min(0),
-  pageCount: z.number().int().min(0).catch(0),
-  scrollPct: z.number().min(0).max(1).catch(0),
-  updatedAt: z.number().int().min(0),
-})
+/**
+ * The row validator, hand-written rather than a zod schema.
+ *
+ * This module runs on the reader's critical path — the journal is read before the first
+ * paint so a resume does not flash — and zod is 84 KB gzipped, more than the whole budget
+ * docs/06 gives the reader. The data being checked is our own, written by this file, in
+ * this browser: the point of validating it is to survive a stale or hand-edited value, not
+ * to defend a trust boundary. Untrusted input is still parsed with zod, on the server.
+ *
+ * Field semantics are kept exactly: an unusable row is dropped whole, while
+ * `coverSrc`, `pageCount` and `scrollPct` fall back rather than disqualify it — the same
+ * split `.catch()` expressed above.
+ */
+const int = (v: unknown, min: number): number | null =>
+  typeof v === 'number' && Number.isInteger(v) && v >= min ? v : null
 
-const journalSchema = z.array(rowSchema)
+const str = (v: unknown, minLength = 0): string | null =>
+  typeof v === 'string' && v.length >= minLength ? v : null
+
+const parseRow = (v: unknown): LocalProgress | null => {
+  if (typeof v !== 'object' || v === null) return null
+  const r = v as Record<string, unknown>
+  const chapterId = int(r.chapterId, 1)
+  const seriesId = int(r.seriesId, 1)
+  const seriesSlug = str(r.seriesSlug, 1)
+  const seriesTitle = str(r.seriesTitle)
+  const seriesHref = str(r.seriesHref)
+  const seriesType = str(r.seriesType)
+  const chapterLabel = str(r.chapterLabel)
+  const chapterHref = str(r.chapterHref)
+  const pageIdx = int(r.pageIdx, 0)
+  const updatedAt = int(r.updatedAt, 0)
+  if (
+    chapterId === null ||
+    seriesId === null ||
+    seriesSlug === null ||
+    seriesTitle === null ||
+    seriesHref === null ||
+    seriesType === null ||
+    chapterLabel === null ||
+    chapterHref === null ||
+    pageIdx === null ||
+    updatedAt === null ||
+    typeof r.chapterNumber !== 'number'
+  )
+    return null
+  const scrollPct =
+    typeof r.scrollPct === 'number' && r.scrollPct >= 0 && r.scrollPct <= 1 ? r.scrollPct : 0
+  return {
+    chapterId,
+    seriesId,
+    seriesSlug,
+    seriesTitle,
+    seriesHref,
+    seriesType,
+    coverSrc: typeof r.coverSrc === 'string' ? r.coverSrc : null,
+    chapterNumber: r.chapterNumber,
+    chapterLabel,
+    chapterHref,
+    pageIdx,
+    pageCount: int(r.pageCount, 0) ?? 0,
+    scrollPct,
+    updatedAt,
+  }
+}
+
+/** Rows that do not parse are dropped; a value that is not an array is an empty journal. */
+const parseJournal = (v: unknown): LocalProgress[] =>
+  Array.isArray(v) ? v.map(parseRow).filter((r): r is LocalProgress => r !== null) : []
 
 /** Newest first. Never throws: a missing, unreadable or corrupt journal is an empty one. */
 export const readJournal = (): LocalProgress[] => {
   try {
     const raw = window.localStorage.getItem(JOURNAL_KEY)
     if (!raw) return []
-    const parsed = journalSchema.safeParse(JSON.parse(raw))
-    if (!parsed.success) return []
-    return [...parsed.data].sort((a, b) => b.updatedAt - a.updatedAt)
+    return parseJournal(JSON.parse(raw)).sort((a, b) => b.updatedAt - a.updatedAt)
   } catch {
     return []
   }

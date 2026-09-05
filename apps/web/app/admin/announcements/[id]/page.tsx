@@ -1,4 +1,4 @@
-import { messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { notFound } from 'next/navigation'
 import { AnnouncementEditor } from '@/components/admin/content/AnnouncementEditor'
 import { loadAnnouncementEditor } from '@/components/admin/content/queries'
@@ -16,7 +16,7 @@ export default async function AnnouncementEditorPage({
   await withPermission('announcement.write', { returnTo: `/admin/announcements/${id.data}` })
   const data = await loadAnnouncementEditor(id.data)
   if (!data) notFound()
-  const m = messages.adminContent.announcements
+  const m = adminMessages.adminContent.announcements
   return (
     <>
       <PageHeader

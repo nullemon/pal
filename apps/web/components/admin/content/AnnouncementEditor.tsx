@@ -1,6 +1,7 @@
 'use client'
 
 import { messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { Button, useToast } from '@palscans/ui'
 import { ExternalLink, Trash2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
@@ -31,7 +32,7 @@ export function AnnouncementEditor({
   doc: AnnouncementDoc
   canDelete: boolean
 }) {
-  const m = messages.adminContent.announcements
+  const m = adminMessages.adminContent.announcements
   const f = m.fields
   const { toast } = useToast()
   const [saved, setSaved] = useState(initial)
@@ -57,7 +58,7 @@ export function AnnouncementEditor({
       : await postJson<{ id: number; slug: string }>('/api/admin/announcements', next)
     setSaving(false)
     if (!res.ok) {
-      toast({ title: messages.admin.errorSaving, description: res.message, tone: 'danger' })
+      toast({ title: adminMessages.admin.errorSaving, description: res.message, tone: 'danger' })
       return
     }
     setDoc(next)
@@ -73,7 +74,7 @@ export function AnnouncementEditor({
     if (!id) return
     const res = await del<{ id: number }>(`/api/admin/announcements/${id}`)
     if (!res.ok) {
-      toast({ title: messages.admin.errorSaving, description: res.message, tone: 'danger' })
+      toast({ title: adminMessages.admin.errorSaving, description: res.message, tone: 'danger' })
       return
     }
     const removed = { ...doc, state: 'removed' as const }
@@ -107,7 +108,7 @@ export function AnnouncementEditor({
         saving={saving}
         onSave={() => void save()}
         onDiscard={id ? () => setDoc(saved) : undefined}
-        status={id && doc.state !== 'published' ? messages.admin.draftNotPublished : undefined}
+        status={id && doc.state !== 'published' ? adminMessages.admin.draftNotPublished : undefined}
       />
       <div className="grid gap-3.5 lg:grid-cols-[minmax(0,1fr)_320px]">
         <Panel className="flex min-w-0 flex-col gap-3.5">
@@ -237,7 +238,7 @@ export function AnnouncementEditor({
                 <Trash2 size={14} aria-hidden="true" />
                 {messages.common.delete}
               </Button>
-              <Hint className="text-[12px] text-fg-subtle">{messages.admin.undoWindow}</Hint>
+              <Hint className="text-[12px] text-fg-subtle">{adminMessages.admin.undoWindow}</Hint>
             </Panel>
           ) : null}
         </div>

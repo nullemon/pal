@@ -1,20 +1,25 @@
 import { z } from 'zod'
+import { BROWSE_SORTS, SERIES_STATUSES, SERIES_TYPES } from './taxonomy'
 
 /**
  * Browse filters (docs/13 "Catalog and discovery"): type, status, genres to include AND
  * exclude, minimum chapters, minimum rating, sort. Every parameter is validated with zod and
  * lives in the URL so results are shareable and crawlable.
+ *
+ * The vocabulary itself lives in `./taxonomy`, which imports nothing — see the note there.
+ * It is re-exported below so every existing call site keeps working.
  */
-export const SERIES_TYPES = ['manhwa', 'manga', 'manhua', 'comic', 'novel'] as const
-export const SERIES_STATUSES = ['ongoing', 'completed', 'hiatus', 'cancelled', 'dropped'] as const
-export const BROWSE_SORTS = ['latest', 'popular', 'rating', 'newest', 'title'] as const
-export const MIN_CHAPTER_OPTIONS = [0, 10, 25, 50, 100, 200] as const
-export const MIN_RATING_OPTIONS = [0, 6, 7, 8, 9] as const
-export const BROWSE_PAGE_SIZE = 24
-
-export type SeriesTypeValue = (typeof SERIES_TYPES)[number]
-export type SeriesStatusValue = (typeof SERIES_STATUSES)[number]
-export type BrowseSort = (typeof BROWSE_SORTS)[number]
+export {
+  BROWSE_PAGE_SIZE,
+  BROWSE_SORTS,
+  type BrowseSort,
+  MIN_CHAPTER_OPTIONS,
+  MIN_RATING_OPTIONS,
+  SERIES_STATUSES,
+  SERIES_TYPES,
+  type SeriesStatusValue,
+  type SeriesTypeValue,
+} from './taxonomy'
 
 const slug = z
   .string()

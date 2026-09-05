@@ -1,5 +1,5 @@
 import { formatChapterNumber } from '@palscans/core'
-import { messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { chapters, getDb, series } from '@palscans/db'
 import { and, count, desc, eq, isNull } from 'drizzle-orm'
 import { z } from 'zod'
@@ -72,7 +72,7 @@ export default async function AdminChaptersPage({
     db.select({ n: count() }).from(chapters).where(where),
   ])
   const pages = Math.max(1, Math.ceil((total?.n ?? 0) / PAGE_SIZE))
-  const m = messages.admin.chapters
+  const m = adminMessages.admin.chapters
   const hrefFor = (page: number) => {
     const u = new URLSearchParams()
     if (p.state) u.set('state', p.state)
@@ -91,7 +91,7 @@ export default async function AdminChaptersPage({
           className={`${selectClass} w-44`}
           aria-label={m.colState}
         >
-          <option value="">{messages.admin.all}</option>
+          <option value="">{adminMessages.admin.all}</option>
           {Object.entries(m.states).map(([k, v]) => (
             <option key={k} value={k}>
               {v}
@@ -102,7 +102,7 @@ export default async function AdminChaptersPage({
           type="submit"
           className="h-9 rounded-md border border-line bg-surface-1 px-3 text-[13px] font-semibold hover:bg-surface-2"
         >
-          {messages.admin.apply}
+          {adminMessages.admin.apply}
         </button>
       </form>
       <Table>
@@ -134,7 +134,7 @@ export default async function AdminChaptersPage({
                     href={`/series/${r.seriesSlug}/chapter-${formatChapterNumber(r.number)}`}
                     className="ml-2 text-[12px] text-fg-subtle hover:text-brand-hover"
                   >
-                    {messages.admin.view} ↗
+                    {adminMessages.admin.view} ↗
                   </a>
                 ) : null}
               </Td>

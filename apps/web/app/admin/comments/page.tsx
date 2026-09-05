@@ -1,4 +1,4 @@
-import { messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { z } from 'zod'
 import { ModerationQueue } from '@/components/admin/client/ModerationQueue'
 import { loadModerationCounts, loadModerationQueue } from '@/components/admin/server/moderation'
@@ -22,7 +22,7 @@ export default async function CommentsQueuePage({
     loadModerationQueue(p.tab, p.page),
     loadModerationCounts(),
   ])
-  const m = messages.admin.moderation
+  const m = adminMessages.admin.moderation
   return (
     <>
       <PageHeader

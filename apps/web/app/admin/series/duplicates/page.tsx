@@ -1,5 +1,6 @@
 import { compactNumber } from '@palscans/core'
-import { fmt, messages } from '@palscans/core/messages'
+import { fmt } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import {
   DEFAULT_MIN_SCORE,
   type DuplicateCandidate,
@@ -42,7 +43,7 @@ const schema = z.object({
   min: z.coerce.number().int().min(1).max(100).catch(DEFAULT_MIN_SCORE),
 })
 
-const m = messages.duplicates
+const m = adminMessages.duplicates
 
 export default async function DuplicatesPage({
   searchParams,

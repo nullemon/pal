@@ -1,4 +1,4 @@
-import { messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { BillingPanels } from '@/components/admin/premium/BillingPanels'
 import { EntitlementPanels } from '@/components/admin/premium/EntitlementPanels'
 import { PageHeader } from '@/components/admin/ui'
@@ -13,7 +13,7 @@ import { entitlementOverrides } from '@/lib/entitlements'
 export default async function AdminPremiumPage() {
   await withPermission('settings.write', { returnTo: '/admin/premium' })
   const overrides = await entitlementOverrides()
-  const m = messages.admin.premium
+  const m = adminMessages.admin.premium
   return (
     <>
       <PageHeader title={m.title} subtitle={m.subtitle} />

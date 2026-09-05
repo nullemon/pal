@@ -1,11 +1,11 @@
 import type { Metadata } from 'next'
 import { pageMetadata } from '@/components/discovery/metadata'
-import { homeLayout } from '@/lib/layouts'
+import { homeLayout } from '@/lib/layouts/home'
 import { loadHomeView } from './home-view'
 
 /**
  * Home. The direction comes from `settings.layouts.home` (Appearance → Layouts) and is
- * resolved through the registry in `lib/layouts.ts`; `?layout=` previews another one. The
+ * resolved through the registry in `lib/layouts/home.ts`; `?layout=` previews another one. The
  * page personalises (Continue reading, ad-free), so it renders per request; every catalogue
  * query behind it is served from the 60s data cache in components/discovery/cached.ts
  * (docs/06 "static shell + dynamic holes").

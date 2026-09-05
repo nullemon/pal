@@ -1,8 +1,8 @@
 import { messages } from '@palscans/core/messages'
 import { getDb, unvoteRequest, voteForRequest } from '@palscans/db'
+import { voteSchema } from '@/components/requests/schemas'
 import { voteLimit } from '@/components/requests/server/guards'
 import { writeActor } from '@/components/requests/server/identity'
-import { voteSchema } from '@/components/requests/shared'
 import {
   fail,
   notFound,

@@ -1,6 +1,7 @@
 'use client'
 
-import { fmt, messages } from '@palscans/core/messages'
+import { fmt } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { cn } from '@palscans/ui'
 import { useMemo, useState } from 'react'
 import { RichText } from '@/components/discovery/RichText'
@@ -25,7 +26,7 @@ export function BodyField({
 }) {
   const [tab, setTab] = useState<'write' | 'preview'>('write')
   const doc = useMemo(() => (tab === 'preview' ? markdownToDoc(value) : null), [tab, value])
-  const m = messages.adminContent.body
+  const m = adminMessages.adminContent.body
   const tabClass = (active: boolean) =>
     cn(
       'h-7 rounded-md px-2.5 text-[12.5px] font-semibold transition-colors',

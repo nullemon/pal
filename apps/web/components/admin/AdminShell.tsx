@@ -1,5 +1,5 @@
 import type { SessionUser } from '@palscans/core'
-import { messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { ToastProvider } from '@palscans/ui'
 import { ArrowLeft } from 'lucide-react'
 import type { ReactNode } from 'react'
@@ -36,7 +36,7 @@ export function AdminShell({ user, children }: { user: SessionUser; children: Re
               <span className="font-normal">Scans</span>
             </div>
             <span className="ml-auto rounded-full border border-line px-[7px] py-[3px] text-[10px] font-bold uppercase leading-3 tracking-[0.08em] text-fg-muted">
-              {messages.admin.badge}
+              {adminMessages.admin.badge}
             </span>
           </div>
           <AdminNavLinks groups={groups} />
@@ -50,14 +50,14 @@ export function AdminShell({ user, children }: { user: SessionUser; children: Re
               </div>
               <div className="flex items-center gap-1.5 text-[12px] leading-4 text-fg-muted">
                 <span className="size-1.5 rounded-full bg-brand-hover" aria-hidden="true" />
-                {messages.admin.footerStatus.replace('{site}', site.name.toLowerCase())}
+                {adminMessages.admin.footerStatus.replace('{site}', site.name.toLowerCase())}
               </div>
             </div>
             <a
               href="/"
               className="ml-auto inline-flex size-7 items-center justify-center rounded-md text-fg-muted hover:bg-surface-2 hover:text-fg"
-              title={messages.admin.nav.backToSite}
-              aria-label={messages.admin.nav.backToSite}
+              title={adminMessages.admin.nav.backToSite}
+              aria-label={adminMessages.admin.nav.backToSite}
             >
               <ArrowLeft size={14} />
             </a>
@@ -66,7 +66,7 @@ export function AdminShell({ user, children }: { user: SessionUser; children: Re
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-30 flex h-[60px] shrink-0 items-center gap-3 border-b border-line bg-bg/95 px-4 backdrop-blur md:px-7">
             <a href="/admin" className="shrink-0 text-[13px] font-semibold text-fg-muted md:hidden">
-              {messages.admin.badge}
+              {adminMessages.admin.badge}
             </a>
             <Breadcrumb />
             <div id="admin-topbar-actions" className="ml-auto flex shrink-0 items-center gap-2.5" />

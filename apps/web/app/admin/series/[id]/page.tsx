@@ -1,5 +1,5 @@
 import { can } from '@palscans/core'
-import { messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { notFound } from 'next/navigation'
 import { z } from 'zod'
 import { SeriesEditor } from '@/components/admin/client/SeriesEditor'
@@ -43,7 +43,7 @@ export default async function SeriesEditorPage({
     <>
       <PageHeader
         title={data.row.title}
-        subtitle={`${messages.admin.series.editor} · /${data.row.slug}`}
+        subtitle={`${adminMessages.admin.series.editor} · /${data.row.slug}`}
       />
       <SeriesEditor
         id={id.data}

@@ -1,6 +1,7 @@
 'use client'
 
-import { fmt, messages } from '@palscans/core/messages'
+import { fmt } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { Button, useToast } from '@palscans/ui'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
@@ -63,7 +64,7 @@ export function UsersTable({
   actorId: number
   query: string
 }) {
-  const m = messages.admin.users
+  const m = adminMessages.admin.users
   const router = useRouter()
   const { toast } = useToast()
   const [selected, setSelected] = useState<number[]>([])
@@ -87,7 +88,7 @@ export function UsersTable({
     setBusy(false)
     setPending(null)
     if (!res.ok) {
-      toast({ title: messages.admin.errorSaving, description: res.message, tone: 'danger' })
+      toast({ title: adminMessages.admin.errorSaving, description: res.message, tone: 'danger' })
       return
     }
     toast({

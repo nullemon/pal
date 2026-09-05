@@ -1,10 +1,9 @@
-import { z } from 'zod'
-import { messages } from '../messages.js'
-import { safeHref } from './render.js'
-
 /**
  * Structured comment bodies (docs/02 "Comments", docs/14 §1).
  * Stored as JSON, rendered by walking this closed union — never HTML in the database.
+ *
+ * Types, caps and pure walkers only — this module is in the client bundle. The zod parsers
+ * that validate an untrusted body live next door in `./schema.js`.
  */
 export interface TextNode {
   type: 'text'
@@ -69,56 +68,6 @@ export const COMMENT_MAX_INLINE_DEPTH = 4
 export const COMMENT_MAX_HREF = 2048
 export const COMMENT_MAX_USERNAME = 32
 
-const markSchema = z.enum(['bold', 'italic', 'strike', 'code'])
-
-export const inlineNodeSchema: z.ZodType<InlineNode> = z.lazy(() =>
-  z.discriminatedUnion('type', [
-    z.object({
-      type: z.literal('text'),
-      text: z.string().max(COMMENT_MAX_CHARS),
-      marks: z.array(markSchema).max(4).optional(),
-    }),
-    z.object({
-      type: z.literal('spoiler'),
-      children: z.array(inlineNodeSchema).max(COMMENT_MAX_INLINE),
-    }),
-    z.object({
-      type: z.literal('link'),
-      href: z
-        .string()
-        .max(COMMENT_MAX_HREF)
-        .refine((h) => safeHref(h) !== null, messages.commentThread.linkScheme),
-      children: z.array(inlineNodeSchema).max(COMMENT_MAX_INLINE),
-    }),
-    z.object({
-      type: z.literal('mention'),
-      username: z.string().max(COMMENT_MAX_USERNAME),
-      userId: z.number().int().optional(),
-    }),
-    z.object({ type: z.literal('hard_break') }),
-  ]),
-)
-
-export const blockNodeSchema: z.ZodType<BlockNode> = z.lazy(() =>
-  z.discriminatedUnion('type', [
-    z.object({
-      type: z.literal('paragraph'),
-      children: z.array(inlineNodeSchema).max(COMMENT_MAX_INLINE),
-    }),
-    z.object({
-      type: z.literal('quote'),
-      commentId: z.number().int().optional(),
-      username: z.string().max(COMMENT_MAX_USERNAME).optional(),
-      children: z.array(blockNodeSchema).max(COMMENT_MAX_BLOCKS),
-    }),
-    z.object({
-      type: z.literal('image'),
-      imageId: z.number().int(),
-      alt: z.string().max(200).optional(),
-    }),
-  ]),
-)
-
 /** Deepest quote nesting and deepest inline (spoiler/link) nesting in a body. */
 export const bodyDepth = (node: CommentNode): { quote: number; inline: number } => {
   let quote = 0
@@ -137,33 +86,6 @@ export const bodyDepth = (node: CommentNode): { quote: number; inline: number } 
   walk(node, 0, 0)
   return { quote, inline }
 }
-
-/** The stored/submitted body shape. Route handlers parse untrusted input with this. */
-export const commentBodySchema: z.ZodType<CommentBody> = z
-  .object({
-    type: z.literal('doc'),
-    version: z.literal(1),
-    children: z.array(blockNodeSchema).max(COMMENT_MAX_BLOCKS),
-  })
-  .superRefine((doc, ctx) => {
-    const depth = bodyDepth(doc)
-    if (depth.quote > COMMENT_MAX_QUOTE_DEPTH)
-      ctx.addIssue({
-        code: 'custom',
-        message: messages.commentThread.quoteTooDeep,
-        path: ['children'],
-      })
-    if (depth.inline > COMMENT_MAX_INLINE_DEPTH)
-      ctx.addIssue({
-        code: 'custom',
-        message: messages.commentThread.formattingTooDeep,
-        path: ['children'],
-      })
-  })
-
-/** Structural validation of an untrusted body. Does not check length — see `plainText`. */
-export const isCommentBody = (v: unknown): v is CommentBody =>
-  commentBodySchema.safeParse(v).success
 
 /** Build a body from plain text: paragraphs split on blank lines, line breaks kept. */
 export const bodyFromText = (text: string): CommentBody => ({

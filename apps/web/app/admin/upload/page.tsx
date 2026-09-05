@@ -1,5 +1,5 @@
 import { can } from '@palscans/core'
-import { messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { getDb, series } from '@palscans/db'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
@@ -27,7 +27,7 @@ export default async function UploadPage({
       .limit(1)
     preset = row ?? null
   }
-  const m = messages.admin.upload
+  const m = adminMessages.admin.upload
   return (
     <>
       <PageHeader title={m.title} subtitle={m.subtitle} />

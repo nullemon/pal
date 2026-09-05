@@ -1,4 +1,4 @@
-import { messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { z } from 'zod'
 import { CommunityImages } from '@/components/admin/client/CommunityImages'
 import { loadCommunityImages } from '@/components/admin/server/moderation'
@@ -17,7 +17,7 @@ export default async function CommunityImagesPage({
   await withPermission('comment.moderate', { returnTo: '/admin/comments/images' })
   const p = parseSearch(schema, await searchParams)
   const rows = await loadCommunityImages(p.status)
-  const m = messages.admin.moderation.images
+  const m = adminMessages.admin.moderation.images
   return (
     <>
       <PageHeader title={m.title} subtitle={m.subtitle} />

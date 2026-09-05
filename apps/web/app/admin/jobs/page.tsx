@@ -1,4 +1,4 @@
-import { messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { getQueue } from '@palscans/core/queue'
 import { JobsPanel } from '@/components/admin/client/JobsPanel'
 import { loadQueue } from '@/components/admin/server/queue'
@@ -8,8 +8,8 @@ import { getEnv } from '@/lib/env'
 
 export default async function JobsPage() {
   await withPermission('chapter.update', { returnTo: '/admin/jobs' })
-  const m = messages.admin.settings.jobs
-  const d = messages.admin.dashboard
+  const m = adminMessages.admin.settings.jobs
+  const d = adminMessages.admin.dashboard
   let stats: {
     kind: string
     waiting: number

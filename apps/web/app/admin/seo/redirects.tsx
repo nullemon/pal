@@ -1,6 +1,7 @@
 'use client'
 
-import { fmt, messages } from '@palscans/core/messages'
+import { fmt } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { Button, useToast } from '@palscans/ui'
 import { Trash2 } from 'lucide-react'
 import { useId, useState } from 'react'
@@ -21,7 +22,7 @@ import {
 } from '@/components/admin/ui'
 import { Iso, type RedirectView } from './shared'
 
-const m = messages.adminSeo.redirects
+const m = adminMessages.adminSeo.redirects
 
 interface RedirectRow {
   id: number
@@ -60,18 +61,26 @@ export function RedirectsPanel({ initial }: { initial: RedirectView[] }) {
     })
     setBusy(false)
     if (!res.ok)
-      return toast({ title: messages.admin.errorSaving, description: res.message, tone: 'danger' })
+      return toast({
+        title: adminMessages.admin.errorSaving,
+        description: res.message,
+        tone: 'danger',
+      })
     const view = toView(res.data.redirect)
     setRows((r) => [view, ...r.filter((x) => x.id !== view.id)])
     setFrom('')
     setTo('')
-    toast({ title: messages.admin.saved, tone: 'ok' })
+    toast({ title: adminMessages.admin.saved, tone: 'ok' })
   }
 
   const remove = async (row: RedirectView) => {
     const res = await del<{ id: number }>('/api/admin/seo/redirects', { id: row.id })
     if (!res.ok)
-      return toast({ title: messages.admin.errorSaving, description: res.message, tone: 'danger' })
+      return toast({
+        title: adminMessages.admin.errorSaving,
+        description: res.message,
+        tone: 'danger',
+      })
     setRows((r) => r.filter((x) => x.id !== row.id))
   }
 
@@ -84,7 +93,11 @@ export function RedirectsPanel({ initial }: { initial: RedirectView[] }) {
     }>('/api/admin/seo/redirects/import', { csv })
     setBusy(false)
     if (!res.ok)
-      return toast({ title: messages.admin.errorSaving, description: res.message, tone: 'danger' })
+      return toast({
+        title: adminMessages.admin.errorSaving,
+        description: res.message,
+        tone: 'danger',
+      })
     setRows(res.data.redirects.map(toView))
     setCsv('')
     toast({

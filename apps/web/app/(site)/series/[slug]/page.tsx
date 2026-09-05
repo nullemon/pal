@@ -5,7 +5,7 @@ import { notFound } from 'next/navigation'
 import { ViewBeacon } from '@/components/views/ViewBeacon'
 import { storageUrl } from '@/lib/comments/media'
 import { getEnv } from '@/lib/env'
-import { seriesLayout } from '@/lib/layouts'
+import { seriesLayout } from '@/lib/layouts/series'
 import { OG_HEIGHT, OG_WIDTH } from '@/lib/seo/og-card'
 import { ogSeriesBySlug, seriesOgUrl } from '@/lib/seo/og-data'
 import { chapterRows, getSeries } from './data'
@@ -94,8 +94,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 /**
  * The series page. The direction comes from `settings.layouts.series` (Appearance →
- * Layouts) and is resolved through the registry in `lib/layouts.ts`; `?layout=` previews
- * another one. The data helpers stay split so the shell can move to PPR/ISR later.
+ * Layouts) and is resolved through the registry in `lib/layouts/series.ts`; `?layout=`
+ * previews another one. The data helpers stay split so the shell can move to PPR/ISR later.
  */
 export default async function SeriesPage({ params, searchParams }: PageProps) {
   const [{ slug }, sp] = await Promise.all([params, searchParams])

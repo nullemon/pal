@@ -34,26 +34,31 @@ const STRICT = process.env.PERF_STRICT === '1'
 
 /** docs/06 — the table, verbatim. Bytes are gzipped-over-the-wire, which is how they ship. */
 /**
- * docs/06's table is the *target*. The app does not meet the JS half of it today — the
- * shared client runtime is ~282 KB gzipped against a 110 KB home target and a 60 KB reader
- * target — so gating on the target would paint CI red on its first run, and a budget that is
- * red from day one gets switched off within a week. Which is the outcome docs/06 warns about.
+ * docs/06's table is the *target*. The app does not meet the JS half of it yet — the shared
+ * client runtime is ~171 KB gzipped on the home page against a 110 KB target, and ~199 KB on
+ * the reader against 60 KB — so gating on the target would paint CI red on its first run, and
+ * a budget that is red from day one gets switched off within a week. Which is the outcome
+ * docs/06 warns about.
  *
  * So there are two numbers per route. `js` is the ceiling CI enforces: today's measurement
  * plus a little headroom, which stops the bundle growing. `target` is docs/06, printed
  * beside it so the remaining distance shows on every run and nobody forgets it is owed.
  * Lower the ceiling whenever a change earns it — that is the ratchet.
+ *
+ * About 132 KB of what is left is the Next.js App Router client runtime itself (react-dom,
+ * the router and its segment cache), which is the same on every route and is not ours to
+ * remove. See docs/20 "What is left" before reaching for the remaining first-party bytes.
  */
 const BUDGETS = { cls: 0.02, lcpMs: 2000 }
 
 const KB = 1024
 const ROUTES = [
-  { name: 'home', path: '/', js: 300 * KB, target: 110 * KB },
-  { name: 'series', path: '/series/return-of-the-frost-monarch', js: 300 * KB, target: 110 * KB },
+  { name: 'home', path: '/', js: 180 * KB, target: 110 * KB },
+  { name: 'series', path: '/series/return-of-the-frost-monarch', js: 198 * KB, target: 110 * KB },
   {
     name: 'reader',
     path: '/series/return-of-the-frost-monarch/chapter-305',
-    js: 300 * KB,
+    js: 210 * KB,
     target: 60 * KB,
   },
 ]

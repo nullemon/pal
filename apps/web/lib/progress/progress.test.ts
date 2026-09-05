@@ -128,3 +128,49 @@ describe('folding the two stores together', () => {
     expect(newestPerSeries(rows)[0]?.chapterNumber).toBe(3)
   })
 })
+
+describe('a journal row that has gone stale or been hand-edited', () => {
+  /**
+   * The parser replaced a zod schema (zod is 84 KB gzipped and this runs before the reader's
+   * first paint), so the split it encoded is worth asserting directly: three fields fall back
+   * to a default and everything else disqualifies the row.
+   */
+  const write = (rows: unknown[]) => storage.setItem(JOURNAL_KEY, JSON.stringify(rows))
+
+  it('falls back rather than dropping the row for coverSrc, pageCount and scrollPct', () => {
+    write([{ ...row({ chapterId: 1 }), coverSrc: 42, pageCount: 'lots', scrollPct: 9 }])
+    expect(readJournal()).toEqual([
+      { ...row({ chapterId: 1 }), coverSrc: null, pageCount: 0, scrollPct: 0 },
+    ])
+  })
+
+  it('keeps a scroll position that is in range', () => {
+    write([{ ...row({ chapterId: 1 }), scrollPct: 0.5 }])
+    expect(readJournal()[0]?.scrollPct).toBe(0.5)
+  })
+
+  it('drops a row missing or malformed anywhere else, and keeps its neighbours', () => {
+    for (const bad of [
+      { chapterId: 0 },
+      { chapterId: 1.5 },
+      { seriesSlug: '' },
+      { seriesTitle: 7 },
+      { pageIdx: -1 },
+      { chapterNumber: 'twelve' },
+      { updatedAt: undefined },
+    ]) {
+      write([{ ...row({ chapterId: 1 }), ...bad }, row({ chapterId: 2 })])
+      expect(
+        readJournal().map((r) => r.chapterId),
+        JSON.stringify(bad),
+      ).toEqual([2])
+    }
+  })
+
+  it('reads an empty journal from anything that is not an array', () => {
+    for (const junk of ['{}', 'null', '3', '"[]"']) {
+      storage.setItem(JOURNAL_KEY, junk)
+      expect(readJournal()).toEqual([])
+    }
+  })
+})

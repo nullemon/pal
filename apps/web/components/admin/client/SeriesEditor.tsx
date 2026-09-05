@@ -2,6 +2,7 @@
 'use client'
 
 import { fmt, messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { Button, cn, useToast } from '@palscans/ui'
 import { Check, Trash2, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -60,7 +61,7 @@ const TABS: EditorTab[] = [
 ]
 
 export function SeriesEditor(props: Props) {
-  const m = messages.admin.series
+  const m = adminMessages.admin.series
   const f = m.fields
   const { toast } = useToast()
   const [tab, setTab] = useState<EditorTab>(props.initialTab)
@@ -87,7 +88,7 @@ export function SeriesEditor(props: Props) {
     const res = await putJson<{ id: number; slug: string }>(`/api/admin/series/${props.id}`, doc)
     setSaving(false)
     if (!res.ok) {
-      toast({ title: messages.admin.errorSaving, description: res.message, tone: 'danger' })
+      toast({ title: adminMessages.admin.errorSaving, description: res.message, tone: 'danger' })
       return
     }
     setSaved(doc)
@@ -96,7 +97,7 @@ export function SeriesEditor(props: Props) {
 
   const remove = async () => {
     const res = await del(`/api/admin/series/${props.id}`)
-    if (!res.ok) return toast({ title: messages.admin.errorSaving, tone: 'danger' })
+    if (!res.ok) return toast({ title: adminMessages.admin.errorSaving, tone: 'danger' })
     setDeleted(true)
     toast({
       title: m.deleted,
@@ -386,7 +387,7 @@ export function SeriesEditor(props: Props) {
                 />
                 <button
                   type="button"
-                  aria-label={messages.admin.remove}
+                  aria-label={adminMessages.admin.remove}
                   className="inline-flex size-9 items-center justify-center rounded-md text-fg-muted hover:bg-surface-2 hover:text-danger"
                   onClick={() => patch({ titles: doc.titles.filter((_, j) => j !== i) })}
                 >
@@ -400,7 +401,7 @@ export function SeriesEditor(props: Props) {
                 size="sm"
                 onClick={() => patch({ titles: [...doc.titles, { title: '', lang: null }] })}
               >
-                {messages.admin.add}
+                {adminMessages.admin.add}
               </Button>
             </div>
           </div>
@@ -600,7 +601,7 @@ export function SeriesEditor(props: Props) {
                 <Trash2 size={14} aria-hidden="true" />
                 {messages.common.delete}
               </Button>
-              <Hint className="mt-1">{messages.admin.undoWindow}</Hint>
+              <Hint className="mt-1">{adminMessages.admin.undoWindow}</Hint>
             </div>
           ) : null}
         </Panel>
@@ -737,7 +738,7 @@ function ArtDrop({
   width: number
   height: number
 }) {
-  const f = messages.admin.series.fields
+  const f = adminMessages.admin.series.fields
   const { toast } = useToast()
   const [url, setUrl] = useState(initialUrl)
   const [busy, setBusy] = useState(false)
@@ -771,13 +772,13 @@ function ArtDrop({
       // the current image stays until then.
       if (confirm.data.url) setUrl(confirm.data.url)
       toast({
-        title: messages.admin.saved,
+        title: adminMessages.admin.saved,
         description: confirm.data.pending ? f.processing : undefined,
         tone: 'ok',
       })
     } catch (err) {
       toast({
-        title: messages.admin.errorSaving,
+        title: adminMessages.admin.errorSaving,
         description: err instanceof Error ? err.message : '',
         tone: 'danger',
       })
@@ -839,7 +840,7 @@ function PeoplePicker({
   people: SeriesDoc['people']
   onChange: (p: SeriesDoc['people']) => void
 }) {
-  const f = messages.admin.series.fields
+  const f = adminMessages.admin.series.fields
   const [q, setQ] = useState('')
   const [hits, setHits] = useState<Array<{ id: number; name: string }>>([])
   useEffect(() => {
@@ -877,7 +878,7 @@ function PeoplePicker({
             {p.id === null ? <span className="text-[11px] text-gold">new</span> : null}
             <button
               type="button"
-              aria-label={messages.admin.remove}
+              aria-label={adminMessages.admin.remove}
               className="ml-auto text-fg-muted hover:text-danger"
               onClick={() => onChange(people.filter((x) => x !== p))}
             >
@@ -964,7 +965,7 @@ export function SeriesSearch({
     <div className="relative">
       <input
         className={inputClass}
-        placeholder={placeholder ?? messages.admin.search}
+        placeholder={placeholder ?? adminMessages.admin.search}
         value={q}
         onChange={(e) => setQ(e.target.value)}
       />

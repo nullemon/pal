@@ -1,6 +1,7 @@
 'use client'
 
 import { messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { Button, useToast } from '@palscans/ui'
 import { X } from 'lucide-react'
 import { useState } from 'react'
@@ -15,7 +16,7 @@ interface Flag {
 }
 
 export function FlagsTable({ initial }: { initial: Flag[] }) {
-  const m = messages.admin.settings.flags
+  const m = adminMessages.admin.settings.flags
   const { toast } = useToast()
   const [rows, setRows] = useState(initial)
   const [draft, setDraft] = useState<Flag>({
@@ -30,13 +31,17 @@ export function FlagsTable({ initial }: { initial: Flag[] }) {
       description: f.description || null,
     })
     if (!res.ok)
-      return toast({ title: messages.admin.errorSaving, description: res.message, tone: 'danger' })
+      return toast({
+        title: adminMessages.admin.errorSaving,
+        description: res.message,
+        tone: 'danger',
+      })
     setRows((rs) =>
       rs.some((r) => r.key === f.key)
         ? rs.map((r) => (r.key === f.key ? res.data : r))
         : [...rs, res.data].sort((a, b) => a.key.localeCompare(b.key)),
     )
-    toast({ title: messages.admin.saved, tone: 'ok' })
+    toast({ title: adminMessages.admin.saved, tone: 'ok' })
   }
   const row = (f: Flag, isDraft: boolean) => (
     <tr key={isDraft ? '__new' : f.key}>
@@ -124,7 +129,7 @@ export function FlagsTable({ initial }: { initial: Flag[] }) {
           {!isDraft ? (
             <button
               type="button"
-              aria-label={messages.admin.remove}
+              aria-label={adminMessages.admin.remove}
               className="inline-flex size-8 items-center justify-center rounded-md text-fg-muted hover:text-danger"
               onClick={() =>
                 void del('/api/admin/flags', { key: f.key }).then(
@@ -147,7 +152,7 @@ export function FlagsTable({ initial }: { initial: Flag[] }) {
           <Th>{m.description}</Th>
           <Th>{m.state}</Th>
           <Th>{m.percentage}</Th>
-          <Th align="right">{messages.admin.actions}</Th>
+          <Th align="right">{adminMessages.admin.actions}</Th>
         </tr>
       </thead>
       <tbody>

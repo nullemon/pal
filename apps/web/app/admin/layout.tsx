@@ -1,4 +1,4 @@
-import { messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import type { ReactNode } from 'react'
@@ -9,7 +9,7 @@ import { findUserById } from '@/lib/auth/users'
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: messages.admin.title,
+  title: adminMessages.admin.title,
   robots: { index: false, follow: false },
 }
 

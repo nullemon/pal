@@ -1,4 +1,5 @@
-import { fmt, messages } from '@palscans/core/messages'
+import { fmt } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import type {
   ModerationMetrics,
   ModeratorRow,
@@ -39,7 +40,7 @@ import {
  * view of it is a URL someone can send.
  */
 
-const m = messages.queueHealth
+const m = adminMessages.queueHealth
 
 const toneClass: Record<Severity, string> = {
   ok: 'text-ok',
@@ -251,7 +252,7 @@ export function AgePanel({ ages }: { ages: ReportAgeProfile }) {
         hint={m.ageHint}
         aside={
           <a href="/admin/reports?status=open" className="hover:text-brand-hover">
-            {messages.admin.reportsQueue.title}
+            {adminMessages.admin.reportsQueue.title}
           </a>
         }
       />

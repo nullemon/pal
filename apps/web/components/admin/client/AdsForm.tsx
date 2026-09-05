@@ -1,6 +1,6 @@
 'use client'
 
-import { messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { useToast } from '@palscans/ui'
 import { useState } from 'react'
 import { AD_SLOT_SIZES, AD_SLOTS, type AdsSetting } from '../schemas-system'
@@ -9,7 +9,7 @@ import { putJson } from './api'
 import { SaveBar, Toggle } from './controls'
 
 export function AdsForm({ initial }: { initial: AdsSetting }) {
-  const m = messages.admin.ads
+  const m = adminMessages.admin.ads
   const { toast } = useToast()
   const [saved, setSaved] = useState(initial)
   const [s, setS] = useState(initial)
@@ -27,7 +27,7 @@ export function AdsForm({ initial }: { initial: AdsSetting }) {
           setSaving(false)
           if (!res.ok)
             return toast({
-              title: messages.admin.errorSaving,
+              title: adminMessages.admin.errorSaving,
               description: res.message,
               tone: 'danger',
             })
@@ -42,7 +42,7 @@ export function AdsForm({ initial }: { initial: AdsSetting }) {
             <Th>{m.slot}</Th>
             <Th>{m.placement}</Th>
             <Th>{m.size}</Th>
-            <Th>{messages.admin.enabled}</Th>
+            <Th>{adminMessages.admin.enabled}</Th>
             <Th>{m.tag}</Th>
           </tr>
         </thead>

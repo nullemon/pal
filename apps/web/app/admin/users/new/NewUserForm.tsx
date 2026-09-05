@@ -2,6 +2,7 @@
 
 import type { Feature } from '@palscans/core'
 import { messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { Button, useToast } from '@palscans/ui'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
@@ -19,7 +20,7 @@ export function NewUserForm({
   features: Feature[]
   canGrant: boolean
 }) {
-  const m = messages.admin.users
+  const m = adminMessages.admin.users
   const router = useRouter()
   const { toast } = useToast()
   const [form, setForm] = useState<CreateUserInput>({
@@ -45,7 +46,7 @@ export function NewUserForm({
     })
     setBusy(false)
     if (!res.ok) {
-      toast({ title: messages.admin.errorSaving, description: res.message, tone: 'danger' })
+      toast({ title: adminMessages.admin.errorSaving, description: res.message, tone: 'danger' })
       return
     }
     toast({ title: m.newUserCreated, tone: 'ok' })
@@ -151,7 +152,7 @@ export function NewUserForm({
 
         <div className="flex gap-2">
           <Button disabled={!valid || busy} onClick={() => void submit()}>
-            {busy ? messages.admin.saving : m.newUserCreate}
+            {busy ? adminMessages.admin.saving : m.newUserCreate}
           </Button>
           <Button href="/admin/users" variant="outline">
             {messages.common.cancel}

@@ -1,5 +1,6 @@
 import { can } from '@palscans/core'
-import { fmt, messages } from '@palscans/core/messages'
+import { fmt } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
@@ -11,7 +12,7 @@ import { LoginForm } from '../../../(auth)/_components/LoginForm'
 import { Divider, OAuthButtons } from '../../../(auth)/_components/OAuthButtons'
 import { SignOutLink } from './SignOutLink'
 
-const m = messages.staffAuth
+const m = adminMessages.staffAuth
 
 export const metadata: Metadata = {
   title: m.title,

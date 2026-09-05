@@ -1,4 +1,4 @@
-import { messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import type { Metadata } from 'next'
 import { Hint, PageHeader, Panel, PanelHeader } from '@/components/admin/ui'
 import { withPermission } from '@/lib/auth'
@@ -13,12 +13,12 @@ import { readLastBackup } from './service'
  * `ROLE_PERMISSIONS`), and the same `withPermission` guard, so a signed-in non-admin gets a
  * 404 rather than a hint that the screen exists.
  */
-export const metadata: Metadata = { title: messages.backup.title }
+export const metadata: Metadata = { title: adminMessages.backup.title }
 export const dynamic = 'force-dynamic'
 
 export default async function AdminBackupPage() {
   await withPermission('settings.write', { returnTo: '/admin/system/backup' })
-  const m = messages.backup
+  const m = adminMessages.backup
   const last = await readLastBackup()
 
   return (

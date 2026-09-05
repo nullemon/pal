@@ -1,6 +1,7 @@
 'use client'
 
-import { fmt, messages } from '@palscans/core/messages'
+import { fmt } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { Button, useToast } from '@palscans/ui'
 import { ExternalLink, RefreshCw } from 'lucide-react'
 import { useId, useState } from 'react'
@@ -25,7 +26,7 @@ import type { SeoSitemap } from '@/lib/seo/settings'
 import type { IndexNowLog } from '@/lib/seo/sitemaps'
 import { bytes, FormGrid, Iso, numberValue, SwitchRow } from './shared'
 
-const m = messages.adminSeo.sitemap
+const m = adminMessages.adminSeo.sitemap
 
 export function SitemapPanel({
   value,
@@ -147,7 +148,7 @@ export function SitemapPanel({
               })}
             </div>
             {!chaptersIndexed ? (
-              <Hint className="mt-1">{messages.adminSeo.indexing.chaptersHint}</Hint>
+              <Hint className="mt-1">{adminMessages.adminSeo.indexing.chaptersHint}</Hint>
             ) : null}
           </Field>
           <Field label={m.indexNowKey} hint={m.indexNowKeyHint} htmlFor={`${id}-key`}>

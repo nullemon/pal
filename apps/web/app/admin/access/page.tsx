@@ -1,4 +1,4 @@
-import { messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { PageHeader } from '@/components/admin/ui'
 import { withPermission } from '@/lib/auth'
 import {
@@ -27,7 +27,7 @@ export default async function AccessPage() {
     turnstileConfigured(),
   ])
   const now = new Date()
-  const m = messages.admin.access
+  const m = adminMessages.admin.access
   return (
     <>
       <PageHeader title={m.title} subtitle={m.subtitle} />

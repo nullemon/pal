@@ -1,6 +1,7 @@
 'use client'
 
-import { fmt, messages } from '@palscans/core/messages'
+import { fmt } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { Button, cn, useToast } from '@palscans/ui'
 import { useCallback, useEffect, useState } from 'react'
 import type { CommentAction } from '../schemas-moderation'
@@ -31,7 +32,7 @@ export function ModerationQueue({
   counts: { pending: number; reported: number; flagged: number }
   items: QueueComment[]
 }) {
-  const m = messages.admin.moderation
+  const m = adminMessages.admin.moderation
   const { toast } = useToast()
   const [rows, setRows] = useState(items)
   const [cursor, setCursor] = useState(0)
@@ -45,7 +46,7 @@ export function ModerationQueue({
       const res = await postJson<Record<string, unknown>>(`/api/admin/comments/${id}`, action)
       if (!res.ok) {
         toast({
-          title: messages.admin.errorSaving,
+          title: adminMessages.admin.errorSaving,
           description: res.message || res.error,
           tone: 'danger',
         })
@@ -132,7 +133,7 @@ export function ModerationQueue({
   const bulk = async (action: 'approve' | 'reject' | 'delete') => {
     const ids = [...selected]
     const res = await postJson('/api/admin/comments/bulk', { ids, action })
-    if (!res.ok) return toast({ title: messages.admin.errorSaving, tone: 'danger' })
+    if (!res.ok) return toast({ title: adminMessages.admin.errorSaving, tone: 'danger' })
     setRows((rs) =>
       rs.map((r) =>
         ids.includes(r.id)
@@ -189,7 +190,7 @@ export function ModerationQueue({
         {selected.size > 0 ? (
           <div className="ml-auto flex items-center gap-2 pb-1">
             <span className="text-[12px] text-fg-muted">
-              {fmt(messages.admin.selected, { n: selected.size })}
+              {fmt(adminMessages.admin.selected, { n: selected.size })}
             </span>
             <Button size="sm" onClick={() => bulk('approve')}>
               {m.bulkApprove}
@@ -263,7 +264,7 @@ export function ModerationQueue({
                     </span>
                   ) : null}
                   {r.user.commentBannedUntil && new Date(r.user.commentBannedUntil) > now ? (
-                    <span className="text-danger">· {messages.admin.users.commentBanned}</span>
+                    <span className="text-danger">· {adminMessages.admin.users.commentBanned}</span>
                   ) : null}
                   <span className="ml-auto flex items-center gap-2">
                     {r.reports > 0 ? (

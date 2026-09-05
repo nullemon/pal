@@ -1,6 +1,6 @@
 'use client'
 
-import { messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { Button, cn, useToast } from '@palscans/ui'
 import { useState } from 'react'
 import { postJson } from './api'
@@ -24,12 +24,12 @@ export function CommunityImages({
   status: 'pending' | 'approved'
   items: Item[]
 }) {
-  const m = messages.admin.moderation.images
+  const m = adminMessages.admin.moderation.images
   const { toast } = useToast()
   const [rows, setRows] = useState(items)
   const act = async (id: number, action: 'approve' | 'remove' | 'collection') => {
     const res = await postJson(`/api/admin/comments/images/${id}`, { action })
-    if (!res.ok) return toast({ title: messages.admin.errorSaving, tone: 'danger' })
+    if (!res.ok) return toast({ title: adminMessages.admin.errorSaving, tone: 'danger' })
     setRows((rs) =>
       action === 'remove' || status === 'pending'
         ? rs.filter((r) => r.id !== id)
@@ -55,7 +55,7 @@ export function CommunityImages({
       </div>
       {rows.length === 0 ? (
         <div className="rounded-lg border border-line bg-surface-1 p-10 text-center text-[13px] text-fg-muted">
-          {messages.admin.noResults}
+          {adminMessages.admin.noResults}
         </div>
       ) : null}
       <ul className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-3">

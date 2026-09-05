@@ -1,6 +1,7 @@
 'use client'
 
-import { fmt, messages } from '@palscans/core/messages'
+import { fmt } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { cn } from '@palscans/ui'
 import { useEffect, useState } from 'react'
 import type { QueueItem } from '../server/queue'
@@ -12,7 +13,7 @@ import { formatChapterNumber } from './util'
 export function UploadQueue({ initial }: { initial: QueueItem[] }) {
   const [items, setItems] = useState(initial)
   const [live, setLive] = useState(false)
-  const m = messages.admin.upload.queue
+  const m = adminMessages.admin.upload.queue
   useEffect(() => {
     const es = new EventSource('/api/admin/jobs/stream')
     es.addEventListener('queue', (e) => {
@@ -39,11 +40,11 @@ export function UploadQueue({ initial }: { initial: QueueItem[] }) {
       <Table>
         <thead>
           <tr>
-            <Th>{messages.admin.chapters.colChapter}</Th>
-            <Th>{messages.admin.chapters.colSeries}</Th>
-            <Th>{messages.admin.chapters.colState}</Th>
-            <Th>{messages.admin.chapters.colPages}</Th>
-            <Th>{messages.admin.actions}</Th>
+            <Th>{adminMessages.admin.chapters.colChapter}</Th>
+            <Th>{adminMessages.admin.chapters.colSeries}</Th>
+            <Th>{adminMessages.admin.chapters.colState}</Th>
+            <Th>{adminMessages.admin.chapters.colPages}</Th>
+            <Th>{adminMessages.admin.actions}</Th>
           </tr>
         </thead>
         <tbody>
@@ -80,7 +81,10 @@ export function UploadQueue({ initial }: { initial: QueueItem[] }) {
                       />
                     </div>
                     <Num className="text-[12px] text-fg-muted">
-                      {fmt(messages.admin.dashboard.pagesDone, { done: it.done, total: it.total })}
+                      {fmt(adminMessages.admin.dashboard.pagesDone, {
+                        done: it.done,
+                        total: it.total,
+                      })}
                     </Num>
                   </div>
                   {errors.length ? (
@@ -103,7 +107,7 @@ export function UploadQueue({ initial }: { initial: QueueItem[] }) {
                         void postJson(`/api/admin/chapters/${it.id}/retry`, { failedOnly: true })
                       }
                     >
-                      {messages.admin.chapters.retryFailed}
+                      {adminMessages.admin.chapters.retryFailed}
                     </button>
                   ) : null}
                 </Td>

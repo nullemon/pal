@@ -1,5 +1,5 @@
 import { describeImportSource, importSourceReady, maskImportSetting } from '@palscans/core/import'
-import { messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { z } from 'zod'
 import {
   controlRun,
@@ -24,8 +24,8 @@ export const GET = withPermission('settings.write', async () => ok(await latestR
 export const POST = withPermission('settings.write', async (request, _ctx, user) => {
   const doc = await readImportDoc()
   if (!importSourceReady(doc.config))
-    return fail(400, 'validation', messages.admin.import.runUnavailable)
-  if (await liveRunView()) return fail(409, 'conflict', messages.admin.import.runBusy)
+    return fail(400, 'validation', adminMessages.admin.import.runUnavailable)
+  if (await liveRunView()) return fail(409, 'conflict', adminMessages.admin.import.runBusy)
 
   try {
     // The stored config is copied onto the run masked, so the row is safe to read back.
@@ -44,7 +44,8 @@ export const POST = withPermission('settings.write', async (request, _ctx, user)
     })
     return ok(view)
   } catch (err) {
-    if (err instanceof RunBusyError) return fail(409, 'conflict', messages.admin.import.runBusy)
+    if (err instanceof RunBusyError)
+      return fail(409, 'conflict', adminMessages.admin.import.runBusy)
     throw err
   }
 })

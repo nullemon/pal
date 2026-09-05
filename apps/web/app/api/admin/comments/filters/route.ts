@@ -1,4 +1,4 @@
-import { messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { getDb, wordFilters } from '@palscans/db'
 import { wordFilterSchema } from '@/components/admin/schemas-moderation'
 import { audit } from '@/components/admin/server/audit'
@@ -12,7 +12,7 @@ export const POST = withPermission('settings.write', async (request, _ctx, user)
     try {
       new RegExp(parsed.data.pattern, 'i')
     } catch {
-      return fail(400, 'validation', messages.admin.moderation.settings.invalidRegex)
+      return fail(400, 'validation', adminMessages.admin.moderation.settings.invalidRegex)
     }
   }
   const db = await getDb()

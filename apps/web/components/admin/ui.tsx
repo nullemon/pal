@@ -1,4 +1,4 @@
-import { messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { cn } from '@palscans/ui'
 import type { ReactNode } from 'react'
 
@@ -158,7 +158,9 @@ const chapterStateTone: Record<string, PillTone> = {
 
 export function ChapterStatePill({ state }: { state: string }) {
   const label =
-    messages.admin.chapters.states[state as keyof typeof messages.admin.chapters.states] ?? state
+    adminMessages.admin.chapters.states[
+      state as keyof typeof adminMessages.admin.chapters.states
+    ] ?? state
   return <Pill tone={chapterStateTone[state] ?? 'neutral'}>{label}</Pill>
 }
 
@@ -238,7 +240,7 @@ export function EmptyRow({ colSpan, children }: { colSpan: number; children?: Re
   return (
     <tr>
       <td colSpan={colSpan} className="h-24 text-center text-[13px] text-fg-muted">
-        {children ?? messages.admin.noResults}
+        {children ?? adminMessages.admin.noResults}
       </td>
     </tr>
   )
@@ -310,7 +312,7 @@ export function Pagination({
   hrefFor: (page: number) => string
 }) {
   if (pages <= 1) return null
-  const m = messages.admin
+  const m = adminMessages.admin
   const link =
     'inline-flex h-8 items-center rounded-md border border-line px-3 text-[13px] hover:bg-surface-2'
   return (

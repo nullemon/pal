@@ -1,6 +1,7 @@
 'use client'
 
-import { fmt, messages } from '@palscans/core/messages'
+import { fmt } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { Button, useToast } from '@palscans/ui'
 import { Copy } from 'lucide-react'
 import { useState } from 'react'
@@ -63,8 +64,8 @@ export function AccessScreen({
   /** TRUSTED_PROXY is set, so a client IP can actually be trusted. */
   trustedProxy: boolean
 }) {
-  const m = messages.admin.access
-  const sa = messages.staffAccess
+  const m = adminMessages.admin.access
+  const sa = adminMessages.staffAccess
   const { toast } = useToast()
   const [saved, setSaved] = useState(initial)
   const [s, setS] = useState(initial)
@@ -99,7 +100,11 @@ export function AccessScreen({
     const res = await putJson<AccessFormState>('/api/admin/access', payload)
     setSaving(false)
     if (!res.ok)
-      return toast({ title: messages.admin.errorSaving, description: res.message, tone: 'danger' })
+      return toast({
+        title: adminMessages.admin.errorSaving,
+        description: res.message,
+        tone: 'danger',
+      })
     const next: AccessFormState = {
       registration: res.data.registration,
       access: res.data.access,
@@ -331,7 +336,7 @@ export function AccessScreen({
                 setCreating(false)
                 if (!res.ok)
                   return toast({
-                    title: messages.admin.errorSaving,
+                    title: adminMessages.admin.errorSaving,
                     description: res.message,
                     tone: 'danger',
                   })
@@ -407,7 +412,7 @@ export function AccessScreen({
                         })
                         if (!res.ok)
                           return toast({
-                            title: messages.admin.errorSaving,
+                            title: adminMessages.admin.errorSaving,
                             description: res.message,
                             tone: 'danger',
                           })

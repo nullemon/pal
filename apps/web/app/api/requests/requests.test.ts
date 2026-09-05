@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { createRequestSchema } from '@/components/requests/schemas'
 import {
   SUBMIT_PER_DAY,
   SUBMIT_PER_HOUR,
@@ -7,7 +8,7 @@ import {
   voteLimit,
 } from '@/components/requests/server/guards'
 import { type RequestActor, voterKeyFor } from '@/components/requests/server/identity'
-import { boardHref, createRequestSchema } from '@/components/requests/shared'
+import { boardHref } from '@/components/requests/shared'
 import { createMemoryRateLimiter } from '@/lib/auth/rate-limit'
 
 /**

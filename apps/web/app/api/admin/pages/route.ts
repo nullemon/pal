@@ -1,4 +1,4 @@
-import { messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { getDb, pages } from '@palscans/db'
 import { pageSlugTaken } from '@/components/admin/content/queries'
 import { pageDocSchema } from '@/components/admin/content/schemas'
@@ -15,7 +15,7 @@ export const POST = withPermission('settings.write', async (request, _ctx, user)
   const body = bodyFrom(doc.body)
   if (!body.ok) return body.response
   if (await pageSlugTaken(doc.slug, null))
-    return fail(409, 'slug_taken', messages.adminContent.pages.fields.slugCollision)
+    return fail(409, 'slug_taken', adminMessages.adminContent.pages.fields.slugCollision)
   const db = await getDb()
   const [row] = await db
     .insert(pages)

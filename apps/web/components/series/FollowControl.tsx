@@ -2,7 +2,7 @@ import { messages } from '@palscans/core/messages'
 import { chapters, db, followState, series } from '@palscans/db'
 import { and, eq, isNull } from 'drizzle-orm'
 import { getSessionUser } from '@/lib/auth/session'
-import { DEFAULT_FOLLOW_MODE } from '@/lib/notifications/schema'
+import { DEFAULT_FOLLOW_MODE } from '@/lib/notifications/follow-modes'
 import { FollowButton, type FollowInitialState } from './FollowButton'
 
 /**

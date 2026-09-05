@@ -1,5 +1,5 @@
 import { can, formatChapterNumber } from '@palscans/core'
-import { messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { notFound } from 'next/navigation'
 import { z } from 'zod'
 import { UserActions } from '@/components/admin/client/UserActions'
@@ -32,13 +32,13 @@ export default async function UserDetailPage({
   const { lp } = parseSearch(z.object({ lp: pageSchema }), await searchParams)
   const history = await listLoginEvents(id.data, lp)
   const liveSessionIds = new Set(d.sessions.map((s) => s.id))
-  const m = messages.admin.users
+  const m = adminMessages.admin.users
   const u = d.user
   return (
     <>
       <PageHeader
         title={u.username ?? `#${u.id}`}
-        subtitle={`${u.email} · ${m.detail} #${u.id}${u.id === actor.id ? ` · ${messages.admin.you}` : ''}`}
+        subtitle={`${u.email} · ${m.detail} #${u.id}${u.id === actor.id ? ` · ${adminMessages.admin.you}` : ''}`}
         actions={
           <div className="flex gap-1.5">
             <Pill tone="brand">{u.role}</Pill>
@@ -102,7 +102,7 @@ export default async function UserDetailPage({
             <PanelHeader title={m.recentComments} />
             <ul className="flex flex-col gap-2 text-[13px]">
               {d.comments.length === 0 ? (
-                <li className="text-fg-muted">{messages.admin.none}</li>
+                <li className="text-fg-muted">{adminMessages.admin.none}</li>
               ) : null}
               {d.comments.map((c) => (
                 <li key={c.id} className="border-b border-line-soft pb-2 last:border-0">
@@ -118,7 +118,7 @@ export default async function UserDetailPage({
             <PanelHeader title={m.uploads} />
             <ul className="flex flex-col gap-1.5 text-[13px]">
               {d.uploads.length === 0 ? (
-                <li className="text-fg-muted">{messages.admin.none}</li>
+                <li className="text-fg-muted">{adminMessages.admin.none}</li>
               ) : null}
               {d.uploads.map((c) => (
                 <li key={c.id} className="flex items-center gap-2">
@@ -138,12 +138,14 @@ export default async function UserDetailPage({
             <PanelHeader title={m.auditTrail} />
             <ul className="flex flex-col gap-1.5 text-[12px]">
               {d.trail.length === 0 ? (
-                <li className="text-fg-muted">{messages.admin.none}</li>
+                <li className="text-fg-muted">{adminMessages.admin.none}</li>
               ) : null}
               {d.trail.map((t) => (
                 <li key={t.id} className="flex items-center gap-2">
                   <code className="rounded-sm bg-surface-3 px-1">{t.action}</code>
-                  <span className="text-fg-muted">{t.actor ?? messages.admin.audit.system}</span>
+                  <span className="text-fg-muted">
+                    {t.actor ?? adminMessages.admin.audit.system}
+                  </span>
                   <span className="ml-auto text-fg-subtle">
                     <When date={t.createdAt} />
                   </span>

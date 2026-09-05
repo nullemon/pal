@@ -1,6 +1,7 @@
 'use client'
 
 import { fmt, messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { Button, cn, useToast } from '@palscans/ui'
 import { useMemo, useState } from 'react'
 import { postJson } from '@/components/admin/client/api'
@@ -96,7 +97,7 @@ export function TakedownsQueue({
     )
     setBusy(false)
     if (!res.ok) {
-      toast({ title: res.message || messages.admin.errorSaving, tone: 'danger' })
+      toast({ title: res.message || adminMessages.admin.errorSaving, tone: 'danger' })
       return
     }
     setRows((rs) =>
@@ -131,7 +132,7 @@ export function TakedownsQueue({
           type="submit"
           className="h-9 rounded-md border border-line bg-surface-1 px-3 text-[13px] font-semibold hover:bg-surface-2"
         >
-          {messages.admin.apply}
+          {adminMessages.admin.apply}
         </button>
         <span className="text-[12px] text-fg-subtle">{m.slaHint}</span>
       </form>
@@ -186,7 +187,7 @@ export function TakedownsQueue({
                 <div className="flex gap-1.5">
                   {r.seriesSlug ? (
                     <Button size="sm" variant="outline" href={`/admin/series/${r.seriesId}`}>
-                      {messages.admin.reportsQueue.openTarget}
+                      {adminMessages.admin.reportsQueue.openTarget}
                     </Button>
                   ) : null}
                   <Button

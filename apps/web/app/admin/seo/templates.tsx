@@ -1,6 +1,7 @@
 'use client'
 
-import { fmt, messages } from '@palscans/core/messages'
+import { fmt } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { Button, cn } from '@palscans/ui'
 import { useEffect, useId, useState } from 'react'
 import { postJson } from '@/components/admin/client/api'
@@ -15,7 +16,7 @@ import {
 import type { TemplatePreview } from '@/lib/seo/admin-data'
 import type { SeoTemplates } from '@/lib/seo/settings'
 
-const m = messages.adminSeo.templates
+const m = adminMessages.adminSeo.templates
 const PAGES = Object.keys(m.pages) as (keyof SeoTemplates)[]
 const VARS =
   '{site} {title} {type} {chapter} {chapter_count} {latest_chapter} {genres} {author} {year} {synopsis:N} {genre} {count} {intro:N} {excerpt:N} {next_prev_hint}'

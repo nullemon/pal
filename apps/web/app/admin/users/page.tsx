@@ -1,5 +1,6 @@
 import { can } from '@palscans/core'
 import { messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { Button } from '@palscans/ui'
 import { z } from 'zod'
 import { pageSchema, parseSearch, type SearchParams } from '@/components/admin/server/params'
@@ -17,7 +18,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
   const actor = await withPermission('user.read', { returnTo: '/admin/users' })
   const p = parseSearch(schema, await searchParams)
   const { rows, pages } = await loadUserList(p.q, p.page)
-  const m = messages.admin.users
+  const m = adminMessages.admin.users
   const view: UserRowView[] = rows.map((u) => ({
     id: u.id,
     email: u.email,
@@ -46,7 +47,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
         <input
           name="q"
           defaultValue={p.q ?? ''}
-          placeholder={messages.admin.search}
+          placeholder={adminMessages.admin.search}
           className={`${inputClass} max-w-sm`}
         />
         <button

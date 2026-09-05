@@ -1,6 +1,6 @@
 'use client'
 
-import { messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { Button, useToast } from '@palscans/ui'
 import { useState } from 'react'
 import { Field, inputClass, selectClass } from '../ui'
@@ -11,7 +11,7 @@ export function NewSeriesForm() {
   const [type, setType] = useState('manhwa')
   const [busy, setBusy] = useState(false)
   const { toast } = useToast()
-  const f = messages.admin.series.fields
+  const f = adminMessages.admin.series.fields
   return (
     <form
       className="flex flex-col gap-3"
@@ -24,7 +24,11 @@ export function NewSeriesForm() {
         })
         setBusy(false)
         if (!res.ok) {
-          toast({ title: messages.admin.errorSaving, description: res.message, tone: 'danger' })
+          toast({
+            title: adminMessages.admin.errorSaving,
+            description: res.message,
+            tone: 'danger',
+          })
           return
         }
         window.location.href = `/admin/series/${res.data.id}`
@@ -55,7 +59,7 @@ export function NewSeriesForm() {
       </Field>
       <div>
         <Button type="submit" disabled={busy || !title.trim()}>
-          {messages.admin.series.newSeries}
+          {adminMessages.admin.series.newSeries}
         </Button>
       </div>
     </form>

@@ -1,5 +1,6 @@
 import { canActOn } from '@palscans/core'
-import { domainOf, isCommentBody, linkHrefs } from '@palscans/core/comments'
+import { domainOf, linkHrefs } from '@palscans/core/comments'
+import { isCommentBody } from '@palscans/core/comments/schema'
 import { bans, comments, getDb, linkAllowlist, notifications, users } from '@palscans/db'
 import { and, eq, isNull } from 'drizzle-orm'
 import { commentActionSchema } from '@/components/admin/schemas-moderation'

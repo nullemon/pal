@@ -1,5 +1,5 @@
 import { can, FEATURES, isStaffRole, ROLES } from '@palscans/core'
-import { messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { PageHeader } from '@/components/admin/ui'
 import { withPermission } from '@/lib/auth'
 import { NewUserForm } from './NewUserForm'
@@ -7,7 +7,7 @@ import { NewUserForm } from './NewUserForm'
 /** Admin → Users → new (docs/17 §C): create an account by hand. */
 export default async function NewUserPage() {
   const actor = await withPermission('user.update', { returnTo: '/admin/users/new' })
-  const m = messages.admin.users
+  const m = adminMessages.admin.users
   // A moderator may create readers only; staff roles stay with admins (core `canActOn`).
   const roles: string[] = can(actor, 'user.role')
     ? ROLES.filter((r) => actor.role === 'admin' || !isStaffRole(r))

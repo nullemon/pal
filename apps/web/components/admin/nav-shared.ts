@@ -1,4 +1,5 @@
 import { messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 
 /**
  * The admin navigation (docs/04 "Navigation", design/mockups/admin): groups Dashboard ·
@@ -46,7 +47,7 @@ export interface AdminNavGroup {
   items: AdminNavItem[]
 }
 
-const m = messages.admin.nav
+const m = adminMessages.admin.nav
 
 export const adminNav: readonly AdminNavGroup[] = [
   {
@@ -62,7 +63,7 @@ export const adminNav: readonly AdminNavGroup[] = [
       // Duplicate detection (docs/09 legacy import): pairs that look like one work under two
       // rows. Listing is `series.read`; the merge behind it is `series.delete`.
       {
-        label: messages.duplicates.navLabel,
+        label: adminMessages.duplicates.navLabel,
         href: '/admin/series/duplicates',
         icon: 'search',
         permission: 'series.read',
@@ -88,7 +89,7 @@ export const adminNav: readonly AdminNavGroup[] = [
       },
       // Announcement authoring (docs/04 Content group): the /announcements posts and feed.
       {
-        label: messages.adminContent.nav.announcements,
+        label: adminMessages.adminContent.nav.announcements,
         href: '/admin/announcements',
         icon: 'megaphone',
         permission: 'announcement.write',
@@ -108,7 +109,7 @@ export const adminNav: readonly AdminNavGroup[] = [
       // Queue health (docs/04 Community, docs/07 SLA): the three queues' age, throughput and
       // who is working them. Same gate as the queues themselves — see app/admin/moderation.
       {
-        label: messages.queueHealth.navLabel,
+        label: adminMessages.queueHealth.navLabel,
         href: '/admin/moderation',
         icon: 'gauge',
         permission: 'report.handle',
@@ -177,7 +178,7 @@ export const adminNav: readonly AdminNavGroup[] = [
       // numbers. `settings.write` keeps it where the rest of System already is: staff who
       // run the site, not everyone who can open the panel.
       {
-        label: messages.admin.analytics.navLabel,
+        label: adminMessages.admin.analytics.navLabel,
         href: '/admin/analytics',
         icon: 'chart-line',
         permission: 'settings.write',
@@ -199,7 +200,7 @@ export const adminNav: readonly AdminNavGroup[] = [
       },
       // Legal / help pages (docs/13 §"the System group gains … Legal pages").
       {
-        label: messages.adminContent.nav.pages,
+        label: adminMessages.adminContent.nav.pages,
         href: '/admin/pages',
         icon: 'file-text',
         permission: 'settings.write',
@@ -216,7 +217,7 @@ export const adminNav: readonly AdminNavGroup[] = [
       { label: m.jobs, href: '/admin/jobs', icon: 'cpu', permission: 'chapter.update' },
       // docs/17 §G — the nightly database dump, and the button that takes one now.
       {
-        label: messages.backup.navLabel,
+        label: adminMessages.backup.navLabel,
         href: '/admin/system/backup',
         icon: 'file-stack',
         permission: 'settings.write',

@@ -1,4 +1,4 @@
-import { messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { getDb, users } from '@palscans/db'
 import { eq } from 'drizzle-orm'
 import { audit } from '@/components/admin/server/audit'
@@ -30,7 +30,7 @@ export const PUT = withPermission('settings.write', async (request, _ctx, user) 
   } catch {
     // The only expected failure is a missing sealing key, which the screen already warns
     // about; the message names the fix rather than the exception.
-    return fail(503, 'sealing_key_missing', messages.admin.integrations.sealing.missingBody)
+    return fail(503, 'sealing_key_missing', adminMessages.admin.integrations.sealing.missingBody)
   }
 
   // Next 16 wants a cache-life profile alongside the tag; 'max' expires it everywhere.

@@ -1,4 +1,5 @@
-import { fmt, messages } from '@palscans/core/messages'
+import { fmt } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { Plus } from 'lucide-react'
 import { loadPageList } from '@/components/admin/content/queries'
 import { publicPagePath } from '@/components/admin/content/schemas'
@@ -20,7 +21,7 @@ import { withPermission } from '@/lib/auth'
 export default async function AdminPagesPage() {
   await withPermission('settings.write', { returnTo: '/admin/pages' })
   const rows = await loadPageList()
-  const m = messages.adminContent.pages
+  const m = adminMessages.adminContent.pages
   return (
     <>
       <PageHeader

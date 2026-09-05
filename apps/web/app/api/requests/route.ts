@@ -1,9 +1,10 @@
 import { messages } from '@palscans/core/messages'
 import { createRequest, getDb, votedRequestIds } from '@palscans/db'
+import { createRequestSchema } from '@/components/requests/schemas'
 import { loadBoard, toRequestItem } from '@/components/requests/server/data'
 import { submitLimit } from '@/components/requests/server/guards'
 import { readActor, writeActor } from '@/components/requests/server/identity'
-import { createRequestSchema, isRequestFilter, isRequestSort } from '@/components/requests/shared'
+import { isRequestFilter, isRequestSort } from '@/components/requests/shared'
 import { clientIp, fail, ok, parseJson, rateLimited, sameOrigin } from '@/lib/auth'
 import { turnstileEnabled, verifyTurnstile } from '@/lib/auth/turnstile'
 

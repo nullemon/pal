@@ -1,5 +1,6 @@
 import { compactNumber } from '@palscans/core'
 import { fmt, messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { Chip } from '@palscans/ui'
 import { Plus } from 'lucide-react'
 import { z } from 'zod'
@@ -40,7 +41,7 @@ export default async function AdminSeriesPage({
   await withPermission('series.read', { returnTo: '/admin/series' })
   const p = parseSearch(schema, await searchParams)
   const { rows, total, pages } = await loadSeriesList(p)
-  const m = messages.admin.series
+  const m = adminMessages.admin.series
   const hrefFor = (page: number) => {
     const u = new URLSearchParams()
     if (p.q) u.set('q', p.q)
@@ -78,7 +79,7 @@ export default async function AdminSeriesPage({
           className={`${selectClass} w-40`}
           aria-label={m.colState}
         >
-          <option value="">{messages.admin.all}</option>
+          <option value="">{adminMessages.admin.all}</option>
           {['draft', 'scheduled', 'published', 'unlisted', 'removed'].map((s) => (
             <option key={s} value={s}>
               {s}
@@ -91,7 +92,7 @@ export default async function AdminSeriesPage({
           className={`${selectClass} w-36`}
           aria-label={m.colType}
         >
-          <option value="">{messages.admin.all}</option>
+          <option value="">{adminMessages.admin.all}</option>
           {['manhwa', 'manhua', 'manga', 'comic', 'novel'].map((s) => (
             <option key={s} value={s}>
               {s}
@@ -106,7 +107,7 @@ export default async function AdminSeriesPage({
           type="submit"
           className="h-9 rounded-md border border-line bg-surface-1 px-3 text-[13px] font-semibold hover:bg-surface-2"
         >
-          {messages.admin.apply}
+          {adminMessages.admin.apply}
         </button>
       </form>
       <Table>

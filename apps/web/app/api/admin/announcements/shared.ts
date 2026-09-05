@@ -1,4 +1,4 @@
-import { messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import type { RichTextJson } from '@palscans/db'
 import { isDocEmpty, markdownToDoc } from '@/components/admin/content/markdown'
 import type { AnnouncementDoc } from '@/components/admin/content/schemas'
@@ -25,7 +25,10 @@ export type BodyResult = { ok: true; body: RichTextJson } | { ok: false; respons
 export const bodyFrom = (markdown: string): BodyResult => {
   const doc = markdownToDoc(markdown)
   if (isDocEmpty(doc))
-    return { ok: false, response: fail(400, 'validation', messages.adminContent.body.required) }
+    return {
+      ok: false,
+      response: fail(400, 'validation', adminMessages.adminContent.body.required),
+    }
   return { ok: true, body: doc as RichTextJson }
 }
 

@@ -6,7 +6,7 @@ import { Bell, BellOff, BellRing, Check, ChevronDown, Mail, Monitor } from 'luci
 import type { ComponentType } from 'react'
 import { useEffect, useId, useRef, useState } from 'react'
 import { del, putJson } from '@/lib/comments/client'
-import { FOLLOW_MODES, type FollowMode } from '@/lib/notifications/schema'
+import { FOLLOW_MODES, type FollowMode } from '@/lib/notifications/follow-modes'
 
 /**
  * The follow control (docs/17 §D) — "tell me when this updates", which is **not** the

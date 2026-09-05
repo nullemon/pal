@@ -1,6 +1,6 @@
 'use client'
 
-import { messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { Button, useToast } from '@palscans/ui'
 import { X } from 'lucide-react'
 import { useMemo, useState } from 'react'
@@ -26,7 +26,7 @@ export function CommentSettingsForm({
   filters: Filter[]
   allowlist: string[]
 }) {
-  const m = messages.admin.moderation.settings
+  const m = adminMessages.admin.moderation.settings
   const { toast } = useToast()
   const [saved, setSaved] = useState(initial)
   const [s, setS] = useState(initial)
@@ -96,13 +96,13 @@ export function CommentSettingsForm({
           setSaving(false)
           if (!res.ok)
             return toast({
-              title: messages.admin.errorSaving,
+              title: adminMessages.admin.errorSaving,
               description: res.message,
               tone: 'danger',
             })
           setSaved(res.data)
           setS(res.data)
-          toast({ title: messages.admin.saved, tone: 'ok' })
+          toast({ title: adminMessages.admin.saved, tone: 'ok' })
         }}
       />
       <Panel>
@@ -255,7 +255,7 @@ export function CommentSettingsForm({
               {f.replacement ? <span className="text-fg-muted">→ {f.replacement}</span> : null}
               <button
                 type="button"
-                aria-label={messages.admin.remove}
+                aria-label={adminMessages.admin.remove}
                 className="ml-auto text-fg-muted hover:text-danger"
                 onClick={() =>
                   void del(`/api/admin/comments/filters/${f.id}`).then(
@@ -316,7 +316,7 @@ export function CommentSettingsForm({
               })
               if (!res.ok)
                 return toast({
-                  title: messages.admin.errorSaving,
+                  title: adminMessages.admin.errorSaving,
                   description: res.message,
                   tone: 'danger',
                 })
@@ -357,7 +357,7 @@ export function CommentSettingsForm({
               {d}
               <button
                 type="button"
-                aria-label={messages.admin.remove}
+                aria-label={adminMessages.admin.remove}
                 className="text-fg-muted hover:text-danger"
                 onClick={() =>
                   void del('/api/admin/comments/allowlist', { domain: d }).then(
@@ -387,7 +387,7 @@ export function CommentSettingsForm({
               })
               if (!res.ok)
                 return toast({
-                  title: messages.admin.errorSaving,
+                  title: adminMessages.admin.errorSaving,
                   description: res.message,
                   tone: 'danger',
                 })

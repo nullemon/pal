@@ -1,11 +1,12 @@
-import { z } from 'zod'
-import { SERIES_TYPES } from '@/components/discovery/filters'
-
 /**
  * The contract between the request board's client islands and its route handlers: the view
- * models that cross the wire and the zod schemas the server validates with. Client-safe —
- * nothing here imports the database, so `RequestBoard` and `RequestModal` can use the same
- * types the API answers with.
+ * models that cross the wire, and the helpers both sides format with.
+ *
+ * Deliberately free of zod. `RequestTrigger` sits in the site header, so every module this
+ * file touches is on every page's critical path — and zod is 84 KB gzipped, more than half
+ * a page's entire budget (docs/20). The schemas that validate an untrusted body live in
+ * `./schemas`, which only route handlers import; nothing in the browser needs them, because
+ * the server is the only thing that may believe a request body anyway.
  */
 
 export const REQUEST_STATUSES = ['open', 'planned', 'added', 'declined', 'exists'] as const
@@ -52,60 +53,6 @@ export interface Suggestions {
   /** True when one of `requests` is close enough that submitting would be refused. */
   duplicateId: number | null
 }
-
-// --- request bodies -----------------------------------------------------------------------
-
-const trimmed = z.string().trim()
-
-/**
- * Alternative titles arrive as one textarea. Splitting server-side (rather than asking the
- * client for an array) means the cap is enforced where it matters.
- */
-const altTitles = z
-  .union([z.string(), z.array(z.string())])
-  .optional()
-  .transform((v) =>
-    (typeof v === 'string' ? v.split(/\r?\n/) : (v ?? []))
-      .map((s) => s.trim())
-      .filter(Boolean)
-      .slice(0, 10)
-      .map((s) => s.slice(0, 200)),
-  )
-
-export const createRequestSchema = z.object({
-  title: trimmed.min(2).max(200),
-  altTitles,
-  /** `http(s)` only, and only as a pointer for staff — it is never rendered as a link
-   *  the site vouches for. */
-  link: z
-    .union([z.literal(''), z.string().trim().url().max(500)])
-    .optional()
-    .transform((v) => (v ? v : null))
-    .refine((v) => v === null || /^https?:\/\//i.test(v), 'link must be http(s)'),
-  type: z
-    .union([z.literal(''), z.enum(SERIES_TYPES)])
-    .optional()
-    .transform((v) => (v ? v : null)),
-  note: z
-    .union([z.literal(''), trimmed.max(1000)])
-    .optional()
-    .transform((v) => (v ? v : null)),
-  /** Cloudflare Turnstile token; required for anonymous submissions when configured. */
-  turnstile: z.string().max(4096).optional(),
-  /** Honeypot — a real browser leaves it empty. */
-  website: z.string().max(0).optional(),
-})
-
-export type CreateRequestBody = z.input<typeof createRequestSchema>
-
-export const suggestQuerySchema = z.object({
-  q: trimmed.min(1).max(200),
-})
-
-export const voteSchema = z.object({
-  /** false withdraws the vote. */
-  vote: z.boolean().default(true),
-})
 
 // --- shared formatting ---------------------------------------------------------------------
 

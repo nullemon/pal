@@ -1,6 +1,7 @@
 'use client'
 
 import { fmt, messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { Button, cn, useToast } from '@palscans/ui'
 import {
   Bookmark,
@@ -27,7 +28,7 @@ import { postJson, putJson } from './api'
 import { Modal, Segmented, Toggle, TopBarActions } from './controls'
 import { relativeTime } from './util'
 
-const m = messages.admin.theme
+const m = adminMessages.admin.theme
 
 function Section({
   title,
@@ -166,7 +167,11 @@ export function ThemeScreen({
     const res = await putJson<{ id: number }>('/api/admin/appearance/theme', { settings: doc })
     setBusy(false)
     if (!res.ok)
-      return toast({ title: messages.admin.errorSaving, description: res.message, tone: 'danger' })
+      return toast({
+        title: adminMessages.admin.errorSaving,
+        description: res.message,
+        tone: 'danger',
+      })
     setSaved(doc)
     setDraft(true)
     toast({ title: m.draftSaved, tone: 'ok' })
@@ -178,7 +183,7 @@ export function ThemeScreen({
       if (!res.ok) {
         setBusy(false)
         return toast({
-          title: messages.admin.errorSaving,
+          title: adminMessages.admin.errorSaving,
           description: res.message,
           tone: 'danger',
         })
@@ -191,7 +196,11 @@ export function ThemeScreen({
     )
     setBusy(false)
     if (!res.ok)
-      return toast({ title: messages.admin.errorSaving, description: res.message, tone: 'danger' })
+      return toast({
+        title: adminMessages.admin.errorSaving,
+        description: res.message,
+        tone: 'danger',
+      })
     setDraft(false)
     toast({ title: versionId ? fmt(m.reverted, { id: versionId }) : m.publishedToast, tone: 'ok' })
     if (versionId) window.location.reload()
@@ -216,7 +225,7 @@ export function ThemeScreen({
           {published?.publishedAt
             ? fmt(m.lastPublished, {
                 time: relativeTime(new Date(published.publishedAt), now),
-                name: published.by ?? messages.admin.audit.system,
+                name: published.by ?? adminMessages.admin.audit.system,
               })
             : m.neverPublished}
         </div>
@@ -227,7 +236,7 @@ export function ThemeScreen({
           disabled={!dirty || busy}
           onClick={() => setDoc(saved)}
         >
-          {messages.admin.discard}
+          {adminMessages.admin.discard}
         </Button>
         <Button
           variant="outline"
@@ -245,7 +254,7 @@ export function ThemeScreen({
           onClick={() => publish()}
         >
           <Check size={14} aria-hidden="true" />
-          {messages.admin.saveChanges}
+          {adminMessages.admin.saveChanges}
         </Button>
       </TopBarActions>
 
@@ -934,12 +943,12 @@ export function ThemeScreen({
             {draft || dirty ? (
               <span className="inline-flex h-6 items-center gap-1.5 rounded-full bg-warn/15 px-2.5 text-[12px] font-semibold text-warn">
                 <span className="size-1.5 rounded-full bg-warn" />
-                {messages.admin.draftNotPublished}
+                {adminMessages.admin.draftNotPublished}
               </span>
             ) : (
               <span className="inline-flex h-6 items-center gap-1.5 rounded-full bg-ok/15 px-2.5 text-[12px] font-semibold text-ok">
                 <span className="size-1.5 rounded-full bg-ok" />
-                {messages.admin.published}
+                {adminMessages.admin.published}
               </span>
             )}
           </div>
@@ -951,7 +960,7 @@ export function ThemeScreen({
               className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-line text-[13px] font-semibold hover:bg-surface-2"
             >
               <ExternalLink size={13} aria-hidden="true" />
-              {messages.admin.previewOnSite}
+              {adminMessages.admin.previewOnSite}
             </a>
             <button
               type="button"
@@ -959,7 +968,7 @@ export function ThemeScreen({
               className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-line text-[13px] font-semibold hover:bg-surface-2"
             >
               <History size={13} aria-hidden="true" />
-              {messages.admin.versionHistory}
+              {adminMessages.admin.versionHistory}
             </button>
           </div>
           <div className="mt-3 border-t border-line pt-3">
@@ -1015,7 +1024,7 @@ export function ThemeScreen({
               </span>
               <span className="text-fg-muted">
                 <time dateTime={v.createdAt}>{relativeTime(new Date(v.createdAt), now)}</time> ·{' '}
-                {v.by ?? messages.admin.audit.system}
+                {v.by ?? adminMessages.admin.audit.system}
               </span>
               {v.status !== 'published' ? (
                 <button
@@ -1023,7 +1032,7 @@ export function ThemeScreen({
                   className="ml-auto text-[12px] font-semibold text-brand-hover hover:underline"
                   onClick={() => publish(v.id)}
                 >
-                  {messages.admin.revert}
+                  {adminMessages.admin.revert}
                 </button>
               ) : null}
             </li>
@@ -1043,7 +1052,7 @@ export function ThemeScreen({
                 '/api/admin/appearance/theme/presets',
                 { name: presetName, settings: doc },
               )
-              if (!res.ok) return toast({ title: messages.admin.errorSaving, tone: 'danger' })
+              if (!res.ok) return toast({ title: adminMessages.admin.errorSaving, tone: 'danger' })
               setPresets((p) => [
                 ...p,
                 { id: res.data.id, name: res.data.name, isBuiltin: false, doc: res.data.doc },

@@ -1,4 +1,4 @@
-import { messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { z } from 'zod'
 import { diffJson, loadAuditLog } from '@/components/admin/server/audit-log'
 import { pageSchema, parseSearch, type SearchParams } from '@/components/admin/server/params'
@@ -36,7 +36,7 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
   await withPermission('audit.read', { returnTo: '/admin/audit' })
   const p = parseSearch(schema, await searchParams)
   const { rows, pages } = await loadAuditLog(p)
-  const m = messages.admin.audit
+  const m = adminMessages.admin.audit
   const qs = (page: number) => {
     const u = new URLSearchParams()
     for (const [k, v] of Object.entries(p)) if (v !== undefined && k !== 'page') u.set(k, String(v))
@@ -68,7 +68,7 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
         <input
           name="targetId"
           defaultValue={p.targetId ?? ''}
-          placeholder={messages.admin.id}
+          placeholder={adminMessages.admin.id}
           className={`${inputClass} w-24`}
         />
         <input
@@ -89,7 +89,7 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
           type="submit"
           className="h-9 rounded-md border border-line bg-surface-1 px-3 text-[13px] font-semibold hover:bg-surface-2"
         >
-          {messages.admin.apply}
+          {adminMessages.admin.apply}
         </button>
       </form>
       <Table>

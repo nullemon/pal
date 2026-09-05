@@ -1,6 +1,7 @@
 'use client'
 
 import { fmt, messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { Button, cn, useToast } from '@palscans/ui'
 import { unzip } from 'fflate'
 import { AlertTriangle, FolderOpen, Plus, X } from 'lucide-react'
@@ -132,7 +133,7 @@ export function Uploader({
   preset: { id: number; title: string; slug: string } | null
   canPublish: boolean
 }) {
-  const m = messages.admin.upload
+  const m = adminMessages.admin.upload
   const { toast } = useToast()
   const [series, setSeries] = useState(preset)
   const [existing, setExisting] = useState<Existing>([])
@@ -345,7 +346,7 @@ export function Uploader({
         })
         if (!res.ok) {
           toast({
-            title: messages.admin.errorSaving,
+            title: adminMessages.admin.errorSaving,
             description: res.message || res.error,
             tone: 'danger',
           })
@@ -476,7 +477,7 @@ export function Uploader({
                 className="ml-auto text-[12px] text-fg-muted underline"
                 onClick={() => setSeries(null)}
               >
-                {messages.admin.edit}
+                {adminMessages.admin.edit}
               </button>
             </div>
           ) : (

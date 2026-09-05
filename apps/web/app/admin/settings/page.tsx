@@ -1,4 +1,4 @@
-import { messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { getDb, getSetting } from '@palscans/db'
 import { SettingsForm } from '@/components/admin/client/SettingsForm'
 import { type SiteSetting, siteSettingSchema } from '@/components/admin/schemas-system'
@@ -26,7 +26,7 @@ export default async function SettingsPage() {
         registration: 'open',
         maintenance: { enabled: false, eta: null },
       }
-  const m = messages.admin.settings
+  const m = adminMessages.admin.settings
   return (
     <>
       <PageHeader title={m.title} subtitle={m.subtitle} />

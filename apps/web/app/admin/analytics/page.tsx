@@ -1,4 +1,4 @@
-import { messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import {
   analyticsWindow,
   getDb,
@@ -47,7 +47,7 @@ export default async function AdminAnalyticsPage({
     topSeriesByViews(db, range, 10),
     topChaptersByViews(db, range, 10),
   ])
-  const m = messages.admin.analytics
+  const m = adminMessages.admin.analytics
   return (
     <>
       <PageHeader title={m.title} subtitle={m.subtitle} />

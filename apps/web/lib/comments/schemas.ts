@@ -1,4 +1,5 @@
-import { COMMENT_MAX_CHARS, commentBodySchema } from '@palscans/core/comments'
+import { COMMENT_MAX_CHARS } from '@palscans/core/comments'
+import { commentBodySchema } from '@palscans/core/comments/schema'
 import { z } from 'zod'
 import { COMMENT_SORTS, REACTION_KINDS, REPORT_REASONS } from './types'
 

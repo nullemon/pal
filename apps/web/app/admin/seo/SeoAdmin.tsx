@@ -1,6 +1,7 @@
 'use client'
 
-import { fmt, messages } from '@palscans/core/messages'
+import { fmt } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { cn, useToast } from '@palscans/ui'
 import { useCallback, useMemo, useState } from 'react'
 import { putJson } from '@/components/admin/client/api'
@@ -14,8 +15,8 @@ import type { SeoAdminInitial } from './shared'
 import { TemplatesPanel } from './templates'
 import { ToolsPanel } from './tools'
 
-type Tab = keyof typeof messages.adminSeo.tabs
-const TABS = Object.keys(messages.adminSeo.tabs) as Tab[]
+type Tab = keyof typeof adminMessages.adminSeo.tabs
+const TABS = Object.keys(adminMessages.adminSeo.tabs) as Tab[]
 
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
 
@@ -54,8 +55,9 @@ export function SeoAdmin({ initial }: { initial: SeoAdminInitial }) {
     }
     setSaved(next)
     setSaving(false)
-    if (failed) toast({ title: messages.adminSeo.saveFailed, description: failed, tone: 'danger' })
-    else toast({ title: messages.adminSeo.saved, tone: 'ok' })
+    if (failed)
+      toast({ title: adminMessages.adminSeo.saveFailed, description: failed, tone: 'danger' })
+    else toast({ title: adminMessages.adminSeo.saved, tone: 'ok' })
   }
 
   return (
@@ -67,7 +69,7 @@ export function SeoAdmin({ initial }: { initial: SeoAdminInitial }) {
         onDiscard={() => setDraft(saved)}
       />
 
-      <nav aria-label={messages.adminSeo.title} className="-mx-1 overflow-x-auto">
+      <nav aria-label={adminMessages.adminSeo.title} className="-mx-1 overflow-x-auto">
         <ul className="flex min-w-max gap-1 px-1">
           {TABS.map((t) => (
             <li key={t}>
@@ -82,9 +84,12 @@ export function SeoAdmin({ initial }: { initial: SeoAdminInitial }) {
                     : 'text-fg-muted hover:bg-surface-2 hover:text-fg',
                 )}
               >
-                {messages.adminSeo.tabs[t]}
+                {adminMessages.adminSeo.tabs[t]}
                 {dirtyKeys.includes(t as SeoKey) ? (
-                  <span className="size-1.5 rounded-full bg-gold" title={messages.admin.unsaved} />
+                  <span
+                    className="size-1.5 rounded-full bg-gold"
+                    title={adminMessages.admin.unsaved}
+                  />
                 ) : null}
               </button>
             </li>
@@ -139,7 +144,8 @@ export function SeoAdmin({ initial }: { initial: SeoAdminInitial }) {
 
       {dirtyKeys.length > 0 ? (
         <p className="text-[12.5px] text-fg-muted">
-          {fmt(messages.admin.selected, { n: dirtyKeys.length })} · {messages.admin.cachePurged}
+          {fmt(adminMessages.admin.selected, { n: dirtyKeys.length })} ·{' '}
+          {adminMessages.admin.cachePurged}
         </p>
       ) : null}
     </>

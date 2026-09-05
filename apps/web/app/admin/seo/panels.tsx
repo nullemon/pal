@@ -1,6 +1,7 @@
 'use client'
 
-import { fmt, messages } from '@palscans/core/messages'
+import { fmt } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { Button } from '@palscans/ui'
 import { ExternalLink } from 'lucide-react'
 import { useId } from 'react'
@@ -23,7 +24,7 @@ import type {
 } from '@/lib/seo/settings'
 import { FormGrid, numberValue, SwitchRow } from './shared'
 
-const m = messages.adminSeo
+const m = adminMessages.adminSeo
 
 export function IdentityPanel({
   value,

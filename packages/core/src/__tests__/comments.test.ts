@@ -4,8 +4,6 @@ import {
   bodyDepth,
   bodyFromText,
   type CommentBody,
-  commentBodySchema,
-  isCommentBody,
   linkHrefs,
   mentions,
   misleadingLinks,
@@ -13,6 +11,7 @@ import {
 } from '../comments/body.js'
 import { allAllowlisted, detectLinks, domainOf, hasLink } from '../comments/links.js'
 import { escapeHtml, renderHtml, safeHref } from '../comments/render.js'
+import { commentBodySchema, isCommentBody } from '../comments/schema.js'
 
 const now = new Date('2026-09-02T12:00:00Z')
 const daysAgo = (d: number) => new Date(now.getTime() - d * 86_400_000)

@@ -1,5 +1,6 @@
 import { can, canActOn } from '@palscans/core'
 import { messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { bans, entitlements, getDb, sessions, users } from '@palscans/db'
 import { and, eq, isNull } from 'drizzle-orm'
 import { userActionSchema } from '@/components/admin/schemas-users'
@@ -43,7 +44,7 @@ export const POST = withPermission<{ id: string }>('user.read', async (request, 
             : 'user.update'
   if (!can(actor, needs)) return fail(403, 'forbidden', messages.errors.forbidden)
   if (target.id === actor.id && body.action !== 'resend_verification')
-    return fail(400, 'self', messages.admin.forbiddenSelf)
+    return fail(400, 'self', adminMessages.admin.forbiddenSelf)
   // Holding `user.ban` is not enough against staff: only an admin may act on a moderator or
   // another admin, or a moderator could lock every admin out with one ban.
   if (body.action !== 'resend_verification' && !canActOn(actor, target.role)) return forbidden()

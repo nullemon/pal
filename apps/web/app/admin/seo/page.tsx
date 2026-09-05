@@ -1,4 +1,4 @@
-import { messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { getDb } from '@palscans/db'
 import type { Metadata } from 'next'
 import { PageHeader } from '@/components/admin/ui'
@@ -11,7 +11,7 @@ import { SeoAdmin } from './SeoAdmin'
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: messages.adminSeo.title,
+  title: adminMessages.adminSeo.title,
   robots: { index: false, follow: false },
 }
 
@@ -34,7 +34,7 @@ export default async function SeoAdminPage() {
   const origin = new URL(getEnv().SITE_URL).origin
   return (
     <>
-      <PageHeader title={messages.adminSeo.title} subtitle={messages.adminSeo.subtitle} />
+      <PageHeader title={adminMessages.adminSeo.title} subtitle={adminMessages.adminSeo.subtitle} />
       <SeoAdmin
         initial={{
           settings,

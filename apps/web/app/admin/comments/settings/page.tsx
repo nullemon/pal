@@ -1,4 +1,4 @@
-import { messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { getDb } from '@palscans/db'
 import { CommentSettingsForm } from '@/components/admin/client/CommentSettingsForm'
 import { loadFiltersAndAllowlist } from '@/components/admin/server/moderation'
@@ -13,7 +13,7 @@ export default async function CommentSettingsPage() {
     loadCommentSettings(db, 0),
     loadFiltersAndAllowlist(),
   ])
-  const m = messages.admin.moderation.settings
+  const m = adminMessages.admin.moderation.settings
   return (
     <>
       <PageHeader title={m.title} subtitle={m.subtitle} />

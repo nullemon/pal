@@ -1,7 +1,8 @@
 /** biome-ignore-all lint/a11y/noNoninteractiveTabindex: the plot is a figure you can walk — arrow keys step through the days and show the same readout hovering does, which needs it focusable */
 'use client'
 
-import { fmt, messages } from '@palscans/core/messages'
+import { fmt } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import type { QueueFlowPoint } from '@palscans/db'
 import { type KeyboardEvent, type PointerEvent, useEffect, useRef, useState } from 'react'
 import {
@@ -33,7 +34,7 @@ const OPENED = 'var(--color-brand-hover)'
 const RESOLVED = 'var(--color-type-manhua)'
 
 export function QueueFlowChart({ points }: { points: QueueFlowPoint[] }) {
-  const m = messages.queueHealth
+  const m = adminMessages.queueHealth
   const wrap = useRef<HTMLDivElement | null>(null)
   const [width, setWidth] = useState(DEFAULT_WIDTH)
   const [active, setActive] = useState<number | null>(null)

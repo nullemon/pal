@@ -7,7 +7,8 @@ import {
   importSourceReady,
   importUploadsModes,
 } from '@palscans/core/import'
-import { fmt, messages } from '@palscans/core/messages'
+import { fmt } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { Button, useToast } from '@palscans/ui'
 import { Download, Pause, Play, RefreshCw, Square } from 'lucide-react'
 import { useEffect, useState } from 'react'
@@ -28,7 +29,7 @@ import {
 } from '@/components/admin/ui'
 import type { ImportDoc, RunView } from './types'
 
-const m = messages.admin.import
+const m = adminMessages.admin.import
 const nf = new Intl.NumberFormat('en-GB')
 
 type RunState = 'idle' | 'discovering' | 'dryRunning'
@@ -218,7 +219,11 @@ export function ImportScreen({
     const res = await putJson<ImportDoc>('/api/admin/import', s)
     setSaving(false)
     if (!res.ok)
-      return toast({ title: messages.admin.errorSaving, description: res.message, tone: 'danger' })
+      return toast({
+        title: adminMessages.admin.errorSaving,
+        description: res.message,
+        tone: 'danger',
+      })
     setDoc(res.data)
     setSaved(res.data.config)
     setS(res.data.config)
@@ -230,7 +235,11 @@ export function ImportScreen({
     const res = await postJson<ImportDoc>(`/api/admin/import/${kind}`, {})
     setRun('idle')
     if (!res.ok)
-      return toast({ title: messages.admin.errorSaving, description: res.message, tone: 'danger' })
+      return toast({
+        title: adminMessages.admin.errorSaving,
+        description: res.message,
+        tone: 'danger',
+      })
     setDoc(res.data)
   }
 

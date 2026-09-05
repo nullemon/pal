@@ -1,6 +1,7 @@
 'use client'
 
 import { fmt, messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { Button, cn, useToast } from '@palscans/ui'
 import { RefreshCw } from 'lucide-react'
 import { useCallback, useMemo, useRef, useState } from 'react'
@@ -34,9 +35,9 @@ const toLocalInput = (d: Date) => {
 }
 
 const describe = (iso: string | null, now: Date) => {
-  if (!iso) return messages.admin.chapters.bulk.now
+  if (!iso) return adminMessages.admin.chapters.bulk.now
   const d = new Date(iso)
-  if (d.getTime() <= now.getTime()) return messages.admin.chapters.bulk.now
+  if (d.getTime() <= now.getTime()) return adminMessages.admin.chapters.bulk.now
   return `${d.toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })} (in ${countdown(d, now)})`
 }
 
@@ -54,7 +55,7 @@ export function ChaptersTable({
   initial: ChapterRowData[]
   perms: EditorPerms
 }) {
-  const m = messages.admin.chapters
+  const m = adminMessages.admin.chapters
   const { toast } = useToast()
   const [rows, setRows] = useState(initial)
   const [selected, setSelected] = useState<Set<number>>(new Set())
@@ -97,7 +98,7 @@ export function ChaptersTable({
       setBusy(false)
       if (!res.ok) {
         setRows(before)
-        toast({ title: messages.admin.errorSaving, description: res.message, tone: 'danger' })
+        toast({ title: adminMessages.admin.errorSaving, description: res.message, tone: 'danger' })
         return false
       }
       const n = res.data.affected.length
@@ -138,9 +139,13 @@ export function ChaptersTable({
       failedOnly,
     })
     if (!res.ok)
-      return toast({ title: messages.admin.errorSaving, description: res.message, tone: 'danger' })
+      return toast({
+        title: adminMessages.admin.errorSaving,
+        description: res.message,
+        tone: 'danger',
+      })
     setRows((rs) => rs.map((r) => (r.id === id ? { ...r, state: 'processing' } : r)))
-    toast({ title: messages.admin.upload.committed, tone: 'ok' })
+    toast({ title: adminMessages.admin.upload.committed, tone: 'ok' })
   }
 
   const whenIso = () => new Date(when).toISOString()
@@ -159,14 +164,14 @@ export function ChaptersTable({
       {selected.size > 0 ? (
         <div className="sticky top-[60px] z-20 flex flex-wrap items-center gap-2 rounded-lg border border-brand/40 bg-surface-2 px-3 py-2 shadow-2">
           <span className="text-[13px] font-semibold">
-            {fmt(messages.admin.selected, { n: selected.size })}
+            {fmt(adminMessages.admin.selected, { n: selected.size })}
           </span>
           <button
             type="button"
             className="text-[12px] text-fg-muted underline"
             onClick={() => setSelected(new Set())}
           >
-            {messages.admin.clearSelection}
+            {adminMessages.admin.clearSelection}
           </button>
           <span className="mx-1 h-5 w-px bg-line" />
           {perms.publish ? (
@@ -232,7 +237,7 @@ export function ChaptersTable({
             <Th className="w-8">
               <input
                 type="checkbox"
-                aria-label={messages.admin.all}
+                aria-label={adminMessages.admin.all}
                 checked={visible.length > 0 && selected.size === visible.length}
                 onChange={(e) =>
                   setSelected(e.target.checked ? new Set(visible.map((r) => r.id)) : new Set())
@@ -245,7 +250,7 @@ export function ChaptersTable({
             <Th>{m.colPremium}</Th>
             <Th>{m.colPublished}</Th>
             <Th align="right">{m.colViews}</Th>
-            <Th align="right">{messages.admin.actions}</Th>
+            <Th align="right">{adminMessages.admin.actions}</Th>
           </tr>
         </thead>
         <tbody>
@@ -341,7 +346,7 @@ export function ChaptersTable({
                       href={`/admin/chapters?series=${seriesId}&chapter=${r.id}`}
                       className="inline-flex h-7 items-center rounded-md px-2 text-[12px] text-fg-muted hover:bg-surface-2"
                     >
-                      {messages.admin.open}
+                      {adminMessages.admin.open}
                     </a>
                   </div>
                 </Td>
@@ -430,7 +435,7 @@ export function ChaptersTable({
                   setModal(null)
               }}
             >
-              {messages.admin.apply}
+              {adminMessages.admin.apply}
             </Button>
           </>
         }

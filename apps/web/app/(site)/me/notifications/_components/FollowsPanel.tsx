@@ -3,7 +3,7 @@
 import { fmt, messages } from '@palscans/core/messages'
 import { cn, RelativeTime, useToast } from '@palscans/ui'
 import { useState, useTransition } from 'react'
-import { FOLLOW_MODES, type FollowMode } from '@/lib/notifications/schema'
+import { FOLLOW_MODES, type FollowMode } from '@/lib/notifications/follow-modes'
 import { saveFollowMode, unfollowSeriesAction } from '../actions'
 
 /**

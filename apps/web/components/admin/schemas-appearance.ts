@@ -14,7 +14,7 @@ export type Direction = (typeof DIRECTIONS)[number]
 
 /**
  * Which directions exist as layout implementations today (docs/04: unbuilt cards are
- * disabled). Client-safe on purpose — `lib/layouts.ts` holds the components and its
+ * disabled). Client-safe on purpose — `lib/layouts/` holds the components and their
  * `satisfies` clauses fail the typecheck if this list and the registry disagree.
  */
 export const BUILT_LAYOUTS = {

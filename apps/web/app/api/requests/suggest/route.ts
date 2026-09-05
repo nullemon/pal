@@ -1,7 +1,7 @@
+import { suggestQuerySchema } from '@/components/requests/schemas'
 import { loadSuggestions } from '@/components/requests/server/data'
 import { suggestLimit } from '@/components/requests/server/guards'
 import { readActor } from '@/components/requests/server/identity'
-import { suggestQuerySchema } from '@/components/requests/shared'
 import { ok, parseQuery, rateLimited } from '@/lib/auth'
 
 /**

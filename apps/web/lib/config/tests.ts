@@ -1,6 +1,7 @@
 import 'server-only'
 import { createECDH, randomUUID, timingSafeEqual } from 'node:crypto'
 import { fmt, messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { createStorage } from '@palscans/core/storage'
 import { getEnv } from '../env'
 import { checkHost } from './net-guard'
@@ -25,7 +26,7 @@ import { resolveConfig } from './store'
  * - what comes back describes the provider's answer, never the value that produced it
  */
 
-const m = messages.admin.integrations
+const m = adminMessages.admin.integrations
 const R = m.results
 
 export type CheckState = 'pass' | 'fail' | 'skip'

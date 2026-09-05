@@ -1,7 +1,8 @@
 /** biome-ignore-all lint/a11y/noNoninteractiveTabindex: the plot is a figure you can walk — arrow keys step through the days and show the same readout hovering does, which needs it focusable */
 'use client'
 
-import { fmt, messages } from '@palscans/core/messages'
+import { fmt } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { type KeyboardEvent, type PointerEvent, useEffect, useRef, useState } from 'react'
 import {
   axisScale,
@@ -31,7 +32,7 @@ const PADDING = { top: 14, right: 18, bottom: 26, left: 54 }
 const DEFAULT_WIDTH = 880
 
 export function ViewsChart({ points }: { points: ChartPoint[] }) {
-  const m = messages.admin.analytics
+  const m = adminMessages.admin.analytics
   const wrap = useRef<HTMLDivElement | null>(null)
   const [width, setWidth] = useState(DEFAULT_WIDTH)
   const [active, setActive] = useState<number | null>(null)

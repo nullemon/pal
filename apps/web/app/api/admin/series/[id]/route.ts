@@ -1,5 +1,6 @@
 import { slugify } from '@palscans/core'
 import { messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import {
   geoRestrictions,
   getDb,
@@ -53,7 +54,7 @@ export const PUT = withPermission<{ id: string }>('series.update', async (reques
   if (!before) return notFound()
   if (doc.linkedSeriesId === id.data) return fail(400, 'validation', messages.errors.validation)
   if (doc.slug !== before.slug && (await slugTaken(doc.slug, id.data)))
-    return fail(409, 'slug_taken', messages.admin.series.fields.slugCollision)
+    return fail(409, 'slug_taken', adminMessages.admin.series.fields.slugCollision)
 
   // people: create on the fly by name (docs/04 "typeahead that creates on the fly")
   const personIds: Array<{ personId: number; credit: string }> = []

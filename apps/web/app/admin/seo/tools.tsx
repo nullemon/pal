@@ -1,13 +1,14 @@
 'use client'
 
-import { fmt, messages } from '@palscans/core/messages'
+import { fmt } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { Button } from '@palscans/ui'
 import { useId, useState } from 'react'
 import { postJson } from '@/components/admin/client/api'
 import { Field, inputClass, Panel, PanelHeader, Pill } from '@/components/admin/ui'
 import type { JsonLdIssue } from '@/lib/seo/jsonld'
 
-const m = messages.adminSeo.tools
+const m = adminMessages.adminSeo.tools
 
 interface ValidateResult {
   url: string

@@ -1,6 +1,7 @@
 'use client'
 
 import { fmt, messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { Button, cn, useToast } from '@palscans/ui'
 import { useMemo, useState } from 'react'
 import { api, postJson } from '@/components/admin/client/api'
@@ -118,7 +119,7 @@ export function RequestsQueue({
     })
     setBusy(false)
     if (!res.ok) {
-      toast({ title: res.message || messages.admin.errorSaving, tone: 'danger' })
+      toast({ title: res.message || adminMessages.admin.errorSaving, tone: 'danger' })
       return
     }
     setRows((rs) =>
@@ -151,7 +152,7 @@ export function RequestsQueue({
     })
     setBusy(false)
     if (!res.ok) {
-      toast({ title: res.message || messages.admin.errorSaving, tone: 'danger' })
+      toast({ title: res.message || adminMessages.admin.errorSaving, tone: 'danger' })
       return
     }
     setRows((rs) => rs.filter((r) => r.id !== row.id))
@@ -197,7 +198,7 @@ export function RequestsQueue({
           type="submit"
           className="h-9 rounded-md border border-line bg-surface-1 px-3 text-[13px] font-semibold hover:bg-surface-2"
         >
-          {messages.admin.apply}
+          {adminMessages.admin.apply}
         </button>
       </form>
 

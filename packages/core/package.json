@@ -42,6 +42,10 @@
       "types": "./dist/comments/index.d.ts",
       "default": "./dist/comments/index.js"
     },
+    "./comments/schema": {
+      "types": "./dist/comments/schema.d.ts",
+      "default": "./dist/comments/schema.js"
+    },
     "./watermark": {
       "types": "./dist/watermark.d.ts",
       "default": "./dist/watermark.js"
@@ -49,6 +53,10 @@
     "./messages": {
       "types": "./dist/messages.d.ts",
       "default": "./dist/messages.js"
+    },
+    "./messages/admin": {
+      "types": "./dist/messages/admin.d.ts",
+      "default": "./dist/messages/admin.js"
     },
     "./storage/s3": {
       "types": "./dist/storage/s3.d.ts",

@@ -10,7 +10,8 @@ import {
   MAX_EARLY_ACCESS_MINUTES,
   promotionActive,
 } from '@palscans/core/entitlements'
-import { fmt, messages } from '@palscans/core/messages'
+import { fmt } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { Button, useToast } from '@palscans/ui'
 import { CircleSlash, Gift, Lock, Users } from 'lucide-react'
 import { useEffect, useState } from 'react'
@@ -19,7 +20,7 @@ import { SaveBar, Segmented, Toggle } from '../client/controls'
 import { countdown } from '../client/util'
 import { Field, Hint, inputClass, Panel, PanelHeader, Pill, Table, Td, Th } from '../ui'
 
-const m = messages.admin.premium
+const m = adminMessages.admin.premium
 
 /** `2026-09-02T18:30` in the operator's timezone ↔ the stored UTC ISO string. */
 const toLocalInput = (iso: string | null): string => {
@@ -107,7 +108,7 @@ export function EntitlementPanels({ initial }: { initial: EntitlementOverrides }
           setSaving(false)
           if (!res.ok)
             return toast({
-              title: messages.admin.errorSaving,
+              title: adminMessages.admin.errorSaving,
               description: res.message,
               tone: 'danger',
             })
@@ -129,7 +130,7 @@ export function EntitlementPanels({ initial }: { initial: EntitlementOverrides }
           }
         />
         <div className="flex flex-wrap items-start gap-x-8 gap-y-4">
-          <Field label={messages.admin.enabled}>
+          <Field label={adminMessages.admin.enabled}>
             <div className="flex h-9 items-center">
               <Toggle
                 checked={s.all_free}
@@ -182,7 +183,7 @@ export function EntitlementPanels({ initial }: { initial: EntitlementOverrides }
           <Field label={m.inForce}>
             <div className="flex h-9 items-center gap-2 text-[13px]">
               {!s.all_free ? (
-                <span className="text-fg-subtle">{messages.admin.off}</span>
+                <span className="text-fg-subtle">{adminMessages.admin.off}</span>
               ) : ends === null ? (
                 <span className="text-fg-muted">{m.windowClear}</span>
               ) : windowPassed ? (

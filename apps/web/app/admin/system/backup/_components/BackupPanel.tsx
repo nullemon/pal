@@ -1,6 +1,7 @@
 'use client'
 
-import { fmt, messages } from '@palscans/core/messages'
+import { fmt } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { Button, useToast } from '@palscans/ui'
 import { DatabaseBackup } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -35,17 +36,17 @@ const tones: Record<BackupRunView['status'], PillTone> = {
 
 const statusLabel = (status: BackupRunView['status']): string =>
   status === 'ok'
-    ? messages.backup.statusOk
+    ? adminMessages.backup.statusOk
     : status === 'failed'
-      ? messages.backup.statusFailed
-      : messages.backup.statusSkipped
+      ? adminMessages.backup.statusFailed
+      : adminMessages.backup.statusSkipped
 
 /** Long enough for a dump of a real database, short enough that a dead worker is obvious. */
 const POLL_MS = 3000
 const POLL_FOR_MS = 10 * 60 * 1000
 
 export function BackupPanel({ initial }: { initial: BackupRunView | null }) {
-  const m = messages.backup
+  const m = adminMessages.backup
   const { toast } = useToast()
   const [last, setLast] = useState(initial)
   const [running, setRunning] = useState(false)

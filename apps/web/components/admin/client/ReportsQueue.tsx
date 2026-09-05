@@ -1,6 +1,6 @@
 'use client'
 
-import { messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { Button, cn, useToast } from '@palscans/ui'
 import { useCallback, useEffect, useState } from 'react'
 import { Pill, selectClass } from '../ui'
@@ -40,7 +40,7 @@ export function ReportsQueue({
   status: string
   items: Item[]
 }) {
-  const m = messages.admin.reportsQueue
+  const m = adminMessages.admin.reportsQueue
   const { toast } = useToast()
   const [rows, setRows] = useState(items)
   const [cursor, setCursor] = useState(0)
@@ -49,7 +49,7 @@ export function ReportsQueue({
   const act = useCallback(
     async (id: number, action: 'dismiss' | 'actioned' | 'triaged') => {
       const res = await postJson(`/api/admin/reports/${id}`, { action })
-      if (!res.ok) return toast({ title: messages.admin.errorSaving, tone: 'danger' })
+      if (!res.ok) return toast({ title: adminMessages.admin.errorSaving, tone: 'danger' })
       setRows((rs) => rs.filter((r) => r.id !== id))
     },
     [toast],
@@ -80,7 +80,7 @@ export function ReportsQueue({
           className={`${selectClass} w-44`}
           aria-label={m.kind}
         >
-          <option value="">{messages.admin.all}</option>
+          <option value="">{adminMessages.admin.all}</option>
           {Object.entries(m.kinds).map(([k, v]) => (
             <option key={k} value={k}>
               {v}
@@ -91,7 +91,7 @@ export function ReportsQueue({
           name="status"
           defaultValue={status}
           className={`${selectClass} w-40`}
-          aria-label={messages.admin.series.colState}
+          aria-label={adminMessages.admin.series.colState}
         >
           {Object.entries(m.statuses).map(([k, v]) => (
             <option key={k} value={k}>
@@ -103,7 +103,7 @@ export function ReportsQueue({
           type="submit"
           className="h-9 rounded-md border border-line bg-surface-1 px-3 text-[13px] font-semibold hover:bg-surface-2"
         >
-          {messages.admin.apply}
+          {adminMessages.admin.apply}
         </button>
       </form>
       {rows.length === 0 ? (

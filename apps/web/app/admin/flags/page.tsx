@@ -1,4 +1,4 @@
-import { messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { featureFlags, getDb } from '@palscans/db'
 import { isNull } from 'drizzle-orm'
 import { FlagsTable } from '@/components/admin/client/FlagsTable'
@@ -12,7 +12,7 @@ export default async function FlagsPage() {
     .from(featureFlags)
     .where(isNull(featureFlags.deletedAt))
     .orderBy(featureFlags.key)
-  const m = messages.admin.settings.flags
+  const m = adminMessages.admin.settings.flags
   return (
     <>
       <PageHeader title={m.title} subtitle={m.subtitle} />

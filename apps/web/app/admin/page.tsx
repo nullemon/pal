@@ -1,5 +1,6 @@
 import { compactNumber, countdown, formatChapterNumber } from '@palscans/core'
-import { fmt, messages } from '@palscans/core/messages'
+import { fmt } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { loadDashboard } from '@/components/admin/server/dashboard'
 import {
   ChapterStatePill,
@@ -44,7 +45,7 @@ export default async function AdminDashboardPage() {
   await withPermission('admin.access', { returnTo: '/admin' })
   // docs/17 §C: failed sign-ins in the last hour, flagged when they jump.
   const [d, logins] = await Promise.all([loadDashboard(), failedLoginStats()])
-  const m = messages.admin.dashboard
+  const m = adminMessages.admin.dashboard
   const now = new Date()
   const delta =
     d.viewsLastWeek > 0
@@ -134,11 +135,11 @@ export default async function AdminDashboardPage() {
           <Table className="rounded-none border-0 border-t">
             <thead>
               <tr>
-                <Th>{messages.admin.chapters.colChapter}</Th>
-                <Th>{messages.admin.chapters.colSeries}</Th>
-                <Th>{messages.admin.chapters.colState}</Th>
-                <Th>{messages.admin.chapters.colPages}</Th>
-                <Th align="right">{messages.admin.series.colUpdated}</Th>
+                <Th>{adminMessages.admin.chapters.colChapter}</Th>
+                <Th>{adminMessages.admin.chapters.colSeries}</Th>
+                <Th>{adminMessages.admin.chapters.colState}</Th>
+                <Th>{adminMessages.admin.chapters.colPages}</Th>
+                <Th align="right">{adminMessages.admin.series.colUpdated}</Th>
               </tr>
             </thead>
             <tbody>
@@ -158,7 +159,7 @@ export default async function AdminDashboardPage() {
                     <ChapterStatePill state={j.state} />
                     {j.errors > 0 ? (
                       <span className="ml-2 text-[12px] text-danger">
-                        {fmt(messages.admin.chapters.pageErrors, { n: j.errors })}
+                        {fmt(adminMessages.admin.chapters.pageErrors, { n: j.errors })}
                       </span>
                     ) : null}
                   </Td>
@@ -192,9 +193,9 @@ export default async function AdminDashboardPage() {
           <Table className="rounded-none border-0 border-t">
             <thead>
               <tr>
-                <Th>{messages.admin.chapters.colChapter}</Th>
-                <Th>{messages.admin.chapters.colSeries}</Th>
-                <Th align="right">{messages.admin.chapters.colPublished}</Th>
+                <Th>{adminMessages.admin.chapters.colChapter}</Th>
+                <Th>{adminMessages.admin.chapters.colSeries}</Th>
+                <Th align="right">{adminMessages.admin.chapters.colPublished}</Th>
               </tr>
             </thead>
             <tbody>
