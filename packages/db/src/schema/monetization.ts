@@ -74,17 +74,20 @@ export const webhookEvents = pgTable('webhook_events', {
   payload: jsonb('payload').$type<Record<string, unknown>>().notNull(),
 })
 
-export const promoCodes = pgTable('promo_codes', {
-  id: identity(),
-  code: text('code').notNull().unique(),
-  feature: text('feature').notNull(),
-  durationDays: integer('duration_days'),
-  maxRedemptions: integer('max_redemptions'),
-  redemptions: integer('redemptions').notNull().default(0),
-  expiresAt: timestamptz('expires_at'),
-  createdBy: ref('created_by').references(() => users.id),
-  createdAt: createdAt(),
-})
+/*
+ * `promo_codes` was dropped in migration 9017. Two shipped surfaces already covered it from
+ * both ends and nothing ever read it:
+ *
+ *   - a discount on a subscription is Stripe's job, and `POST /api/billing/checkout` already
+ *     passes `allow_promotion_codes: true`, so a code created in the Stripe dashboard works
+ *     today with percent/amount off, first-N-months, per-customer and currency rules this
+ *     table could not express;
+ *   - a comped *feature* for N days is an admin grant, which `PATCH /api/admin/users/:id`
+ *     already writes straight into `entitlements` with an expiry.
+ *
+ * `entitlements.source` is free text and still documents 'promo', so a redemption path can
+ * be added later without a schema change here.
+ */
 
 /**
  * The Stripe customer behind an account, written before the first Checkout session so a

@@ -1,0 +1,34 @@
+-- Drop the two tables that describe product surfaces this codebase does not have.
+--
+-- `0001_schema.sql` created `api_keys`, `promo_codes` and `takedowns` from the data model in
+-- docs/02. Three years of nothing later, a repo-wide search for each Drizzle symbol found
+-- exactly one hit apiece: its own definition. A schema is a description of the product, and
+-- these two described features nobody can reach.
+--
+--   api_keys    — nothing hashes, matches, scopes, expires or revokes a key. Every
+--                 machine-to-machine call in the repo (worker → /api/internal/revalidate and
+--                 /api/internal/maintenance, the Discord bot → /api/push/discord/redeem)
+--                 authenticates with the single `INTERNAL_API_SECRET` bearer from the
+--                 environment. There is no public or partner API for a key to open, so the
+--                 table is a standing invitation to write half an auth path against a hash
+--                 column with no verifier. It returns with the middleware that checks it.
+--
+--   promo_codes — subscription discounts are already Stripe's: `POST /api/billing/checkout`
+--                 passes `allow_promotion_codes: true`, so a code made in the Stripe
+--                 dashboard works today, with percent/amount off, first-N-months, per-customer
+--                 and per-currency rules this table could not express. The other half of what
+--                 it modelled — a comped feature for N days — is an admin grant, which
+--                 `PATCH /api/admin/users/:id` already writes into `entitlements` with an
+--                 expiry. Nothing has ever written `entitlements.source = 'promo'`, and that
+--                 column is free text, so a redemption path can be added later without
+--                 touching the schema.
+--
+-- The third, `takedowns`, is kept and now has both halves it was missing: the /dmca notice
+-- form writes a row, and Admin → Community → Takedowns actions it. See
+-- apps/web/app/(site)/dmca and apps/web/app/admin/takedowns.
+--
+-- Both tables are empty in every environment (nothing could write them), so this drops data
+-- only in the sense that it drops none. `IF EXISTS` keeps the migration idempotent and lets
+-- it run against a database where an earlier attempt got part-way.
+DROP TABLE IF EXISTS "api_keys";--> statement-breakpoint
+DROP TABLE IF EXISTS "promo_codes";

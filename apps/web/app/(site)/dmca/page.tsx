@@ -1,5 +1,6 @@
 import { messages } from '@palscans/core/messages'
 import { Mail } from 'lucide-react'
+import { turnstileSiteKey } from '@/lib/auth/turnstile'
 import { DMCA_AGENT } from '@/lib/seo/legal'
 import { legalMetadata, renderLegal } from '@/lib/seo/legal-page'
 import { DmcaForm } from './DmcaForm'
@@ -11,7 +12,10 @@ export const generateMetadata = () => legalMetadata('dmca')
 const m = messages.legal.dmca
 
 /** /dmca — the policy text, the designated agent's details and the structured notice form (docs/07). */
-export default function DmcaPage() {
+export default async function DmcaPage() {
+  // Read on the server and handed down: the site key is public, but sourcing it from the
+  // admin panel means enabling bot protection takes a revalidation, not a deploy.
+  const siteKey = await turnstileSiteKey()
   return renderLegal('dmca', {
     aside: (
       <section className="rounded-lg border border-line bg-surface-1 p-5">
@@ -49,7 +53,7 @@ export default function DmcaPage() {
           {m.formTitle}
         </h2>
         <p className="mt-1 mb-5 text-[14px] leading-6 text-fg-muted">{m.formIntro}</p>
-        <DmcaForm />
+        <DmcaForm turnstileSiteKey={siteKey} />
       </section>
     ),
   })

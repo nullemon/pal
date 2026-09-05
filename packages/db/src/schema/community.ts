@@ -1,7 +1,7 @@
 import { sql } from 'drizzle-orm'
 import { boolean, index, pgTable, primaryKey, text } from 'drizzle-orm/pg-core'
 import { createdAt, identity, ref, timestamptz } from './_shared.js'
-import { bytea, citext } from './custom-types.js'
+import { citext } from './custom-types.js'
 import { users } from './identity.js'
 
 /** Web Push subscriptions (docs/13 notifications). */
@@ -68,19 +68,18 @@ export const webhooks = pgTable('webhooks', {
   createdAt: createdAt(),
 })
 
-/** Keys for the Discord bot and future apps; only the hash is stored. */
-export const apiKeys = pgTable('api_keys', {
-  id: identity(),
-  name: text('name').notNull(),
-  prefix: text('prefix').notNull(), // first 8 chars, for display
-  keyHash: bytea('key_hash').notNull().unique(),
-  userId: ref('user_id').references(() => users.id, { onDelete: 'cascade' }),
-  scopes: text('scopes').array().notNull().default(sql`'{}'::text[]`),
-  lastUsedAt: timestamptz('last_used_at'),
-  expiresAt: timestamptz('expires_at'),
-  revokedAt: timestamptz('revoked_at'),
-  createdAt: createdAt(),
-})
+/*
+ * `api_keys` was dropped in migration 9017. There is no API for a key to open: every
+ * machine-to-machine caller in the repo — the worker's `/api/internal/revalidate` and
+ * `/api/internal/maintenance` calls, and the Discord bot's `/api/push/discord/redeem` —
+ * authenticates with the single `INTERNAL_API_SECRET` bearer from the environment, and
+ * nothing ever hashed, matched, scoped or revoked a row here.
+ *
+ * A table shaped like key auth, with no verification, no scope enforcement and no issue or
+ * rotation UI, is an invitation to write half of an auth path against it. When a public or
+ * partner API is actually built, the table comes back in the same change as the middleware
+ * that checks it.
+ */
 
 /**
  * D · Notifications (docs/17 §D). One row per attempted send on every channel — the ledger
