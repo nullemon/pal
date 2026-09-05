@@ -1,3 +1,4 @@
+import { formatChapterLabel } from '@palscans/core/formatting'
 import { fmt, messages } from '@palscans/core/messages'
 import { AdSlot, cn, RelativeTime } from '@palscans/ui'
 import { Lock } from 'lucide-react'
@@ -10,6 +11,7 @@ import type { UpdateItem } from '@/components/discovery/types'
 import { AnnouncementCard } from '@/components/home/AnnouncementCard'
 import { ContinueReading } from '@/components/home/ContinueReading'
 import { SponsoredCard } from '@/components/home/SponsoredCard'
+import { siteFormatting } from '@/lib/copy/settings'
 import { chapterAccess } from './chapter-access'
 import type { HomeViewProps } from './types'
 
@@ -17,7 +19,7 @@ const facetTitle =
   'text-[11px] font-bold uppercase tracking-[0.1em] text-fg-subtle [font-variant-caps:all-small-caps]'
 
 /** One catalogue tile: cover, rating, title, latest chapter and its age. */
-function CatalogCard({
+async function CatalogCard({
   item,
   user,
   now,
@@ -30,6 +32,7 @@ function CatalogCard({
   overrides: HomeViewProps['overrides']
   priority: boolean
 }) {
+  const { chapterLabel: chapterStyle } = await siteFormatting()
   const latest = item.chapters[0]
   const access = latest ? chapterAccess(latest, user, now, overrides) : null
   return (
@@ -68,7 +71,7 @@ function CatalogCard({
           className="flex min-w-0 items-center justify-between gap-2 text-[12px] text-fg-muted hover:text-fg"
         >
           <span className="inline-flex min-w-0 items-center gap-1 truncate font-semibold">
-            {fmt(messages.series.chapterShort, { n: latest.number })}
+            {formatChapterLabel(latest.number, chapterStyle)}
             {access?.locked ? (
               <Lock size={11} className="text-gold" aria-label={messages.series.locked} />
             ) : null}
@@ -112,6 +115,7 @@ export function HomeD({
   resume,
   sections,
   ads,
+  copy,
 }: HomeViewProps) {
   const items = feed.items
   const sponsoredAt = Math.min(9, items.length)
@@ -261,7 +265,7 @@ export function HomeD({
               </div>
 
               {items.length === 0 ? (
-                <p className="m-0 py-6 text-[14px] text-fg-muted">{messages.home.emptyUpdates}</p>
+                <p className="m-0 py-6 text-[14px] text-fg-muted">{copy('home.emptyUpdates')}</p>
               ) : (
                 <div className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                   {items.map((item, i) => (

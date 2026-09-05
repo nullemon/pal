@@ -1,3 +1,4 @@
+import { type ChapterLabelStyle, formatChapterLabel } from '@palscans/core/formatting'
 import { fmt, messages } from '@palscans/core/messages'
 import { Chip } from './Chip'
 import { cn } from './cn'
@@ -9,6 +10,14 @@ export interface SeriesCardProps {
   cover: CoverImage
   type: SeriesType
   latestChapter?: { number: number | string; href?: string }
+  /**
+   * Appearance → Formatting → Chapter label (docs/15). A prop rather than the
+   * `FormatProvider` context every other formatting consumer reads, because this card is a
+   * server component on the home page, the browse grid and every rail — reading a client
+   * context here would turn all of them into client components, which is exactly the kind of
+   * boundary crossing docs/20 charges for.
+   */
+  chapterLabelStyle?: ChapterLabelStyle
   rank?: number
   rating?: number
   /** Eager-load the cover (LCP candidates only). */
@@ -22,6 +31,7 @@ export function SeriesCard({
   cover,
   type,
   latestChapter,
+  chapterLabelStyle = 'short',
   rank,
   rating,
   priority = false,
@@ -31,7 +41,7 @@ export function SeriesCard({
     latestChapter === undefined
       ? undefined
       : typeof latestChapter.number === 'number'
-        ? fmt(messages.series.chapterShort, { n: latestChapter.number })
+        ? formatChapterLabel(latestChapter.number, chapterLabelStyle)
         : latestChapter.number
   return (
     <article className={cn('group relative flex w-full flex-col gap-2', className)}>

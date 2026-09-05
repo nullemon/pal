@@ -5,6 +5,7 @@ import {
   type EntitlementOverrides,
   type SessionUser,
 } from '@palscans/core'
+import { formatChapterLabel } from '@palscans/core/formatting'
 import { fmt, messages } from '@palscans/core/messages'
 import { cn, RelativeTime } from '@palscans/ui'
 import { Lock, Pin } from 'lucide-react'
@@ -12,6 +13,7 @@ import Link from 'next/link'
 import { Rating, StatusBadge, TypeBadge } from '@/components/discovery/Badges'
 import { COVER_HEIGHT, COVER_WIDTH } from '@/components/discovery/media'
 import type { ChapterSummary, UpdateItem } from '@/components/discovery/types'
+import { siteFormatting } from '@/lib/copy/settings'
 
 const NEW_HOURS = 24
 
@@ -101,7 +103,7 @@ export function UpdateRow({ item, user, now, priority = false, overrides = null 
   )
 }
 
-function ChapterPill({
+async function ChapterPill({
   chapter,
   first,
   user,
@@ -114,6 +116,7 @@ function ChapterPill({
   now: Date
   overrides: EntitlementOverrides | null
 }) {
+  const { chapterLabel: chapterStyle } = await siteFormatting()
   const published = chapter.publishedAt ? new Date(chapter.publishedAt) : null
   const isNew =
     first && published !== null && now.getTime() - published.getTime() < NEW_HOURS * 3_600_000
@@ -146,7 +149,7 @@ function ChapterPill({
           first ? 'font-bold' : 'font-semibold',
         )}
       >
-        {fmt(messages.series.chapterShort, { n: chapter.number })}
+        {formatChapterLabel(chapter.number, chapterStyle)}
         {isNew ? (
           <span className="inline-flex h-3.5 items-center rounded-[3px] bg-brand px-[5px] text-[9px] font-extrabold tracking-[0.08em] text-brand-ink">
             {messages.home.new}

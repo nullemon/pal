@@ -5,6 +5,7 @@ import { fail, getSessionId, ok, parseJson, requireUser, revokeAllSessions } fro
 import { verifyPassword } from '@/lib/auth/password'
 import { deleteAccountSchema } from '@/lib/auth/schemas'
 import { deletionPurgeAt, findUserById } from '@/lib/auth/users'
+import { siteCopy } from '@/lib/copy/settings'
 import { deletionScheduledMail, getMailer } from '@/lib/email'
 
 /**
@@ -28,7 +29,7 @@ export const POST = requireUser(async (request, _ctx, user) => {
     .set({ deletionRequestedAt: requestedAt, updatedAt: new Date() })
     .where(eq(users.id, user.id))
   await revokeAllSessions(user.id, (await getSessionId()) ?? undefined)
-  await (await getMailer()).send(deletionScheduledMail(row.email, purgeAt))
+  await (await getMailer()).send(deletionScheduledMail(row.email, purgeAt, await siteCopy()))
   return ok({
     scheduled: true,
     purgeAt: purgeAt.toISOString(),

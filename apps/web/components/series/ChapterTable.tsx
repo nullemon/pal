@@ -1,7 +1,8 @@
 'use client'
 
+import { type ChapterLabelStyle, formatChapterLabel } from '@palscans/core/formatting'
 import { fmt, messages } from '@palscans/core/messages'
-import { cn, RelativeTime } from '@palscans/ui'
+import { cn, RelativeTime, useFormatting } from '@palscans/ui'
 import { Check, Lock, Search } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ChapterRowData } from '@/app/(site)/series/[slug]/data'
@@ -28,8 +29,7 @@ const VIRTUAL_ABOVE = 200
 const SSR_ROWS = 60
 const OVERSCAN = 12
 
-const chapterLabel = (n: number) =>
-  fmt(messages.series.chapterShort, { n: String(Number.parseFloat(n.toFixed(3))) })
+const chapterLabel = (n: number, style: ChapterLabelStyle) => formatChapterLabel(n, style)
 const longLabel = (n: number) =>
   fmt(messages.reader.chapterSelect, { n: String(Number.parseFloat(n.toFixed(3))) })
 
@@ -50,6 +50,9 @@ export function ChapterTable({
   signedIn,
   earlyAccessMinutes,
 }: ChapterTableProps) {
+  // Appearance → Formatting → Chapter label (docs/15). The provider sits in the `(site)`
+  // layout, so outside it (a test, a story) this is the shipped "Ch. 301".
+  const { chapterLabel: chapterStyle } = useFormatting()
   const [sort, setSort] = useState<Sort>('newest')
   const [query, setQuery] = useState('')
   const [unreadOnly, setUnreadOnly] = useState(false)
@@ -288,7 +291,7 @@ export function ChapterTable({
                     {isRead ? (
                       <Check size={14} aria-label={messages.series.read} className="shrink-0" />
                     ) : null}
-                    {chapterLabel(c.number)}
+                    {chapterLabel(c.number, chapterStyle)}
                   </span>
                   {/* Beside the number: how long this chapter stays Premium-only. Ticks every
                       second while it is live (see FINE_TICK_WITHIN_MS). */}

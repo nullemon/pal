@@ -12,10 +12,12 @@ export { ChapterRow, type ChapterRowProps } from './ChapterRow'
 export { Chip, type ChipProps, type ChipVariant } from './Chip'
 export { cn } from './cn'
 export { EmptyState, type EmptyStateProps } from './EmptyState'
+export { FormatProvider, useFormatting } from './FormatContext'
 export { Rail, type RailProps } from './Rail'
 export { RatingStars, type RatingStarsProps } from './RatingStars'
 export {
   formatAbsolute,
+  formatAbsoluteStamp,
   formatRelative,
   RelativeTime,
   type RelativeTimeProps,

@@ -8,6 +8,7 @@ import { homeHref, type SeriesTypeValue } from '@/components/discovery/filters'
 import { Pagination } from '@/components/discovery/Pagination'
 import { SectionTitle } from '@/components/discovery/SectionTitle'
 import type { PagedResult, UpdateItem } from '@/components/discovery/types'
+import { siteCopy } from '@/lib/copy/settings'
 import { SponsoredCard } from './SponsoredCard'
 import { UpdateRow } from './UpdateRow'
 
@@ -36,7 +37,7 @@ export interface LatestUpdatesProps {
  * The primary module (docs/06): 2-column grid of update rows, type tabs and real `?page=`
  * pagination as links. The 5th cell is the `home_infeed` native ad.
  */
-export function LatestUpdates({
+export async function LatestUpdates({
   feed,
   type,
   user,
@@ -44,6 +45,7 @@ export function LatestUpdates({
   sponsored,
   overrides = null,
 }: LatestUpdatesProps) {
+  const copy = await siteCopy()
   const cells: ReactNode[] = feed.items.map((item, i) => (
     <UpdateRow
       key={item.id}
@@ -86,7 +88,7 @@ export function LatestUpdates({
         </nav>
       </SectionTitle>
       {feed.items.length === 0 ? (
-        <EmptyState title={messages.home.emptyUpdates} />
+        <EmptyState title={copy('home.emptyUpdates')} />
       ) : (
         <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">{cells}</div>
       )}

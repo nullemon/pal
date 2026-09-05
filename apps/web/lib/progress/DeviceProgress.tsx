@@ -1,7 +1,8 @@
 'use client'
 
+import { formatChapterLabel } from '@palscans/core/formatting'
 import { fmt, messages } from '@palscans/core/messages'
-import { Rail, SeriesCard, type SeriesType } from '@palscans/ui'
+import { Rail, SeriesCard, type SeriesType, useFormatting } from '@palscans/ui'
 import { Smartphone } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
@@ -68,6 +69,7 @@ export function DeviceOnlyNote({ signInHref }: { signInHref?: string }) {
  * anyway, with no reserved empty space and no layout shift.
  */
 export function DeviceContinueReading({ limit = 12 }: { limit?: number }) {
+  const { chapterLabel } = useFormatting()
   const [rows, setRows] = useState<LocalProgress[] | null>(null)
 
   useEffect(() => {
@@ -99,7 +101,7 @@ export function DeviceContinueReading({ limit = 12 }: { limit?: number }) {
             type={seriesType(row.seriesType)}
             latestChapter={{
               number: fmt(messages.series.continueChapter, {
-                chapter: fmt(messages.series.chapterShort, { n: row.chapterNumber }),
+                chapter: formatChapterLabel(row.chapterNumber, chapterLabel),
               }),
               href: row.chapterHref,
             }}

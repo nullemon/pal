@@ -54,6 +54,14 @@
       "types": "./dist/watermark.d.ts",
       "default": "./dist/watermark.js"
     },
+    "./copy": {
+      "types": "./dist/copy.d.ts",
+      "default": "./dist/copy.js"
+    },
+    "./formatting": {
+      "types": "./dist/formatting.d.ts",
+      "default": "./dist/formatting.js"
+    },
     "./messages": {
       "types": "./dist/messages.d.ts",
       "default": "./dist/messages.js"

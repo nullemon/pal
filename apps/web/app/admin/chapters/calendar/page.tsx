@@ -6,6 +6,7 @@ import { loadCalendar } from '@/components/admin/server/calendar'
 import { parseSearch, type SearchParams } from '@/components/admin/server/params'
 import { PageHeader } from '@/components/admin/ui'
 import { withPermission } from '@/lib/auth'
+import { siteFormatting } from '@/lib/copy/settings'
 import { addDays, buildGrid, dayKey, parseAnchor } from './grid'
 
 const schema = z.object({
@@ -34,7 +35,10 @@ export default async function ReleaseCalendarPage({
   const user = await withPermission('chapter.read', { returnTo: '/admin/chapters/calendar' })
   const p = parseSearch(schema, await searchParams)
   const anchor = parseAnchor(p.date)
-  const grid = buildGrid(p.view, anchor)
+  // Appearance → Formatting → Week starts on (docs/15). The server picks the fetch window
+  // from the same grid the browser draws, so both have to agree on which day is first.
+  const { weekStartsOn } = await siteFormatting()
+  const grid = buildGrid(p.view, anchor, weekStartsOn)
   const data = await loadCalendar(addDays(grid.start, -2), addDays(grid.end, 2), p.series)
   const m = adminMessages.calendar
   return (
@@ -45,6 +49,7 @@ export default async function ReleaseCalendarPage({
         anchor={dayKey(anchor)}
         data={data}
         canPublish={can(user, 'chapter.publish')}
+        weekStartsOn={weekStartsOn}
       />
     </>
   )

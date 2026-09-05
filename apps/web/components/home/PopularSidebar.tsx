@@ -1,10 +1,12 @@
 import type { PopularityWindow } from '@palscans/core'
-import { fmt, messages } from '@palscans/core/messages'
+import { type ChapterLabelStyle, formatChapterLabel } from '@palscans/core/formatting'
+import { messages } from '@palscans/core/messages'
 import { COVER_HEIGHT, COVER_WIDTH } from '@/components/discovery/media'
 import type { RankedSeries } from '@/components/discovery/types'
+import { siteFormatting } from '@/lib/copy/settings'
 import { type PopularRowData, PopularTabs } from './PopularTabs'
 
-const toRow = (s: RankedSeries): PopularRowData => ({
+const toRow = (s: RankedSeries, chapterStyle: ChapterLabelStyle): PopularRowData => ({
   id: s.id,
   rank: s.rank,
   title: s.title,
@@ -15,7 +17,7 @@ const toRow = (s: RankedSeries): PopularRowData => ({
   meta: [
     messages.series.type[s.type],
     messages.series.status[s.status],
-    s.latest ? fmt(messages.series.chapterShort, { n: s.latest.number }) : null,
+    s.latest ? formatChapterLabel(s.latest.number, chapterStyle) : null,
   ]
     .filter(Boolean)
     .join(' · '),
@@ -24,13 +26,18 @@ const toRow = (s: RankedSeries): PopularRowData => ({
 })
 
 /** Server side of the Popular card: fetches nothing itself, just shapes the three lists. */
-export function PopularSidebar({ lists }: { lists: Record<PopularityWindow, RankedSeries[]> }) {
+export async function PopularSidebar({
+  lists,
+}: {
+  lists: Record<PopularityWindow, RankedSeries[]>
+}) {
+  const { chapterLabel: chapterStyle } = await siteFormatting()
   return (
     <PopularTabs
       lists={{
-        weekly: lists.weekly.map(toRow),
-        monthly: lists.monthly.map(toRow),
-        all: lists.all.map(toRow),
+        weekly: lists.weekly.map((r) => toRow(r, chapterStyle)),
+        monthly: lists.monthly.map((r) => toRow(r, chapterStyle)),
+        all: lists.all.map((r) => toRow(r, chapterStyle)),
       }}
     />
   )

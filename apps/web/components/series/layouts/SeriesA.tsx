@@ -1,3 +1,4 @@
+import { formatChapterLabel } from '@palscans/core/formatting'
 import { fmt, messages } from '@palscans/core/messages'
 import { AdSlot, cn, RelativeTime } from '@palscans/ui'
 import { Bookmark, BookOpen, List, Lock, Play, Star, Trophy } from 'lucide-react'
@@ -75,6 +76,7 @@ export function SeriesA({
   earlyAccessMinutes,
   site,
   ads,
+  formatting,
 }: SeriesViewProps) {
   const first = chapters[chapters.length - 1]
   const latest = chapters[0]
@@ -227,7 +229,10 @@ export function SeriesA({
                     >
                       <Play size={16} aria-hidden="true" />
                       {fmt(messages.series.continueChapter, {
-                        chapter: fmt(messages.series.chapterShort, { n: continueChapter.number }),
+                        chapter: formatChapterLabel(
+                          continueChapter.number,
+                          formatting.chapterLabel,
+                        ),
                       })}
                     </Link>
                   </>
@@ -343,7 +348,7 @@ export function SeriesA({
                         )}
                       >
                         <span className="shrink-0 font-semibold tabular-nums">
-                          {fmt(messages.series.chapterShort, { n: c.number })}
+                          {formatChapterLabel(c.number, formatting.chapterLabel)}
                         </span>
                         {c.lock === 'early_access' ? (
                           <span className="inline-flex h-[18px] shrink-0 items-center gap-1 rounded-sm bg-gold/15 px-1.5 text-[10px] font-extrabold uppercase tracking-[0.08em] text-gold">

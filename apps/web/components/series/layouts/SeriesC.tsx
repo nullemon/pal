@@ -1,3 +1,4 @@
+import { formatChapterLabel } from '@palscans/core/formatting'
 import { fmt, messages } from '@palscans/core/messages'
 import { AdSlot, cn, RelativeTime } from '@palscans/ui'
 import { ArrowRight } from 'lucide-react'
@@ -58,6 +59,7 @@ export function SeriesC({
   earlyAccessMinutes,
   site,
   ads,
+  formatting,
 }: SeriesViewProps) {
   const first = chapters[chapters.length - 1]
   const latest = chapters[0]
@@ -159,7 +161,7 @@ export function SeriesC({
                   {fmt(messages.layouts.chapterMeta, {
                     n: series.chapterCount,
                     chapter: latest
-                      ? fmt(messages.series.chapterShort, { n: latest.number })
+                      ? formatChapterLabel(latest.number, formatting.chapterLabel)
                       : messages.series.emptyChapters,
                   })}{' '}
                   <RelativeTime
@@ -178,7 +180,7 @@ export function SeriesC({
                     className={paperBtn}
                   >
                     {fmt(messages.series.continueChapter, {
-                      chapter: fmt(messages.series.chapterShort, { n: continueChapter.number }),
+                      chapter: formatChapterLabel(continueChapter.number, formatting.chapterLabel),
                     })}
                     <ArrowRight size={17} aria-hidden="true" />
                   </Link>

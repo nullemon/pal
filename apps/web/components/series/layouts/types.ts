@@ -1,3 +1,4 @@
+import type { FormattingSettings } from '@palscans/core/formatting'
 import type { ReactNode } from 'react'
 import type {
   ChapterRowData,
@@ -40,6 +41,8 @@ export interface SeriesViewProps {
    */
   earlyAccessMinutes: number
   site: { url: string; name: string }
+  /** Appearance → Formatting (docs/15), resolved once by `loadSeriesView()`. */
+  formatting: FormattingSettings
   ads: { top: AdPlacement; mpu: AdPlacement }
 }
 

@@ -18,6 +18,7 @@ import { checkBreachedPassword } from '@/lib/auth/hibp'
 import { hashPassword, verifyPassword } from '@/lib/auth/password'
 import { changePasswordSchema } from '@/lib/auth/schemas'
 import { findUserById } from '@/lib/auth/users'
+import { siteCopy } from '@/lib/copy/settings'
 import { getMailer, passwordChangedMail } from '@/lib/email'
 
 /**
@@ -43,6 +44,6 @@ export const POST = requireUser(async (request, _ctx, user) => {
   await revokeAllSessions(user.id)
   const created = await rotateSession(await getSessionId(), user.id, requestContext(request))
   await setSessionCookie(created)
-  await (await getMailer()).send(passwordChangedMail(row.email))
+  await (await getMailer()).send(passwordChangedMail(row.email, await siteCopy()))
   return ok({ changed: true, message: messages.me.security.passwordChanged })
 })

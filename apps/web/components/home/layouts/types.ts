@@ -1,4 +1,6 @@
 import type { EntitlementOverrides, PopularityWindow, SessionUser } from '@palscans/core'
+import type { CopyFn } from '@palscans/core/copy'
+import type { FormattingSettings } from '@palscans/core/formatting'
 import type { ReactNode } from 'react'
 import type { HomeParams } from '@/components/discovery/filters'
 import type {
@@ -46,6 +48,14 @@ export interface HomeViewProps {
   newest: SeriesSummary[]
   resume: ContinueItem[]
   genres: GenreSummary[]
+  /**
+   * Appearance → Copy and Appearance → Formatting (docs/15), resolved once by
+   * `loadHomeView()` like everything else here — a layout never reads a setting itself.
+   * `copy('layouts.featured')` is the hero eyebrow; `formatting.chapterLabel` is the shape
+   * of the "Ch. 301" pill on every card.
+   */
+  copy: CopyFn
+  formatting: FormattingSettings
   /** Which sections `settings.home_layout` leaves enabled. */
   sections: { latest: boolean }
   ads: { top: AdPlacement; sidebar: AdPlacement; infeed: AdPlacement }

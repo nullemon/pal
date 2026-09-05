@@ -190,6 +190,14 @@ export const adminNav: readonly AdminNavGroup[] = [
         icon: 'stamp',
         permission: 'settings.write',
       },
+      // The strings that carry the site's voice, and how dates and numbers are written
+      // (docs/15 "Copy the operator owns" and "Formatting").
+      {
+        label: adminMessages.copyScreen.navLabel,
+        href: '/admin/appearance/copy',
+        icon: 'file-text',
+        permission: 'settings.write',
+      },
     ],
   },
   {

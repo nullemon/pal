@@ -1,3 +1,4 @@
+import { formatChapterLabel } from '@palscans/core/formatting'
 import { fmt, messages } from '@palscans/core/messages'
 import { AdSlot, cn, RelativeTime } from '@palscans/ui'
 import { BookOpen } from 'lucide-react'
@@ -119,6 +120,7 @@ export function SeriesE({
   earlyAccessMinutes,
   site,
   ads,
+  formatting,
 }: SeriesViewProps) {
   const first = chapters[chapters.length - 1]
   const latest = chapters[0]
@@ -205,7 +207,7 @@ export function SeriesE({
                       latest ? (
                         <>
                           <span className="shrink-0">
-                            {fmt(messages.series.chapterShort, { n: latest.number })}
+                            {formatChapterLabel(latest.number, formatting.chapterLabel)}
                           </span>
                           {latest.publishedAt ? (
                             <>
@@ -244,7 +246,10 @@ export function SeriesE({
                       >
                         <BookOpen size={17} aria-hidden="true" />
                         {fmt(messages.series.continueChapter, {
-                          chapter: fmt(messages.series.chapterShort, { n: continueChapter.number }),
+                          chapter: formatChapterLabel(
+                            continueChapter.number,
+                            formatting.chapterLabel,
+                          ),
                         })}
                       </Link>
                       {first ? (

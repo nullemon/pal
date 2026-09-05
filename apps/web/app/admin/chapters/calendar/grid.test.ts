@@ -114,3 +114,34 @@ describe('addDays', () => {
     expect(dayKey(addDays(at('2026-03-01T00:00:00'), -1))).toBe('2026-02-28')
   })
 })
+
+/**
+ * Appearance → Formatting → Week starts on (docs/15). The default stays Monday — every test
+ * above depends on it — and Sunday shifts both the week grid and the month's leading spill.
+ */
+describe('week starts on', () => {
+  it('defaults to Monday, so nothing above changes', () => {
+    expect(dayKey(startOfWeek(at('2026-10-08T15:00:00')))).toBe('2026-10-05')
+  })
+
+  it('starts a week on Sunday when asked', () => {
+    const grid = buildGrid('week', at('2026-10-08T15:00:00'), 'sunday')
+    expect(dayKey(grid.start)).toBe('2026-10-04')
+    expect(dayKey(grid.days[6] as Date)).toBe('2026-10-10')
+    expect(grid.days).toHaveLength(7)
+  })
+
+  it('keeps a Sunday-first month grid whole weeks', () => {
+    const grid = buildGrid('month', at('2026-10-08T00:00:00'), 'sunday')
+    expect(grid.days.length % 7).toBe(0)
+    expect(dayKey(grid.start)).toBe('2026-09-27') // Sunday before 1 October
+    expect(
+      grid.days.every((d, i) => i === 0 || d.getTime() > (grid.days[i - 1] as Date).getTime()),
+    ).toBe(true)
+  })
+
+  it('lands on the anchor day itself when the anchor is the first day of the week', () => {
+    expect(dayKey(startOfWeek(at('2026-10-04T12:00:00'), 'sunday'))).toBe('2026-10-04')
+    expect(dayKey(startOfWeek(at('2026-10-05T12:00:00'), 'monday'))).toBe('2026-10-05')
+  })
+})

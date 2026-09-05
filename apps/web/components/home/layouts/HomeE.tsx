@@ -1,4 +1,5 @@
-import { fmt, messages } from '@palscans/core/messages'
+import { formatChapterLabel } from '@palscans/core/formatting'
+import { messages } from '@palscans/core/messages'
 import { AdSlot, cn, RelativeTime } from '@palscans/ui'
 import { ArrowRight, Lock } from 'lucide-react'
 import Link from 'next/link'
@@ -12,6 +13,7 @@ import { AnnouncementCard } from '@/components/home/AnnouncementCard'
 import { ContinueReading } from '@/components/home/ContinueReading'
 import { PopularSidebar } from '@/components/home/PopularSidebar'
 import { SponsoredCard } from '@/components/home/SponsoredCard'
+import { siteFormatting } from '@/lib/copy/settings'
 import { chapterAccess } from './chapter-access'
 import type { HomeViewProps } from './types'
 
@@ -35,7 +37,8 @@ function RatingPill({ value, count }: { value: number; count: number }) {
 }
 
 /** One of the three featured cards on the tinted hero band. */
-function FeatureCard({ slide, raised }: { slide: HeroSlide; raised: boolean }) {
+async function FeatureCard({ slide, raised }: { slide: HeroSlide; raised: boolean }) {
+  const { chapterLabel: chapterStyle } = await siteFormatting()
   const genresLine = slide.synopsis
   return (
     <article className={cn(card, 'flex min-w-0 gap-4 p-4', raised && 'lg:-mt-3.5')}>
@@ -67,7 +70,7 @@ function FeatureCard({ slide, raised }: { slide: HeroSlide; raised: boolean }) {
           {slide.latest ? (
             <span className="flex min-w-0 items-center gap-1.5 text-[13px] text-fg-muted">
               <span className="shrink-0">
-                {fmt(messages.series.chapterShort, { n: slide.latest.number })}
+                {formatChapterLabel(slide.latest.number, chapterStyle)}
               </span>
               {slide.latest.publishedAt ? (
                 <>
@@ -97,7 +100,7 @@ function FeatureCard({ slide, raised }: { slide: HeroSlide; raised: boolean }) {
 }
 
 /** A chapter chip inside an update card — the mockup's rounded "Ch. 301 · 12 min ago" row. */
-function ChapterChip({
+async function ChapterChip({
   chapter,
   first,
   access,
@@ -106,6 +109,7 @@ function ChapterChip({
   first: boolean
   access: ReturnType<typeof chapterAccess>
 }) {
+  const { chapterLabel: chapterStyle } = await siteFormatting()
   return (
     <Link
       href={chapter.href}
@@ -117,7 +121,7 @@ function ChapterChip({
           first ? 'text-brand-hover' : 'text-fg',
         )}
       >
-        {fmt(messages.series.chapterShort, { n: chapter.number })}
+        {formatChapterLabel(chapter.number, chapterStyle)}
         {access.locked ? (
           <Lock size={11} className="shrink-0 text-gold" aria-label={messages.series.locked} />
         ) : null}
@@ -214,6 +218,7 @@ export function HomeE({
   resume,
   sections,
   ads,
+  copy,
 }: HomeViewProps) {
   const items = feed.items
   const sponsoredAt = Math.min(6, items.length)
@@ -231,7 +236,7 @@ export function HomeE({
 
       {featured.length > 0 ? (
         <section
-          aria-label={messages.layouts.featured}
+          aria-label={copy('layouts.featured')}
           className="bg-linear-to-b from-brand-wash to-bg pb-6 pt-7"
         >
           <div className="container-page grid items-start gap-5 md:grid-cols-2 xl:grid-cols-3">
@@ -294,7 +299,7 @@ export function HomeE({
             </div>
 
             {items.length === 0 ? (
-              <p className="m-0 py-6 text-[14px] text-fg-muted">{messages.home.emptyUpdates}</p>
+              <p className="m-0 py-6 text-[14px] text-fg-muted">{copy('home.emptyUpdates')}</p>
             ) : (
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 {items.map((item, i) => (

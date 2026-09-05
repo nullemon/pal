@@ -8,6 +8,7 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { api } from '@/lib/comments/client'
 import { parseMarkup } from '@/lib/comments/markup'
 import type { CommentImage, CommentThreadConfig, CommentViewer } from '@/lib/comments/types'
+import { useCopy } from '@/lib/copy/context'
 import { TurnstileWidget } from './TurnstileWidget'
 
 export interface ComposerSubmission {
@@ -60,6 +61,7 @@ export function Composer({
   onSubmit,
   onCancel,
 }: ComposerProps) {
+  const copy = useCopy()
   const { toast } = useToast()
   const [text, setText] = useState(initialText)
   const [image, setImage] = useState<CommentImage | null>(initialImage)
@@ -377,7 +379,7 @@ export function Composer({
                   else
                     toast({
                       title: messages.commentThread.gifPremium,
-                      description: messages.premium.pitch,
+                      description: copy('premium.pitch', messages.premium.pitch),
                     })
                 }}
               >

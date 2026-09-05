@@ -30,6 +30,7 @@ export function HomeA({
   resume,
   sections,
   ads,
+  formatting,
 }: HomeViewProps) {
   return (
     <div className="flex flex-col gap-4 pb-6">
@@ -109,6 +110,7 @@ export function HomeA({
                   type={uiType(s.type)}
                   rating={s.ratingCount > 0 ? s.rating : undefined}
                   latestChapter={{ number: s.chapterCount }}
+                  chapterLabelStyle={formatting.chapterLabel}
                 />
               ))}
             </Rail>

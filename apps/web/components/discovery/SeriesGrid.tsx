@@ -1,5 +1,6 @@
 import { fmt, messages } from '@palscans/core/messages'
 import { cn, SeriesCard, type SeriesType } from '@palscans/ui'
+import { siteFormatting } from '@/lib/copy/settings'
 import { COVER_HEIGHT, COVER_WIDTH } from './media'
 import type { ChapterSummary, SeriesSummary } from './types'
 
@@ -15,7 +16,8 @@ export interface SeriesGridProps {
 }
 
 /** Responsive cover grid of `SeriesCard`s for browse, genres and search. */
-export function SeriesGrid({ items, priorityCount = 0, className }: SeriesGridProps) {
+export async function SeriesGrid({ items, priorityCount = 0, className }: SeriesGridProps) {
+  const { chapterLabel: chapterStyle } = await siteFormatting()
   return (
     <ul
       className={cn(
@@ -38,6 +40,7 @@ export function SeriesGrid({ items, priorityCount = 0, className }: SeriesGridPr
             rating={s.ratingCount > 0 ? s.rating : undefined}
             priority={i < priorityCount}
             latestChapter={s.latest ? { number: s.latest.number, href: s.latest.href } : undefined}
+            chapterLabelStyle={chapterStyle}
           />
         </li>
       ))}

@@ -1,5 +1,6 @@
 'use client'
 
+import type { WeekStart } from '@palscans/core/formatting'
 import { fmt } from '@palscans/core/messages'
 import { adminMessages } from '@palscans/core/messages/admin'
 import { Button, cn, useToast } from '@palscans/ui'
@@ -25,6 +26,9 @@ import { Modal, Segmented } from './controls'
 import { formatChapterNumber } from './util'
 
 const WEEKDAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const
+/** The header row, rotated so column 1 is the day Appearance → Formatting starts on. */
+const weekdaysFrom = (weekStartsOn: WeekStart): ReadonlyArray<(typeof WEEKDAYS)[number]> =>
+  weekStartsOn === 'sunday' ? [WEEKDAYS[6], ...WEEKDAYS.slice(0, 6)] : WEEKDAYS
 
 /** Cards drawn in a month cell before the rest become a count (a week row must not stretch). */
 const MONTH_CARDS = 3
@@ -37,11 +41,13 @@ export function ReleaseCalendar({
   anchor,
   data,
   canPublish,
+  weekStartsOn,
 }: {
   view: CalendarView
   anchor: string
   data: { dated: CalendarChapter[]; backlog: CalendarChapter[]; backlogTotal: number }
   canPublish: boolean
+  weekStartsOn: WeekStart
 }) {
   const m = adminMessages.calendar
   const { toast } = useToast()
@@ -57,7 +63,10 @@ export function ReleaseCalendar({
     setRows([...data.dated, ...data.backlog])
   }, [data])
 
-  const grid = useMemo(() => buildGrid(view, parseAnchor(anchor)), [view, anchor])
+  const grid = useMemo(
+    () => buildGrid(view, parseAnchor(anchor), weekStartsOn),
+    [view, anchor, weekStartsOn],
+  )
   const today = startOfDay(new Date())
   const todayKey = dayKey(today)
 
@@ -297,7 +306,7 @@ export function ReleaseCalendar({
       <div className="grid gap-3.5 xl:grid-cols-[1fr_260px]">
         <Panel className="overflow-x-auto p-2 md:p-3">
           <div className="grid min-w-[720px] grid-cols-7 gap-1.5">
-            {WEEKDAYS.map((d) => (
+            {weekdaysFrom(weekStartsOn).map((d) => (
               <div
                 key={d}
                 className="px-1 pb-1 text-[11px] font-bold uppercase tracking-[0.06em] text-fg-subtle"

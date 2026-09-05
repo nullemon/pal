@@ -6,6 +6,7 @@ import type { Metadata } from 'next'
 import { getSessionUser } from '@/lib/auth'
 import { mediaUrl } from '@/lib/auth/media'
 import { historyQuerySchema } from '@/lib/auth/schemas'
+import { siteCopy } from '@/lib/copy/settings'
 import { DeviceHistory } from '@/lib/progress/DeviceHistory'
 import { MergeDeviceProgress } from '@/lib/progress/DeviceProgress'
 import { ClearHistoryButton } from '../_components/ClearHistoryButton'
@@ -61,6 +62,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Sear
     .offset((page - 1) * PAGE_SIZE)
   const hasMore = rows.length > PAGE_SIZE
   const items = rows.slice(0, PAGE_SIZE)
+  const copy = await siteCopy()
 
   return (
     <>
@@ -70,7 +72,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Sear
       </PageTitle>
       {items.length === 0 ? (
         <EmptyState
-          title={messages.account.emptyHistory}
+          title={copy('account.emptyHistory')}
           action={
             <Button href="/browse" variant="outline">
               {messages.me.bookmarks.browse}

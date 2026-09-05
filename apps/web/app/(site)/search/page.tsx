@@ -8,6 +8,7 @@ import { searchParamsSchema } from '@/components/discovery/filters'
 import { pageMetadata } from '@/components/discovery/metadata'
 import { withLatest } from '@/components/discovery/queries'
 import { SeriesGrid } from '@/components/discovery/SeriesGrid'
+import { siteCopy } from '@/lib/copy/settings'
 
 /** /search?q= — full results page (noindex, docs/12 §1); the header form submits here. */
 export async function generateMetadata({ searchParams }: PageProps<'/search'>): Promise<Metadata> {
@@ -29,7 +30,7 @@ export async function generateMetadata({ searchParams }: PageProps<'/search'>): 
 export default async function SearchPage({ searchParams }: PageProps<'/search'>) {
   const { q } = searchParamsSchema.parse(await searchParams)
   const hits = q ? await cachedSearch(q) : []
-  const items = await withLatest(hits)
+  const [items, copy] = await Promise.all([withLatest(hits), siteCopy()])
 
   return (
     <div className="container-page flex flex-col gap-4 pt-5">
@@ -60,7 +61,7 @@ export default async function SearchPage({ searchParams }: PageProps<'/search'>)
         <p className="text-[13px] text-fg-muted">{messages.discovery.searchEmptyPrompt}</p>
       ) : items.length === 0 ? (
         <EmptyState
-          title={fmt(messages.search.empty, { q })}
+          title={fmt(copy('search.empty'), { q })}
           description={messages.search.hint}
           action={
             <div className="flex gap-2">

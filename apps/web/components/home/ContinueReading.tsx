@@ -1,3 +1,4 @@
+import { formatChapterLabel } from '@palscans/core/formatting'
 import { fmt, messages } from '@palscans/core/messages'
 import { Rail, SeriesCard } from '@palscans/ui'
 import { BookOpen } from 'lucide-react'
@@ -6,6 +7,7 @@ import { SectionTitle } from '@/components/discovery/SectionTitle'
 import { uiType } from '@/components/discovery/SeriesGrid'
 import type { ContinueItem } from '@/components/discovery/types'
 import { getSessionUser } from '@/lib/auth/session'
+import { siteFormatting } from '@/lib/copy/settings'
 import { DeviceContinueReading, MergeDeviceProgress } from '@/lib/progress/DeviceProgress'
 
 /**
@@ -23,7 +25,10 @@ import { DeviceContinueReading, MergeDeviceProgress } from '@/lib/progress/Devic
  *     belonging to the device, never to an account.
  */
 export async function ContinueReading({ items }: { items: ContinueItem[] }) {
-  const user = await getSessionUser()
+  const [user, { chapterLabel: chapterStyle }] = await Promise.all([
+    getSessionUser(),
+    siteFormatting(),
+  ])
 
   if (!user) return <DeviceContinueReading />
 
@@ -53,7 +58,7 @@ export async function ContinueReading({ items }: { items: ContinueItem[] }) {
                 type={uiType(s.type)}
                 latestChapter={{
                   number: fmt(messages.series.continueChapter, {
-                    chapter: fmt(messages.series.chapterShort, { n: s.chapter.number }),
+                    chapter: formatChapterLabel(s.chapter.number, chapterStyle),
                   }),
                   href: s.chapter.href,
                 }}

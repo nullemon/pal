@@ -1,3 +1,4 @@
+import { formatChapterLabel } from '@palscans/core/formatting'
 import { fmt, messages } from '@palscans/core/messages'
 import { AdSlot, cn, Rail, RelativeTime } from '@palscans/ui'
 import { ChevronRight, Play, Sparkles } from 'lucide-react'
@@ -11,6 +12,7 @@ import type { HeroSlide, RankedSeries, UpdateItem } from '@/components/discovery
 import { AnnouncementCard } from '@/components/home/AnnouncementCard'
 import { ContinueReading } from '@/components/home/ContinueReading'
 import { SponsoredCard } from '@/components/home/SponsoredCard'
+import { siteFormatting } from '@/lib/copy/settings'
 import { chapterAccess } from './chapter-access'
 import type { HomeViewProps } from './types'
 
@@ -47,7 +49,16 @@ function Band({ children, label, id }: { children: ReactNode; label?: string; id
 }
 
 /** The full-bleed opening frame: the cover itself, blurred, is the backdrop. */
-function Hero({ slide, others }: { slide: HeroSlide; others: HeroSlide[] }) {
+async function Hero({
+  slide,
+  others,
+  eyebrow,
+}: {
+  slide: HeroSlide
+  others: HeroSlide[]
+  eyebrow: string
+}) {
+  const { chapterLabel: chapterStyle } = await siteFormatting()
   return (
     <section
       aria-labelledby="hero-title"
@@ -79,7 +90,7 @@ function Hero({ slide, others }: { slide: HeroSlide; others: HeroSlide[] }) {
             )}
           >
             <Sparkles size={13} className="text-brand-hover" aria-hidden="true" />
-            {messages.layouts.featured}
+            {eyebrow}
           </span>
           <h1
             id="hero-title"
@@ -109,7 +120,7 @@ function Hero({ slide, others }: { slide: HeroSlide; others: HeroSlide[] }) {
               <Play size={18} aria-hidden="true" />
               {slide.latest
                 ? fmt(messages.layouts.readChapter, {
-                    chapter: fmt(messages.series.chapterShort, { n: slide.latest.number }),
+                    chapter: formatChapterLabel(slide.latest.number, chapterStyle),
                   })
                 : messages.series.readFirst}
             </Link>
@@ -185,7 +196,7 @@ function RankTile({ item }: { item: RankedSeries }) {
 }
 
 /** A compact "new chapter" tile — cover, series, chapter, age. */
-function ChapterTile({
+async function ChapterTile({
   item,
   user,
   now,
@@ -198,6 +209,7 @@ function ChapterTile({
   overrides: HomeViewProps['overrides']
   priority: boolean
 }) {
+  const { chapterLabel: chapterStyle } = await siteFormatting()
   const latest = item.chapters[0]
   const access = latest ? chapterAccess(latest, user, now, overrides) : null
   return (
@@ -233,7 +245,7 @@ function ChapterTile({
           className="flex min-w-0 flex-col text-[13px] hover:text-brand-hover"
         >
           <span className="truncate font-semibold text-fg">
-            {fmt(messages.series.chapterShort, { n: latest.number })}
+            {formatChapterLabel(latest.number, chapterStyle)}
             {access?.locked ? ` · ${access.lockLabel ?? messages.series.locked}` : ''}
           </span>
           {latest.publishedAt ? (
@@ -269,6 +281,7 @@ export function HomeF({
   resume,
   sections,
   ads,
+  copy,
 }: HomeViewProps) {
   const hero = slides[0]
   const items = feed.items
@@ -278,7 +291,7 @@ export function HomeF({
   return (
     <div className="flex flex-col gap-8 pb-10">
       {hero ? (
-        <Hero slide={hero} others={slides.slice(1, 6)} />
+        <Hero slide={hero} others={slides.slice(1, 6)} eyebrow={copy('layouts.featured')} />
       ) : (
         <h1 className="sr-only">{messages.site.tagline}</h1>
       )}
@@ -319,7 +332,7 @@ export function HomeF({
         <Band id="today-title">
           <RailHead id="today-title" title={messages.layouts.newChaptersToday} href="/browse" />
           {items.length === 0 ? (
-            <p className="m-0 py-6 text-[14px] text-fg-muted">{messages.home.emptyUpdates}</p>
+            <p className="m-0 py-6 text-[14px] text-fg-muted">{copy('home.emptyUpdates')}</p>
           ) : (
             <div className="grid grid-cols-3 gap-x-4 gap-y-6 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
               {items.map((item, i) => (

@@ -1,3 +1,4 @@
+import { formatChapterLabel } from '@palscans/core/formatting'
 import { fmt, messages } from '@palscans/core/messages'
 import { AdSlot, cn, RelativeTime } from '@palscans/ui'
 import { ArrowRight, Lock } from 'lucide-react'
@@ -11,6 +12,7 @@ import { AnnouncementCard } from '@/components/home/AnnouncementCard'
 import { ContinueReading } from '@/components/home/ContinueReading'
 import { PopularSidebar } from '@/components/home/PopularSidebar'
 import { SponsoredCard } from '@/components/home/SponsoredCard'
+import { siteFormatting } from '@/lib/copy/settings'
 import { chapterAccess } from './chapter-access'
 import type { HomeViewProps } from './types'
 
@@ -56,7 +58,8 @@ function BandHeader({
   )
 }
 
-function HeroBand({ slide }: { slide: HeroSlide }) {
+async function HeroBand({ slide, eyebrow }: { slide: HeroSlide; eyebrow: string }) {
+  const { chapterLabel: chapterStyle } = await siteFormatting()
   const meta = [
     messages.series.type[slide.type],
     messages.series.status[slide.status],
@@ -67,7 +70,7 @@ function HeroBand({ slide }: { slide: HeroSlide }) {
     <section aria-labelledby="hero-title" className="border-b border-line py-7 lg:py-9">
       <div className="grid items-center gap-8 lg:grid-cols-12">
         <div className="flex min-w-0 flex-col gap-5 lg:col-span-7">
-          <Eyebrow>{messages.layouts.featured}</Eyebrow>
+          <Eyebrow>{eyebrow}</Eyebrow>
           <h1
             id="hero-title"
             className="m-0 break-words font-display text-[clamp(38px,7.4vw,88px)] font-extrabold leading-[0.94] tracking-[-0.035em] text-fg"
@@ -95,7 +98,7 @@ function HeroBand({ slide }: { slide: HeroSlide }) {
             <Link href={slide.latest?.href ?? slide.href} className={paperBtn}>
               {slide.latest
                 ? fmt(messages.layouts.readChapter, {
-                    chapter: fmt(messages.series.chapterShort, { n: slide.latest.number }),
+                    chapter: formatChapterLabel(slide.latest.number, chapterStyle),
                   })
                 : messages.series.readFirst}
               <ArrowRight size={17} aria-hidden="true" />
@@ -106,7 +109,7 @@ function HeroBand({ slide }: { slide: HeroSlide }) {
             >
               {slide.latest
                 ? fmt(messages.layouts.latestChapter, {
-                    chapter: fmt(messages.series.chapterShort, { n: slide.latest.number }),
+                    chapter: formatChapterLabel(slide.latest.number, chapterStyle),
                   })
                 : messages.layouts.seeAll}
             </Link>
@@ -132,7 +135,7 @@ function HeroBand({ slide }: { slide: HeroSlide }) {
   )
 }
 
-function ChapterLine({
+async function ChapterLine({
   chapter,
   first,
   access,
@@ -141,6 +144,7 @@ function ChapterLine({
   first: boolean
   access: ReturnType<typeof chapterAccess>
 }) {
+  const { chapterLabel: chapterStyle } = await siteFormatting()
   return (
     <Link
       href={chapter.href}
@@ -152,7 +156,7 @@ function ChapterLine({
           first ? 'font-bold text-fg' : 'font-semibold text-fg-muted',
         )}
       >
-        {fmt(messages.series.chapterShort, { n: chapter.number })}
+        {formatChapterLabel(chapter.number, chapterStyle)}
         {first && access.isNew ? (
           <span className={cn(rule, 'text-brand-hover')}>{messages.home.new}</span>
         ) : null}
@@ -251,6 +255,8 @@ export function HomeC({
   resume,
   sections,
   ads,
+  copy,
+  formatting,
 }: HomeViewProps) {
   const hero = slides[0]
   const items = feed.items
@@ -258,7 +264,7 @@ export function HomeC({
   return (
     <div className="container-page flex flex-col gap-8 pb-10">
       <h1 className="sr-only">{messages.site.tagline}</h1>
-      {hero ? <HeroBand slide={hero} /> : null}
+      {hero ? <HeroBand slide={hero} eyebrow={copy('layouts.featured')} /> : null}
 
       {resume.length > 0 ? <ContinueReading items={resume} /> : null}
 
@@ -292,7 +298,7 @@ export function HomeC({
                 </Link>
                 <span className="flex min-w-0 items-center gap-2 text-[12px] text-fg-subtle">
                   <span className="shrink-0 font-semibold text-fg-muted">
-                    {fmt(messages.series.chapterShort, { n: s.chapterCount })}
+                    {formatChapterLabel(s.chapterCount, formatting.chapterLabel)}
                   </span>
                   {s.lastChapterAt ? (
                     <>
@@ -332,7 +338,7 @@ export function HomeC({
               label={messages.layouts.allUpdates}
             />
             {items.length === 0 ? (
-              <p className="m-0 py-6 text-[14px] text-fg-muted">{messages.home.emptyUpdates}</p>
+              <p className="m-0 py-6 text-[14px] text-fg-muted">{copy('home.emptyUpdates')}</p>
             ) : (
               <div className="flex flex-col">
                 {items.map((item, i) => (

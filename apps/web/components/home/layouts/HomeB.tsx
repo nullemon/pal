@@ -1,3 +1,4 @@
+import { formatChapterLabel } from '@palscans/core/formatting'
 import { fmt, messages } from '@palscans/core/messages'
 import { AdSlot, cn, RelativeTime } from '@palscans/ui'
 import { Bookmark, BookOpen, List, Sparkles, Star } from 'lucide-react'
@@ -10,6 +11,7 @@ import { AnnouncementCard } from '@/components/home/AnnouncementCard'
 import { ContinueReading } from '@/components/home/ContinueReading'
 import { LatestUpdates } from '@/components/home/LatestUpdates'
 import { PopularSidebar } from '@/components/home/PopularSidebar'
+import { siteFormatting } from '@/lib/copy/settings'
 import type { HomeViewProps } from './types'
 
 /** Anything with a cover and a newest chapter fits the "Up next" strip: slides or trending. */
@@ -30,7 +32,8 @@ function Stat({ icon, children }: { icon: ReactNode; children: ReactNode }) {
 }
 
 /** A cover + title + chapter row of the "Up next" strip under the featured card. */
-function UpNextRow({ item }: { item: UpNextItem }) {
+async function UpNextRow({ item }: { item: UpNextItem }) {
+  const { chapterLabel: chapterStyle } = await siteFormatting()
   return (
     <li className="min-w-0">
       <Link
@@ -55,7 +58,7 @@ function UpNextRow({ item }: { item: UpNextItem }) {
           </span>
           <span className="block truncate text-[13px] leading-[17px] text-fg-muted">
             {item.latest
-              ? fmt(messages.series.chapterShort, { n: item.latest.number })
+              ? formatChapterLabel(item.latest.number, chapterStyle)
               : messages.series.emptyChapters}
             {item.latest?.publishedAt ? (
               <>
@@ -76,10 +79,17 @@ function UpNextRow({ item }: { item: UpNextItem }) {
  * everything else in the card is the tail of the hero list (or Trending, when the hero is
  * short). The mockup's genre chips are dropped: `HeroSlide` carries no genres.
  */
-function FeaturedCard({ slide, upNext }: { slide: HeroSlide; upNext: UpNextItem[] }) {
-  const chapterLabel = slide.latest
-    ? fmt(messages.series.chapterShort, { n: slide.latest.number })
-    : null
+async function FeaturedCard({
+  slide,
+  upNext,
+  eyebrow,
+}: {
+  slide: HeroSlide
+  upNext: UpNextItem[]
+  eyebrow: string
+}) {
+  const { chapterLabel: chapterStyle } = await siteFormatting()
+  const chapterLabel = slide.latest ? formatChapterLabel(slide.latest.number, chapterStyle) : null
   return (
     <section
       aria-labelledby="featured-title"
@@ -113,7 +123,7 @@ function FeaturedCard({ slide, upNext }: { slide: HeroSlide; upNext: UpNextItem[
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[12px] font-semibold">
             <span className="inline-flex items-center gap-1.5 text-brand-hover">
               <Sparkles size={14} aria-hidden="true" />
-              {messages.layouts.featured}
+              {eyebrow}
             </span>
             <span aria-hidden="true" className="text-line">
               |
@@ -222,6 +232,7 @@ export function HomeB({
   resume,
   sections,
   ads,
+  copy,
 }: HomeViewProps) {
   const featured = slides[0]
   // The rest of the hero list fills "Up next"; with a one-slide hero, Trending stands in
@@ -233,7 +244,7 @@ export function HomeB({
   return (
     <div className="container-page flex flex-col gap-5 pb-8 pt-4">
       {featured ? (
-        <FeaturedCard slide={featured} upNext={upNext} />
+        <FeaturedCard slide={featured} upNext={upNext} eyebrow={copy('layouts.featured')} />
       ) : (
         <h1 className="sr-only">{messages.site.tagline}</h1>
       )}

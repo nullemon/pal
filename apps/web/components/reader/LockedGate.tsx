@@ -1,6 +1,7 @@
 import { fmt, messages } from '@palscans/core/messages'
 import { ChevronLeft, ChevronRight, Lock } from 'lucide-react'
 import Link from 'next/link'
+import { siteCopy } from '@/lib/copy/settings'
 import type { ChapterLink } from './types'
 import { UnlockCountdown } from './UnlockCountdown'
 
@@ -26,7 +27,8 @@ export interface LockedGateProps {
  * rendered and — the whole point — not one page URL in the HTML. The only client code is the
  * early-access countdown, which is handed a deadline and nothing else.
  */
-export function LockedGate(p: LockedGateProps) {
+export async function LockedGate(p: LockedGateProps) {
+  const copy = await siteCopy()
   const body =
     p.lock === 'early_access' && p.freeAt
       ? messages.readerUi.lockedEarlyAccessHint
@@ -116,7 +118,7 @@ export function LockedGate(p: LockedGateProps) {
                 </Link>
               ) : null}
             </div>
-            <p className="text-xs text-fg-subtle">{messages.premium.pitch}</p>
+            <p className="text-xs text-fg-subtle">{copy('premium.pitch')}</p>
           </div>
         </section>
       </main>

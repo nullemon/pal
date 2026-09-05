@@ -7,6 +7,7 @@ import { unstable_cache } from 'next/cache'
 import { BottomNav } from '@/components/shell/BottomNav'
 import { Footer } from '@/components/shell/Footer'
 import { Header } from '@/components/shell/Header'
+import { siteCopy } from '@/lib/copy/settings'
 import { storageSrc } from '@/lib/seo/urls'
 
 export const metadata: Metadata = {
@@ -42,6 +43,7 @@ export default async function NotFound() {
   } catch {
     items = []
   }
+  const copy = await siteCopy()
   const m = messages.notFoundPage
   return (
     <ToastProvider>
@@ -55,7 +57,9 @@ export default async function NotFound() {
             <h1 className="mt-2 font-display text-[28px] font-extrabold uppercase leading-8 tracking-[-0.02em] text-fg md:text-[34px]">
               {m.title}
             </h1>
-            <p className="mt-3 max-w-[48ch] text-[15px] leading-6 text-fg-muted">{m.hint}</p>
+            <p className="mt-3 max-w-[48ch] text-[15px] leading-6 text-fg-muted">
+              {copy('notFoundPage.hint')}
+            </p>
             <form
               action="/search"
               method="get"

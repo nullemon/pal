@@ -9,6 +9,7 @@ import { accountBilling } from '@/lib/billing/account'
 import { getBillingSettings } from '@/lib/billing/config'
 import { billingConfigured } from '@/lib/billing/keys'
 import { type BillingPlan, formatPrice, isSellable, listPlans } from '@/lib/billing/plans'
+import { siteCopy } from '@/lib/copy/settings'
 import { entitlementGate } from '@/lib/entitlements'
 import { CheckoutButton } from './CheckoutButton'
 
@@ -160,11 +161,12 @@ function EarlyAccess({ minutes, free }: { minutes: number; free: boolean }) {
  */
 export default async function SubscribePage() {
   const db = await getDb()
-  const [user, plans, settings, gate] = await Promise.all([
+  const [user, plans, settings, gate, copy] = await Promise.all([
     getSessionUser(),
     listPlans(db),
     getBillingSettings(db),
     entitlementGate(),
+    siteCopy(),
   ])
   const configured = await billingConfigured()
   const account = user ? await accountBilling(db, user.id) : null
@@ -223,7 +225,7 @@ export default async function SubscribePage() {
         <h1 className="mt-4 font-display text-[32px] font-extrabold uppercase leading-none tracking-[-0.01em] text-fg md:text-[40px]">
           {m.title}
         </h1>
-        <p className="mt-3 text-[16px] leading-6 text-fg-muted">{m.pitch}</p>
+        <p className="mt-3 text-[16px] leading-6 text-fg-muted">{copy('premium.pitch')}</p>
       </header>
 
       {configured ? null : (
@@ -285,7 +287,7 @@ export default async function SubscribePage() {
 
       {gate.isFree('no_ads') ? null : (
         <p className="mx-auto mt-6 max-w-[640px] text-center text-[13px] text-fg-subtle">
-          {m.adBlockNote}
+          {copy('premium.adBlockNote')}
         </p>
       )}
     </div>

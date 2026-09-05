@@ -1,6 +1,8 @@
+import { formatChapterLabel } from '@palscans/core/formatting'
 import { fmt, messages } from '@palscans/core/messages'
 import type { SeriesType } from '@palscans/db'
 import { storageUrl } from '@/lib/comments/media'
+import { siteFormatting } from '@/lib/copy/settings'
 
 export interface RecommendedItem {
   id: number
@@ -14,7 +16,7 @@ export interface RecommendedItem {
 }
 
 /** Six covers: title, "9.4 · Ch. 154" (direction B). Internal links for SEO (docs/12 §10). */
-export function RecommendedGrid({
+export async function RecommendedGrid({
   items,
   className,
 }: {
@@ -22,6 +24,7 @@ export function RecommendedGrid({
   className?: string
 }) {
   if (items.length === 0) return null
+  const { chapterLabel: chapterStyle } = await siteFormatting()
   return (
     <section aria-labelledby="recommended-title" className={className}>
       <div className="flex h-6 items-baseline justify-between">
@@ -61,7 +64,7 @@ export function RecommendedGrid({
                 </span>
                 <span className="block text-[13px] leading-[18px] text-fg-muted">
                   {rating ? `${rating} · ` : ''}
-                  {fmt(messages.series.chapterShort, { n: s.chapterCount })}
+                  {formatChapterLabel(s.chapterCount, chapterStyle)}
                 </span>
               </a>
             </li>

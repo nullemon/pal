@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { getSessionUser } from '@/lib/auth'
 import { withReturn } from '@/lib/auth/return-to'
+import { siteCopy } from '@/lib/copy/settings'
 import { AuthFooterLink, AuthHeading } from '../_components/AuthHeading'
 import { Notice } from '../_components/fields'
 import { LoginForm } from '../_components/LoginForm'
@@ -19,7 +20,7 @@ export default async function LoginPage({
 }) {
   const params = readAuthParams(await searchParams)
   const returnTo = params.return ?? '/'
-  const user = await getSessionUser()
+  const [user, copy] = await Promise.all([getSessionUser(), siteCopy()])
   if (user && !params.link) redirect(user.username ? returnTo : withReturn('/onboarding', returnTo))
 
   const errorText =
@@ -41,7 +42,7 @@ export default async function LoginPage({
             ? fmt(messages.authPage.linkTitle, { provider: providerName(params.link) })
             : messages.authPage.signInTitle
         }
-        lead={params.link ? messages.auth.signInTagline : messages.authPage.signInLead}
+        lead={params.link ? messages.auth.signInTagline : copy('authPage.signInLead')}
         gate={params.gate}
       />
       <div className="flex flex-col gap-5">

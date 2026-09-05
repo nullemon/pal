@@ -15,6 +15,7 @@ import type {
   ReportReason,
 } from '@/lib/comments/types'
 import { COMMENT_SORTS } from '@/lib/comments/types'
+import { useCopy } from '@/lib/copy/context'
 import { type CommentActions, CommentItem } from './CommentItem'
 import { Composer, type ComposerResult, type ComposerSubmission } from './Composer'
 import { ReportDialog } from './ReportDialog'
@@ -59,6 +60,7 @@ const filterTree = (list: CommentView[], keep: (c: CommentView) => boolean): Com
  * /api/comments. A light poll every 60s (visible tab only) surfaces new comments.
  */
 export function CommentThread({ target, initial, viewer, config, enabled }: CommentThreadProps) {
+  const copy = useCopy()
   const { toast } = useToast()
   const [page, setPage] = useState<CommentPage>(initial)
   const [sort, setSort] = useState<CommentSort>(initial.sort)
@@ -419,7 +421,7 @@ export function CommentThread({ target, initial, viewer, config, enabled }: Comm
       <div className={cn('mt-1.5', loading && 'opacity-60')} aria-busy={loading}>
         {visible.length === 0 ? (
           <p className="border-t border-line py-8 text-center text-sm text-fg-muted">
-            {messages.comments.empty}
+            {copy('comments.empty', messages.comments.empty)}
           </p>
         ) : (
           visible.map((c) => (
@@ -473,7 +475,7 @@ export function CommentThread({ target, initial, viewer, config, enabled }: Comm
       >
         <ul className="flex flex-col gap-1 p-4 text-sm">
           {reactors.rows.length === 0 ? (
-            <li className="text-fg-muted">{messages.comments.empty}</li>
+            <li className="text-fg-muted">{copy('comments.empty', messages.comments.empty)}</li>
           ) : null}
           {reactors.rows.map((r) => (
             <li key={`${r.kind}-${r.username}`} className="flex items-center justify-between gap-3">

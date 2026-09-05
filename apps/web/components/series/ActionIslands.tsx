@@ -1,11 +1,13 @@
 'use client'
 
+import { formatChapterLabel } from '@palscans/core/formatting'
 import { fmt, messages } from '@palscans/core/messages'
-import { cn, Sheet, useToast } from '@palscans/ui'
+import { cn, Sheet, useFormatting, useToast } from '@palscans/ui'
 import { Bookmark, Check, Download, FileArchive, Lock, Smartphone, Star } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type { ChapterRowData } from '@/app/(site)/series/[slug]/data'
 import { del, postJson } from '@/lib/comments/client'
+import { useCopy } from '@/lib/copy/context'
 import { useChapterDownload, useIsDownloaded } from '@/lib/offline/useDownloads'
 
 const ghost =
@@ -260,9 +262,8 @@ function DownloadKinds() {
 function DownloadRow({ chapter, onChanged }: { chapter: ChapterRowData; onChanged: () => void }) {
   const { downloaded, recheck } = useIsDownloaded(chapter.id)
   const { state, start } = useChapterDownload()
-  const label = fmt(messages.series.chapterShort, {
-    n: String(Number.parseFloat(chapter.number.toFixed(3))),
-  })
+  const { chapterLabel } = useFormatting()
+  const label = formatChapterLabel(chapter.number, chapterLabel)
 
   const working = state.status === 'working'
   return (
@@ -329,6 +330,7 @@ export function DownloadButton({
   entitled: boolean
   chapters?: ChapterRowData[]
 }) {
+  const copy = useCopy()
   const [open, setOpen] = useState(false)
   const [version, setVersion] = useState(0)
   const readable = chapters.filter((c) => c.canRead && c.pageCount > 0)
@@ -383,9 +385,9 @@ export function DownloadButton({
               <p className="text-fg-muted text-sm">{messages.seriesDetail.premiumGateBody}</p>
               <ul className="flex flex-col gap-1.5 text-sm">
                 {[
-                  messages.premium.bullets.adFree,
-                  messages.premium.bullets.earlyAccess,
-                  messages.premium.bullets.offline,
+                  copy('premium.bullets.adFree', messages.premium.bullets.adFree),
+                  copy('premium.bullets.earlyAccess', messages.premium.bullets.earlyAccess),
+                  copy('premium.bullets.offline', messages.premium.bullets.offline),
                 ].map((b) => (
                   <li key={b} className="flex items-center gap-2">
                     <Star size={14} className="text-gold" fill="currentColor" aria-hidden="true" />

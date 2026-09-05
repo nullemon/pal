@@ -2,6 +2,7 @@ import { getDb, oauthAccounts, users } from '@palscans/db'
 import { and, eq } from 'drizzle-orm'
 import { cookies } from 'next/headers'
 import { z } from 'zod'
+import { siteCopy } from '../copy/settings'
 import { getMailer, verifyEmailMail } from '../email'
 import { getEnv } from '../env'
 import { OAUTH_LINK_COOKIE, readPendingLink, shortCookie } from './oauth'
@@ -66,7 +67,7 @@ export const sendVerification = async (
   email: string,
 ): Promise<{ ok: boolean; error?: string }> => {
   const token = await issueToken(userId, 'verify_email')
-  return (await getMailer()).send(verifyEmailMail(email, token))
+  return (await getMailer()).send(verifyEmailMail(email, token, await siteCopy()))
 }
 
 /** The TOTP step between a correct password and a session: a signed 5-minute cookie. */

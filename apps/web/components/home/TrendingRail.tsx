@@ -1,3 +1,4 @@
+import { formatChapterLabel } from '@palscans/core/formatting'
 import { fmt, messages } from '@palscans/core/messages'
 import { cn } from '@palscans/ui'
 import { Flame } from 'lucide-react'
@@ -5,12 +6,14 @@ import Link from 'next/link'
 import { COVER_HEIGHT, COVER_WIDTH } from '@/components/discovery/media'
 import { SectionTitle } from '@/components/discovery/SectionTitle'
 import type { RankedSeries } from '@/components/discovery/types'
+import { siteFormatting } from '@/lib/copy/settings'
 
 /**
  * Trending: 150×225 covers with the rank as an outlined numeral in the corner, the title
  * and latest chapter over a gradient. A scroll-snap rail; eight fit the desktop container.
  */
-export function TrendingRail({ items }: { items: RankedSeries[] }) {
+export async function TrendingRail({ items }: { items: RankedSeries[] }) {
+  const { chapterLabel: chapterStyle } = await siteFormatting()
   if (items.length === 0) return null
   return (
     <section aria-labelledby="trending-title" className="flex flex-col gap-2">
@@ -44,7 +47,7 @@ export function TrendingRail({ items }: { items: RankedSeries[] }) {
                 </span>
                 {s.latest ? (
                   <span className="block pl-10 text-[12px] leading-[14px] text-fg-muted">
-                    {fmt(messages.series.chapterShort, { n: s.latest.number })}
+                    {formatChapterLabel(s.latest.number, chapterStyle)}
                   </span>
                 ) : null}
               </span>

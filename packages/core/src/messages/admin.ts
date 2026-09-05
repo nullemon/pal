@@ -2167,4 +2167,145 @@ export const adminMessages = {
     legendChanged: 'Marked “changed”: you have overridden the default here.',
     legendLocked: 'Padlocked: fixed on, and the reason is on the row.',
   },
+
+  /**
+   * Appearance → Copy and Appearance → Formatting (docs/15). One field per string the
+   * operator owns, each showing the shipped wording as its placeholder — so an empty field
+   * reads as "this is still the default", and clearing a field *is* the reset.
+   *
+   * `where` is the half that makes the screen usable: a list of thirty strings is only
+   * editable if you can tell which page each one lands on. Two of the groups say plainly
+   * that nothing renders them yet, which is better than an operator changing the maintenance
+   * line and wondering why they cannot find it.
+   */
+  copyScreen: {
+    navLabel: 'Copy',
+    title: 'Copy and formatting',
+    subtitle:
+      'The strings that carry the site’s voice, and how dates and numbers are written. Everything else goes through the shipped catalogue.',
+    saved: 'Copy saved',
+    reset: 'Reset',
+    resetAria: 'Reset {label} to the shipped wording',
+    usingDefault: 'Default',
+    changed: 'Changed',
+    counter: '{n} / {max}',
+    tooLong: 'Too long — the limit is {max} characters.',
+    unknownPlaceholder: '{token} is not a value this string can use.',
+    placeholdersAllowed: 'You can use {tokens}.',
+    notRendered: 'Not shown anywhere yet — see the note above this group.',
+    overriddenCount: '{n} of {total} strings changed',
+    groups: {
+      home: 'Home',
+      empty: 'Empty states',
+      pages: 'Standalone pages',
+      ageGate: 'Age gate',
+      premium: 'Premium',
+      email: 'Email',
+    },
+    groupHints: {
+      home: 'The words above the hero, and what the update feed says when it has nothing to show.',
+      empty:
+        'The first thing a new reader sees on a page with nothing in it. These are worth more attention than their length suggests.',
+      pages: 'The lines on pages that are almost entirely one message.',
+      ageGate:
+        'These four strings are in the catalogue, but no age gate is built yet — mature series are blurred instead. Editing them changes nothing on the site today.',
+      premium: 'The pitch, the perk list on a locked chapter, and the note under the plans.',
+      email:
+        'Subjects and opening lines. The button labels and the "this link expires" lines are not editable: they are promises about how the link behaves, not voice.',
+    },
+    entries: {
+      'layouts.featured': 'Hero eyebrow',
+      'home.emptyUpdates': 'No updates yet',
+      'account.emptyBookmarks': 'No bookmarks',
+      'me.bookmarks.emptyStatus': 'No bookmarks under one shelf',
+      'account.emptyHistory': 'No reading history',
+      'browse.empty': 'No browse results',
+      'search.empty': 'No search results',
+      'comments.empty': 'No comments',
+      'notFoundPage.hint': '404 line',
+      'authPage.signInLead': 'Sign-in tagline',
+      'authPage.registerLead': 'Register tagline',
+      'common.maintenance': 'Maintenance page',
+      'common.ageGateTitle': 'Age gate title',
+      'common.ageGateBody': 'Age gate body',
+      'common.ageGateConfirm': 'Age gate confirm button',
+      'common.ageGateLeave': 'Age gate leave button',
+      'premium.pitch': 'Premium pitch',
+      'premium.bullets.adFree': 'Perk · no ads',
+      'premium.bullets.earlyAccess': 'Perk · early access',
+      'premium.bullets.offline': 'Perk · offline',
+      'premium.adBlockNote': 'Ad-blocker note',
+      'email.verify.subject': 'Verify email · subject',
+      'email.verify.intro': 'Verify email · intro',
+      'email.reset.subject': 'Password reset · subject',
+      'email.reset.intro': 'Password reset · intro',
+      'email.passwordChanged.subject': 'Password changed · subject',
+      'email.passwordChanged.intro': 'Password changed · intro',
+      'email.deletion.subject': 'Account deletion · subject',
+      'email.deletion.intro': 'Account deletion · intro',
+    },
+    where: {
+      'layouts.featured': 'Above the hero on the home page (directions B, C, E and F).',
+      'home.emptyUpdates':
+        'The latest-updates feed, the Popular card and the rankings list when they are empty.',
+      'account.emptyBookmarks': '/me/bookmarks with nothing bookmarked.',
+      'me.bookmarks.emptyStatus': '/me/bookmarks filtered to a shelf with nothing on it.',
+      'account.emptyHistory': '/me/history for a signed-in reader with nothing read.',
+      'browse.empty': '/browse when the filters match nothing.',
+      'search.empty': '/search with no hits.',
+      'comments.empty': 'Under a series or chapter nobody has commented on.',
+      'notFoundPage.hint': 'Under the big 404, above the search box.',
+      'authPage.signInLead': 'Under "Sign in" on /login.',
+      'authPage.registerLead': 'Under "Create your account" on /register.',
+      'common.maintenance':
+        'Nothing renders this yet. Maintenance mode is a setting in System → Settings, but no page reads it.',
+      'common.ageGateTitle': 'Nothing renders this yet.',
+      'common.ageGateBody': 'Nothing renders this yet.',
+      'common.ageGateConfirm': 'Nothing renders this yet.',
+      'common.ageGateLeave': 'Nothing renders this yet.',
+      'premium.pitch':
+        'The line under the /subscribe headline, the locked-chapter gate, and the GIF-picker toast.',
+      'premium.bullets.adFree': 'The perk list on a locked chapter’s download sheet.',
+      'premium.bullets.earlyAccess': 'The perk list on a locked chapter’s download sheet.',
+      'premium.bullets.offline': 'The perk list on a locked chapter’s download sheet.',
+      'premium.adBlockNote': 'The end of a chapter, and the foot of /subscribe.',
+      'email.verify.subject': 'Sent when an account is created, and on "resend verification".',
+      'email.verify.intro': 'Sent when an account is created, and on "resend verification".',
+      'email.reset.subject': 'Sent from "forgot password".',
+      'email.reset.intro': 'Sent from "forgot password".',
+      'email.passwordChanged.subject': 'Sent after a password change or reset.',
+      'email.passwordChanged.intro': 'Sent after a password change or reset.',
+      'email.deletion.subject': 'Sent when a reader schedules their account for deletion.',
+      'email.deletion.intro': 'The deletion date is appended to this line.',
+    },
+    formatting: {
+      title: 'Formatting',
+      hint: 'How the site writes a timestamp, a number and a chapter number.',
+      relativeTimes: 'Relative times',
+      relativeTimesHint:
+        '"Both" is what the site has always done: the phrase, with the date in a tooltip.',
+      relativeTimesOptions: {
+        relative: '12 min ago',
+        absolute: 'Absolute date',
+        both: 'Both',
+      },
+      clock: 'Clock',
+      clockHint:
+        'Only shows up where a time of day is drawn, which today is the absolute-date mode above.',
+      clockOptions: { '12h': '12-hour', '24h': '24-hour' },
+      numbers: 'Compact numbers',
+      numbersHint: 'View counts on the rankings list.',
+      numbersOptions: { compact: '81.3K', grouped: '81,300' },
+      chapterLabel: 'Chapter label',
+      chapterLabelHint: 'Cover cards, chapter lists, bookmarks and the home feed.',
+      chapterLabelOptions: { short: 'Ch. 301', long: 'Chapter 301', hash: '#301' },
+      weekStartsOn: 'Week starts on',
+      weekStartsOnHint: 'The release calendar in Chapters → Calendar.',
+      weekStartsOnOptions: { monday: 'Monday', sunday: 'Sunday' },
+      preview: 'Preview',
+      previewTime: 'A chapter published two hours ago',
+      previewViews: 'Views',
+      previewChapter: 'Chapter 301',
+    },
+  },
 } as const

@@ -1,3 +1,4 @@
+import { formatChapterLabel } from '@palscans/core/formatting'
 import { fmt, messages } from '@palscans/core/messages'
 import { AdSlot, cn, Rail, RelativeTime } from '@palscans/ui'
 import { Check, ChevronRight, Lock, Play } from 'lucide-react'
@@ -52,6 +53,7 @@ export function SeriesF({
   earlyAccessMinutes,
   site,
   ads,
+  formatting,
 }: SeriesViewProps) {
   const first = chapters[chapters.length - 1]
   const latest = chapters[0]
@@ -156,7 +158,10 @@ export function SeriesF({
                     >
                       <Play size={18} aria-hidden="true" />
                       {fmt(messages.series.continueChapter, {
-                        chapter: fmt(messages.series.chapterShort, { n: continueChapter.number }),
+                        chapter: formatChapterLabel(
+                          continueChapter.number,
+                          formatting.chapterLabel,
+                        ),
                       })}
                     </Link>
                     {first ? (
@@ -252,7 +257,7 @@ export function SeriesF({
                 >
                   <span className="flex items-center justify-between gap-2">
                     <span className="truncate font-display text-[18px] font-extrabold leading-[22px] tracking-[-0.01em] text-fg">
-                      {fmt(messages.series.chapterShort, { n: c.number })}
+                      {formatChapterLabel(c.number, formatting.chapterLabel)}
                     </span>
                     {!c.canRead ? (
                       <Lock

@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { coverSrc } from '@/components/discovery/media'
 import { mediaUrl } from '@/lib/auth/media'
 import { BOOKMARK_STATUSES, type BookmarkStatus, bookmarksQuerySchema } from '@/lib/auth/schemas'
+import { siteCopy } from '@/lib/copy/settings'
 import { BookmarkCard, type BookmarkItem } from '../_components/BookmarkCard'
 import { PageTitle } from '../_components/Section'
 import { flatParams, requireAccount, type SearchParams } from '../_lib'
@@ -78,6 +79,7 @@ export default async function BookmarksPage({ searchParams }: { searchParams: Se
     .limit(PAGE_SIZE + 1)
     .offset((page - 1) * PAGE_SIZE)
 
+  const copy = await siteCopy()
   const hasMore = rows.length > PAGE_SIZE
   const items: BookmarkItem[] = rows.slice(0, PAGE_SIZE).map((r) => ({
     seriesId: r.seriesId,
@@ -170,10 +172,10 @@ export default async function BookmarksPage({ searchParams }: { searchParams: Se
             kind === 'novels' && !status
               ? messages.me.bookmarks.emptyNovels
               : status
-                ? fmt(messages.me.bookmarks.emptyStatus, {
+                ? fmt(copy('me.bookmarks.emptyStatus'), {
                     status: messages.series.bookmarkStatus[status],
                   })
-                : messages.account.emptyBookmarks
+                : copy('account.emptyBookmarks')
           }
           action={
             <Button href="/browse" variant="outline">

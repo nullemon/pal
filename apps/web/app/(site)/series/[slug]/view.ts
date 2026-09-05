@@ -6,6 +6,7 @@ import type { SeriesViewProps } from '@/components/series/layouts/types'
 import { storageUrl } from '@/lib/comments/media'
 import { COMMENT_SORTS } from '@/lib/comments/types'
 import { getAppUser } from '@/lib/comments/viewer'
+import { siteFormatting } from '@/lib/copy/settings'
 import { entitlementGate } from '@/lib/entitlements'
 import { getEnv } from '@/lib/env'
 import { chapterRows, getSeries, loadRank, loadRecommended, viewerSeriesState } from './data'
@@ -29,13 +30,14 @@ export async function loadSeriesView(
   const now = new Date()
   const user = await getAppUser()
   const gate = await entitlementGate()
-  const [chapters, rank, recommended, state, selected, ads] = await Promise.all([
+  const [chapters, rank, recommended, state, selected, ads, formatting] = await Promise.all([
     chapterRows(series.id, user, now, gate.overrides),
     loadRank(series.id),
     loadRecommended(series.id),
     viewerSeriesState(user, series.id),
     cachedLayoutsSetting(),
     cachedAds(),
+    siteFormatting(),
   ])
   const withAds = gate.showsAds(user, now)
   const place = (id: 'series_top' | 'series_sidebar') => {
@@ -57,6 +59,7 @@ export async function loadSeriesView(
     canDownload: gate.can('offline', user, now),
     earlyAccessMinutes: gate.overrides.early_access_minutes,
     site: { url: env.SITE_URL, name: env.SITE_NAME },
+    formatting,
     ads: { top: place('series_top'), mpu: place('series_sidebar') },
   }
 }

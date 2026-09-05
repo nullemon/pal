@@ -1,3 +1,4 @@
+import { copyFn } from '@palscans/core/copy'
 import {
   cachedAds,
   cachedAnnouncement,
@@ -15,6 +16,7 @@ import { continueReading } from '@/components/discovery/queries'
 import { adSlot, homeSection } from '@/components/discovery/settings'
 import type { HomeViewProps } from '@/components/home/layouts/types'
 import { getSessionUser } from '@/lib/auth/session'
+import { siteCopySettings } from '@/lib/copy/settings'
 import { entitlementGate } from '@/lib/entitlements'
 
 /**
@@ -25,12 +27,13 @@ export async function loadHomeView(
   searchParams: Record<string, string | string[] | undefined>,
 ): Promise<HomeViewProps & { layout: string }> {
   const params = homeParamsSchema.parse(searchParams)
-  const [user, layout, ads, gate, selected] = await Promise.all([
+  const [user, layout, ads, gate, selected, appearanceCopy] = await Promise.all([
     getSessionUser(),
     cachedHomeLayout(),
     cachedAds(),
     entitlementGate(),
     cachedLayoutsSetting(),
+    siteCopySettings(),
   ])
   const now = new Date()
   const withAds = gate.showsAds(user, now)
@@ -75,6 +78,8 @@ export async function loadHomeView(
     newest,
     resume,
     genres,
+    copy: copyFn(appearanceCopy.copy),
+    formatting: appearanceCopy.formatting,
     sections: { latest: sLatest.enabled },
     ads: { top: place('home_top'), sidebar: place('home_sidebar'), infeed: place('home_infeed') },
   }

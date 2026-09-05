@@ -1,8 +1,10 @@
-import { compactNumber, type PopularityWindow } from '@palscans/core'
+import type { PopularityWindow } from '@palscans/core'
+import { formatChapterLabel, formatCount } from '@palscans/core/formatting'
 import { fmt, messages } from '@palscans/core/messages'
 import { cn } from '@palscans/ui'
 import { Trophy } from 'lucide-react'
 import Link from 'next/link'
+import { siteAppearance } from '@/lib/copy/settings'
 import { Rating, StatusBadge, TypeBadge } from './Badges'
 import { JsonLd } from './JsonLd'
 import { COVER_HEIGHT, COVER_WIDTH } from './media'
@@ -28,13 +30,14 @@ export const windowForSegment = (segment: string): PopularityWindow | null =>
   RANKING_WINDOWS.find((w) => w.segment === segment)?.key ?? null
 
 /** /rankings — the three windows as real pages, top 50 numbered rows, ItemList JSON-LD. */
-export function RankingsView({
+export async function RankingsView({
   window,
   items,
 }: {
   window: PopularityWindow
   items: RankedSeries[]
 }) {
+  const { copy, formatting } = await siteAppearance()
   const jsonLd = {
     '@context': 'https://schema.org',
     '@graph': [
@@ -139,9 +142,9 @@ export function RankingsView({
                   <Rating value={s.rating} count={s.ratingCount} />
                 </div>
                 <p className="truncate text-[12px] text-fg-muted">
-                  {s.latest ? fmt(messages.series.chapterShort, { n: s.latest.number }) : null}
+                  {s.latest ? formatChapterLabel(s.latest.number, formatting.chapterLabel) : null}
                   {s.latest ? ' · ' : null}
-                  {fmt(messages.discovery.views, { n: compactNumber(s.views) })}
+                  {fmt(messages.discovery.views, { n: formatCount(s.views, formatting.numbers) })}
                 </p>
               </div>
             </article>
@@ -149,7 +152,7 @@ export function RankingsView({
         ))}
       </ol>
       {items.length === 0 ? (
-        <p className="py-10 text-center text-[13px] text-fg-subtle">{messages.home.emptyUpdates}</p>
+        <p className="py-10 text-center text-[13px] text-fg-subtle">{copy('home.emptyUpdates')}</p>
       ) : null}
     </div>
   )

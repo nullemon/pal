@@ -1,6 +1,34 @@
+import type { CopyFn } from '@palscans/core/copy'
 import { messages } from '@palscans/core/messages'
 import { getEnv } from '../env'
 import type { Mail } from './mailer'
+
+/**
+ * The four transactional emails. Their subjects and intros are operator-editable (docs/15
+ * "Copy the operator owns"), which is why every template takes a resolved `copy` lookup
+ * rather than reading the catalogue itself: these run from route handlers and from the
+ * worker, and both already have the settings in hand.
+ *
+ * ## Why operator text is safe here
+ *
+ * Two things could go wrong and neither can:
+ *
+ * - **HTML injection.** `layout()` escapes every line and every attribute it interpolates,
+ *   and it has done since before this copy was editable. An operator who pastes
+ *   `<img src=x onerror=…>` into an intro gets that text, rendered as text, in the mail.
+ * - **Header injection.** A subject carrying `\r\n` is how `Bcc:` gets added to somebody
+ *   else's mail. Two independent guards: `normalizeCopyText` in `@palscans/core/copy`
+ *   strips every control character before an override is stored *or* resolved, and
+ *   `lib/config/smtp.ts` runs `headerSafe()` on the subject at the wire. Resend takes the
+ *   subject as a JSON field, which is not a header context at all.
+ */
+
+/**
+ * The parts of each mail that are *not* editable: the button labels and the expiry / "was
+ * this not you" lines. They state what the link does and how long it lasts, which is a
+ * security promise the product makes, not a matter of voice.
+ */
+const MAIL_FIXED = messages.email
 
 const escapeHtml = (s: string) =>
   s.replace(
@@ -19,46 +47,54 @@ const layout = (title: string, lines: string[], cta?: { href: string; label: str
 
 const link = (path: string) => `${getEnv().SITE_URL.replace(/\/+$/, '')}${path}`
 
-export const verifyEmailMail = (to: string, token: string): Mail => {
+export const verifyEmailMail = (to: string, token: string, copy: CopyFn): Mail => {
   const href = link(`/verify?token=${encodeURIComponent(token)}`)
-  const m = messages.email.verify
+  const subject = copy('email.verify.subject')
+  const intro = copy('email.verify.intro')
+  const m = MAIL_FIXED.verify
   return {
     to,
-    subject: m.subject,
-    text: `${m.intro}\n\n${href}\n\n${m.expiry}`,
-    html: layout(m.subject, [m.intro, m.expiry], { href, label: m.cta }),
+    subject,
+    text: `${intro}\n\n${href}\n\n${m.expiry}`,
+    html: layout(subject, [intro, m.expiry], { href, label: m.cta }),
   }
 }
 
-export const resetPasswordMail = (to: string, token: string): Mail => {
+export const resetPasswordMail = (to: string, token: string, copy: CopyFn): Mail => {
   const href = link(`/reset-password?token=${encodeURIComponent(token)}`)
-  const m = messages.email.reset
+  const subject = copy('email.reset.subject')
+  const intro = copy('email.reset.intro')
+  const m = MAIL_FIXED.reset
   return {
     to,
-    subject: m.subject,
-    text: `${m.intro}\n\n${href}\n\n${m.expiry}\n${m.ignore}`,
-    html: layout(m.subject, [m.intro, m.expiry, m.ignore], { href, label: m.cta }),
+    subject,
+    text: `${intro}\n\n${href}\n\n${m.expiry}\n${m.ignore}`,
+    html: layout(subject, [intro, m.expiry, m.ignore], { href, label: m.cta }),
   }
 }
 
-export const passwordChangedMail = (to: string): Mail => {
-  const m = messages.email.passwordChanged
+export const passwordChangedMail = (to: string, copy: CopyFn): Mail => {
+  const subject = copy('email.passwordChanged.subject')
+  const intro = copy('email.passwordChanged.intro')
+  const m = MAIL_FIXED.passwordChanged
   return {
     to,
-    subject: m.subject,
-    text: `${m.intro}\n${m.ignore}`,
-    html: layout(m.subject, [m.intro, m.ignore]),
+    subject,
+    text: `${intro}\n${m.ignore}`,
+    html: layout(subject, [intro, m.ignore]),
   }
 }
 
-export const deletionScheduledMail = (to: string, purgeAt: Date): Mail => {
-  const m = messages.email.deletion
+export const deletionScheduledMail = (to: string, purgeAt: Date, copy: CopyFn): Mail => {
+  const subject = copy('email.deletion.subject')
+  const intro = copy('email.deletion.intro')
+  const m = MAIL_FIXED.deletion
   const when = purgeAt.toISOString().slice(0, 10)
   const href = link('/me/settings#delete')
   return {
     to,
-    subject: m.subject,
-    text: `${m.intro} ${when}.\n\n${m.cancel}\n${href}`,
-    html: layout(m.subject, [`${m.intro} ${when}.`, m.cancel], { href, label: m.cta }),
+    subject,
+    text: `${intro} ${when}.\n\n${m.cancel}\n${href}`,
+    html: layout(subject, [`${intro} ${when}.`, m.cancel], { href, label: m.cta }),
   }
 }

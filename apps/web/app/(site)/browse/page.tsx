@@ -15,6 +15,7 @@ import { pageMetadata } from '@/components/discovery/metadata'
 import { Pagination } from '@/components/discovery/Pagination'
 import { browseSeries, genreIdsFor, withLatest } from '@/components/discovery/queries'
 import { SeriesGrid } from '@/components/discovery/SeriesGrid'
+import { siteCopy } from '@/lib/copy/settings'
 
 /**
  * /browse — dynamic (docs/06), canonical `/browse`; filtered variants carry `noindex`
@@ -38,10 +39,11 @@ export async function generateMetadata({ searchParams }: PageProps<'/browse'>): 
 
 export default async function BrowsePage({ searchParams }: PageProps<'/browse'>) {
   const params = parseBrowseParams(await searchParams)
-  const [genres, include, exclude] = await Promise.all([
+  const [genres, include, exclude, copy] = await Promise.all([
     cachedGenres(),
     genreIdsFor(params.genre),
     genreIdsFor(params.exclude),
+    siteCopy(),
   ])
   const result = await browseSeries({
     type: params.type,
@@ -112,7 +114,7 @@ export default async function BrowsePage({ searchParams }: PageProps<'/browse'>)
           <ActiveFilters params={params} genres={genres} />
           {items.length === 0 ? (
             <EmptyState
-              title={messages.browse.empty}
+              title={copy('browse.empty')}
               action={
                 <div className="flex gap-2">
                   <Link href="/browse" className={buttonClasses('outline', 'sm')}>

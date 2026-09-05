@@ -1,3 +1,5 @@
+import { type WeekStart, weekStartIndex } from '@palscans/core/formatting'
+
 /**
  * The calendar's date arithmetic, kept pure so both sides can use it: the server picks the
  * rows to fetch, the browser lays out the grid in the operator's own timezone.
@@ -26,10 +28,14 @@ export const dayKey = (date: Date): string => {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
 }
 
-/** Monday-first, like every scanlation schedule anyone has ever drawn. */
-export const startOfWeek = (date: Date): Date => {
+/**
+ * Monday-first by default, like every scanlation schedule anyone has ever drawn — and
+ * Sunday-first when Appearance → Formatting → Week starts on says so (docs/15).
+ */
+export const startOfWeek = (date: Date, weekStartsOn: WeekStart = 'monday'): Date => {
   const start = startOfDay(date)
-  const offset = (start.getDay() + 6) % 7
+  const first = weekStartIndex(weekStartsOn)
+  const offset = (start.getDay() - first + 7) % 7
   return addDays(start, -offset)
 }
 
@@ -55,11 +61,19 @@ export interface CalendarGrid {
 }
 
 /**
- * The days a view draws. A month view is whole weeks, so it always starts on a Monday and
- * spills into the neighbouring months — those cells are real days and can be dropped on.
+ * The days a view draws. A month view is whole weeks, so it always starts on the first day
+ * of the week and spills into the neighbouring months — those cells are real days and can
+ * be dropped on.
  */
-export const buildGrid = (view: CalendarView, anchor: Date): CalendarGrid => {
-  const start = view === 'week' ? startOfWeek(anchor) : startOfWeek(startOfMonth(anchor))
+export const buildGrid = (
+  view: CalendarView,
+  anchor: Date,
+  weekStartsOn: WeekStart = 'monday',
+): CalendarGrid => {
+  const start =
+    view === 'week'
+      ? startOfWeek(anchor, weekStartsOn)
+      : startOfWeek(startOfMonth(anchor), weekStartsOn)
   let length = 7
   if (view === 'month') {
     const monthEnd = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0)

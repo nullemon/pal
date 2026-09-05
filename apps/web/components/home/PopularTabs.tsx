@@ -4,6 +4,7 @@ import { fmt, messages } from '@palscans/core/messages'
 import { cn } from '@palscans/ui'
 import Link from 'next/link'
 import { useId, useState } from 'react'
+import { useCopy } from '@/lib/copy/context'
 
 export type PopularWindowKey = 'weekly' | 'monthly' | 'all'
 
@@ -37,6 +38,7 @@ const WINDOWS: ReadonlyArray<{ key: PopularWindowKey; label: string }> = [
  * so the Weekly list is in the HTML for crawlers and the others cost no request.
  */
 export function PopularTabs({ lists, initial = 'weekly' }: PopularTabsProps) {
+  const copy = useCopy()
   const [window, setWindow] = useState<PopularWindowKey>(initial)
   const baseId = useId()
   const rows = lists[window]
@@ -139,7 +141,7 @@ export function PopularTabs({ lists, initial = 'weekly' }: PopularTabsProps) {
           ))}
           {rows.length === 0 ? (
             <li className="py-6 text-center text-[13px] text-fg-subtle">
-              {messages.home.emptyUpdates}
+              {copy('home.emptyUpdates', messages.home.emptyUpdates)}
             </li>
           ) : null}
         </ol>

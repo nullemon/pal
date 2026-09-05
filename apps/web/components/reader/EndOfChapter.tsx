@@ -5,6 +5,7 @@ import { ArrowRight, Lock, Shuffle } from 'lucide-react'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { RecommendedRail } from '@/components/discovery/RecommendedRail'
+import { useCopy } from '@/lib/copy/context'
 import { EndSlot } from './ads'
 import type { ChapterLink, ReaderAds } from './types'
 
@@ -22,6 +23,7 @@ export interface EndOfChapterProps {
 
 /** After the last page: the end slot, then the Next Chapter card, then comments (docs/06, docs/11). */
 export function EndOfChapter(p: EndOfChapterProps) {
+  const copy = useCopy()
   return (
     <section
       aria-label={messages.reader.endOfChapter}
@@ -84,7 +86,7 @@ export function EndOfChapter(p: EndOfChapterProps) {
             href={p.subscribeHref}
             className="inline-flex h-11 items-center rounded-[10px] px-3 text-brand-hover hover:underline"
           >
-            {messages.premium.adBlockNote}
+            {copy('premium.adBlockNote', messages.premium.adBlockNote)}
           </Link>
         ) : null}
       </div>

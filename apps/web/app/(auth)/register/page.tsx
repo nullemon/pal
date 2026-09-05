@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import { getSessionUser } from '@/lib/auth'
 import { readRegistrationMode } from '@/lib/auth/invites'
 import { withReturn } from '@/lib/auth/return-to'
+import { siteCopy } from '@/lib/copy/settings'
 import { AuthFooterLink, AuthHeading } from '../_components/AuthHeading'
 import { Notice } from '../_components/fields'
 import { Divider, OAuthButtons } from '../_components/OAuthButtons'
@@ -24,14 +25,14 @@ export default async function RegisterPage({
   const user = await getSessionUser()
   if (user) redirect(user.username ? returnTo : withReturn('/onboarding', returnTo))
   // docs/17 §C: the operator's registration mode decides what this page offers.
-  const mode = await readRegistrationMode()
+  const [mode, copy] = await Promise.all([readRegistrationMode(), siteCopy()])
   const invite = typeof raw.invite === 'string' ? raw.invite.slice(0, 32) : ''
 
   return (
     <>
       <AuthHeading
         title={messages.authPage.registerTitle}
-        lead={messages.authPage.registerLead}
+        lead={copy('authPage.registerLead')}
         gate={params.gate}
       />
       {mode === 'closed' ? (

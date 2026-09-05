@@ -1,7 +1,8 @@
 'use client'
 
+import { formatChapterLabel } from '@palscans/core/formatting'
 import { fmt, messages } from '@palscans/core/messages'
-import { Chip, useToast } from '@palscans/ui'
+import { Chip, useFormatting, useToast } from '@palscans/ui'
 import { X } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
@@ -20,6 +21,7 @@ export interface BookmarkItem {
 }
 
 export function BookmarkCard({ item }: { item: BookmarkItem }) {
+  const { chapterLabel } = useFormatting()
   const router = useRouter()
   const toast = useToast()
   const [status, setStatus] = useState<BookmarkStatus>(item.status)
@@ -106,7 +108,7 @@ export function BookmarkCard({ item }: { item: BookmarkItem }) {
           {item.latestChapter !== null ? (
             <span>
               {fmt(messages.me.bookmarks.latest, {
-                chapter: fmt(messages.series.chapterShort, { n: item.latestChapter }),
+                chapter: formatChapterLabel(item.latestChapter, chapterLabel),
               })}
             </span>
           ) : null}

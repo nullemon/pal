@@ -25,6 +25,7 @@ export function SaveBar({
   onDiscard,
   saveLabel = adminMessages.admin.saveChanges,
   status,
+  canSave = true,
 }: {
   dirty: boolean
   saving: boolean
@@ -32,6 +33,13 @@ export function SaveBar({
   onDiscard?: () => void
   saveLabel?: string
   status?: ReactNode
+  /**
+   * Hold Save back while the form is invalid, without also holding Discard back. Defaults to
+   * true, so every screen that does not pass it behaves exactly as before. Appearance → Copy
+   * needs the two apart: a field with a bad placeholder must not be saveable, but Discard is
+   * the way *out* of that state and disabling it strands the operator.
+   */
+  canSave?: boolean
 }) {
   return (
     <TopBarActions>
@@ -56,7 +64,7 @@ export function SaveBar({
       <Button
         size="sm"
         className="h-9 rounded-[9px] px-4 font-bold"
-        disabled={!dirty || saving}
+        disabled={!dirty || saving || !canSave}
         onClick={onSave}
       >
         <Check size={14} aria-hidden="true" />
