@@ -464,6 +464,14 @@ export const messages = {
     rateLimited: 'Too many requests. Try again shortly.',
     network: 'Network error. Check your connection and retry.',
     serverError: 'Our servers hit a snag. We are on it.',
+    // The error boundary (`app/(site)/error.tsx`). A reader who hits a 500 saw a blank white
+    // page before this existed, which is worse than the 404 they get for a typo.
+    errorTitle: 'Something broke on our side',
+    errorBody:
+      'This is not you — a page failed to load. Trying again often works; if it does not, the rest of the site should still be fine.',
+    errorRetry: 'Try again',
+    errorHome: 'Go to the home page',
+    errorRef: 'Reference {id}',
     mailUnavailable: 'Email is not configured on this server. Try again later.',
     totpRequired: 'Two-factor authentication is required for admin accounts.',
   },
