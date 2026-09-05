@@ -8,16 +8,18 @@ import { buildMetadata } from './metadata'
 import { cachedSeoSettings } from './settings'
 
 /** One generateMetadata + renderer for the four legal routes. */
-export async function legalMetadata(slug: LegalSlug): Promise<Metadata> {
+export async function legalMetadata(slug: string): Promise<Metadata> {
   const page = await loadLegalPage(slug)
   return buildMetadata('page', {
     path: `/${slug}`,
-    override: { title: page?.title ?? messages.legal.pages[slug] },
+    override: {
+      title: page?.title ?? messages.legal.pages[slug as LegalSlug] ?? messages.errors.notFound,
+    },
   })
 }
 
 export async function renderLegal(
-  slug: LegalSlug,
+  slug: string,
   extra?: { aside?: ReactNode; children?: ReactNode },
 ) {
   const [page, settings] = await Promise.all([loadLegalPage(slug), cachedSeoSettings()])

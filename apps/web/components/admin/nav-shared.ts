@@ -9,6 +9,8 @@ export type AdminIcon =
   | 'gauge'
   | 'library'
   | 'file-stack'
+  | 'megaphone'
+  | 'file-text'
   | 'upload'
   | 'list-checks'
   | 'message-square'
@@ -74,6 +76,13 @@ export const adminNav: readonly AdminNavGroup[] = [
         icon: 'list-checks',
         permission: 'chapter.read',
       },
+      // Announcement authoring (docs/04 Content group): the /announcements posts and feed.
+      {
+        label: messages.adminContent.nav.announcements,
+        href: '/admin/announcements',
+        icon: 'megaphone',
+        permission: 'announcement.write',
+      },
     ],
   },
   {
@@ -137,6 +146,13 @@ export const adminNav: readonly AdminNavGroup[] = [
         icon: 'settings',
         permission: 'settings.write',
         exact: true,
+      },
+      // Legal / help pages (docs/13 §"the System group gains … Legal pages").
+      {
+        label: messages.adminContent.nav.pages,
+        href: '/admin/pages',
+        icon: 'file-text',
+        permission: 'settings.write',
       },
       { label: m.access, href: '/admin/access', icon: 'shield', permission: 'settings.write' },
       // Credentials the operator can type in rather than deploy (docs/19).

@@ -11,7 +11,12 @@ import { getMailer } from '@/lib/email'
  * `pages` table, and the notice / contact forms that land in the reports queue.
  */
 
+/**
+ * The four pages that have a route of their own. Any other published `pages` row is served
+ * by the `[slug]` catch-all, so an operator can add one without a deploy.
+ */
 export type LegalSlug = 'dmca' | 'terms' | 'privacy' | 'contact'
+export const ROUTED_LEGAL_SLUGS: readonly LegalSlug[] = ['dmca', 'terms', 'privacy', 'contact']
 
 export interface LegalPage {
   slug: string
@@ -23,7 +28,7 @@ export interface LegalPage {
 }
 
 export const loadLegalPage = unstable_cache(
-  async (slug: LegalSlug): Promise<LegalPage | null> => {
+  async (slug: string): Promise<LegalPage | null> => {
     const db = await getDb()
     const [row] = await db
       .select({
