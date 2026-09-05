@@ -16,3 +16,6 @@ test-results/
 
 # Redis snapshot, written when a dev redis is started from the repo root
 dump.rdb
+
+# Agent worktrees and local tooling state
+.claude/
