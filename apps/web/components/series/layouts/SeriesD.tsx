@@ -203,18 +203,16 @@ export function SeriesD({
 
             <div>
               {ads.top.show ? (
-                <>
-                  <AdSlot
-                    slot="series_top"
-                    width={320}
-                    height={100}
-                    desktopWidth={728}
-                    desktopHeight={90}
-                    label={messages.ads.leaderboard}
-                    placeholder={ads.top.placeholder}
-                    tag={ads.top.tag}
-                  />
-                </>
+                <AdSlot
+                  slot="series_top"
+                  width={320}
+                  height={100}
+                  desktopWidth={728}
+                  desktopHeight={90}
+                  label={messages.ads.leaderboard}
+                  placeholder={ads.top.placeholder}
+                  tag={ads.top.tag}
+                />
               ) : null}
             </div>
 

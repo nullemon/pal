@@ -92,7 +92,7 @@ export function UpdateRow({ item, user, now, priority = false, overrides = null 
         </ul>
       </div>
       {item.isPinned ? (
-        <span className="absolute right-2 top-2 inline-flex h-[18px] items-center gap-1 rounded-sm border border-brand-hover/50 bg-brand/20 px-[7px] text-[10px] font-extrabold uppercase tracking-[0.08em] text-brand-hover">
+        <span className="absolute right-2 top-2 inline-flex h-[18px] items-center gap-1 rounded-sm border border-brand-hover/50 bg-brand/10 px-[7px] text-[10px] font-extrabold uppercase tracking-[0.08em] text-brand-hover">
           <Pin size={10} strokeWidth={2.5} aria-hidden="true" />
           {messages.home.pinned}
         </span>

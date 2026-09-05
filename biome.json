@@ -8,6 +8,7 @@
       "!**/.next",
       "!**/dist",
       "!**/node_modules",
+      "!**/.claude",
       "!design",
       "!**/*.zip",
       "!packages/db/drizzle"

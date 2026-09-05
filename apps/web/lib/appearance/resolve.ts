@@ -55,6 +55,38 @@ const adjustFor = (
   return cur
 }
 
+/**
+ * The ink to print on a solid swatch of `bg`: whichever of white or the near-black page ink
+ * reads better, then nudged until it clears 4.5:1.
+ *
+ * The type and status colours are operator-chosen, so no single hard-coded text colour is
+ * safe on them — white on the default `manhwa` red is 3.9:1, which fails at badge sizes.
+ */
+const inkOn = (bg: string): string => {
+  const white = contrast('#ffffff', bg)
+  const black = contrast('#100d17', bg)
+  if (Math.max(white, black) >= 4.5) return white >= black ? '#ffffff' : '#100d17'
+  // Neither passes on the raw colour — take the better one and push it to the extreme.
+  return white >= black ? '#ffffff' : '#000000'
+}
+
+/**
+ * A solid swatch that a badge can print `inkOn()` on and still clear 4.5:1. Darkens (or
+ * lightens) the operator's colour only as far as it has to, so the palette stays theirs.
+ */
+const readableSwatch = (hexIn: string, towards: -1 | 1): string => {
+  const c = oklch(hexIn)
+  let cur = { ...c }
+  for (let i = 0; i < 40; i++) {
+    const hex = hexOf(cur)
+    if (Math.max(contrast('#ffffff', hex), contrast('#100d17', hex)) >= 4.5) return hex
+    const next = cur.l + towards * 0.02
+    if (next < 0.05 || next > 0.98) break
+    cur = { ...cur, l: next }
+  }
+  return hexOf(cur)
+}
+
 export interface ContrastCheck {
   id: 'brandOnPage' | 'textOnBrand' | 'linksOnSurface'
   ratio: number
@@ -94,39 +126,82 @@ export const resolveAppearance = (doc: AppearanceDoc): ResolvedAppearance => {
   const darkSurface1 = neutral(0.19, tint, h, 1.2)
   let brand = { ...accent, h }
   brand = adjustFor(brand, darkBg, 3, 1, 0.9)
-  const hover = { ...brand, l: Math.min(0.95, brand.l + 0.08) }
+  const darkSurface2 = neutral(0.22, tint, h, 1.2)
+  const darkSurface3 = neutral(0.26, tint, h, 1.2)
+  // `brand` is adjusted to 3:1 — the bar for a UI component. `brand-hover` is used as *link
+  // text* ("3d ago", the active tab), so it has to clear the 4.5:1 text bar instead.
+  const hover = adjustFor(
+    { ...brand, l: Math.min(0.95, brand.l + 0.08) },
+    darkSurface2,
+    4.5,
+    1,
+    0.95,
+  )
   const dim = { ...brand, l: Math.max(0.2, brand.l - 0.18), c: brand.c * 0.9 }
   const brandHex = hexOf(brand)
   const ink = contrast('#ffffff', brandHex) >= contrast('#100d17', brandHex) ? '#ffffff' : '#100d17'
+  // Both are body text, so both are held to the 4.5:1 text bar, measured against `surface-2`
+  // — the card background most of this text sits on. Measuring against `surface-3` instead
+  // drives `subtle` to near-white and flattens the scale; measuring against the page
+  // background leaves both failing on every card, which is where most of the text is.
+  const darkSubtleOk = adjustFor(oklch(neutral(0.52, tint, h, 1.8)), darkSurface2, 4.5, 1, 0.98)
+  const darkMutedRaw = adjustFor(oklch(neutral(0.68, tint, h, 1.5)), darkSurface2, 4.5, 1, 0.98)
+  // `subtle` moves furthest, and raising the two independently can leave it *lighter* than
+  // `muted` — inverting the scale the design reads by. Muted is pinned a step above it.
+  const darkMuted = hexOf({
+    ...darkMutedRaw,
+    l: Math.min(0.98, Math.max(darkMutedRaw.l, darkSubtleOk.l + 0.08)),
+  })
+  const darkSubtle = hexOf(darkSubtleOk)
   const secondaryDark = doc.color.derive_secondary
     ? hexOf({ l: 0.85, c: 0.15, h: (h + 60) % 360 })
     : doc.color.secondary
+
+  // The solid type/status badges print `--color-*-ink` on these, so each swatch is nudged
+  // until *some* ink clears 4.5:1 on it, and the ink is chosen per swatch. On dark the
+  // swatch gets darker, which keeps white readable on it.
+  const swatches = {
+    'type-manhwa': doc.color.type.manhwa,
+    'type-manhua': doc.color.type.manhua,
+    'type-manga': doc.color.type.manga,
+    'type-comic': doc.color.type.comic,
+    'status-ongoing': doc.color.status.ongoing,
+    'status-completed': doc.color.status.completed,
+    'status-hiatus': doc.color.status.hiatus,
+    'status-cancelled': doc.color.status.cancelled,
+  }
+  const typeTokens: Record<string, string> = {}
+  for (const [name, hex] of Object.entries(swatches)) {
+    // `-text` is the same colour used as *text* on a wash of itself (the subtle chips), so
+    // it has to clear 4.5:1 on the surface under that wash. `status-cancelled` at its raw
+    // #6f6890 is 3.1:1 — unreadable — which no amount of choosing an ink for a solid badge
+    // would have fixed.
+    typeTokens[`--color-${name}-text`] = hexOf(adjustFor(oklch(hex), darkSurface2, 4.5, 1, 0.98))
+    // Darken rather than lighten: a darkened swatch keeps white ink readable on it, and
+    // reads the same way on the white page background as on the dark one.
+    const swatch = readableSwatch(hex, -1)
+    typeTokens[`--color-${name}`] = swatch
+    typeTokens[`--color-${name}-ink`] = inkOn(swatch)
+  }
 
   const dark: Record<string, string> = {
     '--color-bg': darkBg,
     '--color-bg-deep': neutral(0.13, tint, h, 1.2),
     '--color-surface-1': darkSurface1,
-    '--color-surface-2': neutral(0.22, tint, h, 1.2),
-    '--color-surface-3': neutral(0.26, tint, h, 1.2),
+    '--color-surface-2': darkSurface2,
+    '--color-surface-3': darkSurface3,
     '--color-line': neutral(0.3, tint, h, 1.3),
     '--color-line-soft': neutral(0.25, tint, h, 1.3),
     '--color-fg': neutral(0.94, tint, h, 0.4),
-    '--color-fg-muted': neutral(0.68, tint, h, 1.5),
-    '--color-fg-subtle': neutral(0.52, tint, h, 1.8),
+    '--color-fg-muted': darkMuted,
+    '--color-fg-subtle': darkSubtle,
     '--color-brand': brandHex,
     '--color-brand-hover': hexOf(hover),
     '--color-brand-dim': hexOf(dim),
     '--color-brand-wash': rgbAlpha(brand, 0.14),
     '--color-brand-ink': ink,
     '--color-gold': secondaryDark,
-    '--color-type-manhwa': doc.color.type.manhwa,
-    '--color-type-manhua': doc.color.type.manhua,
-    '--color-type-manga': doc.color.type.manga,
-    '--color-type-comic': doc.color.type.comic,
-    '--color-status-ongoing': doc.color.status.ongoing,
-    '--color-status-completed': doc.color.status.completed,
-    '--color-status-hiatus': doc.color.status.hiatus,
-    '--color-status-cancelled': doc.color.status.cancelled,
+    ...typeTokens,
     '--glow-brand': doc.shape.glow
       ? `0 0 0 1px ${hexOf(dim)}, 0 6px 24px -10px ${brandHex}`
       : 'none',
@@ -151,8 +226,12 @@ export const resolveAppearance = (doc: AppearanceDoc): ResolvedAppearance => {
     '--color-line': neutral(0.89, tint, h, 0.6),
     '--color-line-soft': neutral(0.935, tint, h, 0.4),
     '--color-fg': neutral(0.2, tint, h, 1),
-    '--color-fg-muted': neutral(0.45, tint, h, 1.1),
-    '--color-fg-subtle': neutral(0.58, tint, h, 1),
+    '--color-fg-muted': hexOf(
+      adjustFor(oklch(neutral(0.45, tint, h, 1.1)), lightSurface1, 4.5, -1, 0.05),
+    ),
+    '--color-fg-subtle': hexOf(
+      adjustFor(oklch(neutral(0.58, tint, h, 1)), lightSurface1, 4.5, -1, 0.05),
+    ),
     '--color-brand': brandLightHex,
     '--color-brand-hover': hexOf({ ...brandLight, l: Math.max(0.25, brandLight.l - 0.06) }),
     '--color-brand-dim': hexOf({
@@ -163,14 +242,7 @@ export const resolveAppearance = (doc: AppearanceDoc): ResolvedAppearance => {
     '--color-brand-wash': hexOf({ l: 0.96, c: Math.min(0.04, brandLight.c * 0.2), h }),
     '--color-brand-ink': inkLight,
     '--color-gold': darkenFor(secondaryDark),
-    '--color-type-manhwa': darkenFor(doc.color.type.manhwa),
-    '--color-type-manhua': darkenFor(doc.color.type.manhua),
-    '--color-type-manga': darkenFor(doc.color.type.manga),
-    '--color-type-comic': darkenFor(doc.color.type.comic),
-    '--color-status-ongoing': darkenFor(doc.color.status.ongoing),
-    '--color-status-completed': darkenFor(doc.color.status.completed),
-    '--color-status-hiatus': darkenFor(doc.color.status.hiatus),
-    '--color-status-cancelled': darkenFor(doc.color.status.cancelled),
+    ...typeTokens,
     '--shadow-1': '0 1px 2px rgb(0 0 0 / 0.08)',
     '--shadow-2': '0 10px 30px -12px rgb(0 0 0 / 0.2)',
     '--glow-brand': doc.shape.glow

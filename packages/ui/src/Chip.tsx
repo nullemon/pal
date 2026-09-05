@@ -6,17 +6,17 @@ import type { SeriesStatus, SeriesType } from './types'
 export type ChipVariant = 'genre' | 'type' | 'status'
 
 const typeClasses: Record<SeriesType, string> = {
-  manhwa: 'bg-type-manhwa/15 text-type-manhwa',
-  manhua: 'bg-type-manhua/15 text-type-manhua',
-  manga: 'bg-type-manga/15 text-type-manga',
-  comic: 'bg-type-comic/15 text-type-comic',
+  manhwa: 'bg-type-manhwa/10 text-type-manhwa-text',
+  manhua: 'bg-type-manhua/10 text-type-manhua-text',
+  manga: 'bg-type-manga/10 text-type-manga-text',
+  comic: 'bg-type-comic/10 text-type-comic-text',
 }
 
 const statusClasses: Record<SeriesStatus, string> = {
-  ongoing: 'bg-status-ongoing/15 text-status-ongoing',
-  completed: 'bg-status-completed/15 text-status-completed',
-  hiatus: 'bg-status-hiatus/15 text-status-hiatus',
-  cancelled: 'bg-status-cancelled/15 text-status-cancelled',
+  ongoing: 'bg-status-ongoing/10 text-status-ongoing-text',
+  completed: 'bg-status-completed/10 text-status-completed-text',
+  hiatus: 'bg-status-hiatus/10 text-status-hiatus-text',
+  cancelled: 'bg-status-cancelled/10 text-status-cancelled-text',
 }
 
 export type ChipProps = {

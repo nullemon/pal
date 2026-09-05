@@ -70,76 +70,80 @@ export function PopularTabs({ lists, initial = 'weekly' }: PopularTabsProps) {
           ))}
         </div>
       </div>
-      <ol
+      {/* The tabpanel role has to sit on a wrapper, not on the <ol>: an explicit role
+          replaces the element's implicit one, so `role="tabpanel"` here stopped this being a
+          list at all and orphaned every <li> from an assistive technology's point of view. */}
+      <div
         role="tabpanel"
         id={`${baseId}-panel-${window}`}
         aria-labelledby={`${baseId}-tab-${window}`}
-        className="flex flex-col"
       >
-        {rows.map((r) => (
-          <li key={r.id} className="flex h-[66px] items-center gap-2">
-            <span
-              className={cn(
-                'w-5 shrink-0 text-center font-display text-[15px] font-extrabold tabular-nums',
-                r.rank <= 3 ? 'text-brand-hover' : 'text-fg-muted',
-              )}
-            >
-              {r.rank}
-            </span>
-            <Link
-              href={r.href}
-              tabIndex={-1}
-              aria-hidden="true"
-              className="group block h-[66px] w-11 shrink-0 overflow-hidden rounded-[5px] bg-surface-2"
-            >
-              <img
-                src={r.coverSrc}
-                alt=""
-                width={r.coverWidth}
-                height={r.coverHeight}
-                loading="lazy"
-                decoding="async"
+        <ol className="flex flex-col">
+          {rows.map((r) => (
+            <li key={r.id} className="flex h-[66px] items-center gap-2">
+              <span
                 className={cn(
-                  'h-full w-full object-cover transition-transform duration-200 motion-safe:group-hover:scale-[1.04]',
-                  r.mature && 'blur-md',
+                  'w-5 shrink-0 text-center font-display text-[15px] font-extrabold tabular-nums',
+                  r.rank <= 3 ? 'text-brand-hover' : 'text-fg-muted',
                 )}
-              />
-            </Link>
-            <div className="min-w-0 flex-1">
+              >
+                {r.rank}
+              </span>
               <Link
                 href={r.href}
-                className="block truncate text-[13px] font-bold leading-[17px] text-fg hover:text-brand-hover"
+                tabIndex={-1}
+                aria-hidden="true"
+                className="group block h-[66px] w-11 shrink-0 overflow-hidden rounded-[5px] bg-surface-2"
               >
-                {r.title}
+                <img
+                  src={r.coverSrc}
+                  alt=""
+                  width={r.coverWidth}
+                  height={r.coverHeight}
+                  loading="lazy"
+                  decoding="async"
+                  className={cn(
+                    'h-full w-full object-cover transition-transform duration-200 motion-safe:group-hover:scale-[1.04]',
+                    r.mature && 'blur-md',
+                  )}
+                />
               </Link>
-              <p className="mt-px truncate text-[13px] leading-[17px] text-fg-muted">{r.meta}</p>
-            </div>
-            {r.rating !== null ? (
-              <span
-                role="img"
-                className="inline-flex shrink-0 items-center gap-[3px] text-[12px] font-bold tabular-nums text-gold"
-                aria-label={fmt(messages.series.rated, { score: r.rating.toFixed(1) })}
-              >
-                <svg
-                  width="12"
-                  height="12"
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                  aria-hidden="true"
+              <div className="min-w-0 flex-1">
+                <Link
+                  href={r.href}
+                  className="block truncate text-[13px] font-bold leading-[17px] text-fg hover:text-brand-hover"
                 >
-                  <path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4 6.1 20.5l1.2-6.5L2.5 9.4l6.6-.9z" />
-                </svg>
-                {r.rating.toFixed(1)}
-              </span>
-            ) : null}
-          </li>
-        ))}
-        {rows.length === 0 ? (
-          <li className="py-6 text-center text-[13px] text-fg-subtle">
-            {messages.home.emptyUpdates}
-          </li>
-        ) : null}
-      </ol>
+                  {r.title}
+                </Link>
+                <p className="mt-px truncate text-[13px] leading-[17px] text-fg-muted">{r.meta}</p>
+              </div>
+              {r.rating !== null ? (
+                <span
+                  role="img"
+                  className="inline-flex shrink-0 items-center gap-[3px] text-[12px] font-bold tabular-nums text-gold"
+                  aria-label={fmt(messages.series.rated, { score: r.rating.toFixed(1) })}
+                >
+                  <svg
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    aria-hidden="true"
+                  >
+                    <path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4 6.1 20.5l1.2-6.5L2.5 9.4l6.6-.9z" />
+                  </svg>
+                  {r.rating.toFixed(1)}
+                </span>
+              ) : null}
+            </li>
+          ))}
+          {rows.length === 0 ? (
+            <li className="py-6 text-center text-[13px] text-fg-subtle">
+              {messages.home.emptyUpdates}
+            </li>
+          ) : null}
+        </ol>
+      </div>
     </div>
   )
 }

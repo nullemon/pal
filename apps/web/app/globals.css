@@ -21,8 +21,11 @@
   --color-line: #2c2540;
   --color-line-soft: #221d33;
   --color-fg: #ece9f4;
-  --color-fg-muted: #9e97b8;
-  --color-fg-subtle: #6f6890;
+  /* Both are body text and are held to WCAG AA (4.5:1) against --color-surface-2, the card
+     background most of this text sits on. `subtle` had to move furthest; `muted` is kept a
+     clear step above it so the three-weight scale still reads. */
+  --color-fg-muted: #c9c4d8;
+  --color-fg-subtle: #b2aec4;
   --color-brand: #7c3aed;
   --color-brand-hover: #8b5cf6;
   --color-brand-dim: #4c2a8f;
@@ -32,14 +35,34 @@
   --color-ok: #22c55e;
   --color-warn: #f59e0b;
   --color-danger: #ef4444;
-  --color-type-manhwa: #e5484d;
+  /* Solid badges print `--color-*-ink` on these. Each swatch is dark enough that some ink
+     clears 4.5:1 on it, and the ink is whichever of white or page-ink actually passes —
+     white on the original #e5484d was 3.9:1, which fails at badge sizes. The Appearance
+     resolver derives the same pair for an operator's own colours. */
+  --color-type-manhwa: #a93539;
+  --color-type-manhwa-text: #f6c0c2;
+  --color-type-manhwa-ink: #ffffff;
   --color-type-manhua: #12a594;
+  --color-type-manhua-text: #79ccc3;
+  --color-type-manhua-ink: #100d17;
   --color-type-manga: #3b82f6;
+  --color-type-manga-text: #3b82f6;
+  --color-type-manga-ink: #100d17;
   --color-type-comic: #a78bfa;
+  --color-type-comic-text: #a78bfa;
+  --color-type-comic-ink: #100d17;
   --color-status-ongoing: #3b82f6;
-  --color-status-completed: #22c55e;
+  --color-status-ongoing-text: #3b82f6;
+  --color-status-ongoing-ink: #100d17;
+  --color-status-completed: #157839;
+  --color-status-completed-text: #a9e8c0;
+  --color-status-completed-ink: #ffffff;
   --color-status-hiatus: #f59e0b;
+  --color-status-hiatus-text: #fce6c0;
+  --color-status-hiatus-ink: #100d17;
   --color-status-cancelled: #6f6890;
+  --color-status-cancelled-text: #b2aec4;
+  --color-status-cancelled-ink: #ffffff;
 
   /* reader page backgrounds (settings sheet + admin theme swatches) */
   --color-reader-black: #000000;

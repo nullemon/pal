@@ -4,10 +4,10 @@ import type { SeriesStatusValue, SeriesTypeValue } from './filters'
 
 /** Solid type chip from the home mockup (white on the type colour). */
 const typeClasses: Record<SeriesTypeValue, string> = {
-  manhwa: 'bg-type-manhwa text-white',
-  manhua: 'bg-type-manhua text-white',
-  manga: 'bg-type-manga text-white',
-  comic: 'bg-type-comic text-bg',
+  manhwa: 'bg-type-manhwa text-type-manhwa-ink',
+  manhua: 'bg-type-manhua text-type-manhua-ink',
+  manga: 'bg-type-manga text-type-manga-ink',
+  comic: 'bg-type-comic text-type-comic-ink',
   novel: 'bg-surface-3 text-fg',
 }
 
@@ -21,11 +21,11 @@ export function TypeBadge({ type, className }: { type: SeriesTypeValue; classNam
 }
 
 const statusClasses: Record<SeriesStatusValue, string> = {
-  ongoing: 'bg-status-ongoing/15 text-status-ongoing',
-  completed: 'bg-status-completed/15 text-status-completed',
-  hiatus: 'bg-status-hiatus/15 text-status-hiatus',
-  cancelled: 'bg-status-cancelled/15 text-status-cancelled',
-  dropped: 'bg-status-cancelled/15 text-status-cancelled',
+  ongoing: 'bg-status-ongoing/10 text-status-ongoing-text',
+  completed: 'bg-status-completed/10 text-status-completed-text',
+  hiatus: 'bg-status-hiatus/10 text-status-hiatus-text',
+  cancelled: 'bg-status-cancelled/10 text-status-cancelled-text',
+  dropped: 'bg-status-cancelled/10 text-status-cancelled-text',
 }
 
 export function StatusBadge({

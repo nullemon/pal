@@ -9,7 +9,7 @@ const badge =
 export function RoleBadge({ role }: { role: Role }) {
   if (role === 'admin')
     return (
-      <span className={`${badge} bg-brand/20 text-brand-hover`}>
+      <span className={`${badge} bg-brand/10 text-brand-hover`}>
         {messages.commentThread.roleAdmin}
       </span>
     )

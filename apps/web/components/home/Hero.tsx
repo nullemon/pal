@@ -4,10 +4,10 @@ import type { HeroSlide } from '@/components/discovery/types'
 import { HeroCarousel, type HeroSlideData } from './HeroCarousel'
 
 const typeClass: Record<HeroSlide['type'], string> = {
-  manhwa: 'bg-type-manhwa text-white',
-  manhua: 'bg-type-manhua text-white',
-  manga: 'bg-type-manga text-white',
-  comic: 'bg-type-comic text-bg',
+  manhwa: 'bg-type-manhwa text-type-manhwa-ink',
+  manhua: 'bg-type-manhua text-type-manhua-ink',
+  manga: 'bg-type-manga text-type-manga-ink',
+  comic: 'bg-type-comic text-type-comic-ink',
   novel: 'bg-surface-3 text-fg',
 }
 

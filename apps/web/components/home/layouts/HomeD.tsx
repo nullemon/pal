@@ -225,18 +225,16 @@ export function HomeD({
 
         <div className="flex min-w-0 flex-col gap-5">
           {ads.top.show ? (
-            <>
-              <AdSlot
-                slot="home_top"
-                label={messages.ads.leaderboard}
-                width={320}
-                height={100}
-                desktopWidth={970}
-                desktopHeight={90}
-                placeholder={ads.top.placeholder}
-                tag={ads.top.tag}
-              />
-            </>
+            <AdSlot
+              slot="home_top"
+              label={messages.ads.leaderboard}
+              width={320}
+              height={100}
+              desktopWidth={970}
+              desktopHeight={90}
+              placeholder={ads.top.placeholder}
+              tag={ads.top.tag}
+            />
           ) : null}
 
           {resume.length > 0 ? <ContinueReading items={resume} /> : null}
