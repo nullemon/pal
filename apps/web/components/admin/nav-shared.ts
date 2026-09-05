@@ -183,6 +183,21 @@ export const adminNav: readonly AdminNavGroup[] = [
         icon: 'palette',
         permission: 'settings.write',
       },
+      // docs/15 "Brand and identity": the name, the logo pair, the monogram the favicon and
+      // PWA icons are generated from, and the default share image.
+      {
+        label: m.brand,
+        href: '/admin/appearance/brand',
+        icon: 'stamp',
+        permission: 'settings.write',
+      },
+      // docs/15 "Header, footer, menus": every link in the chrome, plus the announcement bar.
+      {
+        label: m.menus,
+        href: '/admin/appearance/menus',
+        icon: 'layout',
+        permission: 'settings.write',
+      },
       // The attribution burned into every page image by `chapter.process` (docs/03).
       {
         label: m.watermark,

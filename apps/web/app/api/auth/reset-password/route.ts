@@ -37,6 +37,6 @@ export async function POST(request: Request): Promise<Response> {
     })
     .where(eq(users.id, user.id))
   await revokeAllSessions(user.id)
-  await (await getMailer()).send(passwordChangedMail(user.email, await siteCopy()))
+  await (await getMailer()).send(await passwordChangedMail(user.email, await siteCopy()))
   return ok({ reset: true, message: messages.authPage.resetDone })
 }

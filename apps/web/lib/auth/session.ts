@@ -7,6 +7,7 @@ import { cache } from 'react'
 import { z } from 'zod'
 import { getEnv } from '../env'
 import { activeUserBan } from './bans'
+import { SIGNED_IN_HINT_COOKIE } from './hint'
 import { getRedis } from './redis'
 import { permissionsForRole } from './roles'
 
@@ -370,11 +371,20 @@ export const sessionCookieOptions = (expiresAt: Date) => ({
 export const setSessionCookie = async (created: CreatedSession): Promise<void> => {
   const store = await cookies()
   store.set(SESSION_COOKIE, created.cookieValue, sessionCookieOptions(created.expiresAt))
+  store.set(SIGNED_IN_HINT_COOKIE, '1', {
+    ...sessionCookieOptions(created.expiresAt),
+    httpOnly: false,
+  })
 }
 
 export const clearSessionCookie = async (): Promise<void> => {
   const store = await cookies()
   store.set(SESSION_COOKIE, '', { ...sessionCookieOptions(new Date(0)), maxAge: 0 })
+  store.set(SIGNED_IN_HINT_COOKIE, '', {
+    ...sessionCookieOptions(new Date(0)),
+    httpOnly: false,
+    maxAge: 0,
+  })
 }
 
 /** Drop a user's cached session records (e.g. after a role change). */

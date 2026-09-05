@@ -3,6 +3,7 @@ import { buttonClasses } from '@palscans/ui'
 import { Bell, Search, Shuffle, Zap } from 'lucide-react'
 import Link from 'next/link'
 import { RequestTrigger } from '@/components/requests/RequestTrigger'
+import { siteChrome } from '@/lib/chrome/load'
 import { randomLink } from '@/lib/site'
 import { NavLinks } from './NavLinks'
 import { Wordmark } from './Wordmark'
@@ -10,14 +11,24 @@ import { Wordmark } from './Wordmark'
 const iconButton =
   'relative inline-flex size-[38px] shrink-0 items-center justify-center rounded-[10px] border border-line bg-surface-1 text-fg-muted transition-colors duration-[120ms] hover:bg-surface-2 hover:text-fg'
 
-export function Header() {
+/**
+ * The site header (docs/11). Links, the primary button and the wordmark all come from
+ * Appearance → Header, footer, menus (docs/15) through `siteChrome()`, which is a cached
+ * settings read and not a per-request query — see the note in `lib/chrome/load.ts` for why
+ * this leaves `/` and the series pages prerendered.
+ */
+export async function Header() {
+  const chrome = await siteChrome()
+  const mobileLinks = chrome.header.filter((l) => l.mobile)
   return (
     <header className="sticky top-0 z-30 border-b border-line bg-bg/90 backdrop-blur-[14px]">
       <div className="container-page flex h-16 items-center gap-3 md:gap-5">
-        <Wordmark />
-        <nav aria-label={messages.nav.primary} className="hidden md:block">
-          <NavLinks />
-        </nav>
+        <Wordmark brand={chrome.brand} />
+        {chrome.header.length > 0 ? (
+          <nav aria-label={messages.nav.primary} className="hidden md:block">
+            <NavLinks links={chrome.header} />
+          </nav>
+        ) : null}
 
         <form
           action="/search"
@@ -72,10 +83,15 @@ export function Header() {
               className="absolute right-[9px] top-2 size-2 rounded-full border-2 border-surface-1 bg-type-manhwa"
             />
           </Link>
-          <Link href="/subscribe" className={buttonClasses('primary', 'md', 'rounded-[10px]')}>
-            <Zap size={16} aria-hidden="true" />
-            {messages.nav.premium}
-          </Link>
+          {chrome.primaryButton ? (
+            <Link
+              href={chrome.primaryButton.href}
+              className={buttonClasses('primary', 'md', 'rounded-[10px]')}
+            >
+              <Zap size={16} aria-hidden="true" />
+              {chrome.primaryButton.label}
+            </Link>
+          ) : null}
           <Link
             href="/login"
             aria-label={messages.nav.account}
@@ -85,6 +101,21 @@ export function Header() {
           </Link>
         </div>
       </div>
+
+      {/*
+        docs/15 "Header links … and 'show on mobile' flags". The desktop row is `hidden
+        md:block`, so before this there was nowhere for a header link to appear on a phone.
+        Flagged links get a scrollable strip under the bar; with none flagged — the shipped
+        default — nothing renders and the header is exactly the height it always was.
+      */}
+      {mobileLinks.length > 0 ? (
+        <nav aria-label={messages.nav.menu} className="border-t border-line-soft md:hidden">
+          <div className="container-page overflow-x-auto py-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {/* `w-max` so a long list scrolls instead of squashing every label. */}
+            <NavLinks links={mobileLinks} className="flex w-max items-center gap-0.5" />
+          </div>
+        </nav>
+      ) : null}
     </header>
   )
 }

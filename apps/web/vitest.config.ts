@@ -16,5 +16,13 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['lib/**/*.test.ts', 'app/**/*.test.ts'],
+    /**
+     * Six suites build a throwaway database in `beforeAll` — `createDb('pglite://memory')`
+     * then the whole migration set — which is a second or two idle and well past Vitest's 10s
+     * default when several workers are doing it at once on a busy machine. The number of test
+     * files is not supposed to be load-bearing: adding one elsewhere in the suite should not
+     * make a database fixture time out, which is exactly what happened here.
+     */
+    hookTimeout: 60_000,
   },
 })

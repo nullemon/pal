@@ -7,8 +7,10 @@ const heading = 'text-[11px] font-extrabold uppercase tracking-[0.12em] text-fg-
 function Links({ column }: { column: FooterColumnConfig }) {
   return (
     <ul className="flex flex-col gap-1 text-[13px]">
-      {column.links.map((link) => (
-        <li key={link.label}>
+      {column.links.map((link, i) => (
+        // Position, not label: an operator may repeat one.
+        // biome-ignore lint/suspicious/noArrayIndexKey: links are positional
+        <li key={i}>
           <Link
             href={link.href}
             className="inline-flex min-h-8 items-center text-fg-muted transition-colors duration-[120ms] hover:text-fg md:min-h-0"

@@ -1,5 +1,6 @@
 import { renderTemplate, type SeoPageType, type TemplateVars, truncateWords } from '@palscans/core'
 import type { Metadata } from 'next'
+import { brandSocialImage } from '../chrome/load'
 import { getEnv } from '../env'
 import { cachedSeoSettings, type SeoSettings, templateFor } from './settings'
 import { absoluteUrl, storagePublicUrl } from './urls'
@@ -198,13 +199,17 @@ export async function buildMetadata(
   page: MetadataPageType,
   ctx: MetadataContext,
 ): Promise<Metadata> {
-  const settings = await cachedSeoSettings()
+  const [settings, brandSocial] = await Promise.all([cachedSeoSettings(), brandSocialImage()])
   const env = getEnv()
   return metadataFor(
     settings,
     {
       siteUrl: env.SITE_URL,
-      defaultOgImage: storagePublicUrl(settings.identity.default_og_image_key),
+      // SEO -> Identity wins when it names one; otherwise Appearance -> Brand's default
+      // social image (docs/15) stands in, so a site that set a share card once has one
+      // everywhere without filling the same field on two screens.
+      defaultOgImage:
+        storagePublicUrl(settings.identity.default_og_image_key) ?? brandSocial ?? null,
     },
     page,
     ctx,

@@ -1,5 +1,6 @@
 import type { CopyFn } from '@palscans/core/copy'
 import { messages } from '@palscans/core/messages'
+import { siteChrome } from '../chrome/load'
 import { getEnv } from '../env'
 import type { Mail } from './mailer'
 
@@ -36,8 +37,25 @@ const escapeHtml = (s: string) =>
     (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] ?? c,
   )
 
-const layout = (title: string, lines: string[], cta?: { href: string; label: string }) => {
-  const site = getEnv().SITE_NAME
+/**
+ * The name in the masthead is the operator's, from Appearance → Brand — served from the same
+ * cached entry the site shell reads, so a mail costs no extra query. `SITE_NAME` is the
+ * fallback for the case that matters: the worker sending mail while the database is away.
+ */
+const siteName = async (): Promise<string> => {
+  try {
+    return (await siteChrome()).brand.name
+  } catch {
+    return getEnv().SITE_NAME
+  }
+}
+
+const layout = async (
+  title: string,
+  lines: string[],
+  cta?: { href: string; label: string },
+): Promise<string> => {
+  const site = await siteName()
   const body = lines.map((l) => `<p style="margin:0 0 12px">${escapeHtml(l)}</p>`).join('')
   const button = cta
     ? `<p style="margin:20px 0"><a href="${escapeHtml(cta.href)}" style="display:inline-block;background:#7c3aed;color:#fff;text-decoration:none;font-weight:700;padding:12px 20px;border-radius:8px">${escapeHtml(cta.label)}</a></p><p style="margin:0 0 12px;color:#9e97b8;font-size:13px">${escapeHtml(cta.href)}</p>`
@@ -47,7 +65,7 @@ const layout = (title: string, lines: string[], cta?: { href: string; label: str
 
 const link = (path: string) => `${getEnv().SITE_URL.replace(/\/+$/, '')}${path}`
 
-export const verifyEmailMail = (to: string, token: string, copy: CopyFn): Mail => {
+export const verifyEmailMail = async (to: string, token: string, copy: CopyFn): Promise<Mail> => {
   const href = link(`/verify?token=${encodeURIComponent(token)}`)
   const subject = copy('email.verify.subject')
   const intro = copy('email.verify.intro')
@@ -56,11 +74,11 @@ export const verifyEmailMail = (to: string, token: string, copy: CopyFn): Mail =
     to,
     subject,
     text: `${intro}\n\n${href}\n\n${m.expiry}`,
-    html: layout(subject, [intro, m.expiry], { href, label: m.cta }),
+    html: await layout(subject, [intro, m.expiry], { href, label: m.cta }),
   }
 }
 
-export const resetPasswordMail = (to: string, token: string, copy: CopyFn): Mail => {
+export const resetPasswordMail = async (to: string, token: string, copy: CopyFn): Promise<Mail> => {
   const href = link(`/reset-password?token=${encodeURIComponent(token)}`)
   const subject = copy('email.reset.subject')
   const intro = copy('email.reset.intro')
@@ -69,11 +87,11 @@ export const resetPasswordMail = (to: string, token: string, copy: CopyFn): Mail
     to,
     subject,
     text: `${intro}\n\n${href}\n\n${m.expiry}\n${m.ignore}`,
-    html: layout(subject, [intro, m.expiry, m.ignore], { href, label: m.cta }),
+    html: await layout(subject, [intro, m.expiry, m.ignore], { href, label: m.cta }),
   }
 }
 
-export const passwordChangedMail = (to: string, copy: CopyFn): Mail => {
+export const passwordChangedMail = async (to: string, copy: CopyFn): Promise<Mail> => {
   const subject = copy('email.passwordChanged.subject')
   const intro = copy('email.passwordChanged.intro')
   const m = MAIL_FIXED.passwordChanged
@@ -81,11 +99,15 @@ export const passwordChangedMail = (to: string, copy: CopyFn): Mail => {
     to,
     subject,
     text: `${intro}\n${m.ignore}`,
-    html: layout(subject, [intro, m.ignore]),
+    html: await layout(subject, [intro, m.ignore]),
   }
 }
 
-export const deletionScheduledMail = (to: string, purgeAt: Date, copy: CopyFn): Mail => {
+export const deletionScheduledMail = async (
+  to: string,
+  purgeAt: Date,
+  copy: CopyFn,
+): Promise<Mail> => {
   const subject = copy('email.deletion.subject')
   const intro = copy('email.deletion.intro')
   const m = MAIL_FIXED.deletion
@@ -95,6 +117,6 @@ export const deletionScheduledMail = (to: string, purgeAt: Date, copy: CopyFn): 
     to,
     subject,
     text: `${intro} ${when}.\n\n${m.cancel}\n${href}`,
-    html: layout(subject, [`${intro} ${when}.`, m.cancel], { href, label: m.cta }),
+    html: await layout(subject, [`${intro} ${when}.`, m.cancel], { href, label: m.cta }),
   }
 }

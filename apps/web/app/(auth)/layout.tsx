@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { Wordmark } from '@/components/shell/Wordmark'
+import { siteChrome } from '@/lib/chrome/load'
 import { Collage, loadCollageCovers } from './_components/Collage'
 
 /**
@@ -12,7 +13,7 @@ import { Collage, loadCollageCovers } from './_components/Collage'
  * and a "back" link are the only way out. Dynamic (every page here reads cookies).
  */
 export default async function AuthLayout({ children }: { children: ReactNode }) {
-  const covers = await loadCollageCovers()
+  const [covers, { copyright }] = await Promise.all([loadCollageCovers(), siteChrome()])
   return (
     <ToastProvider>
       <div className="grid min-h-dvh grid-rows-[auto_1fr] bg-bg lg:grid-cols-[minmax(0,560px)_1fr] lg:grid-rows-1">
@@ -33,7 +34,7 @@ export default async function AuthLayout({ children }: { children: ReactNode }) 
           <main id="main" className="flex flex-1 flex-col justify-center py-10 lg:py-14">
             <div className="mx-auto w-full max-w-[400px]">{children}</div>
           </main>
-          <p className="text-[12px] text-fg-subtle">{messages.site.copyright}</p>
+          <p className="text-[12px] text-fg-subtle">{copyright}</p>
         </div>
       </div>
     </ToastProvider>

@@ -7,22 +7,45 @@ import type { ReactNode } from 'react'
 import { ServiceWorker } from '@/components/shell/ServiceWorker'
 import { ThemeScript } from '@/components/shell/ThemeScript'
 import { AppearanceStyle } from '@/lib/appearance/AppearanceStyle'
+import { iconHref } from '@/lib/chrome/icons'
+import { brandIcons, siteChrome } from '@/lib/chrome/load'
 import { SeoHead } from '@/lib/seo/SeoHead'
-import { site } from '@/lib/site'
 
-export const metadata: Metadata = {
-  title: { default: site.name, template: `%s · ${site.name}` },
-  description: site.tagline,
-  // docs/06 "Mobile specifics" — installable, with the icon iOS uses on the home screen.
-  applicationName: site.name,
-  appleWebApp: { capable: true, title: site.name, statusBarStyle: 'black-translucent' },
-  icons: {
-    icon: [
-      { url: '/icons/icon.svg', type: 'image/svg+xml' },
-      { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
-    ],
-    apple: '/icons/apple-touch-icon.png',
-  },
+/**
+ * Titles, the application name and the icons all come from Appearance → Brand (docs/15).
+ *
+ * `generateMetadata` rather than a static `metadata` object because the site name is now a
+ * setting. It stays compatible with prerendering: it reads the same cached settings entry the
+ * shell does and nothing request-scoped (see `lib/chrome/load.ts`).
+ *
+ * Icons fall back to the files in `public/icons/` whenever no monogram has been uploaded, so
+ * an unconfigured site links exactly the icons it always did.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const [{ brand }, icons] = await Promise.all([siteChrome(), brandIcons()])
+  return {
+    title: { default: brand.name, template: `%s · ${brand.name}` },
+    description: brand.tagline,
+    // docs/06 "Mobile specifics" — installable, with the icon iOS uses on the home screen.
+    applicationName: brand.name,
+    appleWebApp: { capable: true, title: brand.name, statusBarStyle: 'black-translucent' },
+    icons: icons
+      ? {
+          icon: [
+            ...(icons.svgUrl ? [{ url: icons.svgUrl, type: 'image/svg+xml' }] : []),
+            { url: iconHref(icons.version, 'icon-32.png'), sizes: '32x32', type: 'image/png' },
+            { url: iconHref(icons.version, 'icon-192.png'), sizes: '192x192', type: 'image/png' },
+          ],
+          apple: iconHref(icons.version, 'apple-touch-icon.png'),
+        }
+      : {
+          icon: [
+            { url: '/icons/icon.svg', type: 'image/svg+xml' },
+            { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+          ],
+          apple: '/icons/apple-touch-icon.png',
+        },
+  }
 }
 
 export const viewport: Viewport = {

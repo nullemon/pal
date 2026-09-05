@@ -3,7 +3,7 @@ import { adminMessages } from '@palscans/core/messages/admin'
 import { ToastProvider } from '@palscans/ui'
 import { ArrowLeft } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { site } from '@/lib/site'
+import { siteChrome } from '@/lib/chrome/load'
 import { AdminNavLinks, Breadcrumb } from './client/AdminNav'
 import { navForUser } from './nav'
 
@@ -12,8 +12,9 @@ import { navForUser } from './nav'
  * footer), a 60px top bar with the breadcrumb and an action slot the page fills through
  * <TopBarActions>, and the content column.
  */
-export function AdminShell({ user, children }: { user: SessionUser; children: ReactNode }) {
+export async function AdminShell({ user, children }: { user: SessionUser; children: ReactNode }) {
   const groups = navForUser(user)
+  const { brand } = await siteChrome()
   const initial = (user.username ?? user.email ?? '?').slice(0, 1).toUpperCase()
   return (
     <ToastProvider>
@@ -50,7 +51,7 @@ export function AdminShell({ user, children }: { user: SessionUser; children: Re
               </div>
               <div className="flex items-center gap-1.5 text-[12px] leading-4 text-fg-muted">
                 <span className="size-1.5 rounded-full bg-brand-hover" aria-hidden="true" />
-                {adminMessages.admin.footerStatus.replace('{site}', site.name.toLowerCase())}
+                {adminMessages.admin.footerStatus.replace('{site}', brand.name.toLowerCase())}
               </div>
             </div>
             <a

@@ -1,8 +1,9 @@
 import { messages } from '@palscans/core/messages'
 import { buttonClasses } from '@palscans/ui'
-import { footerColumns, site, socialLinks } from '@/lib/site'
+import { siteChrome } from '@/lib/chrome/load'
+import { FooterRss } from '@/lib/seo/FooterRss'
 import { FooterColumn } from './FooterColumn'
-import { SocialIcon } from './SocialIcons'
+import { SocialIcon, SupportIcon } from './SocialIcons'
 import { Wordmark } from './Wordmark'
 
 function DiscordIcon() {
@@ -25,53 +26,101 @@ function DiscordIcon() {
   )
 }
 
+const iconLink =
+  'inline-flex size-9 items-center justify-center rounded-md border border-line bg-surface-1 text-fg-muted transition-colors duration-[120ms] hover:bg-surface-2 hover:text-fg'
+
 /**
- * docs/11: four columns on desktop (brand · Browse · Account · Legal), an accordion on
- * mobile, then the Discord button and the social icon row under the grid, then copyright.
- * Static server markup, identical on every page.
+ * docs/11: the brand block plus up to four operator-named columns on desktop, an accordion on
+ * mobile, then the community row (Discord, socials, support links, RSS) and the copyright and
+ * attribution lines. Every string here comes from Appearance → Header, footer, menus
+ * (docs/15) with the shipped footer as the fallback. Static server markup, identical on
+ * every page.
  */
-export function Footer() {
+export async function Footer() {
+  const chrome = await siteChrome()
+  const { community } = chrome
+  const columns = chrome.footer.length
   return (
     <footer className="mt-10 border-t border-line bg-bg-deep">
       <div className="container-page py-8">
-        <div className="grid gap-x-8 gap-y-2 md:grid-cols-[minmax(0,1.6fr)_repeat(3,minmax(0,1fr))] md:gap-y-8">
+        <div
+          className="footer-grid grid gap-x-8 gap-y-2 md:gap-y-8"
+          // The brand block plus one track per column, so removing a column closes the gap
+          // rather than leaving a hole. `.footer-grid` in globals.css keeps the mobile stack.
+          style={
+            {
+              '--footer-cols':
+                columns > 0 ? `minmax(0,1.6fr) repeat(${columns}, minmax(0,1fr))` : 'minmax(0,1fr)',
+            } as React.CSSProperties
+          }
+        >
           <div className="mb-4 max-w-[320px] md:mb-0">
-            <Wordmark size="sm" />
-            <p className="mt-3 text-[13px] leading-[18px] text-fg-muted">{site.tagline}</p>
+            <Wordmark size="sm" brand={chrome.brand} />
+            <p className="mt-3 text-[13px] leading-[18px] text-fg-muted">{chrome.brand.tagline}</p>
           </div>
-          {footerColumns.map((column) => (
-            <FooterColumn key={column.title} column={column} />
+          {chrome.footer.map((column, i) => (
+            <FooterColumn
+              // Position, not title: nothing stops an operator naming two columns the same.
+              // biome-ignore lint/suspicious/noArrayIndexKey: columns are positional
+              key={i}
+              column={column}
+            />
           ))}
         </div>
 
         <section aria-label={messages.footer.community} className="mt-8 flex flex-col gap-3">
-          <a
-            href={site.discordUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={buttonClasses('primary', 'sm', 'self-start')}
-          >
-            <DiscordIcon />
-            {messages.footer.joinDiscord}
-          </a>
-          <ul className="flex gap-1.5">
-            {socialLinks.map((s) => (
-              <li key={s.network}>
-                <a
-                  href={s.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={s.label}
-                  className="inline-flex size-9 items-center justify-center rounded-md border border-line bg-surface-1 text-fg-muted transition-colors duration-[120ms] hover:bg-surface-2 hover:text-fg"
-                >
-                  <SocialIcon network={s.network} />
-                </a>
-              </li>
-            ))}
-          </ul>
+          {community.discordUrl ? (
+            <a
+              href={community.discordUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={buttonClasses('primary', 'sm', 'self-start')}
+            >
+              <DiscordIcon />
+              {messages.footer.joinDiscord}
+            </a>
+          ) : null}
+          {community.socials.length > 0 || community.support.length > 0 || community.rss ? (
+            <ul className="flex flex-wrap gap-1.5">
+              {community.socials.map((s) => (
+                <li key={s.network}>
+                  <a
+                    href={s.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={s.label}
+                    className={iconLink}
+                  >
+                    <SocialIcon network={s.network} />
+                  </a>
+                </li>
+              ))}
+              {community.rss ? (
+                <li>
+                  <FooterRss />
+                </li>
+              ) : null}
+              {community.support.map((s) => (
+                <li key={s.network}>
+                  <a
+                    href={s.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={s.label}
+                    className={iconLink}
+                  >
+                    <SupportIcon network={s.network} />
+                  </a>
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </section>
 
-        <p className="mt-8 border-t border-line pt-4 text-[13px] text-fg-muted">{site.copyright}</p>
+        <div className="mt-8 border-t border-line pt-4 text-[13px] text-fg-muted">
+          <p>{chrome.copyright}</p>
+          {chrome.attribution ? <p className="mt-1">{chrome.attribution}</p> : null}
+        </div>
       </div>
     </footer>
   )

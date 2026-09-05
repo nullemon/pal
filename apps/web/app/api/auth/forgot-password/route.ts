@@ -45,7 +45,7 @@ export async function POST(request: Request): Promise<Response> {
       const user = await findUserByEmail(email)
       if (!user || user.deletedAt) return
       const token = await issueToken(user.id, 'reset_password')
-      const sent = await mailer.send(resetPasswordMail(user.email, token, await siteCopy()))
+      const sent = await mailer.send(await resetPasswordMail(user.email, token, await siteCopy()))
       if (!sent.ok) console.error('[auth] reset mail failed', { userId: user.id })
     } catch (err) {
       console.error('[auth] forgot-password background step failed', err)

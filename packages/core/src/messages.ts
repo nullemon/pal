@@ -55,6 +55,16 @@ export const messages = {
     joinDiscord: 'Join the Discord',
     rss: 'RSS',
   },
+  /**
+   * The announcement bar the operator puts above the header (docs/15). Public copy: the bar
+   * renders on every page of the site.
+   */
+  announcementBar: {
+    info: 'Notice',
+    warning: 'Warning',
+    promo: 'Announcement',
+    dismiss: 'Dismiss this notice',
+  },
   home: {
     heroEyebrow: 'Featured',
     trending: 'Trending',

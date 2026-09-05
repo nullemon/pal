@@ -161,6 +161,38 @@
   --glow-brand: none;
 }
 
+/*
+ * Appearance -> Brand: the logo pair (docs/15 "separate uploads for dark and light
+ * backgrounds"). Both images are in the markup and CSS picks. The theme is set by a script
+ * before first paint, so choosing on the server would be wrong for half the readers and
+ * choosing after hydration would flash the wrong logo. Only rendered when *both* have been
+ * uploaded — a single logo carries no swap class and shows in either theme.
+ */
+.brand-logo-light {
+  display: none;
+}
+
+/*
+ * The footer grid: one track for the brand block plus one per operator-named column
+ * (docs/15 "up to four named columns"). The column count is only known at render time, so it
+ * arrives as `--footer-cols`; the media query has to live here because an inline style cannot
+ * carry one, and the columns must still stack below md exactly as they always did.
+ */
+.footer-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 768px) {
+  .footer-grid {
+    grid-template-columns: var(--footer-cols, minmax(0, 1.6fr) repeat(3, minmax(0, 1fr)));
+  }
+}
+:root[data-theme="light"] .brand-logo-dark {
+  display: none;
+}
+:root[data-theme="light"] .brand-logo-light {
+  display: block;
+}
+
 @layer base {
   html {
     background: var(--color-bg);

@@ -13,9 +13,9 @@ import {
 import { archiveFileName, cbzStream, chapterArchiveEntries } from '@/lib/archive/cbz'
 import { clientIp, getRateLimiter, ipKey, rateLimited } from '@/lib/auth'
 import { getSessionUser } from '@/lib/auth/session'
+import { siteChrome } from '@/lib/chrome/load'
 import { entitlementGate } from '@/lib/entitlements'
 import { getEnv } from '@/lib/env'
-import { site } from '@/lib/site'
 import { getStorage } from '@/lib/storage'
 
 const idSchema = z.coerce.number().int().positive()
@@ -102,7 +102,7 @@ export async function GET(request: Request, ctx: RouteParams<{ id: string }>) {
     pageCount: bundle.pages.length,
     readingDirection: owner.readingDirection,
     url: `${origin}${chapterHref(owner.slug, bundle.chapter.number)}`,
-    siteName: site.name,
+    siteName: (await siteChrome()).brand.name,
   })
 
   const name = `${archiveFileName({ seriesSlug: owner.slug, number })}.cbz`

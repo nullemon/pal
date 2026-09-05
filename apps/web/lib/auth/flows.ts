@@ -67,7 +67,7 @@ export const sendVerification = async (
   email: string,
 ): Promise<{ ok: boolean; error?: string }> => {
   const token = await issueToken(userId, 'verify_email')
-  return (await getMailer()).send(verifyEmailMail(email, token, await siteCopy()))
+  return (await getMailer()).send(await verifyEmailMail(email, token, await siteCopy()))
 }
 
 /** The TOTP step between a correct password and a session: a signed 5-minute cookie. */

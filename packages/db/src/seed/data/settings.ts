@@ -57,24 +57,29 @@ export const COMMENTS = {
   lockdown: false,
 }
 
-/** settings.site — identity, community links, footer. */
+/** The community links, shared by `MENUS` and the SEO `same_as` list so they cannot drift. */
+export const SOCIALS = {
+  x: 'https://x.com/palscans',
+  instagram: 'https://instagram.com/palscans',
+  reddit: 'https://reddit.com/r/palscans',
+  youtube: 'https://youtube.com/@palscans',
+  facebook: 'https://facebook.com/palscans',
+}
+
+export const DISCORD_URL = 'https://discord.gg/palscans'
+
+/**
+ * settings.site — the identity row Admin → Settings writes and the site header, footer and
+ * page titles read (docs/15 "Brand and identity"). The chrome's links live in `MENUS`; this
+ * row is the name, the tagline, the address and the two operating switches.
+ */
 export const SITE = {
   name: 'PALScans',
   tagline: 'Read manhwa, manga and manhua, updated daily.',
   url: 'https://palscans.org',
-  discord_url: 'https://discord.gg/palscans',
-  socials: {
-    x: 'https://x.com/palscans',
-    instagram: 'https://instagram.com/palscans',
-    reddit: 'https://reddit.com/r/palscans',
-    youtube: 'https://youtube.com/@palscans',
-    facebook: 'https://facebook.com/palscans',
-  },
-  support_links: { patreon: null, kofi: null, buymeacoffee: null },
-  copyright: '© 2026 PALScans. All series belong to their respective authors and publishers.',
+  discord_url: DISCORD_URL,
   registration: 'open',
   maintenance: { enabled: false, eta: null },
-  announcement_bar: { enabled: false, text: null, tone: 'info', audience: 'everyone' },
   formatting: {
     relative_times: 'both',
     clock: '24h',
@@ -98,23 +103,33 @@ export const HOME_LAYOUT = {
   ],
 }
 
+/**
+ * settings.menus — Appearance → Header, footer, menus (docs/15).
+ *
+ * The shipped chrome, written out as data. It has to stay identical to `DEFAULT_CHROME` in
+ * apps/web/lib/site.ts: a freshly seeded site and a site with no row at all must look the
+ * same, and this row is the one that would silently make them differ. Change both together.
+ */
 export const MENUS = {
   header: [
-    { label: 'Home', href: '/', mobile: true },
-    { label: 'Browse', href: '/browse', mobile: true },
-    { label: 'Rankings', href: '/rankings', mobile: false },
-    { label: 'Genres', href: '/genres', mobile: false },
-    { label: 'Bookmarks', href: '/me/bookmarks', mobile: true },
+    { label: 'Home', href: '/', prefix: false, mobile: false },
+    { label: 'Browse', href: '/browse', prefix: true, mobile: false },
+    { label: 'Rankings', href: '/rankings', prefix: true, mobile: false },
+    { label: 'Genres', href: '/genres', prefix: true, mobile: false },
+    { label: 'Bookmarks', href: '/me/bookmarks', prefix: true, mobile: false },
   ],
-  primary_button: { label: 'Premium', href: '/premium' },
+  primary_button: { enabled: true, label: 'Premium', href: '/subscribe' },
   footer: [
     {
       title: 'Browse',
       links: [
-        { label: 'Latest updates', href: '/' },
+        { label: 'Latest updates', href: '/?sort=latest' },
         { label: 'Popular', href: '/rankings' },
         { label: 'Genres', href: '/genres' },
         { label: 'Rankings', href: '/rankings' },
+        { label: 'Random', href: '/random' },
+        { label: 'Announcements', href: '/announcements' },
+        { label: 'Requests', href: '/requests' },
       ],
     },
     {
@@ -122,8 +137,10 @@ export const MENUS = {
       links: [
         { label: 'Bookmarks', href: '/me/bookmarks' },
         { label: 'Reading history', href: '/me/history' },
-        { label: 'Notifications', href: '/me/notifications' },
-        { label: 'PALScans Premium', href: '/premium' },
+        { label: 'Lists', href: '/me/lists' },
+        { label: 'Stats', href: '/me/stats' },
+        { label: 'Notifications', href: '/me/settings#notifications' },
+        { label: 'PALScans Premium', href: '/subscribe' },
       ],
     },
     {
@@ -133,10 +150,28 @@ export const MENUS = {
         { label: 'Terms of service', href: '/terms' },
         { label: 'Privacy policy', href: '/privacy' },
         { label: 'Contact', href: '/contact' },
+        { label: 'Status', href: '/status' },
       ],
     },
   ],
-  bottom_nav: ['home', 'browse', 'bookmarks', 'account'],
+  bottom_nav: ['home', 'browse', 'bookmarks', 'profile'],
+  community: {
+    discord_url: DISCORD_URL,
+    socials: SOCIALS,
+    support: { patreon: null, kofi: null, buymeacoffee: null },
+    rss: false,
+  },
+  copyright: '© 2026 PALScans. All series belong to their respective authors and publishers.',
+  attribution: null,
+  announcement: {
+    enabled: false,
+    text: '',
+    tone: 'info',
+    starts_at: null,
+    ends_at: null,
+    audience: 'everyone',
+    dismissible: true,
+  },
 }
 
 /** seo_settings rows — docs/12 §2, §5–§8. */
@@ -149,7 +184,7 @@ export const SEO: Record<string, unknown> = {
     default_og_image_key: null,
     logo_key: null,
     x_handle: '@palscans',
-    same_as: Object.values(SITE.socials).concat(SITE.discord_url),
+    same_as: Object.values(SOCIALS).concat(DISCORD_URL),
   },
   templates: DEFAULT_SEO_TEMPLATES,
   sitemap: {
@@ -217,15 +252,8 @@ export const LIGHT_TOKENS: Record<string, string> = {
 
 export const APPEARANCE = {
   version: 1,
-  brand: {
-    site_name: 'PALScans',
-    tagline: SITE.tagline,
-    wordmark: 'logo+name',
-    logo_dark_key: null,
-    logo_light_key: null,
-    monogram_key: null,
-    social_image_key: null,
-  },
+  // Brand and identity are not part of this document: they live in `settings.site` and
+  // `settings.brand`, edited by Appearance -> Brand (docs/15).
   color: {
     accent: '#7c3aed',
     secondary: '#f5c451',

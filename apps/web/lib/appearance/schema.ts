@@ -11,27 +11,14 @@ const hex = z
   .regex(/^#[0-9a-fA-F]{6}$/)
   .transform((s) => s.toLowerCase())
 
+/**
+ * This document carries the theme — colour, typography, shape — and nothing else. Brand and
+ * identity used to have a `brand` block here that nothing read or wrote; it now lives in
+ * `settings.brand` and `settings.site`, edited by Appearance → Brand and resolved by
+ * `lib/chrome/`. Unknown keys are dropped, so an older stored document still parses.
+ */
 export const appearanceSchema = z.object({
   version: z.number().int().catch(1),
-  brand: z
-    .object({
-      site_name: z.string().max(60).catch('PALScans'),
-      tagline: z.string().max(200).catch('Read manhwa, manga and manhua, updated daily.'),
-      wordmark: z.enum(['logo', 'logo+name', 'name']).catch('logo+name'),
-      logo_dark_key: z.string().nullable().catch(null),
-      logo_light_key: z.string().nullable().catch(null),
-      monogram_key: z.string().nullable().catch(null),
-      social_image_key: z.string().nullable().catch(null),
-    })
-    .catch({
-      site_name: 'PALScans',
-      tagline: 'Read manhwa, manga and manhua, updated daily.',
-      wordmark: 'logo+name',
-      logo_dark_key: null,
-      logo_light_key: null,
-      monogram_key: null,
-      social_image_key: null,
-    }),
   color: z.object({
     accent: hex.catch('#7c3aed'),
     secondary: hex.catch('#f5c451'),
