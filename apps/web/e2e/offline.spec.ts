@@ -51,10 +51,10 @@ test.describe('offline downloads', () => {
         { timeout: 20_000, message: 'download sheet never opened' },
       )
       .toBe(true)
-    const row = sheet.locator('li button:has-text("Download")').first()
+    const row = sheet.locator('li button:has-text("Keep offline")').first()
     await expect(row).toBeVisible({ timeout: 15_000 })
     await row.click()
-    await expect(page.getByText('Downloaded').first()).toBeVisible({ timeout: 60_000 })
+    await expect(page.getByText('On this device').first()).toBeVisible({ timeout: 60_000 })
 
     // What landed on disk: a manifest row, and one cached response per page plus the cover.
     const stored = await page.evaluate(async () => {

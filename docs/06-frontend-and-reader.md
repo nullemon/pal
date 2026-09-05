@@ -153,6 +153,21 @@ written at most once every 5 seconds and once more on `visibilitychange` via
 `navigator.sendBeacon`. Resume restores chapter, mode and position. Offline downloads
 (Premium) cache a chapter's pages in the Cache API with a manifest in IndexedDB.
 
+**Two downloads, and the copy has to keep them apart.** *Keep on this device* is the cache
+above: pages live inside the PWA, readable with no connection, and they go when the reader
+clears the browser. *Save the files* is `GET /api/chapters/:id/cbz` — a CBZ (a ZIP of the
+page images in reading order plus `ComicInfo.xml`) that lands in the downloads folder and
+opens in any reader app. Both sit in the Download sheet on the series page, per chapter, and
+both are gated identically and server-side: the `offline` entitlement *and* the viewer's
+right to read that chapter. The archive is streamed one page at a time — a 60-page chapter
+at 1440px must never be assembled in memory — and rate-limited far more tightly than a page
+read, because it is the one route where image bytes do pass through the application server.
+
+PDF is deliberately not offered. PDF cannot embed WebP or AVIF, so every page would have to
+be transcoded to JPEG per request: a large CPU cost on the box the CBZ route was carefully
+kept cheap on, a bigger file, and a worse reading experience than the format the audience's
+apps already open.
+
 ### Locked chapters
 
 The reader route checks entitlement server-side. A non-entitled user gets the subscribe

@@ -67,7 +67,12 @@ take down a title, roll back.
 
 1. Authorization is computed once, on the server. The client renders; it never decides.
 2. Locked content is never sent to a client that may not read it.
-3. Image bytes never pass through the application server.
+3. Image bytes never pass through the application server — with one deliberate exception,
+   the CBZ download (`/api/chapters/:id/cbz`). A ZIP cannot be assembled anywhere else. It is
+   streamed a page at a time rather than buffered, gated on the same entitlement check as the
+   reader, and rate-limited far more tightly than page reads (8 per 5 minutes per account
+   against the reader's 60 per minute). Every other path still serves images straight from
+   the CDN.
 4. Every destructive admin action writes an audit row.
 5. Content is soft-deleted and recoverable — series, chapters, comments, users. (The two
    deliberate exceptions: a reader clearing their own preference rows, and objects you delete

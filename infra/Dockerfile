@@ -7,6 +7,12 @@ FROM node:22-alpine AS base
 # silent hang, then a restart loop, if egress is firewalled). Keep in step with
 # `packageManager` in the root package.json.
 RUN corepack enable && corepack prepare pnpm@11.25.0 --activate
+# The page watermark (docs/03, Admin -> Appearance -> Watermark) is drawn as SVG text and
+# composited by sharp, which resolves the face through fontconfig. node:22-alpine ships no
+# fonts at all, and librsvg fails silently on a missing face -- it renders an empty layer,
+# so every page would come out unmarked. The worker composites and the web app renders the
+# admin preview with the same code, so both stages need this.
+RUN apk add --no-cache fontconfig font-dejavu
 WORKDIR /repo
 
 FROM base AS deps

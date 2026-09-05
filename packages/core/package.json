@@ -42,6 +42,10 @@
       "types": "./dist/comments/index.d.ts",
       "default": "./dist/comments/index.js"
     },
+    "./watermark": {
+      "types": "./dist/watermark.d.ts",
+      "default": "./dist/watermark.js"
+    },
     "./messages": {
       "types": "./dist/messages.d.ts",
       "default": "./dist/messages.js"

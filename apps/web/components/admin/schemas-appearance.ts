@@ -1,4 +1,13 @@
+import { watermarkSettingSchema } from '@palscans/core/watermark'
 import { z } from 'zod'
+
+/**
+ * Appearance -> Watermark. The schema lives in `@palscans/core/watermark` so the admin
+ * screen, the API route and the worker that burns the mark in all validate one definition;
+ * that module pulls in nothing but zod, which is what keeps this file client-safe.
+ */
+export { watermarkSettingSchema }
+export type WatermarkSetting = z.infer<typeof watermarkSettingSchema>
 
 export const DIRECTIONS = ['A', 'B', 'C', 'D', 'E', 'F'] as const
 export type Direction = (typeof DIRECTIONS)[number]

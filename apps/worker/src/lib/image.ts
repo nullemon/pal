@@ -1,6 +1,12 @@
 import { createHash } from 'node:crypto'
+import {
+  type WatermarkConfig,
+  watermarkFingerprint,
+  watermarkGeometry,
+  watermarkSvg,
+} from '@palscans/core/watermark'
 import { encode } from 'blurhash'
-import sharp, { type Sharp } from 'sharp'
+import sharp, { type OverlayOptions, type Sharp } from 'sharp'
 
 /**
  * docs/03 "Worker: chapter.process", per page: apply EXIF orientation and strip metadata,
@@ -25,7 +31,7 @@ export interface EncodedVariant {
 }
 
 export interface EncodedPage {
-  /** sha256 of the oriented, stripped source segment — the content address. */
+  /** Content address: sha256 of the oriented, stripped segment plus the watermark applied. */
   sha: string
   width: number
   height: number
@@ -41,10 +47,34 @@ export interface ProcessOptions {
   avifQuality?: number
   webpQuality?: number
   avifEffort?: number
+  /**
+   * Burn the operator's watermark into every variant (docs/03, Admin → Appearance →
+   * Watermark). Composited *after* the resize, so each width carries a crisp mark of the
+   * same relative size rather than a downscaled copy of the largest one. Omitted or
+   * disabled leaves the pixels — and the content address — exactly as before.
+   */
+  watermark?: WatermarkConfig | null
 }
 
 export const contentHash = (data: Uint8Array): string =>
   createHash('sha256').update(data).digest('hex').slice(0, 12)
+
+/**
+ * The content address of one emitted page: the segment's bytes *plus* the watermark that
+ * will be burned into it.
+ *
+ * Page objects are served `immutable` forever, so two different marks must never land on
+ * one key. Folding the fingerprint in means changing the watermark re-processes to fresh
+ * keys and the old objects simply stop being referenced — the same behaviour docs/03
+ * describes for a re-uploaded page, and the reason no CDN purge is needed. With the mark
+ * off the fingerprint is empty and the address is the plain hash it always was.
+ */
+export const pageAddress = (segment: Uint8Array, watermark?: WatermarkConfig | null): string => {
+  const fingerprint = watermark ? watermarkFingerprint(watermark) : ''
+  const hash = createHash('sha256').update(segment)
+  if (fingerprint) hash.update(`\u0000${fingerprint}`)
+  return hash.digest('hex').slice(0, 12)
+}
 
 /** The variant object key: `pages/1284/59310/0007-9f2c1ab4de07.720.avif`. */
 export const variantKey = (
@@ -74,6 +104,68 @@ export const segmentsFor = (height: number): Array<{ top: number; height: number
     top += h
   }
   return segments
+}
+
+/**
+ * The overlay for one already-resized variant, or `null` when the mark does not fit.
+ *
+ * The overlay is a full-width band pinned with a gravity rather than a page-sized layer at
+ * an absolute offset: libvips decides the exact height of a resize, and a one-pixel
+ * disagreement between our arithmetic and its own would make the composite throw. A band
+ * plus `north`/`south` cannot disagree.
+ */
+export const watermarkOverlay = (
+  width: number,
+  height: number,
+  config: WatermarkConfig,
+): OverlayOptions | null => {
+  const geometry = watermarkGeometry(width, height, config)
+  if (!geometry) return null
+  return { input: Buffer.from(watermarkSvg(geometry)), gravity: geometry.gravity }
+}
+
+let fontProbe: Promise<boolean> | undefined
+
+/** Test seam: forget the cached probe. */
+export const resetWatermarkFontProbe = (): void => {
+  fontProbe = undefined
+}
+
+/**
+ * Does this host have a font librsvg can draw the mark with?
+ *
+ * `node:22-alpine` ships none, and a missing face is silent — librsvg renders an empty
+ * layer and the pipeline would burn an invisible watermark into every page and every
+ * content address. So probe once per process and let the caller refuse rather than lie.
+ * `infra/Dockerfile` installs `font-dejavu` in the worker image for this reason.
+ */
+export const watermarkFontAvailable = async (): Promise<boolean> => {
+  fontProbe ??= (async () => {
+    try {
+      const svg = watermarkSvg({
+        width: 256,
+        height: 64,
+        fontSize: 32,
+        margin: 8,
+        x: 8,
+        y: 40,
+        anchor: 'start',
+        gravity: 'north',
+        strokeWidth: 5,
+        opacity: 1,
+        text: 'palscans.org',
+      })
+      const { data, info } = await sharp(Buffer.from(svg))
+        .ensureAlpha()
+        .raw()
+        .toBuffer({ resolveWithObject: true })
+      for (let i = 3; i < data.length; i += info.channels) if (data[i] !== 0) return true
+      return false
+    } catch {
+      return false
+    }
+  })()
+  return fontProbe
 }
 
 export const blurHashFor = async (image: Sharp): Promise<string | null> => {
@@ -116,10 +208,16 @@ export const processImage = async (
     const idx = opts.startIdx + i
     const base = sharp(oriented.data).extract({ left: 0, top: seg.top, width, height: seg.height })
     const segPng = await base.clone().png({ compressionLevel: 1 }).toBuffer()
-    const sha = contentHash(segPng)
+    const mark = opts.watermark?.enabled ? opts.watermark : null
+    const sha = pageAddress(segPng, mark)
     const variants: EncodedVariant[] = []
     for (const w of widthsFor(width)) {
-      const resized = sharp(segPng).resize({ width: w, withoutEnlargement: true })
+      // Only downscale, so the emitted height follows the width exactly; the band is
+      // gravity-pinned, which is what makes the estimate safe.
+      const outHeight = Math.max(1, Math.round((seg.height * w) / width))
+      const overlay = mark ? watermarkOverlay(w, outHeight, mark) : null
+      const scaled = sharp(segPng).resize({ width: w, withoutEnlargement: true })
+      const resized = overlay ? scaled.composite([overlay]) : scaled
       const webp = await resized
         .clone()
         .webp({ quality: opts.webpQuality ?? 78 })

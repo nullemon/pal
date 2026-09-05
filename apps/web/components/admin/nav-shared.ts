@@ -21,6 +21,7 @@ export type AdminIcon =
   | 'zap'
   | 'layout'
   | 'palette'
+  | 'stamp'
   | 'settings'
   | 'toggle'
   | 'cpu'
@@ -133,6 +134,13 @@ export const adminNav: readonly AdminNavGroup[] = [
         label: m.theme,
         href: '/admin/appearance/theme',
         icon: 'palette',
+        permission: 'settings.write',
+      },
+      // The attribution burned into every page image by `chapter.process` (docs/03).
+      {
+        label: m.watermark,
+        href: '/admin/appearance/watermark',
+        icon: 'stamp',
         permission: 'settings.write',
       },
     ],

@@ -1,15 +1,21 @@
 import { MAX_ORIGINAL_BYTES, type Storage } from '@palscans/core/storage'
 import {
+  normalizeWatermark,
+  WATERMARK_SETTING_KEY,
+  type WatermarkConfig,
+} from '@palscans/core/watermark'
+import {
   type ChapterProcessing,
   chapterPages,
   chapters,
   type Db,
+  getSetting,
   type PageVariant,
   type ProcessedPage,
   series,
 } from '@palscans/db'
 import { eq } from 'drizzle-orm'
-import { processImage } from '../lib/image.js'
+import { processImage, watermarkFontAvailable } from '../lib/image.js'
 import { log } from '../lib/log.js'
 import { pool } from '../lib/pool.js'
 import { revalidateWeb } from '../lib/revalidate.js'
@@ -25,6 +31,24 @@ export interface ProcessDeps {
 
 const errorMessage = (err: unknown): string =>
   (err instanceof Error ? err.message : String(err)).slice(0, 300)
+
+/**
+ * The watermark this run will burn in (Admin → Appearance → Watermark).
+ *
+ * Read once per chapter, not once per page, so every page of one chapter carries the same
+ * mark even if the operator saves a change while the job is running. A host with no font
+ * installed would render an empty overlay and silently mark nothing while still changing
+ * every content address, so a failed probe means the run proceeds unmarked and says so.
+ */
+export const watermarkFor = async (db: Db): Promise<WatermarkConfig | null> => {
+  const config = normalizeWatermark(
+    await getSetting<unknown>(db, WATERMARK_SETTING_KEY, null).catch(() => null),
+  )
+  if (!config.enabled) return null
+  if (await watermarkFontAvailable()) return config
+  log.warn('watermark skipped: no font available to render it', { text: config.text })
+  return null
+}
 
 /**
  * `chapter.process` (docs/03): fetch every original, encode variants, write them under
@@ -92,6 +116,7 @@ export const processChapter = async (
   })
 
   const prefix = `pages/${row.seriesId}/${chapterId}`
+  const watermark = await watermarkFor(db)
   let dirty = false
   const flush = setInterval(() => {
     if (dirty) {
@@ -111,7 +136,11 @@ export const processChapter = async (
           throw new Error(`source too large: ${info.size} bytes > ${MAX_ORIGINAL_BYTES}`)
         const original = await storage.get(source.key)
         if (!original) throw new Error(`missing object ${source.key}`)
-        const encoded = await processImage(original, { prefix, startIdx: source.idx * 10 })
+        const encoded = await processImage(original, {
+          prefix,
+          startIdx: source.idx * 10,
+          watermark,
+        })
         const results: ProcessedPage[] = []
         for (const page of encoded) {
           for (const v of page.variants) {

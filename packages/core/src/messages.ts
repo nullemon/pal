@@ -123,13 +123,24 @@ export const messages = {
     earlyHowMine:
       'You have early access, so you can open it now — {minutes} minutes before everyone else.',
     earlyHowCta: 'Read it early',
-    downloadStart: 'Download',
-    downloadWorking: 'Downloading… {done}/{total}',
-    downloadDone: 'Downloaded',
+    downloadStart: 'Keep offline',
+    downloadWorking: 'Saving… {done}/{total}',
+    downloadDone: 'On this device',
     downloadRemove: 'Remove download',
     downloadFailed: 'Download failed',
     downloadNotEntitled: 'Downloads are a Premium feature.',
     downloadUnsupported: 'This browser cannot store downloads.',
+    // The two things "download" can mean, kept apart in the sheet on purpose.
+    downloadOfflineTitle: 'Keep on this device',
+    downloadOfflineHint:
+      'Stored inside PALScans so the chapter opens with no connection. It stays in this browser and goes when you clear it.',
+    downloadFileTitle: 'Save the files',
+    downloadFileHint:
+      'A .cbz archive — every page image in reading order, the format CBZ readers open. It lands in your downloads folder and is yours to keep.',
+    downloadCbz: 'Save .cbz',
+    downloadCbzWorking: 'Preparing…',
+    downloadCbzFailed: 'Could not build that archive.',
+    downloadCbzTooMany: 'Give it a minute — archives are limited to a few at a time.',
     premiumOnly: 'Premium',
     locked: 'Locked',
     read: 'Read',
@@ -489,7 +500,8 @@ export const messages = {
     premiumGateBody:
       'Premium readers can download chapters for offline reading, skip the ads and read new chapters early.',
     premiumGateCta: 'See Premium plans',
-    downloadHint: 'Open a chapter and use Download in the reader to save it for offline reading.',
+    downloadHint:
+      'Two different things, per chapter: keep it on this device to read offline in PALScans, or save the page images as a .cbz file you own.',
     breadcrumbHome: 'Home',
     breadcrumbSeries: 'Series',
     coverAlt: '{title} cover',
@@ -1127,6 +1139,7 @@ export const messages = {
       appearance: 'Appearance',
       layouts: 'Layouts',
       theme: 'Theme',
+      watermark: 'Watermark',
       system: 'System',
       settings: 'Settings',
       access: 'Access',
@@ -1607,6 +1620,54 @@ export const messages = {
         F: 'Cinematic Rows',
       },
       saved: 'Layouts saved and cache purged',
+    },
+    // Appearance -> Watermark (docs/03 "Worker: chapter.process"): the attribution burned
+    // into every page image at processing time.
+    watermark: {
+      title: 'Watermark',
+      subtitle:
+        'Burn a small line of attribution into every chapter page as it is processed, so it travels with the image when someone saves or reposts it.',
+      enable: 'Watermark pages',
+      enableHint:
+        'Applies to chapters processed from now on. Pages already published keep the images they have until the chapter is re-processed.',
+      textLabel: 'Text',
+      textHint: 'Keep it short — a domain reads best. Up to 64 characters.',
+      cornerLabel: 'Corner',
+      corners: {
+        'top-left': 'Top left',
+        'top-right': 'Top right',
+        'bottom-left': 'Bottom left',
+        'bottom-right': 'Bottom right',
+      },
+      sizeLabel: 'Size',
+      sizeHint:
+        'A percentage of the page width, so the mark stays the same relative size on a 480px phone variant and a 1440px desktop one.',
+      marginLabel: 'Inset',
+      marginHint: 'Distance from the two nearest edges, also a percentage of the page width.',
+      opacityLabel: 'Opacity',
+      opacityHint:
+        'The mark is white with a dark halo, so one setting stays readable over both dark and light artwork. Lower is more discreet.',
+      previewTitle: 'Preview',
+      previewHint:
+        'A real page from the catalogue, processed with these settings at {width}px. This is the composite the pipeline writes, not a CSS overlay.',
+      previewWidth: 'Variant width',
+      previewView: 'View',
+      previewCorner: 'Corner only',
+      previewPage: 'Whole page',
+      previewArtwork: 'Artwork',
+      previewDark: 'Dark art',
+      previewLight: 'Light art',
+      previewLightHint:
+        'Light art inverts the sample page, so you can judge the dark halo without needing a pale chapter to hand.',
+      previewNoPage: 'Process a chapter first and a real page will appear here.',
+      previewFailed: 'Could not render the preview.',
+      noFont:
+        'This server has no font installed that can draw the watermark, so pages are processed unmarked. Install a sans-serif face (the worker image ships DejaVu) and try again.',
+      applyTitle: 'Applying it to what is already published',
+      applyBody:
+        'Saving changes nothing that exists. New uploads pick it up on their next processing run; to re-mark a chapter that is already live, open Chapters, use Re-process pages, and its images are rebuilt under fresh keys with the current settings.',
+      openChapters: 'Go to Chapters',
+      saved: 'Watermark saved',
     },
     theme: {
       title: 'Theme',

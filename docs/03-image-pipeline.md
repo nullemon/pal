@@ -67,6 +67,35 @@ to `failed` with the per-page error recorded, and the admin sees exactly which p
 with a "retry failed pages only" button. A half-processed chapter must never become
 visible — the state machine is the guard.
 
+### Watermark
+
+Every emitted variant carries the site's attribution, burned into the pixels between the
+resize and the encode. This is the cheapest discovery channel a scanlation site has: pages
+get saved and reposted, and a mark in the image travels with them where a CSS overlay
+vanishes the moment someone right-click-saves.
+
+It is composited **per output width**, not once at full size and then downscaled, so the
+480px variant carries a crisp mark of the same relative size as the 1440px one. Geometry is
+a fraction of the width (`watermarkGeometry` in `@palscans/core/watermark`): font size at
+2.4% of the width by default, inset 2%, a band pinned with a sharp gravity rather than a
+page-sized layer, and a white body inside a dark halo at 34% so one setting stays legible
+over both a black gutter and a white speech bubble.
+
+The operator owns all of it in **Appearance → Watermark**: on/off, the text, which corner,
+size, inset and opacity, with a live preview rendered from the same code on a real page.
+
+The settings are folded into the content address. Two different marks can therefore never
+share an object key, so a changed watermark simply re-processes to fresh keys and the old
+objects stop being referenced — the same property a re-uploaded page already had, and the
+reason nothing needs purging. **Chapters that are already published are not touched by a
+settings change**; they keep their images until someone re-processes them (Chapters →
+Re-process pages, which is the existing retry path with `failedOnly: false`).
+
+The mark is drawn as SVG text, which means the host needs a font. `node:22-alpine` ships
+none and librsvg fails silently on a missing face, so the worker probes once per process and
+processes unmarked — with a warning — rather than burning an invisible watermark into every
+page. `infra/Dockerfile` installs `font-dejavu` for this.
+
 ### Long-strip splitting
 
 Webtoon sources sometimes arrive as one 30,000 px tall image. Browsers on low-end Android

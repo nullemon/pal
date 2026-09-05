@@ -2,7 +2,7 @@
 
 import { fmt, messages } from '@palscans/core/messages'
 import { cn, Sheet, useToast } from '@palscans/ui'
-import { Bookmark, Check, Download, Lock, Star } from 'lucide-react'
+import { Bookmark, Check, Download, FileArchive, Lock, Smartphone, Star } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type { ChapterRowData } from '@/app/(site)/series/[slug]/data'
 import { del, postJson } from '@/lib/comments/client'
@@ -172,6 +172,90 @@ export function RateButton({
   )
 }
 
+const rowButton =
+  'inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[8px] border border-line px-2.5 font-semibold text-[12px] transition-colors hover:border-brand disabled:opacity-60'
+
+/**
+ * Save the chapter as a file (`GET /api/chapters/:id/cbz`).
+ *
+ * The response is fetched rather than followed as a link so the entitlement and rate-limit
+ * answers arrive as a toast instead of as a JSON file in the reader's downloads folder. The
+ * server streams the archive; only the browser ever holds the finished bytes, which is the
+ * right place for them.
+ */
+function SaveFileButton({ chapter }: { chapter: ChapterRowData }) {
+  const { toast } = useToast()
+  const [busy, setBusy] = useState(false)
+
+  const save = async () => {
+    setBusy(true)
+    try {
+      const res = await fetch(`/api/chapters/${chapter.id}/cbz`, { credentials: 'same-origin' })
+      if (!res.ok) {
+        toast({
+          title:
+            res.status === 429
+              ? messages.series.downloadCbzTooMany
+              : messages.series.downloadCbzFailed,
+          tone: 'danger',
+        })
+        return
+      }
+      const disposition = res.headers.get('content-disposition') ?? ''
+      const named = /filename="([^"]+)"/.exec(disposition)?.[1]
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = named ?? `chapter-${chapter.number}.cbz`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      // Revoked late: Safari needs the object URL to outlive the click it just handled.
+      setTimeout(() => URL.revokeObjectURL(url), 10_000)
+    } catch {
+      toast({ title: messages.series.downloadCbzFailed, tone: 'danger' })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <button type="button" disabled={busy} className={rowButton} onClick={() => void save()}>
+      {busy ? (
+        messages.series.downloadCbzWorking
+      ) : (
+        <>
+          <FileArchive size={13} aria-hidden="true" />
+          {messages.series.downloadCbz}
+        </>
+      )}
+    </button>
+  )
+}
+
+/** The two meanings of "download", side by side, so the choice in each row is obvious. */
+function DownloadKinds() {
+  const m = messages.series
+  const kinds = [
+    { icon: Smartphone, title: m.downloadOfflineTitle, hint: m.downloadOfflineHint },
+    { icon: FileArchive, title: m.downloadFileTitle, hint: m.downloadFileHint },
+  ]
+  return (
+    <div className="grid gap-2 sm:grid-cols-2">
+      {kinds.map(({ icon: Icon, title, hint }) => (
+        <div key={title} className="rounded-[10px] border border-line bg-surface-2 p-3">
+          <div className="flex items-center gap-1.5 font-semibold text-[13px]">
+            <Icon size={14} aria-hidden="true" className="text-brand-hover" />
+            {title}
+          </div>
+          <p className="mt-1 text-[12px] leading-[17px] text-fg-muted">{hint}</p>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 /** One row in the download sheet: its own progress, so several can run in sequence. */
 function DownloadRow({ chapter, onChanged }: { chapter: ChapterRowData; onChanged: () => void }) {
   const { downloaded, recheck } = useIsDownloaded(chapter.id)
@@ -205,7 +289,7 @@ function DownloadRow({ chapter, onChanged }: { chapter: ChapterRowData; onChange
         <button
           type="button"
           disabled={working}
-          className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[8px] border border-line px-2.5 font-semibold text-[12px] transition-colors hover:border-brand disabled:opacity-60"
+          className={rowButton}
           onClick={async () => {
             const done = await start(chapter.id)
             if (done) {
@@ -221,12 +305,13 @@ function DownloadRow({ chapter, onChanged }: { chapter: ChapterRowData; onChange
             })
           ) : (
             <>
-              <Download size={13} aria-hidden="true" />
+              <Smartphone size={13} aria-hidden="true" />
               {messages.series.downloadStart}
             </>
           )}
         </button>
       )}
+      <SaveFileButton chapter={chapter} />
     </li>
   )
 }
@@ -269,6 +354,7 @@ export function DownloadButton({
           {entitled ? (
             <>
               <p className="text-fg-muted text-sm">{messages.seriesDetail.downloadHint}</p>
+              <DownloadKinds />
               {readable.length === 0 ? (
                 <p className="text-fg-subtle text-sm">{messages.series.emptyChapters}</p>
               ) : (
