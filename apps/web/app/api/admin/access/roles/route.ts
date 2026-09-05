@@ -1,4 +1,5 @@
 import {
+  isAdminOnlyPermission,
   isLockedPermission,
   isPermission,
   isRole,
@@ -28,9 +29,10 @@ import {
  * permission added in a later release on its code default rather than frozen at whatever the
  * matrix looked like the day somebody first opened this page.
  *
- * A locked cell submitted as `false` is refused rather than quietly dropped. The UI disables
- * those checkboxes and says why; an API caller gets the same reason instead of a silent
- * no-op that would read as success.
+ * A fixed cell submitted against its fixed value is refused rather than quietly dropped —
+ * `admin.access` / `settings.write` as `false` for `admin`, and `appearance.advanced` as
+ * `true` for anyone else. The UI disables those checkboxes and says why; an API caller gets
+ * the same reason instead of a silent no-op that would read as success.
  */
 export const PUT = withPermission('settings.write', async (request, _ctx, user) => {
   const parsed = await parseJson(request, permissionOverridesSchema)
@@ -44,6 +46,8 @@ export const PUT = withPermission('settings.write', async (request, _ctx, user) 
       if (!isPermission(permission)) continue
       if (value === false && isLockedPermission(role, permission))
         return fail(409, 'locked', fmt(m.lockedToast, { permission, role }))
+      if (value === true && isAdminOnlyPermission(permission) && role !== 'admin')
+        return fail(409, 'admin_only', fmt(m.adminOnlyBody, { permission, role }))
     }
   }
 

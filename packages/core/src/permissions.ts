@@ -27,6 +27,10 @@ export const PERMISSIONS = [
   'announcement.write',
   'entitlement.grant',
   'settings.write',
+  // Custom CSS and the head/footer snippet boxes (docs/15 "Advanced"). Separate from
+  // `settings.write` because it is different in kind: a snippet is a <script> on every
+  // public page, which is every reader's session. See ADMIN_ONLY_PERMISSIONS.
+  'appearance.advanced',
   'audit.read',
 ] as const
 export type Permission = (typeof PERMISSIONS)[number]
@@ -147,18 +151,46 @@ export const LOCKED_PERMISSIONS: Readonly<Record<Role, readonly Permission[]>> =
 export const isLockedPermission = (role: Role, permission: Permission): boolean =>
   LOCKED_PERMISSIONS[role].includes(permission)
 
+/**
+ * The other direction: cells fixed *off* for every role but `admin`.
+ *
+ * `LOCKED_PERMISSIONS` stops an operator revoking what they need to undo their own mistake.
+ * This stops the matrix being used to hand out something the matrix itself is not trusted to
+ * hand out. `appearance.advanced` writes arbitrary CSS and arbitrary HTML — `<script>`
+ * included — onto every public page, so holding it is equivalent to holding every reader's
+ * session. `settings.write` opens `Admin → Access → Roles`, so without this a moderator who
+ * has been given `settings.write` could grant themselves script injection in two clicks and
+ * the "admin-only" in docs/15 would mean nothing.
+ *
+ * It is enforced in `grants()`, so a hand-edited settings row or a restored backup cannot
+ * take effect either — not only in the screen that draws the checkboxes.
+ */
+export const ADMIN_ONLY_PERMISSIONS: readonly Permission[] = ['appearance.advanced']
+
+export const isAdminOnlyPermission = (permission: Permission): boolean =>
+  ADMIN_ONLY_PERMISSIONS.includes(permission)
+
+/** A cell the operator may not move, in either direction: fixed on, or fixed off. */
+export const isFixedPermission = (role: Role, permission: Permission): boolean =>
+  isLockedPermission(role, permission) || (isAdminOnlyPermission(permission) && role !== 'admin')
+
 /** Whether the compiled bundle grants this cell, before any override. */
 export const isDefaultPermission = (role: Role, permission: Permission): boolean =>
   ROLE_PERMISSIONS[role].includes(permission)
 
-/** One cell of the resolved matrix: locked wins, then the override, then the compiled default. */
+/**
+ * One cell of the resolved matrix: fixed wins (on, then off), then the override, then the
+ * compiled default.
+ */
 export const grants = (
   role: Role,
   permission: Permission,
   overrides?: PermissionOverrides | null,
-): boolean =>
-  isLockedPermission(role, permission) ||
-  (overrides?.[role]?.[permission] ?? isDefaultPermission(role, permission))
+): boolean => {
+  if (isLockedPermission(role, permission)) return true
+  if (isAdminOnlyPermission(permission) && role !== 'admin') return false
+  return overrides?.[role]?.[permission] ?? isDefaultPermission(role, permission)
+}
 
 /** A role's effective permission list — what `SessionUser.permissions` is set from. */
 export const resolvePermissions = (
@@ -181,7 +213,7 @@ export const pruneOverrides = (input: PermissionOverrides | null | undefined) =>
     for (const permission of PERMISSIONS) {
       const value = row[permission]
       if (typeof value !== 'boolean') continue
-      if (isLockedPermission(role, permission)) continue
+      if (isFixedPermission(role, permission)) continue
       if (value === isDefaultPermission(role, permission)) continue
       kept[permission] = value
     }

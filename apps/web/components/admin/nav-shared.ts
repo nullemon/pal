@@ -34,6 +34,7 @@ export type AdminIcon =
   | 'calendar'
   | 'tags'
   | 'key'
+  | 'braces'
 
 export interface AdminNavItem {
   label: string
@@ -204,6 +205,15 @@ export const adminNav: readonly AdminNavGroup[] = [
         href: '/admin/appearance/watermark',
         icon: 'stamp',
         permission: 'settings.write',
+      },
+      // docs/15 "Advanced": custom CSS and the head / footer snippets. `appearance.advanced`
+      // rather than `settings.write` — a snippet is a <script> on every public page, and
+      // ADMIN_ONLY_PERMISSIONS stops the roles matrix handing that to anyone else.
+      {
+        label: m.advanced,
+        href: '/admin/appearance/advanced',
+        icon: 'braces',
+        permission: 'appearance.advanced',
       },
       // The strings that carry the site's voice, and how dates and numbers are written
       // (docs/15 "Copy the operator owns" and "Formatting").

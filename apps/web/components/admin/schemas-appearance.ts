@@ -1,5 +1,6 @@
 import { watermarkSettingSchema } from '@palscans/core/watermark'
 import { z } from 'zod'
+import { CSS_MAX_LENGTH, SNIPPET_MAX_LENGTH } from '@/lib/appearance/advanced'
 import { LOGO_PRESET_IDS } from '@/lib/chrome/presets'
 import { BRAND_SLOTS, type BrandSlot } from '@/lib/chrome/schema'
 
@@ -85,6 +86,23 @@ export const brandAssetConfirmSchema = z.object({
 })
 
 export const themeDraftSchema = z.object({ settings: z.record(z.string(), z.unknown()) })
+
+/**
+ * The body of `PUT /api/admin/appearance/advanced` (docs/15 "Advanced").
+ *
+ * Strict where `advancedSchema` is forgiving: that one has `.catch()` on every field so a
+ * stored document always parses, which is right for reading a row written years ago and
+ * wrong for accepting a save — an over-long stylesheet must be refused with a message, not
+ * silently turned into an empty one. The content checks (`checkCustomCss`,
+ * `checkSnippetHtml`) run after this, in the route.
+ */
+export const advancedFormSchema = z.object({
+  enabled: z.boolean(),
+  css: z.string().max(CSS_MAX_LENGTH),
+  head_html: z.string().max(SNIPPET_MAX_LENGTH),
+  footer_html: z.string().max(SNIPPET_MAX_LENGTH),
+})
+export type AdvancedForm = z.infer<typeof advancedFormSchema>
 export const themePublishSchema = z.object({ versionId: z.number().int().positive().optional() })
 export const presetSchema = z.object({
   name: z.string().trim().min(1).max(60),

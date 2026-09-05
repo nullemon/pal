@@ -128,9 +128,32 @@ email subjects and intros. Everything else goes through the i18n catalogue.
 | Setting | Notes |
 |---|---|
 | Custom CSS | a text box applied after the theme, scoped to the public site; syntax-checked; changes audited |
-| Custom head / footer HTML | for verification tags and analytics snippets (also in `12-seo.md`); admin-only |
+| Custom head / footer HTML | for analytics snippets (search-engine verification tags live on the SEO screen, `12-seo.md`); admin-only |
 | PWA | app name, short name, theme colour and icons are generated from the settings above; the install prompt copy is editable |
 | Email theme | logo, accent and footer text applied to every transactional template |
+
+Both boxes are `appearance.advanced`, a permission only the `admin` role can hold and which
+`Access → Roles` refuses to grant to any other — a snippet is a `<script>` on every public
+page, and custom CSS is not much weaker (a fixed full-size layer swallows clicks; a remote
+`url()` hands every reader's IP to a third party), so the two share one door rather than the
+CSS box sitting behind `settings.write`.
+
+Three things about how it is built are load-bearing:
+
+- **Scoped by the route tree, not by a selector.** The components that render it are mounted
+  by `app/(site)/layout.tsx` only. The panel, the staff sign-in and the reader auth pages are
+  sibling route groups, so operator code is not in their tree at all and cannot reach
+  `/admin` however hostile it is. That is also the way back from a bad save: this screen stays
+  reachable, and a master switch turns all three boxes off without losing their contents.
+- **The snippets go at the top and bottom of the page body, not inside `<head>`.** The
+  `<head>` is rendered by the root layout, which the admin panel shares. Analytics loaders and
+  pixels behave identically there; a `<meta>` tag would not, so one is refused with a pointer
+  to the SEO screen rather than silently ignored.
+- **No CSP is in force on this app's HTML today** (`infra/Caddyfile` sets HSTS, nosniff,
+  X-Frame-Options, Referrer-Policy and Permissions-Policy, and nothing adds a CSP), so
+  snippets run. The screen says so, and lists the off-site hosts each snippet loads from,
+  because the day `08-infrastructure-and-cost.md`'s "CSP with nonces" lands is the day every
+  one of those has to be allowed or the box silently stops working.
 
 ## Presets, preview, history
 

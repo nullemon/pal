@@ -51,7 +51,7 @@ describe('permissions', () => {
     expect(ROLE_PERMISSIONS.moderator).toContain('chapter.publish')
     expect(ROLE_PERMISSIONS.uploader).not.toContain('chapter.publish')
     expect(ROLE_PERMISSIONS.admin).toBe(PERMISSIONS)
-    expect(PERMISSIONS).toHaveLength(22)
+    expect(PERMISSIONS).toHaveLength(23)
   })
 
   it('can() checks permissions, never roles', () => {

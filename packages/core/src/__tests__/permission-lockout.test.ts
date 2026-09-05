@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
+  ADMIN_ONLY_PERMISSIONS,
   grants,
   isDefaultPermission,
+  isFixedPermission,
   LOCKED_PERMISSIONS,
   PERMISSIONS,
   type Permission,
@@ -68,5 +70,53 @@ describe('no overrides at all', () => {
         expect(resolvePermissions(role, source), role).toEqual(
           PERMISSIONS.filter((p: Permission) => isDefaultPermission(role, p)),
         )
+  })
+})
+
+/**
+ * The third way an editable matrix ruins a deployment, and the one this file was extended
+ * for: a permission that is not the matrix's to give away.
+ *
+ * `appearance.advanced` (docs/15 "Advanced") writes arbitrary CSS and arbitrary HTML —
+ * `<script>` included — onto every public page, which is the same power as holding every
+ * reader's session. `Admin → Access → Roles` is itself gated on `settings.write`, so without
+ * a fixed-off rule any role that had been given `settings.write` could grant itself script
+ * injection in two clicks, and "admin-only" would be decoration.
+ */
+describe('the matrix cannot hand out script injection', () => {
+  it('denies appearance.advanced to every role but admin, whatever is stored', () => {
+    const hostile = Object.fromEntries(
+      ROLES.map((r: Role) => [r, { 'appearance.advanced': true }]),
+    ) as PermissionOverrides
+    for (const role of ROLES)
+      expect(grants(role, 'appearance.advanced', hostile), role).toBe(role === 'admin')
+    for (const role of ROLES)
+      expect(resolvePermissions(role, hostile).includes('appearance.advanced'), role).toBe(
+        role === 'admin',
+      )
+  })
+
+  it('refuses to store the cell at all', () => {
+    const stored = pruneOverrides({
+      moderator: { 'appearance.advanced': true, 'series.delete': true },
+    } as PermissionOverrides)
+    expect(stored.moderator?.['appearance.advanced']).toBeUndefined()
+    // …and prunes nothing else while it is there.
+    expect(stored.moderator?.['series.delete']).toBe(true)
+  })
+
+  it('keeps it granted to admin, which is the only role that may hold it', () => {
+    for (const permission of ADMIN_ONLY_PERMISSIONS) {
+      expect(isDefaultPermission('admin', permission), permission).toBe(true)
+      expect(grants('admin', permission, {}), permission).toBe(true)
+      expect(isFixedPermission('admin', permission), permission).toBe(false)
+      for (const role of ROLES.filter((r: Role) => r !== 'admin'))
+        expect(isFixedPermission(role, permission), `${role}/${permission}`).toBe(true)
+    }
+  })
+
+  it('is not held by the bundles the code ships to anyone else', () => {
+    for (const role of ROLES.filter((r: Role) => r !== 'admin'))
+      expect(isDefaultPermission(role, 'appearance.advanced'), role).toBe(false)
   })
 })

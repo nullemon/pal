@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { CSS_MAX_LENGTH, SNIPPET_MAX_LENGTH } from './advanced'
 
 /**
  * The appearance document (docs/15): the settings the operator edits. Unknown fields are
@@ -17,6 +18,41 @@ const hex = z
  * `settings.brand` and `settings.site`, edited by Appearance → Brand and resolved by
  * `lib/chrome/`. Unknown keys are dropped, so an older stored document still parses.
  */
+/**
+ * docs/15 "Advanced": the operator's own CSS and their head / footer snippets.
+ *
+ * **It lives in the appearance document, but only one screen may write it.** Inside the
+ * document it inherits the row, the `appearance` cache tag, the draft → publish flow and the
+ * version history for free (`beside` it would have meant a second cache, a second publish
+ * button and a second history for the same save). What it must *not* inherit is the
+ * document's write surface: `PUT /api/admin/appearance/theme`, the preset save and the
+ * preset import are all `settings.write`, and a `settings.write` holder posting an
+ * `advanced` block — or importing a preset JSON off the internet that carries one — would be
+ * script injection through the back door. So every one of those routes carries the stored
+ * block forward and ignores what was posted, and `PUT /api/admin/appearance/advanced`
+ * (`appearance.advanced`, admin-only) is the only writer. `advanced.test.ts` asserts it.
+ */
+export const advancedSchema = z.object({
+  /**
+   * The master switch. Off renders nothing at all while keeping both boxes intact, which is
+   * the one-click way back from a stylesheet that hid the site — see
+   * `components/shell/CustomCode.tsx`.
+   */
+  enabled: z.boolean().catch(true),
+  css: z.string().max(CSS_MAX_LENGTH).catch(''),
+  head_html: z.string().max(SNIPPET_MAX_LENGTH).catch(''),
+  footer_html: z.string().max(SNIPPET_MAX_LENGTH).catch(''),
+})
+
+export type AdvancedDoc = z.infer<typeof advancedSchema>
+
+export const EMPTY_ADVANCED: AdvancedDoc = {
+  enabled: true,
+  css: '',
+  head_html: '',
+  footer_html: '',
+}
+
 export const appearanceSchema = z.object({
   version: z.number().int().catch(1),
   color: z.object({
@@ -70,6 +106,7 @@ export const appearanceSchema = z.object({
   layout: z.record(z.string(), z.unknown()).catch({}),
   reader: z.record(z.string(), z.unknown()).catch({}),
   copy: z.record(z.string(), z.string()).catch({}),
+  advanced: advancedSchema.catch(EMPTY_ADVANCED),
 })
 
 export type AppearanceDoc = z.infer<typeof appearanceSchema>
@@ -91,6 +128,17 @@ export const parseAppearance = (raw: unknown): AppearanceDoc => {
 }
 
 export const DEFAULT_APPEARANCE: AppearanceDoc = parseAppearance({})
+
+/**
+ * `doc` with its advanced block replaced by `keep` — what every `settings.write` route uses
+ * so a posted, imported or reverted document can never author custom code. Passing
+ * `EMPTY_ADVANCED` strips it outright, which is what a saved preset gets: a preset is a look,
+ * exported and imported as JSON, and a look must not be able to carry a `<script>`.
+ */
+export const carryAdvanced = (doc: AppearanceDoc, keep: AdvancedDoc): AppearanceDoc => ({
+  ...doc,
+  advanced: keep,
+})
 
 /** Accent presets from the Theme mockup. */
 export const ACCENT_PRESETS = {

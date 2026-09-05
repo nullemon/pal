@@ -7,7 +7,9 @@ import { adminMessages } from '@palscans/core/messages/admin'
 // queue drivers, which drag `child_process` and the S3 client into the browser bundle.
 import {
   grants,
+  isAdminOnlyPermission,
   isDefaultPermission,
+  isFixedPermission,
   isLockedPermission,
   type Permission,
   type PermissionOverrides,
@@ -33,10 +35,13 @@ import { Panel, PanelHeader, Table, Td, Th } from '@/components/admin/ui'
  * carries a tick, a fixed one a padlock and an `aria-disabled` checkbox, and a cell that has
  * been moved off its compiled default is marked "changed" in text next to it.
  *
- * The two fixed cells (`admin.access` and `settings.write` on `admin`) are rendered as
- * disabled controls that still answer a click: pressing one raises the reason rather than
- * doing nothing, because a control that ignores you is indistinguishable from one that is
- * broken.
+ * A cell is "fixed" for one of two reasons, and both render the same padlock. `admin.access`
+ * and `settings.write` are fixed *on* for `admin`, so the screen cannot close its own door.
+ * `appearance.advanced` is fixed *off* for every role but `admin`: it writes a `<script>`
+ * onto every public page, and since this screen is itself gated on `settings.write`, a role
+ * that could be granted it here could grant it to itself. Both are rendered as disabled
+ * controls that still answer a click — pressing one raises the reason rather than doing
+ * nothing, because a control that ignores you is indistinguishable from one that is broken.
  */
 
 const m = adminMessages.roles
@@ -52,10 +57,14 @@ export function RolesMatrix({ initial }: { initial: PermissionOverrides }) {
   const offDefault = useMemo(() => permissionChanges({}, draft).length, [draft])
 
   const set = (role: Role, permission: Permission, value: boolean) => {
-    if (isLockedPermission(role, permission)) {
+    if (isFixedPermission(role, permission)) {
+      const adminOnly = isAdminOnlyPermission(permission)
       toast({
-        title: m.lockedTitle,
-        description: fmt(m.lockedBody, { permission, role: m.roleNames[role] }),
+        title: adminOnly ? m.adminOnlyTitle : m.lockedTitle,
+        description: fmt(adminOnly ? m.adminOnlyBody : m.lockedBody, {
+          permission,
+          role: m.roleNames[role],
+        }),
         tone: 'danger',
       })
       return
@@ -242,7 +251,8 @@ function Cell({
   draft: PermissionOverrides
   onSet: (role: Role, permission: Permission, value: boolean) => void
 }) {
-  const locked = isLockedPermission(role, permission)
+  const locked = isFixedPermission(role, permission)
+  const reason = isLockedPermission(role, permission) ? m.lockedBody : m.adminOnlyBody
   const value = grants(role, permission, draft)
   const def = isDefaultPermission(role, permission)
   const changed = !locked && value !== def
@@ -258,7 +268,7 @@ function Cell({
           aria-checked={value}
           aria-disabled={locked}
           aria-label={label}
-          title={locked ? fmt(m.lockedBody, { permission, role: m.roleNames[role] }) : label}
+          title={locked ? fmt(reason, { permission, role: m.roleNames[role] }) : label}
           onClick={() => onSet(role, permission, !value)}
           className={cn(
             'inline-flex size-[22px] items-center justify-center rounded-[6px] border transition-colors',
@@ -272,7 +282,15 @@ function Cell({
           )}
         >
           {locked ? (
-            <Lock size={12} aria-hidden="true" className="text-brand-ink" />
+            // A fixed cell can be fixed *off* (`appearance.advanced` on a non-admin role), and
+            // an unchecked cell paints its glyph transparent — so the padlock has to carry its
+            // own colour for the state it is actually in, or it is white on white in the light
+            // theme and the cell looks empty rather than locked.
+            <Lock
+              size={12}
+              aria-hidden="true"
+              className={value ? 'text-brand-ink' : 'text-fg-muted'}
+            />
           ) : (
             <Check size={13} aria-hidden="true" />
           )}

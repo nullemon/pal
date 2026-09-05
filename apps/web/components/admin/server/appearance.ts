@@ -1,7 +1,19 @@
-import { appearanceSettings, getDb, getSetting, themePresets, users } from '@palscans/db'
+import {
+  appearanceSettings,
+  getDb,
+  getSetting,
+  publishedAppearance,
+  themePresets,
+  users,
+} from '@palscans/db'
 import { desc, eq, inArray } from 'drizzle-orm'
 import { readerAdsSchema, readerLayoutSchema } from '@/components/reader/server/settings'
-import { parseAppearance } from '@/lib/appearance/schema'
+import {
+  type AdvancedDoc,
+  carryAdvanced,
+  EMPTY_ADVANCED,
+  parseAppearance,
+} from '@/lib/appearance/schema'
 import { BUILT_LAYOUTS, DIRECTIONS, type LayoutsSetting } from '../schemas-appearance'
 
 export const loadLayoutsSetting = async (): Promise<LayoutsSetting> => {
@@ -23,6 +35,14 @@ export const loadLayoutsSetting = async (): Promise<LayoutsSetting> => {
     ads: readerAds,
   }
 }
+
+/**
+ * The Theme screen's payload. `themeDoc` strips the advanced block on the way out: the
+ * screen is `settings.write`, the block is `appearance.advanced`, and there is no reason for
+ * custom code to be in the props of a screen that cannot save it. It also means the client
+ * cannot post it back by accident — belt as well as the braces in the route.
+ */
+const themeDoc = (settings: unknown) => carryAdvanced(parseAppearance(settings), EMPTY_ADVANCED)
 
 export const loadThemeScreen = async () => {
   const db = await getDb()
@@ -52,11 +72,11 @@ export const loadThemeScreen = async () => {
     .from(themePresets)
     .orderBy(desc(themePresets.isBuiltin), themePresets.name)
   return {
-    draft: draft ? { id: draft.id, doc: parseAppearance(draft.settings) } : null,
+    draft: draft ? { id: draft.id, doc: themeDoc(draft.settings) } : null,
     published: published
       ? {
           id: published.id,
-          doc: parseAppearance(published.settings),
+          doc: themeDoc(published.settings),
           publishedAt: published.publishedAt?.toISOString() ?? null,
           by: published.createdBy,
         }
@@ -72,7 +92,17 @@ export const loadThemeScreen = async () => {
       id: p.id,
       name: p.name,
       isBuiltin: p.isBuiltin,
-      doc: parseAppearance(p.settings),
+      doc: themeDoc(p.settings),
     })),
   }
+}
+
+/**
+ * Appearance → Advanced (docs/15). The *published* block, read straight from the row rather
+ * than through the 300s `appearance` cache: this screen is where an operator has just saved,
+ * and a page that shows them the previous stylesheet reads as a lost save.
+ */
+export const loadAdvanced = async (): Promise<AdvancedDoc> => {
+  const row = await publishedAppearance(await getDb())
+  return row ? parseAppearance(row.settings).advanced : EMPTY_ADVANCED
 }

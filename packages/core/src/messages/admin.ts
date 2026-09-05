@@ -113,6 +113,7 @@ export const adminMessages = {
       brand: 'Brand',
       menus: 'Menus',
       watermark: 'Watermark',
+      advanced: 'Advanced',
       system: 'System',
       settings: 'Settings',
       access: 'Access',
@@ -2218,6 +2219,8 @@ export const adminMessages = {
       'entitlement.grant': 'Grant and revoke premium features on an account.',
       'settings.write':
         'Change how the site is configured: appearance, SEO, access, integrations, ads, flags — and this screen.',
+      'appearance.advanced':
+        'Write the custom CSS and the head / footer HTML that run on every public page. A snippet is a <script> in every reader’s browser, so this one is fixed to administrators.',
       'audit.read': 'Read the audit log: who did what, and what changed.',
     },
 
@@ -2232,6 +2235,10 @@ export const adminMessages = {
     lockedBody:
       '{permission} is fixed on for {role}. It is what opens the panel and what gates this screen, so revoking it would lock the last account that could undo the change out of the page that made it — with SQL as the only way back. That is the situation this screen exists to remove.',
     lockedToast: '{permission} cannot be revoked from {role} — it is what gates this screen.',
+
+    adminOnlyTitle: 'Administrators only',
+    adminOnlyBody:
+      '{permission} cannot be granted to {role}. It puts arbitrary CSS and arbitrary HTML — a <script> included — on every public page, which is the same thing as holding every reader’s session. Since this screen is gated on settings.write, a role that could grant it here could grant it to itself.',
 
     escalationTitle: 'That role can now edit this screen',
     escalationWarning:
@@ -2530,5 +2537,94 @@ export const adminMessages = {
     dismissible: 'Readers can dismiss it',
     dismissibleHint: 'Editing the message shows it again to everyone who dismissed the old one.',
     barPreview: 'Preview',
+  },
+  /** Appearance → Advanced (docs/15 "Advanced"): custom CSS and the head / footer snippets. */
+  advancedScreen: {
+    title: 'Advanced',
+    subtitle:
+      'Custom CSS and HTML snippets that run on the public site. Administrators only, and live the moment you save.',
+
+    gateTitle: 'Why this page is administrators only',
+    gateBody:
+      'A snippet here is a <script> tag on every page a reader opens, which is the same power as the code in the repository — session cookies, form contents, everything. It is deliberately not part of settings.write, and Access → Roles will not let it be granted to any other role.',
+
+    cspTitle: 'Will a snippet actually run?',
+    cspYes:
+      'Yes. This deployment sends no Content-Security-Policy on its pages, so an inline script and a third-party tag both load. If a CSP is ever added — docs/08 wants one — inline code and every host listed below will have to be allowed in it, or these snippets will stop working silently.',
+    hostsLabel: 'Loads from',
+    hostsNone: 'Nothing off-site.',
+
+    cssTitle: 'Custom CSS',
+    cssHint:
+      'Applied after the theme, so it wins over the tokens and over Tailwind’s utilities. Public pages only — never the admin panel.',
+    cssPlaceholder: '.series-card { border-radius: 0; }',
+    cssLabel: 'Stylesheet',
+    cssChars: '{n} of {max} characters',
+
+    headTitle: 'Head snippet',
+    headHint:
+      'Rendered at the top of every public page, before the header. This is where an analytics loader goes.',
+    footerTitle: 'Footer snippet',
+    footerHint: 'Rendered after the footer — for anything that should load last.',
+    snippetPlaceholder: '<script defer src="https://plausible.io/js/script.js"></script>',
+
+    slotNote:
+      'These go at the top and bottom of the page body, not inside <head>. The <head> is shared with the admin panel, and nothing an operator writes is allowed in there. Analytics loaders and pixels work exactly the same; search-engine verification <meta> tags do not, and belong on the SEO screen.',
+
+    enabledTitle: 'Custom code is running',
+    disabledTitle: 'Custom code is switched off',
+    enabledHint:
+      'Turn this off to stop all three boxes at once without losing what is in them. It takes effect on the next page load.',
+
+    recoveryTitle: 'If a save breaks the site',
+    recoveryAdmin:
+      'The admin panel never renders any of this. /admin, the staff sign-in and the sign-in pages are separate layouts, so whatever you paste here cannot touch them — this page stays reachable however badly the public site is broken.',
+    recoverySwitch:
+      'Come back here, turn the switch above off, and the site is back on the next request. Nothing you typed is lost.',
+    recoveryAudit:
+      'Every save writes the old and the new text to the audit log, so the previous version can be read back from Admin → System → Audit even after you have overwritten it.',
+    recoveryNoPreview:
+      'There is no draft step on this page. A stylesheet you cannot see the effect of is one you paste twice, and an analytics tag that is “saved but not live” is worse than none — so a save here is live, and the switch above is the undo.',
+
+    rulesTitle: 'What is refused',
+    rulesCss:
+      'CSS that does not parse, @import, url() pointing at another site, and anything that would close the <style> tag. An unbalanced brace swallows every rule after it, and a remote url() hands each reader’s IP address to whoever hosts the file.',
+    rulesHtml:
+      'Unbalanced tags, and any element other than script, noscript, iframe, img, link, div, span, style and template. An unclosed <div> in the head slot eats the rest of the page.',
+
+    problemsTitle: 'Fix before saving',
+    warningsTitle: 'Worth a second look',
+    saved: 'Custom code saved. It is live now.',
+    savedOff: 'Saved. Custom code is switched off, so nothing is rendered.',
+
+    css: {
+      too_long: 'Too long — the stylesheet must be under {max} characters.',
+      unbalanced_braces: 'Line {line}: a closing brace with nothing open.',
+      unclosed_brace: 'Line {line}: this rule is never closed. Everything after it is swallowed.',
+      unterminated_string: 'Line {line}: a quote is never closed.',
+      unterminated_comment: 'Line {line}: a /* comment is never closed.',
+      style_escape:
+        'Line {line}: “</style” would close the style block and turn the rest into markup.',
+      import_rule:
+        'Line {line}: @import is not allowed. It blocks rendering and gives every reader’s IP address to whoever hosts the file. Self-host it instead.',
+      remote_url:
+        'Line {line}: url() points at {detail}. Every reader’s browser would call that host. Upload the file and use a path on this site.',
+      unsafe_value: 'Line {line}: {detail} runs script from a stylesheet.',
+      covers_viewport:
+        'Line {line}: position: fixed. A full-size fixed layer covers the page and swallows clicks — check it on a phone.',
+      hides_page: 'Line {line}: this hides the whole page.',
+    },
+    html: {
+      too_long: 'Too long — a snippet must be under {max} characters.',
+      unbalanced_tags:
+        'Line {line}: <{detail}> is never closed. It would swallow the rest of the page.',
+      stray_close_tag: 'Line {line}: </{detail}> closes something that was never opened.',
+      element_not_allowed:
+        'Line {line}: <{detail}> is not allowed here. Snippets may contain script, noscript, iframe, img, link, div, span, style and template.',
+      meta_tag:
+        'Line {line}: a <meta> tag does nothing here — this is not inside <head>. Search-engine verification lives on the SEO screen.',
+      document_write:
+        'Line {line}: document.write() after the page has loaded replaces the whole document. Most vendors ship a version that does not use it.',
+    },
   },
 } as const

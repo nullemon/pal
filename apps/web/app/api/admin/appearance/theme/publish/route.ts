@@ -4,13 +4,21 @@ import { themePublishSchema } from '@/components/admin/schemas-appearance'
 import { audit } from '@/components/admin/server/audit'
 import { purgeAppearance } from '@/components/admin/server/cache'
 import { resolveAppearance } from '@/lib/appearance/resolve'
-import { parseAppearance } from '@/lib/appearance/schema'
+import { carryAdvanced, parseAppearance } from '@/lib/appearance/schema'
 import { fail, ok, parseJson, withPermission } from '@/lib/auth'
 
 /**
  * POST /api/admin/appearance/theme/publish { versionId? } — publish the draft, or revert to
  * an earlier version (a copy of it becomes the new published row so history stays linear).
  * Archives the previous published row, purges the `appearance` cache tag, audits.
+ *
+ * **A revert carries the live `advanced` block forward rather than restoring the old one.**
+ * This route is `settings.write`; the custom code is `appearance.advanced` (admin-only,
+ * docs/15). Restoring a six-month-old version would otherwise let a `settings.write` holder
+ * put back a tracking script an administrator had deliberately removed — admin-authored
+ * text, but somebody else's decision to run it. Custom code changes on its own screen, which
+ * is also where its own history is. Publishing the *draft* does carry the draft's block,
+ * because only `PUT /api/admin/appearance/advanced` can have put it there.
  */
 export const POST = withPermission('settings.write', async (request, _ctx, user) => {
   const parsed = await parseJson(request, themePublishSchema)
@@ -30,7 +38,10 @@ export const POST = withPermission('settings.write', async (request, _ctx, user)
       .where(eq(appearanceSettings.id, parsed.data.versionId))
       .limit(1)
     if (!version) return fail(404, 'not_found')
-    const doc = parseAppearance(version.settings)
+    const doc = carryAdvanced(
+      parseAppearance(version.settings),
+      parseAppearance(current?.settings ?? {}).advanced,
+    )
     await db.transaction(async (tx) => {
       if (current)
         await tx

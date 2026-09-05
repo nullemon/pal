@@ -1,7 +1,7 @@
 import type { Permission } from '@palscans/core/permissions'
 
 /**
- * How the 22 permissions are laid out on `Admin → Access → Roles`.
+ * How the 23 permissions are laid out on `Admin → Access → Roles`.
  *
  * Structure, not copy — the group labels and the per-permission descriptions live in
  * `adminMessages.roles`. Every permission appears in exactly one group and every group is
@@ -32,5 +32,5 @@ export const PERMISSION_GROUPS: Readonly<Record<PermissionGroupKey, readonly Per
   ],
   community: ['comment.moderate', 'report.handle', 'announcement.write'],
   accounts: ['user.read', 'user.update', 'user.ban', 'user.role', 'entitlement.grant'],
-  system: ['settings.write', 'audit.read'],
+  system: ['settings.write', 'appearance.advanced', 'audit.read'],
 }

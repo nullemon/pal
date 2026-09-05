@@ -4,6 +4,7 @@ import { cn } from '@palscans/ui'
 import {
   BadgeDollarSign,
   Bell,
+  Braces,
   CalendarDays,
   ChartLine,
   Cpu,
@@ -62,6 +63,7 @@ const icons: Record<AdminIcon, ComponentType<{ size?: number; className?: string
   calendar: CalendarDays,
   tags: Tags,
   key: KeyRound,
+  braces: Braces,
 }
 
 export function AdminNavLinks({ groups }: { groups: AdminNavGroup[] }) {
