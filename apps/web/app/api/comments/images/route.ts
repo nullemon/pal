@@ -1,4 +1,4 @@
-import { communityImages, db } from '@palscans/db'
+import { communityImages, db, escapeLike } from '@palscans/db'
 import { and, desc, eq, sql } from 'drizzle-orm'
 import { ok, parseQuery } from '@/lib/comments/http'
 import { storageUrl } from '@/lib/comments/media'
@@ -26,8 +26,11 @@ export async function GET(request: Request) {
       and(
         eq(communityImages.status, 'approved'),
         eq(communityImages.isCollection, true),
+        // `escapeLike` (and the explicit ESCAPE, as everywhere else in the codebase) so a
+        // caller's own `%` and `_` are matched literally rather than acting as wildcards:
+        // `?q=%` was every tag, and `?q=_` every single-character one.
         tag
-          ? sql`exists (select 1 from unnest(${communityImages.tags}) t where t ilike ${`%${tag}%`})`
+          ? sql`exists (select 1 from unnest(${communityImages.tags}) t where t ilike ${`%${escapeLike(tag)}%`} escape '\\')`
           : undefined,
       ),
     )

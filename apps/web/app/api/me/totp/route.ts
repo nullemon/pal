@@ -16,7 +16,14 @@ import {
 import { requestContext } from '@/lib/auth/flows'
 import { verifyPassword } from '@/lib/auth/password'
 import { totpConfirmSchema, totpDisableSchema, totpStartSchema } from '@/lib/auth/schemas'
-import { generateTotpSecret, totpQrDataUrl, totpUri, verifyTotp } from '@/lib/auth/totp'
+import {
+  consumeTotp,
+  generateTotpSecret,
+  totpQrDataUrl,
+  totpSecretColumns,
+  totpSecretOf,
+  totpUri,
+} from '@/lib/auth/totp'
 import { findUserById } from '@/lib/auth/users'
 
 /**
@@ -42,10 +49,18 @@ export const POST = requireUser(async (request, _ctx, user) => {
       return fail(400, 'wrong_password', messages.me.security.wrongPassword)
   }
   const secret = generateTotpSecret()
+  // Sealed at rest from here on (migration 9036). Without a sealing key this refuses rather
+  // than quietly storing base32 that a database dump would hand straight to an attacker.
+  let columns: ReturnType<typeof totpSecretColumns>
+  try {
+    columns = totpSecretColumns(secret)
+  } catch {
+    return fail(503, 'sealing_unavailable', messages.me.security.sealingUnavailable)
+  }
   const db = await getDb()
   await db
     .update(users)
-    .set({ totpSecret: secret, updatedAt: new Date() })
+    .set({ ...columns, updatedAt: new Date() })
     .where(eq(users.id, user.id))
   const uri = totpUri(secret, row.email)
   return ok({ secret, uri, qrDataUrl: await totpQrDataUrl(uri) })
@@ -57,9 +72,11 @@ export const PATCH = requireUser(async (request, _ctx, user) => {
   const limit = await getRateLimiter().hit(`totp:confirm:${user.id}`, 6, 300)
   if (!limit.ok) return rateLimited(limit.retryAfterSec)
   const row = await findUserById(user.id)
-  if (!row?.totpSecret) return fail(400, 'totp_not_started', messages.errors.validation)
+  if (!row || !totpSecretOf(row)) return fail(400, 'totp_not_started', messages.errors.validation)
   if (row.totpEnabledAt) return fail(409, 'totp_enabled', messages.me.security.totpEnabled)
-  if (!verifyTotp(row.totpSecret, parsed.data.code, row.email))
+  // The confirming code is spent like any other, so it cannot be turned round and used as
+  // the first sign-in's second factor.
+  if (!(await consumeTotp(user.id, row, parsed.data.code, row.email)))
     return fail(400, 'totp_invalid', messages.authPage.totpInvalid)
   const db = await getDb()
   await db
@@ -87,13 +104,13 @@ export const DELETE = requireUser(async (request, _ctx, user) => {
   } else {
     // password-less account: the second factor itself is the re-authentication
     const { code } = parsed.data
-    if (!row.totpSecret || !code || !verifyTotp(row.totpSecret, code, row.email))
+    if (!code || !(await consumeTotp(user.id, row, code, row.email)))
       return fail(400, 'totp_invalid', messages.authPage.totpInvalid)
   }
   const db = await getDb()
   await db
     .update(users)
-    .set({ totpSecret: null, totpEnabledAt: null, updatedAt: new Date() })
+    .set({ totpSecret: null, totpSecretSealed: null, totpEnabledAt: null, updatedAt: new Date() })
     .where(eq(users.id, user.id))
   const created = await rotateSession(await getSessionId(), user.id, requestContext(request))
   await setSessionCookie(created)

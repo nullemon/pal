@@ -76,7 +76,10 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const returnTo = safeReturnPath(parsed.data.return)
-  if (user.totpEnabledAt && user.totpSecret) {
+  // Enrolled is enrolled: branching on the secret as well would sign an account straight in
+  // if its sealed secret ever failed to open (migration 9036), which is fail-open. The TOTP
+  // step refuses instead.
+  if (user.totpEnabledAt) {
     await setMfaChallenge(user.id, returnTo)
     return ok({ mfa: true })
   }

@@ -22,7 +22,22 @@ export const users = pgTable(
     lastLoginMethod: text('last_login_method'),
     safeMode: boolean('safe_mode').notNull().default(false), // docs/13 content safety
     // P4 (migration 9004): optional TOTP, username-change cooldown, deletion grace period
-    totpSecret: text('totp_secret'), // base32, set during enrolment; enabled once confirmed
+    /**
+     * Legacy raw base32. Nothing writes it any more (migration 9036): enrolment writes
+     * `totpSecretSealed`, and a row still holding plaintext is re-sealed in place the next
+     * time that account passes its second factor. Read through `totpSecretOf()` in
+     * `apps/web/lib/auth/totp.ts`, never directly — reading this column alone silently
+     * misses every account enrolled since 9036.
+     */
+    totpSecret: text('totp_secret'),
+    /** The same secret sealed with CREDENTIALS_KEY (packages/core/src/secrets.ts). */
+    totpSecretSealed: bytea('totp_secret_sealed'),
+    /**
+     * Highest 30-second TOTP step this account has spent (migration 9036). A code is
+     * single-use: accepting one is a compare-and-set on this column, so the ±1-step drift
+     * window cannot be replayed.
+     */
+    totpLastStep: integer('totp_last_step'),
     totpEnabledAt: timestamptz('totp_enabled_at'),
     usernameChangedAt: timestamptz('username_changed_at'), // docs/13: once per 30 days
     deletionRequestedAt: timestamptz('deletion_requested_at'), // docs/13: 14-day grace

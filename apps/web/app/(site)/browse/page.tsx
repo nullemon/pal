@@ -1,5 +1,5 @@
 import { fmt, messages } from '@palscans/core/messages'
-import { pageWindow } from '@palscans/db'
+import { pageWindow } from '@palscans/core/pagination'
 import { buttonClasses, cn, EmptyState } from '@palscans/ui'
 import { Shuffle, SlidersHorizontal } from 'lucide-react'
 import type { Metadata } from 'next'

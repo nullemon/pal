@@ -10,7 +10,7 @@ import {
   plainText,
 } from '../comments/body.js'
 import { allAllowlisted, detectLinks, domainOf, hasLink } from '../comments/links.js'
-import { escapeHtml, renderHtml, safeHref } from '../comments/render.js'
+import { safeHref } from '../comments/render.js'
 import { commentBodySchema, isCommentBody } from '../comments/schema.js'
 
 const now = new Date('2026-09-02T12:00:00Z')
@@ -188,29 +188,22 @@ describe('comment body', () => {
     expect(bodyFromText('a\nb\n\nc').children).toHaveLength(2)
     expect(plainText(bodyFromText('a\nb\n\nc'))).toBe('a\nb\n\nc')
   })
-  it('renders safe HTML', () => {
-    const html = renderHtml(body, {
-      imageUrl: (id) => ({ src: `/img/${id}.webp`, width: 480, height: 320 }),
-    })
-    expect(html).toContain('<strong>Hello </strong>')
-    expect(html).toContain('<a class="c-mention" href="/u/kael">@kael</a>')
-    expect(html).toContain('&lt;script&gt;alert(1)&lt;/script&gt;')
-    expect(html).not.toContain('<script')
-    expect(html).not.toContain('javascript:')
-    expect(html).toContain('<span class="c-spoiler" data-spoiler>he dies</span>')
-    expect(html).toContain('<br>')
-    expect(html).toContain(
-      'href="https://palscans.org/x" rel="nofollow ugc noopener" target="_blank">ok</a>',
-    )
-    expect(html).toContain(
-      '<img class="c-image" src="/img/7.webp" width="480" height="320" alt="panel" loading="lazy">',
-    )
-    expect(html).toContain(
-      '<blockquote class="c-quote" data-comment-id="3"><cite>@mod</cite><p>q</p></blockquote>',
-    )
-    expect(escapeHtml('"a" & \'b\'')).toBe('&quot;a&quot; &amp; &#39;b&#39;')
+  it('promotes bare domains and refuses every other scheme', () => {
     expect(safeHref('example.com/x')).toBe('https://example.com/x')
+    expect(safeHref('https://palscans.org/x')).toBe('https://palscans.org/x')
     expect(safeHref('data:text/html,hi')).toBeNull()
+    expect(safeHref('javascript:alert(1)')).toBeNull()
+  })
+
+  it('has no HTML-string renderer left to reach for', async () => {
+    // `renderHtml` was deleted in the pre-launch security pass — it was unused, and the only
+    // path in the comment system that produced markup as a string. Comments render as React
+    // elements (`components/comments/CommentBody.tsx`). This asserts the deletion rather
+    // than describing it, so a well-meaning revival has to argue with a failing test first.
+    const render: Record<string, unknown> = await import('../comments/render.js')
+    expect(Object.keys(render)).toEqual(['safeHref'])
+    const barrel: Record<string, unknown> = await import('../comments/index.js')
+    expect(barrel.renderHtml).toBeUndefined()
   })
 })
 

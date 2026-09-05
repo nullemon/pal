@@ -12,7 +12,7 @@ import {
 import { clearMfaChallenge, readMfaChallenge, signIn } from '@/lib/auth/flows'
 import { recordLoginEvent } from '@/lib/auth/login-events'
 import { loginTotpSchema } from '@/lib/auth/schemas'
-import { verifyTotp } from '@/lib/auth/totp'
+import { consumeTotp } from '@/lib/auth/totp'
 import { activeUserBan, findUserById } from '@/lib/auth/users'
 
 /** POST /api/auth/login/totp {code} — second step after a correct password. */
@@ -25,9 +25,13 @@ export async function POST(request: Request): Promise<Response> {
   const limit = await getRateLimiter().hit(`totp:${challenge.userId}`, 6, 300)
   if (!limit.ok) return rateLimited(limit.retryAfterSec)
   const user = await findUserById(challenge.userId)
-  if (!user?.totpSecret || !user.totpEnabledAt || user.deletedAt)
+  // Enrolment is `totpEnabledAt`, not "the secret can be read": a sealed secret that will
+  // not open must fail this step, never skip it (see `totpSecretOf`).
+  if (!user?.totpEnabledAt || user.deletedAt)
     return fail(401, 'mfa_expired', messages.errors.unauthorized)
-  if (!verifyTotp(user.totpSecret, parsed.data.code, user.email)) {
+  // Spends the code's step, so the same six digits cannot be presented twice inside the
+  // ±1-step drift window.
+  if (!(await consumeTotp(user.id, user, parsed.data.code, user.email))) {
     await recordLoginEvent({ request, userId: user.id, method: 'totp', outcome: 'totp_failed' })
     return fail(401, 'totp_invalid', messages.authPage.totpInvalid)
   }

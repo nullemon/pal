@@ -1,5 +1,5 @@
 import { copyFn } from '@palscans/core/copy'
-import { pageWindow } from '@palscans/db'
+import { pageWindow } from '@palscans/core/pagination'
 import {
   cachedAds,
   cachedAnnouncement,

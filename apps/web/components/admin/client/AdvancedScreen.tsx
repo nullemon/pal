@@ -122,7 +122,10 @@ export function AdvancedScreen({ initial }: { initial: AdvancedDoc }) {
         <div className="flex flex-col gap-2.5">
           <div className="flex items-start gap-2.5 text-[13px] leading-[18px] text-fg-muted">
             <Info size={16} aria-hidden="true" className="mt-px shrink-0 text-fg-subtle" />
-            <p>{m.cspYes}</p>
+            <div className="flex flex-col gap-2">
+              <p>{m.cspYes}</p>
+              <p>{m.cspLimits}</p>
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-1.5 text-[13px] text-fg-muted">
             <span className="font-semibold text-fg">{m.hostsLabel}:</span>

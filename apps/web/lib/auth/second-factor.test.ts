@@ -15,9 +15,9 @@ describe('OAuth is one factor, not two', () => {
   const callback = read('app/api/auth/[provider]/callback/route.ts')
 
   it('demands the second factor before minting a session for an enrolled account', () => {
-    // The password route branches on `totpEnabledAt && totpSecret` before `signIn`. The
-    // OAuth callback did not, so a linked Google or Discord account was a one-factor door
-    // into the admin panel — `adminTotpMissing()` only ever checked a factor was *enrolled*.
+    // The password route branches on `totpEnabledAt` before `signIn`. The OAuth callback
+    // did not, so a linked Google or Discord account was a one-factor door into the admin
+    // panel — `adminTotpMissing()` only ever checked a factor was *enrolled*.
     expect(callback).toMatch(/totpEnabledAt/)
     expect(callback).toMatch(/setMfaChallenge\(/)
     const guard = callback.indexOf('setMfaChallenge(')
@@ -30,7 +30,29 @@ describe('OAuth is one factor, not two', () => {
   })
 
   it('selects the factor it branches on', () => {
-    expect(callback).toMatch(/totpSecret: users\.totpSecret/)
+    expect(callback).toMatch(/totpEnabledAt: users\.totpEnabledAt/)
+  })
+
+  it('branches on enrolment, never on the secret being readable', () => {
+    // Since migration 9036 the secret is sealed, and `open()` returns null for a rotated
+    // key or a truncated row. `totpEnabledAt && totpSecret` would then read as "no second
+    // factor" and sign the account straight in — fail-open, for exactly the accounts that
+    // have a second factor. Enrolment is the question; the code check is what fails.
+    for (const path of ['app/api/auth/login/route.ts', 'app/api/auth/[provider]/callback/route.ts'])
+      expect(read(path), path).not.toMatch(/totpEnabledAt && \w+\.totpSecret/)
+  })
+})
+
+describe('a TOTP code is single-use', () => {
+  it('spends the code through consumeTotp on every path that checks one', () => {
+    // `verifyTotp` was a pure predicate: correct digits were correct digits, so the same
+    // code worked for the whole ±1-step drift window (~90 seconds). Every caller now goes
+    // through `consumeTotp`, which claims the step with a conditional UPDATE.
+    for (const path of ['app/api/auth/login/totp/route.ts', 'app/api/me/totp/route.ts'] as const) {
+      const src = read(path)
+      expect(src, path).toMatch(/consumeTotp\(/)
+      expect(src, path).not.toMatch(/\bverifyTotp\(/)
+    }
   })
 })
 

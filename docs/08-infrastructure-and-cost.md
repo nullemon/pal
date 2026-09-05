@@ -109,6 +109,24 @@ available" refresh instead of reloading underneath the user.
 
 - CSP with nonces, no `unsafe-inline`. This is much easier to adopt on day one than to
   retrofit at month six.
+
+  **What shipped, and why it is not that.** `apps/web/lib/security/csp.ts`, sent by
+  `next.config.ts` on every HTML response. A nonce has to be minted per request and read in
+  the root layout, and a route that reads a request header cannot be prerendered — so nonces
+  would turn `/terms`, `/privacy`, `/genres`, `/announcements`, `/contact`, `/dmca` and
+  `/rankings/*` dynamic, against the whole rendering strategy in docs/06. It would not even
+  remove `'unsafe-inline'`: Next writes the RSC flight payload into the prerendered HTML as
+  inline `<script>` at build time, before any request exists — the prerendered `/terms`
+  carries five executable inline scripts — and hashes move with the page's data.
+
+  So `script-src` carries `'unsafe-inline'` and the policy does not claim to stop XSS. It
+  does carry `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`,
+  `frame-ancestors 'self'` and a scheme restriction on every fetch directive — none of which
+  need a nonce, and all of which close something real. The public site additionally allows
+  `https:` script because operator snippets (docs/15 "Advanced") and ad tags (docs/11) *are*
+  third-party script; `/admin` gets a second, strict policy with no third-party origin at
+  all. The route to something tighter is a `Content-Security-Policy-Report-Only` pass in
+  production to learn what a real deployment loads — not a host list written from a guess.
 - `Strict-Transport-Security`, `X-Content-Type-Options: nosniff`,
   `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` denying
   everything unused.

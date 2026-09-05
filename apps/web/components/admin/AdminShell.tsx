@@ -5,6 +5,7 @@ import { ArrowLeft } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { siteChrome } from '@/lib/chrome/load'
 import { AdminNavLinks, Breadcrumb } from './client/AdminNav'
+import { ZodJitless } from './client/ZodJitless'
 import { navForUser } from './nav'
 
 /**
@@ -18,6 +19,9 @@ export async function AdminShell({ user, children }: { user: SessionUser; childr
   const initial = (user.username ?? user.email ?? '?').slice(0, 1).toUpperCase()
   return (
     <ToastProvider>
+      {/* Renders nothing: it is here so the panel's chunk turns zod's JIT off before any
+          schema is built under a CSP without 'unsafe-eval'. See ZodJitless. */}
+      <ZodJitless />
       <div className="flex min-h-dvh bg-bg-deep text-fg">
         <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-line bg-bg/95 md:flex">
           <div className="flex h-[60px] shrink-0 items-center gap-2.5 border-b border-line px-4">

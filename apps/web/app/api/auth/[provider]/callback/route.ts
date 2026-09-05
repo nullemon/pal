@@ -68,7 +68,6 @@ export async function GET(
       email: users.email,
       deletedAt: users.deletedAt,
       totpEnabledAt: users.totpEnabledAt,
-      totpSecret: users.totpSecret,
     })
     .from(oauthAccounts)
     .innerJoin(users, eq(users.id, oauthAccounts.userId))
@@ -89,7 +88,10 @@ export async function GET(
     // the password route branches here, and without the same branch a linked Google or
     // Discord account was a one-factor door into the panel for staff, while
     // `adminTotpMissing()` only ever checked that a factor was *enrolled*, never used.
-    if (linkedRow.totpEnabledAt && linkedRow.totpSecret) {
+    // `totpEnabledAt` alone, exactly as the password route: enrolment is the question, and
+    // an unreadable sealed secret (migration 9036) must fail the second step rather than
+    // skip it.
+    if (linkedRow.totpEnabledAt) {
       // No login event here, matching the password route: the sign-in has not happened yet,
       // and the TOTP step records the outcome either way.
       await setMfaChallenge(linkedRow.userId, returnTo)

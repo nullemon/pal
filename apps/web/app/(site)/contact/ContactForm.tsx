@@ -2,7 +2,8 @@
 
 import { fmt, messages } from '@palscans/core/messages'
 import { buttonClasses, cn } from '@palscans/ui'
-import { useActionState, useId } from 'react'
+import { useActionState, useCallback, useEffect, useId, useState } from 'react'
+import { TurnstileWidget } from '@/components/comments/TurnstileWidget'
 import { IDLE } from '@/lib/seo/form-state'
 import { submitContact } from './actions'
 
@@ -16,11 +17,28 @@ function FieldError({ message }: { message?: string }) {
   return message ? <p className="text-[12.5px] text-danger">{message}</p> : null
 }
 
-export function ContactForm() {
+/**
+ * `turnstileSiteKey` comes from the server (admin panel first, environment second), exactly
+ * as `/dmca` does it, and is null when the operator has not configured bot protection — the
+ * widget is then not rendered and `verifyTurnstile` passes every request, so local
+ * development needs no Cloudflare account.
+ */
+export function ContactForm({ turnstileSiteKey }: { turnstileSiteKey: string | null }) {
   const [state, action, pending] = useActionState(submitContact, IDLE)
   const id = useId()
   const errors = state.status === 'error' ? (state.fields ?? {}) : {}
   const label = 'text-[13px] font-semibold text-fg'
+  const [token, setToken] = useState('')
+  const [resetKey, setResetKey] = useState(0)
+  const clearToken = useCallback(() => setToken(''), [])
+
+  // Tokens are single-use: a rejected submission must not resubmit the spent one.
+  useEffect(() => {
+    if (state.status === 'error') {
+      setToken('')
+      setResetKey((n) => n + 1)
+    }
+  }, [state])
 
   if (state.status === 'ok') {
     return (
@@ -103,6 +121,17 @@ export function ContactForm() {
         className="hidden"
         aria-hidden="true"
       />
+      {turnstileSiteKey ? (
+        <div>
+          <input type="hidden" name="turnstile" value={token} />
+          <TurnstileWidget
+            siteKey={turnstileSiteKey}
+            onToken={setToken}
+            onExpire={clearToken}
+            resetKey={resetKey}
+          />
+        </div>
+      ) : null}
       <div>
         <button type="submit" disabled={pending} className={buttonClasses('primary', 'lg')}>
           {pending ? m.sending : m.submit}

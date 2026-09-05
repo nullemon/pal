@@ -31,7 +31,70 @@ palscans.org, www.palscans.org {
 	@static path /_next/static/*
 	header @static Cache-Control "public, max-age=31536000, immutable"
 
-	reverse_proxy web:3000
+	# ------------------------------------------------------------------ client address
+	#
+	# `TRUSTED_PROXY=cloudflare` makes the app read the client address straight off
+	# `CF-Connecting-IP` (apps/web/lib/auth/rate-limit.ts). That is correct for a request
+	# that came *through* Cloudflare, and forgeable by anyone who can reach this server
+	# directly on port 443: one header, and the admin IP allowlist sees an address the
+	# attacker chose while every per-IP rate limit keys on a bucket they chose. A
+	# pre-launch audit demonstrated both, against this file as it was.
+	#
+	# `@direct` is "did not arrive from a Cloudflare edge". `remote_ip` matches the socket
+	# peer, not a header, so the matcher itself cannot be spoofed. Those requests get the
+	# CF-* headers deleted on the way upstream, which leaves `clientIp()` falling through
+	# to `X-Forwarded-For`. That header is the real peer and nothing else: with no
+	# `trusted_proxies` configured, Caddy *replaces* an inbound X-Forwarded-For with the
+	# address it is talking to rather than appending to it — measured against Caddy 2.10.2
+	# with `X-Forwarded-For: 9.9.9.9` on the request, which arrived upstream as
+	# `x-forwarded-for: 127.0.0.1`. So a forger ends up rate-limiting their own address,
+	# and the panel's IP allowlist sees where they are actually connecting from.
+	#
+	# Two consequences of that replacement worth knowing rather than rediscovering:
+	# `TRUSTED_PROXY=xff` is already safe from a forged chain and is untouched by anything
+	# in this block (it never reads a CF-* header); and `TRUSTED_PROXY_HOPS` above 1 needs
+	# `trusted_proxies` declared on the `reverse_proxy` below, or the chain it counts back
+	# through is only ever one entry long.
+	#
+	# REFRESH THE RANGES. Cloudflare publishes them and they do change:
+	#
+	#   curl -s https://www.cloudflare.com/ips-v4 https://www.cloudflare.com/ips-v6
+	#
+	# A range Cloudflare has added and this file has not is not blocked — it is treated as
+	# direct, so those visitors' CF-* headers are dropped and the app sees the edge
+	# address instead of theirs. Check it when the certificate renews. Behind a Cloudflare
+	# *Tunnel* the peer is `cloudflared` on this host rather than an edge address, so add
+	# its address to the list or the tunnel counts as direct.
+	@direct not remote_ip 173.245.48.0/20 103.21.244.0/22 103.22.200.0/22 103.31.4.0/22 141.101.64.0/18 108.162.192.0/18 190.93.240.0/20 188.114.96.0/20 197.234.240.0/22 198.41.128.0/17 162.158.0.0/15 104.16.0.0/13 104.24.0.0/14 172.64.0.0/13 131.0.72.0/22 2400:cb00::/32 2606:4700::/32 2803:f800::/32 2405:b500::/32 2405:8100::/32 2a06:98c0::/29 2c0f:f248::/32
+
+	# ------------------------------------------------------------------ origin lockdown
+	#
+	# Stripping the headers makes forgery useless. Refusing the connection makes the origin
+	# invisible, which is the stronger control and the one docs/18 §3 asks you to finish:
+	# it also puts the origin out of reach of volumetric floods and of anyone scanning
+	# port 443 for the address behind the site.
+	#
+	# Uncomment the line below **only when Cloudflare is in front** (`TRUSTED_PROXY=
+	# cloudflare`). With `xff` — Caddy alone, no Cloudflare — it refuses every real
+	# visitor. Keep a way in that does not go through this block (SSH, the server console)
+	# before you enable it, and mind the refresh note above: a stale range list turns into
+	# a 403 for real traffic rather than a missing header.
+	#
+	# abort @direct
+
+	handle @direct {
+		reverse_proxy web:3000 {
+			header_up -CF-Connecting-IP
+			header_up -CF-IPCountry
+			header_up -CF-IPCity
+			header_up -CF-Ray
+			header_up -True-Client-IP
+		}
+	}
+
+	handle {
+		reverse_proxy web:3000
+	}
 }
 
 # ---------------------------------------------------------------------------

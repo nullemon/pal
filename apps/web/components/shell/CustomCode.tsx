@@ -20,13 +20,19 @@ import { cachedCustomCode } from '@/lib/appearance/published'
  * wins on the cascade too. An operator's `.card { margin: 0 }` therefore beats `m-4`, which
  * is the entire point of the box.
  *
- * **Content-Security-Policy.** There is none on this app's HTML responses today — see
- * `infra/Caddyfile`, which sets HSTS, nosniff, X-Frame-Options, Referrer-Policy and
- * Permissions-Policy and no CSP, and `proxy.ts`, which adds none either. So a pasted
- * analytics tag runs. docs/08 wants "CSP with nonces, no `unsafe-inline`" and the day that
- * lands, an inline `<style>`, an inline `<script>` and every third-party host in these
- * snippets need to be in it — the Advanced screen lists the hosts each snippet loads from
- * for exactly that reason. This comment is the marker to search for on that day.
+ * **Content-Security-Policy.** There is one now — `lib/security/csp.ts`, sent by
+ * `next.config.ts` on every HTML response. It is deliberately permissive *here*: the public
+ * policy allows `'unsafe-inline'` and any `https:` host for script and style, so a pasted
+ * analytics tag and an inline snippet both still run, and the hosts the Advanced screen
+ * lists need no allowlisting. What it refuses is `<object>`/`<embed>`, a `<base>` tag, a
+ * form posting off-site, and anything over plain `http:` — the Advanced screen says so in
+ * as many words, because a CSP that silently breaks this feature would make the feature a
+ * lie. docs/08 asked for nonces and no `'unsafe-inline'`; that is unreachable while these
+ * pages are prerendered, and `lib/security/csp.ts` records exactly why.
+ *
+ * The panel gets a *different*, strict policy (`script-src 'self' 'unsafe-inline'`, no
+ * third-party host, `frame-src 'none'`), which is what turns the scoping argument below
+ * from an argument about where components are mounted into something the browser enforces.
  */
 
 /** The `<style>` block, plus whatever the operator put in the "head" slot. */

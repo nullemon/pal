@@ -2555,7 +2555,9 @@ export const adminMessages = {
 
     cspTitle: 'Will a snippet actually run?',
     cspYes:
-      'Yes. This deployment sends no Content-Security-Policy on its pages, so an inline script and a third-party tag both load. If a CSP is ever added — docs/08 wants one — inline code and every host listed below will have to be allowed in it, or these snippets will stop working silently.',
+      'Yes. The public site sends a Content-Security-Policy that allows inline code and any https:// host, so an inline <script> and a third-party tag both run, and the hosts below need no allowlisting. The admin panel gets a stricter policy that refuses third-party script entirely — which is what guarantees a bad paste here can never reach the screen you would undo it from.',
+    cspLimits:
+      'Four things the policy refuses everywhere, so a snippet that needs one of them will not work: <object> and <embed>; a <base> tag; a form that posts to another site (embed a checkout or newsletter as an iframe instead); and anything loaded over plain http:// — use https://. A refusal is silent on the page and appears in the browser console.',
     hostsLabel: 'Loads from',
     hostsNone: 'Nothing off-site.',
 

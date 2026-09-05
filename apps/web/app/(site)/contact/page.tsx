@@ -1,4 +1,5 @@
 import { messages } from '@palscans/core/messages'
+import { turnstileSiteKey } from '@/lib/auth/turnstile'
 import { legalMetadata, renderLegal } from '@/lib/seo/legal-page'
 import { ContactForm } from './ContactForm'
 
@@ -8,8 +9,15 @@ export const generateMetadata = () => legalMetadata('contact')
 
 const m = messages.legal.contact
 
-/** /contact — the address text from the `pages` table plus the form → reports queue (docs/13). */
-export default function ContactPage() {
+/**
+ * /contact — the address text from the `pages` table plus the form → reports queue (docs/13).
+ *
+ * The site key is read here, on the server, and handed down, exactly as `/dmca` does it:
+ * it is a cached settings read rather than anything request-scoped, so this page stays
+ * prerendered on the 300s revalidate above.
+ */
+export default async function ContactPage() {
+  const siteKey = await turnstileSiteKey()
   return renderLegal('contact', {
     children: (
       <section className="mt-8 border-t border-line pt-6">
@@ -17,7 +25,7 @@ export default function ContactPage() {
           {m.formTitle}
         </h2>
         <p className="mt-1 mb-5 text-[14px] leading-6 text-fg-muted">{m.formIntro}</p>
-        <ContactForm />
+        <ContactForm turnstileSiteKey={siteKey} />
       </section>
     ),
   })

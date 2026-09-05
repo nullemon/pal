@@ -62,6 +62,32 @@ is non-zero. So the key belongs in your password manager next to the R2 keys, no
 `.env` on a server that may not exist tomorrow — `infra/RUNBOOK.md` makes restoring it step 0
 of any restore.
 
+### One thing sealed with this key is *not* a credential
+
+`users.totp_secret_sealed` (migration 9036). The enrolled second factor used to sit in
+`users.totp_secret` as raw base32, so a dump handed over working second factors for every
+enrolled account, staff included — the same threat this table was sealed against, one table
+over. It is sealed with the same key now.
+
+It does **not** behave like a credential row, and the difference matters:
+
+- **There is no environment fallback**, because there is nowhere for a TOTP secret to fall
+  back to. A secret that will not open reads as "no secret", the code check fails, and the
+  account cannot complete sign-in. That is the correct direction — the alternative is a
+  second factor that turns itself off when the key moves — but it means **rotating the
+  sealing key locks out every enrolled account**, where for credentials it only makes them
+  re-enter values. It is not silent: those users see their codes rejected.
+- **The way back is Admin → Users → Clear two-factor**, which drops the factor and ends the
+  account's sessions so they can sign in with their password and enrol again. Since an
+  `admin` cannot reach the panel without a second factor, keep one admin's recovery in mind
+  before rotating: if every admin is locked out at once, the only door left is
+  `update users set totp_secret_sealed = null, totp_enabled_at = null where id = …` against
+  the database.
+- **Rows enrolled before 9036 are not migrated by the migration** — it cannot encrypt
+  anything, the key is not in the database. They keep working from the plaintext column and
+  re-seal themselves the next time that account passes its second factor, so the column
+  empties as people sign in. Nothing writes plaintext any more.
+
 ## Two values need to be readable synchronously
 
 Nearly every credential is consumed from an async path, so those read the store directly.

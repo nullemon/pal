@@ -77,6 +77,10 @@
     "./queue/bullmq": {
       "types": "./dist/queue/bullmq.d.ts",
       "default": "./dist/queue/bullmq.js"
+    },
+    "./pagination": {
+      "types": "./dist/pagination.d.ts",
+      "default": "./dist/pagination.js"
     }
   },
   "files": [

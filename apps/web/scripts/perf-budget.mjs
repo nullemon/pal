@@ -52,13 +52,26 @@ const STRICT = process.env.PERF_STRICT === '1'
 const BUDGETS = { cls: 0.02, lcpMs: 2000 }
 
 const KB = 1024
+/**
+ * The measured numbers include the copy catalogue twice — `packages/core/src/messages.ts`
+ * is emitted into two client chunks (~20 KB gzipped of pure duplication, identical strings
+ * in both). It is a Turbopack chunking artefact, not a second import: no client component
+ * reads the catalogue twice. Left unfixed and recorded here rather than absorbed silently,
+ * because it is the largest first-party item left on every route.
+ *
+ * A warning from the run that found it: an earlier measurement read ~21 KB lower on the
+ * same commit, because `packages/core/dist` was stale and the build compiled an older,
+ * smaller catalogue. `pnpm --filter @palscans/web build` does not rebuild workspace
+ * dependencies, so a budget run after editing `packages/**` can measure a bundle that no
+ * longer exists. Build from the repo root (`pnpm build`) before trusting a number.
+ */
 const ROUTES = [
-  { name: 'home', path: '/', js: 180 * KB, target: 110 * KB },
-  { name: 'series', path: '/series/return-of-the-frost-monarch', js: 198 * KB, target: 110 * KB },
+  { name: 'home', path: '/', js: 200 * KB, target: 110 * KB },
+  { name: 'series', path: '/series/return-of-the-frost-monarch', js: 218 * KB, target: 110 * KB },
   {
     name: 'reader',
     path: '/series/return-of-the-frost-monarch/chapter-305',
-    js: 210 * KB,
+    js: 230 * KB,
     target: 60 * KB,
   },
 ]

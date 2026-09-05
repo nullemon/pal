@@ -1,6 +1,6 @@
 import { truncateWords } from '@palscans/core'
 import { fmt, messages } from '@palscans/core/messages'
-import { pageWindow } from '@palscans/db'
+import { pageWindow } from '@palscans/core/pagination'
 import { buttonClasses, cn, EmptyState } from '@palscans/ui'
 import { ChevronRight, Shuffle } from 'lucide-react'
 import type { Metadata } from 'next'

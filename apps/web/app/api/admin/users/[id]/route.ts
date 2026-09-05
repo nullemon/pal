@@ -116,7 +116,9 @@ export const POST = withPermission<{ id: string }>('user.read', async (request, 
       before = { totpEnabled: target.totpEnabledAt !== null }
       await db
         .update(users)
-        .set({ totpSecret: null, totpEnabledAt: null, updatedAt: now })
+        // Both homes of the secret (migration 9036) — clearing only one would leave the
+        // account with a factor it can still be challenged for.
+        .set({ totpSecret: null, totpSecretSealed: null, totpEnabledAt: null, updatedAt: now })
         .where(eq(users.id, target.id))
       await revokeAllSessions(target.id)
       after = { totpEnabled: false }

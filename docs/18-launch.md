@@ -266,7 +266,59 @@ Caddy is in front.
 `CREDENTIALS_KEY` seals the credentials you are about to type into the panel. It is optional —
 it falls back to `SESSION_SECRET` — but setting it separately now means you can rotate sessions
 later without making every stored credential unreadable. It costs one line today and saves a
-bad afternoon later.
+bad afternoon later. Since the pre-launch security pass it also seals every enrolled TOTP
+secret (`users.totp_secret_sealed`), so it is no longer only about the integrations screen: a
+database dump taken without this key set hands over working second factors.
+
+### Lock the origin down
+
+**This is the one step in this document that only you can do, and the pre-launch audit's
+highest finding.** Do it the same afternoon you point DNS at the server.
+
+`TRUSTED_PROXY=cloudflare` means the app believes `CF-Connecting-IP`. That is right for a
+request that arrived through Cloudflare and it is a text box for anyone who connects to your
+server's address directly on 443. The audit did exactly that: one header, and it was inside
+the panel's IP allowlist and had a private bucket for every per-IP rate limit on the site
+(login, register, comments, the reader). Cloudflare in front of you is not a boundary until
+the origin refuses everything else — your server's address is in certificate-transparency
+logs, in old DNS history, and in the headers of any mail the box has ever sent.
+
+Two layers. The first is already done for you:
+
+1. **`infra/Caddyfile` strips the CF-\* headers from peers outside Cloudflare's published
+   ranges** (`@direct`), so a forged `CF-Connecting-IP` is dropped and the app falls back to
+   the address you are actually connecting from. Forgery stops working. Nothing to do beyond
+   keeping the range list current — the preflight in §3½ compares it against Cloudflare's
+   published lists and names anything missing.
+
+2. **Refuse the connection.** Uncomment `abort @direct` in `infra/Caddyfile` and reload
+   (`docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile`). Do it with SSH
+   already open, and only once `TRUSTED_PROXY=cloudflare` is true — with `xff` it refuses
+   every real visitor.
+
+   Caddy can only refuse a packet that reaches Caddy, so back it with the host firewall,
+   which is the layer that also absorbs a flood:
+
+   ```sh
+   # Cloudflare only, on 443. Refresh the list when Cloudflare publishes a change.
+   for cidr in $(curl -s https://www.cloudflare.com/ips-v4); do
+     ufw allow proto tcp from "$cidr" to any port 443
+   done
+   for cidr in $(curl -s https://www.cloudflare.com/ips-v6); do
+     ufw allow proto tcp from "$cidr" to any port 443
+   done
+   ufw deny 443/tcp     # and keep your SSH rule above this
+   ufw enable
+   ```
+
+   Cloudflare's **Authenticated Origin Pulls** (SSL/TLS → Origin Server) is the belt to that
+   pair of braces: the edge presents a client certificate and Caddy refuses connections
+   without it, which keeps working when the IP list moves.
+
+**Check it from somewhere else**, not from the server: `curl --resolve palscans.org:443:<your
+server IP> https://palscans.org/ -H 'CF-Connecting-IP: 1.2.3.4'`. Before the lockdown it
+answers; after it, it does not. Until it does not, treat the panel IP allowlist and every
+per-IP rate limit as advisory.
 
 ### One process per core
 
@@ -347,6 +399,7 @@ what is wrong. What it checks:
 | `DATABASE_URL` | set, `postgres://` rather than PGlite, not carrying a well-known password |
 | `SITE_URL` | `https://`, no trailing path, matches `--host`, and the name resolves |
 | `TRUSTED_PROXY` | `xff` or `cloudflare`, never left at `none` |
+| **Origin lockdown** (`cloudflare` only) | `infra/Caddyfile` deletes `CF-Connecting-IP` from peers outside Cloudflare's ranges; whether `abort @direct` is on; and whether Cloudflare has published ranges the file does not list |
 | `WEB_CONCURRENCY` | a number or `auto` |
 | Database | reachable; **every migration applied**, none pending and none edited after the fact |
 | Connection budget | `WEB_CONCURRENCY × DATABASE_POOL_MAX` + the worker's pool fits inside `max_connections` |

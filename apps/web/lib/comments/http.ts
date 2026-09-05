@@ -1,11 +1,9 @@
-import { can, type Permission } from '@palscans/core'
 import { messages } from '@palscans/core/messages'
 import type { z } from 'zod'
 import {
   clientIp,
   csrfFailed,
   fail,
-  forbidden,
   hashIp,
   type RouteParams,
   readBody,
@@ -90,7 +88,13 @@ type UserHandler<P extends Record<string, string>> = (
 
 /**
  * Route wrapper: same-origin (docs/07 Origin check on every mutating route) and signed in.
- * Authorization beyond that is `can`/`entitlement`.
+ * Authorization beyond that is `can`/`entitlement`, decided inside the handler.
+ *
+ * There is deliberately no `withPermission` twin here. One existed, unused, alongside this:
+ * a second wrapper that also called `can(user, permission)`. Two wrappers that differ only
+ * in whether they check a permission is the shape that eventually gets the wrong one
+ * imported — so the permission-checking route wrapper lives in exactly one place,
+ * `@/lib/auth`, and the comment routes call `can()` where the decision is made.
  */
 export const requireUser =
   <P extends Record<string, string> = Record<string, string>>(handler: UserHandler<P>) =>
@@ -98,20 +102,6 @@ export const requireUser =
     if (!sameOrigin(request)) return csrfFailed()
     const user = await getAppUser()
     if (!user) return unauthorized()
-    return handler(request, ctx, user)
-  }
-
-/** Route wrapper: same-origin, signed in and holding a permission from @palscans/core. */
-export const withPermission =
-  <P extends Record<string, string> = Record<string, string>>(
-    permission: Permission,
-    handler: UserHandler<P>,
-  ) =>
-  async (request: Request, ctx: RouteParams<P>): Promise<Response> => {
-    if (!sameOrigin(request)) return csrfFailed()
-    const user = await getAppUser()
-    if (!user) return unauthorized()
-    if (!can(user, permission)) return forbidden()
     return handler(request, ctx, user)
   }
 

@@ -1,0 +1,30 @@
+-- Two pre-launch findings against the second factor, both on `users`.
+--
+-- 1. `totp_last_step` — a TOTP code was replayable. `verifyTotp` accepts the current
+--    30-second step and one either side (clock drift, which is right), and nothing recorded
+--    that a step had already been spent, so the same six digits worked for up to ~90
+--    seconds: long enough for anyone who watched them being typed, or who captured one from
+--    a phished form, to use them a second time. The 6-per-300s limiter bounded how *often*
+--    that could be tried, not whether it worked. This column is the high-water mark of the
+--    steps the account has accepted; the update that sets it is a compare-and-set
+--    (`WHERE totp_last_step IS NULL OR totp_last_step < :step`), so two requests racing with
+--    the same code cannot both win. NULL means "no code accepted yet", which is every
+--    existing row — a step is a Unix-epoch count of 30-second periods (~59 million today),
+--    so `integer` has room until the year 6000-odd.
+--
+-- 2. `totp_secret_sealed` — the enrolled secret was stored as raw base32 in `totp_secret`.
+--    A database dump therefore handed over working second factors for every enrolled
+--    account, staff included, which is exactly the threat `app_credentials` was sealed
+--    against in 9013. The new column holds the same secret as AES-256-GCM ciphertext under
+--    `CREDENTIALS_KEY` (packages/core/src/secrets.ts).
+--
+--    **`totp_secret` is deliberately left in place and NOT migrated here.** The sealing key
+--    lives in the application's environment, not in the database, so this migration cannot
+--    encrypt anything; a migration that dropped the column would lock every enrolled admin
+--    out of the panel, which is worse than the problem it fixes. Instead the application
+--    reads whichever column is populated, and re-seals a legacy row in place the next time
+--    that account passes its second factor — see `apps/web/lib/auth/totp.ts`. The plaintext
+--    column empties itself as enrolled users sign in, and enrolling or re-enrolling now only
+--    ever writes the sealed one.
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "totp_last_step" integer;--> statement-breakpoint
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "totp_secret_sealed" "bytea";

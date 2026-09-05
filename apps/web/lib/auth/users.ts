@@ -104,7 +104,8 @@ export const deletionPurgeAt = (requestedAt: Date | null): Date | null =>
  *   pointing at the user, which becomes a PII-free tombstone (`username` null, display name
  *   "Deleted user", no bio/avatar/banner); the per-comment `ip_hash` is cleared
  * - email (NOT NULL, unique) is replaced by `deleted-<id>@deleted.invalid`; username,
- *   password_hash, avatar_key, banner_key, totp_secret, bio and display name are wiped
+ *   password_hash, avatar_key, banner_key, both totp secret columns, bio and display name
+ *   are wiped
  * - oauth_accounts and push_subscriptions are deleted
  * - deleted_at is set; then every session is revoked (also drops the Redis cache).
  * Returns the ids of purged users.
@@ -153,6 +154,8 @@ export const purgeDueDeletions = async (now: Date = new Date()): Promise<number[
           avatarKey: null,
           bannerKey: null,
           totpSecret: null,
+          totpSecretSealed: null,
+          totpLastStep: null,
           totpEnabledAt: null,
           emailVerifiedAt: null,
           lastLoginMethod: null,

@@ -901,6 +901,8 @@ export const messages = {
       totpDisabled: 'Two-factor authentication is off.',
       totpPasswordToDisable: 'Enter your password to turn it off.',
       totpCodeToDisable: 'Enter a code from your authenticator app to turn it off.',
+      sealingUnavailable:
+        'Two-factor authentication cannot be set up on this deployment: the server has no key to encrypt the secret with. Ask the operator to set CREDENTIALS_KEY.',
       samePassword: 'Choose a password different from the current one.',
       connected: 'Connected accounts',
       connectedHint: 'Sign in with these providers as well as your password.',
@@ -1168,6 +1170,7 @@ export const messages = {
       sending: 'Sending…',
       sent: 'Message sent. Ticket #{id} — we reply by email.',
       failed: 'The message could not be sent. Try again or reach us on Discord.',
+      challengeFailed: 'The bot check did not pass. Reload the page and try again.',
       required: 'Required',
     },
   },

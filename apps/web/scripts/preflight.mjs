@@ -448,6 +448,134 @@ const checkTrustedProxy = () => {
   )
 }
 
+const CADDYFILE = path.join(REPO_ROOT, 'infra', 'Caddyfile')
+const CF_IP_LISTS = ['https://www.cloudflare.com/ips-v4', 'https://www.cloudflare.com/ips-v6']
+
+/**
+ * The finding this exists for, in one sentence: with `TRUSTED_PROXY=cloudflare` the app
+ * takes the client address from `CF-Connecting-IP`, which is exactly right for a request
+ * that came through Cloudflare and is a text field for anyone who reaches the origin
+ * directly. A pre-launch audit used it to walk through the panel's IP allowlist and to give
+ * itself a fresh bucket for every per-IP rate limit on the site.
+ *
+ * Only the operator can finish the fix — Cloudflare has to be the only thing that can reach
+ * port 443 — so this checks the parts that are in the repository and then names the part
+ * that is not. Three findings, in the order they bite:
+ *
+ *   1. `infra/Caddyfile` strips the CF-* headers from peers outside Cloudflare's ranges.
+ *      Without it, forging the header works and everything downstream is decoration.
+ *   2. The origin refuses non-Cloudflare peers outright (`abort @direct`). Stripping makes
+ *      forgery useless; this makes the origin unreachable, which also takes it out of reach
+ *      of a flood. It ships commented out because it is wrong for a `xff` deployment.
+ *   3. Cloudflare's published ranges have not moved since the list in the file was written.
+ *      A stale list is not a security hole — the missing ranges are treated as direct — but
+ *      it silently turns real visitors into "unknown address", which loses their rate-limit
+ *      bucket and, with the lockdown on, locks them out entirely.
+ */
+const checkOriginLockdown = async () => {
+  const mode = get('TRUSTED_PROXY')
+  if (mode !== 'cloudflare')
+    return skip(
+      SECTION_ENV,
+      'origin lockdown',
+      `not applicable with TRUSTED_PROXY=${mode || 'none'}`,
+    )
+  if (!existsSync(CADDYFILE))
+    return warn(
+      SECTION_ENV,
+      'origin lockdown',
+      'infra/Caddyfile is not here, so nothing could be checked',
+      'You are running behind something other than the shipped Caddy config. Whatever it ' +
+        'is must delete CF-Connecting-IP, CF-IPCountry, CF-IPCity and True-Client-IP from ' +
+        "any request whose peer is not a Cloudflare edge address, or the app's client IP is " +
+        'whatever the caller typed.',
+    )
+
+  const caddyfile = readFileSync(CADDYFILE, 'utf8')
+  const live = caddyfile
+    .split('\n')
+    .filter((l) => !l.trim().startsWith('#'))
+    .join('\n')
+  const strips = /header_up\s+-CF-Connecting-IP/i.test(live)
+  const matcher = /@direct\s+not\s+remote_ip\s+\S/.test(live)
+  if (!strips || !matcher)
+    fail(
+      SECTION_ENV,
+      'CF header stripping',
+      `infra/Caddyfile ${[
+        strips ? null : 'does not delete CF-Connecting-IP',
+        matcher ? null : 'has no @direct remote_ip matcher',
+      ]
+        .filter(Boolean)
+        .join(' and ')}`,
+      'Restore the "client address" block in infra/Caddyfile. Until it is there, anyone who ' +
+        'can reach this server on 443 without going through Cloudflare picks their own ' +
+        'client IP with one header: the panel IP allowlist admits them, and every per-IP ' +
+        'rate limit on the site (login, register, comments, the reader) gives them a fresh ' +
+        'bucket per request.',
+    )
+  else pass(SECTION_ENV, 'CF header stripping', 'non-Cloudflare peers lose CF-* (infra/Caddyfile)')
+
+  if (/^\s*abort\s+@direct\s*$/m.test(live))
+    pass(SECTION_ENV, 'origin lockdown', 'origin refuses non-Cloudflare peers')
+  else
+    warn(
+      SECTION_ENV,
+      'origin lockdown',
+      'the origin still answers requests that did not come through Cloudflare',
+      'Header stripping means a forged CF-Connecting-IP no longer works, which closes the ' +
+        'audit finding. Closing the door as well is one line: uncomment `abort @direct` in ' +
+        'infra/Caddyfile (docs/18 §3 "Lock the origin down"), and back it with a host ' +
+        'firewall that only admits Cloudflare on 443 — Caddy cannot refuse a packet that ' +
+        'arrives before it. Do it with a way in that does not go through Caddy already open.',
+    )
+
+  if (OFFLINE) return skip(SECTION_ENV, 'Cloudflare ranges', 'skipped (--offline)')
+  const declared = new Set(
+    (live.match(/@direct\s+not\s+remote_ip([^\n]*)/)?.[1] ?? '')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean),
+  )
+  let published = []
+  try {
+    const bodies = await Promise.all(
+      CF_IP_LISTS.map(async (u) => {
+        const res = await fetch(u, { signal: AbortSignal.timeout(10_000) })
+        if (!res.ok) throw new Error(`${u} → ${res.status}`)
+        return res.text()
+      }),
+    )
+    published = bodies
+      .join('\n')
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean)
+  } catch (error) {
+    return warn(
+      SECTION_ENV,
+      'Cloudflare ranges',
+      `could not be fetched (${error.message})`,
+      `Compare by hand: curl -s ${CF_IP_LISTS.join(' ')} against the @direct matcher in ` +
+        'infra/Caddyfile.',
+    )
+  }
+  const missing = published.filter((r) => !declared.has(r))
+  if (missing.length === 0)
+    pass(SECTION_ENV, 'Cloudflare ranges', `${published.length} published ranges, all listed`)
+  else
+    warn(
+      SECTION_ENV,
+      'Cloudflare ranges',
+      `infra/Caddyfile is missing ${missing.length}: ${missing.join(' ')}`,
+      'Cloudflare has published ranges this file does not know about. Requests from them ' +
+        'are treated as direct: their CF-* headers are dropped, so those visitors are ' +
+        'rate-limited as the edge rather than as themselves — and if `abort @direct` is on, ' +
+        'they are refused outright. Add them to the @direct matcher in infra/Caddyfile and ' +
+        'reload Caddy.',
+    )
+}
+
 const checkWebConcurrency = () => {
   const raw = get('WEB_CONCURRENCY')
   if (!raw) return pass(SECTION_ENV, 'WEB_CONCURRENCY', 'unset — one web process per core')
@@ -1307,6 +1435,7 @@ try {
   checkDatabaseUrl()
   await checkSiteUrl()
   checkTrustedProxy()
+  await checkOriginLockdown()
   checkWebConcurrency()
 
   await openDatabase()
