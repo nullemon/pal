@@ -1,7 +1,14 @@
 'use client'
 
 import { fmt, messages } from '@palscans/core/messages'
-import { ChevronDown, ChevronLeft, ChevronRight, MessageSquare, Settings } from 'lucide-react'
+import {
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  MessageSquare,
+  MoreHorizontal,
+  Settings,
+} from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { ChapterLink } from './types'
@@ -117,7 +124,10 @@ export interface TopBarProps {
   onPage: (idx: number) => void
   onSettings: () => void
   onComments: () => void
+  /** Opens the overflow sheet — "Report an issue", keyboard shortcuts. */
+  onMore: () => void
   settingsOpen: boolean
+  moreOpen: boolean
   height: number
 }
 
@@ -152,6 +162,17 @@ export function TopBar(p: TopBarProps) {
       <MessageSquare size={24} aria-hidden="true" />
     </button>
   )
+  const more = (
+    <button
+      type="button"
+      onClick={p.onMore}
+      aria-label={messages.chapterReport.menu}
+      aria-expanded={p.moreOpen}
+      className={`${iconButton} ${p.moreOpen ? 'bg-brand-wash text-brand-hover' : ''}`}
+    >
+      <MoreHorizontal size={24} aria-hidden="true" />
+    </button>
+  )
   const cls = `${barBase} top-0 border-b ${p.visible ? 'translate-y-0' : '-translate-y-full'}`
 
   if (p.paged && p.mobile) {
@@ -162,6 +183,7 @@ export function TopBar(p: TopBarProps) {
           {p.compactLabel}
         </div>
         {settings}
+        {more}
       </header>
     )
   }
@@ -185,6 +207,7 @@ export function TopBar(p: TopBarProps) {
         <div className="flex min-w-0 flex-1 items-center justify-end gap-1.5">
           {comments}
           {settings}
+          {more}
         </div>
       </header>
     )
@@ -208,6 +231,7 @@ export function TopBar(p: TopBarProps) {
         </output>
         {settings}
         {comments}
+        {more}
       </div>
     </header>
   )

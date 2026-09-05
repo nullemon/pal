@@ -3269,6 +3269,59 @@ export const messages = {
       viewOnSite: 'View board',
     },
   },
+
+  /* ————————————————————————— H · keeping a reader's place, and hearing when a chapter is broken */
+
+  /**
+   * Local reading progress. Every string here has one job beyond naming a thing: never to
+   * let a signed-out reader believe their place is stored anywhere but this browser. "On
+   * this device" is not decoration — a reader who thinks it is synced and clears their
+   * cookies loses a year of reading and blames the site.
+   */
+  localProgress: {
+    continueTitle: 'Continue reading',
+    /** Under the signed-out rail, and at the top of the signed-out history page. */
+    deviceOnly: 'Saved on this device',
+    deviceOnlyHint:
+      'Your place is kept in this browser only. Sign in and it moves with you to every device.',
+    signIn: 'Sign in to keep it',
+    historyTitle: 'Reading history',
+    historyEmpty: 'Nothing read on this device yet.',
+    unavailable:
+      'This browser is not letting the site remember anything — private browsing, usually. You can read normally, but your place will not be here next time.',
+    clear: 'Clear from this device',
+    clearConfirm: 'Forget everything this browser remembers about what you have read?',
+    cleared: 'Cleared from this device.',
+    merged: 'Your reading from this device is now on your account.',
+    /** Rendered as "Chapter 12 · page 4 of 30". */
+    position: 'page {n} of {total}',
+    resumeChapter: 'Ch. {n}',
+  },
+
+  /** "Report an issue" in the reader's overflow menu, and its sheet. */
+  chapterReport: {
+    menu: 'More',
+    open: 'Report an issue',
+    title: 'Report an issue',
+    lead: 'Tell us what is wrong with this chapter and we will fix it.',
+    reason: 'What is wrong?',
+    reasons: {
+      missing_page: 'A page is missing',
+      wrong_order: 'Pages are in the wrong order',
+      wrong_chapter: 'This is the wrong chapter',
+      poor_quality: 'The scan is unreadable',
+      other: 'Something else',
+    },
+    note: 'Anything else? (optional)',
+    notePlaceholder: 'Page 7 is the same as page 6, for example.',
+    context: 'Sent with: {chapter}, page {page}.',
+    contextNoPage: 'Sent with: {chapter}.',
+    anonymousNote: 'You can send this without an account.',
+    submit: 'Send report',
+    sending: 'Sending…',
+    thanks: 'Thanks — that is with the team.',
+    failed: 'That did not send. Try again in a moment.',
+  },
 } as const
 
 export type Messages = typeof messages

@@ -74,6 +74,10 @@ export interface ReaderData {
     title: string
     href: string
     readingDirection: 'ltr' | 'rtl' | 'vertical'
+    /** `manga` | `manhwa` | … — the type chip on a locally-remembered card. */
+    type: string
+    /** Public cover URL, written into the device's own progress record. */
+    coverSrc: string | null
   }
   chapter: {
     id: number
@@ -98,6 +102,13 @@ export interface ReaderData {
   ads: ReaderAds
   viewer: {
     signedIn: boolean
+    /**
+     * Which account is reading. The reader is where a signed-out reader most often signs
+     * in (the paywall and the header both come back here), so it is also where this
+     * browser's anonymous reading is handed over — and the handover has to know which
+     * account it has already been given to.
+     */
+    userId: number | null
     resume: ReaderResume | null
   }
   links: {

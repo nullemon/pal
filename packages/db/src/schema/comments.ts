@@ -189,6 +189,13 @@ export const reports = pgTable(
     reason: text('reason').notNull(),
     detail: text('detail'),
     payload: jsonb('payload').$type<Record<string, unknown>>(), // e.g. { page_idx } for broken_chapter
+    /**
+     * The reporter's address, hashed with the weekly salt exactly like `comments.ip_hash`.
+     * The only handle an anonymous report has: it dedupes a reader tapping "Report" five
+     * times on the same broken chapter, and shows moderators a repeat abuser, without ever
+     * storing an address (migration 9023).
+     */
+    ipHash: bytea('ip_hash'),
     status: text('status').notNull().default('open'), // open|triaged|actioned|rejected
     handledBy: ref('handled_by').references(() => users.id),
     handledAt: timestamptz('handled_at'),
@@ -197,6 +204,12 @@ export const reports = pgTable(
   (t) => [
     index('reports_status_kind_created_idx').on(t.status, t.kind, t.createdAt),
     index('reports_target_idx').on(t.targetType, t.targetId),
+    // "has this reporter already filed an open report on this chapter today" — the dedupe
+    // the anonymous chapter-report route runs before every insert. Partial on `open` so
+    // the years of handled reports cost nothing to keep out of it (migration 9023).
+    index('reports_open_target_created_idx')
+      .on(t.kind, t.targetId, t.createdAt.desc())
+      .where(sql`${t.status} = 'open'`),
   ],
 )
 

@@ -2,7 +2,16 @@
 
 import { fmt, messages } from '@palscans/core/messages'
 import { Sheet } from '@palscans/ui'
-import { ArrowLeft, ArrowRight, BookOpen, Crown, RectangleVertical, Rows3 } from 'lucide-react'
+import {
+  ArrowLeft,
+  ArrowRight,
+  BookOpen,
+  Crown,
+  Flag,
+  Keyboard,
+  RectangleVertical,
+  Rows3,
+} from 'lucide-react'
 import Link from 'next/link'
 import { type ReactNode, useId } from 'react'
 import { Kbd } from './chrome'
@@ -300,6 +309,47 @@ export function ShortcutsSheet({ open, onClose }: { open: boolean; onClose: () =
           </div>
         ))}
       </dl>
+    </Sheet>
+  )
+}
+
+/* ---------------------------------------------------------------- overflow menu */
+
+/**
+ * The reader's "…" menu. Everything that is neither navigation nor a setting: the shortcuts
+ * card, and "Report an issue" — put here rather than behind the end-of-chapter card because
+ * a reader who has found a missing page has, by definition, not reached the end.
+ */
+export function MoreSheet({
+  open,
+  onClose,
+  onReport,
+  onShortcuts,
+  showShortcuts,
+}: {
+  open: boolean
+  onClose: () => void
+  onReport: () => void
+  onShortcuts: () => void
+  /** Hidden on touch, where there is no keyboard to have shortcuts for. */
+  showShortcuts: boolean
+}) {
+  const item =
+    'flex min-h-12 w-full items-center gap-3 rounded-[10px] px-3 text-left text-sm font-semibold text-fg transition-colors hover:bg-surface-3 focus-visible:outline-2 focus-visible:outline-brand'
+  return (
+    <Sheet open={open} onClose={onClose} title={messages.chapterReport.menu}>
+      <div className="flex flex-col gap-1">
+        <button type="button" className={item} onClick={onReport}>
+          <Flag size={20} aria-hidden="true" className="text-fg-muted" />
+          <span>{messages.chapterReport.open}</span>
+        </button>
+        {showShortcuts ? (
+          <button type="button" className={item} onClick={onShortcuts}>
+            <Keyboard size={20} aria-hidden="true" className="text-fg-muted" />
+            <span>{messages.readerUi.shortcutsTitle}</span>
+          </button>
+        ) : null}
+      </div>
     </Sheet>
   )
 }

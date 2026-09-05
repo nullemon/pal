@@ -10,6 +10,7 @@ import {
   type SearchParams,
 } from '@/components/admin/server/params'
 import { PageHeader, Pagination } from '@/components/admin/ui'
+import { CHAPTER_REPORT_REASONS, type ChapterReportReason } from '@/components/reader/report'
 import { withPermission } from '@/lib/auth'
 
 const schema = z.object({
@@ -20,6 +21,21 @@ const schema = z.object({
   status: z.enum(['open', 'triaged', 'actioned', 'rejected']).catch('open'),
   page: pageSchema,
 })
+
+/**
+ * A `broken_chapter` report stores its reason as a code (`missing_page`), so the queue can
+ * be counted and filtered by it and a reworded label never orphans old rows. The queue is
+ * read by a person, though, so the code is turned back into the sentence the reader picked
+ * here, on the way out. Anything unrecognised — an older row, another kind of report —
+ * passes through untouched.
+ */
+const isChapterReason = (v: string): v is ChapterReportReason =>
+  (CHAPTER_REPORT_REASONS as readonly string[]).includes(v)
+
+const reasonLabel = (kind: string, reason: string): string =>
+  kind === 'broken_chapter' && isChapterReason(reason)
+    ? messages.chapterReport.reasons[reason]
+    : reason
 
 export default async function ReportsPage({
   searchParams,
@@ -60,7 +76,11 @@ export default async function ReportsPage({
       <ReportsQueue
         kind={p.kind ?? ''}
         status={p.status}
-        items={rows.map((r) => ({ ...r, createdAt: r.createdAt.toISOString() }))}
+        items={rows.map((r) => ({
+          ...r,
+          reason: reasonLabel(r.kind, r.reason),
+          createdAt: r.createdAt.toISOString(),
+        }))}
       />
       <Pagination
         page={p.page}

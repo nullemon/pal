@@ -3,8 +3,11 @@ import { chapterReads, chapters, getDb, series } from '@palscans/db'
 import { Button, Chip, EmptyState, RelativeTime } from '@palscans/ui'
 import { and, desc, eq, isNull } from 'drizzle-orm'
 import type { Metadata } from 'next'
+import { getSessionUser } from '@/lib/auth'
 import { mediaUrl } from '@/lib/auth/media'
 import { historyQuerySchema } from '@/lib/auth/schemas'
+import { DeviceHistory } from '@/lib/progress/DeviceHistory'
+import { MergeDeviceProgress } from '@/lib/progress/DeviceProgress'
 import { ClearHistoryButton } from '../_components/ClearHistoryButton'
 import { PageTitle } from '../_components/Section'
 import { flatParams, requireAccount, type SearchParams } from '../_lib'
@@ -15,11 +18,26 @@ const PAGE_SIZE = 40
 const chapterHref = (slug: string, n: number) =>
   `/series/${slug}/chapter-${Number.parseFloat(n.toFixed(3))}`
 
-/** Reading history — every chapter opened, newest first (docs/02 chapter_reads). */
+/**
+ * Reading history — every chapter opened, newest first (docs/02 chapter_reads).
+ *
+ * Signed out this page used to be a login wall. It is not any more: a reader who has been
+ * reading anonymously has a history, it is just held in their own browser, and turning them
+ * away at the door when they ask to see it is how a first-time visitor becomes a
+ * never-again visitor. The signed-out view says plainly whose it is and where it lives.
+ */
 export default async function HistoryPage({ searchParams }: { searchParams: SearchParams }) {
   const raw = await flatParams(searchParams)
   const { page } = historyQuerySchema.safeParse(raw).data ?? { page: 1 }
-  const user = await requireAccount(page > 1 ? `/me/history?page=${page}` : '/me/history')
+  const path = page > 1 ? `/me/history?page=${page}` : '/me/history'
+  if (!(await getSessionUser()))
+    return (
+      <>
+        <PageTitle title={messages.localProgress.historyTitle} />
+        <DeviceHistory signInHref={`/login?return=${encodeURIComponent(path)}`} />
+      </>
+    )
+  const user = await requireAccount(path)
   const db = await getDb()
   const rows = await db
     .select({
@@ -46,6 +64,7 @@ export default async function HistoryPage({ searchParams }: { searchParams: Sear
 
   return (
     <>
+      <MergeDeviceProgress userId={user.id} />
       <PageTitle title={messages.me.history.title}>
         {items.length ? <ClearHistoryButton /> : null}
       </PageTitle>

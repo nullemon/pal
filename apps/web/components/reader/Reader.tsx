@@ -3,6 +3,7 @@
 import { fmt, messages } from '@palscans/core/messages'
 import { useRouter } from 'next/navigation'
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { MergeDeviceProgress } from '@/lib/progress/DeviceProgress'
 import { Skyscrapers } from './ads'
 import { BottomBar, ChromeHint, FloatingPill, Kbd, ProgressBar, TopBar } from './chrome'
 import { EndOfChapter } from './EndOfChapter'
@@ -15,6 +16,7 @@ import {
 } from './hooks'
 import { PagedView } from './PagedView'
 import { pickVariant } from './quality'
+import { ReportSheet } from './ReportSheet'
 import { Scrubber } from './Scrubber'
 import { StripView } from './StripView'
 import {
@@ -32,7 +34,7 @@ import {
   loadLocalResume,
   TAP_HINT_KEY,
 } from './settings'
-import { SettingsSheet, ShortcutsSheet } from './sheets'
+import { MoreSheet, SettingsSheet, ShortcutsSheet } from './sheets'
 import type { ReaderData, ReaderPage } from './types'
 
 export interface ReaderProps {
@@ -82,6 +84,8 @@ export function Reader({ data, comments }: ReaderProps) {
   const [chrome, setChrome] = useState(true)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  const [moreOpen, setMoreOpen] = useState(false)
+  const [reportOpen, setReportOpen] = useState(false)
   const [tapHintSeen, markTapHint] = useOnceFlag(TAP_HINT_KEY)
   const [stripKey, setStripKey] = useState(0)
   const initialPage = useRef(data.viewer.resume?.pageIdx ?? 0)
@@ -135,11 +139,31 @@ export function Reader({ data, comments }: ReaderProps) {
       : progressOfPage(pageIdx, pageCount)
     : scrollPct
 
+  // What this device writes down about the chapter, so a signed-out reader's "Continue
+  // reading" rail and history can render it with nothing but localStorage to go on.
+  const progressContext = useMemo(
+    () => ({
+      chapterId: data.chapter.id,
+      seriesId: data.series.id,
+      seriesSlug: data.series.slug,
+      seriesTitle: data.series.title,
+      seriesHref: data.series.href,
+      seriesType: data.series.type,
+      coverSrc: data.series.coverSrc,
+      chapterNumber: data.chapter.number,
+      chapterLabel: data.chapter.label,
+      chapterHref: data.chapter.href,
+      pageCount,
+    }),
+    [data.series, data.chapter, pageCount],
+  )
+
   useProgressWriter({
     chapterId: data.chapter.id,
     pageIdx,
     scrollPct: progress,
     signedIn: data.viewer.signedIn,
+    context: progressContext,
   })
 
   // docs/06: at 80% prefetch the next chapter's route and its first three pages.
@@ -336,6 +360,9 @@ export function Reader({ data, comments }: ReaderProps) {
       style={{ background: backgroundStyle(settings.background), overscrollBehavior: 'contain' }}
     >
       <style>{shellCss}</style>
+      {/* Signing in from inside the reader (the paywall, the header) lands back here, so
+          this is one of the two places the device hands its anonymous reading over. */}
+      {data.viewer.userId === null ? null : <MergeDeviceProgress userId={data.viewer.userId} />}
       <ProgressBar pct={progress} top={chrome ? topH : 0} current={pageIdx + 1} total={pageCount} />
       <TopBar
         visible={chrome}
@@ -356,7 +383,9 @@ export function Reader({ data, comments }: ReaderProps) {
         onPage={goToPage}
         onSettings={() => setSettingsOpen(true)}
         onComments={scrollToComments}
+        onMore={() => setMoreOpen(true)}
         settingsOpen={settingsOpen}
+        moreOpen={moreOpen}
         height={topH}
       />
 
@@ -488,6 +517,28 @@ export function Reader({ data, comments }: ReaderProps) {
         showPremium={data.ads.enabled}
       />
       <ShortcutsSheet open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+      <MoreSheet
+        open={moreOpen}
+        onClose={() => setMoreOpen(false)}
+        showShortcuts={!coarse}
+        onReport={() => {
+          setMoreOpen(false)
+          setReportOpen(true)
+        }}
+        onShortcuts={() => {
+          setMoreOpen(false)
+          setShortcutsOpen(true)
+        }}
+      />
+      <ReportSheet
+        open={reportOpen}
+        onClose={() => setReportOpen(false)}
+        chapterId={data.chapter.id}
+        chapterLabel={data.chapter.labelWithTitle}
+        pageIdx={pageIdx}
+        pageCount={pageCount}
+        signedIn={data.viewer.signedIn}
+      />
     </div>
   )
 }

@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { localResume } from '@/lib/progress/local'
 import type { ReaderBackground, ReaderDirection, ReaderMode, ReaderSettings } from './types'
 
 /** localStorage key; bump the suffix when the shape changes incompatibly. */
@@ -86,7 +87,14 @@ export const backgroundStyle = (bg: ReaderBackground): string => {
 /** Sepia and white backgrounds need dark page-number ink. */
 export const isLightBackground = (bg: ReaderBackground): boolean => bg === 'sepia' || bg === 'white'
 
-/** The per-chapter resume record kept for everyone, signed in or not. */
+/**
+ * The per-chapter resume record kept for everyone, signed in or not.
+ *
+ * The record itself now lives in `lib/progress` — the same rows that feed a signed-out
+ * reader's "Continue reading" rail and history, and that are handed to the account when
+ * they sign in. This key is only read, never written: it is what an earlier version of the
+ * reader wrote, and dropping it silently would move a returning reader back to page one.
+ */
 export const RESUME_KEY = 'palscans.reader.resume.v1'
 
 export const resumeSchema = z.object({
@@ -94,9 +102,7 @@ export const resumeSchema = z.object({
   scrollPct: z.number().min(0).max(1),
 })
 
-export const loadLocalResume = (
-  chapterId: number,
-): { pageIdx: number; scrollPct: number } | null => {
+const legacyResume = (chapterId: number): { pageIdx: number; scrollPct: number } | null => {
   try {
     const raw = window.localStorage.getItem(`${RESUME_KEY}:${chapterId}`)
     if (!raw) return null
@@ -107,15 +113,12 @@ export const loadLocalResume = (
   }
 }
 
-export const saveLocalResume = (
+/** Synchronous, for the reader's first paint: the journal, then the old per-chapter key. */
+export const loadLocalResume = (
   chapterId: number,
-  value: { pageIdx: number; scrollPct: number },
-) => {
-  try {
-    window.localStorage.setItem(`${RESUME_KEY}:${chapterId}`, JSON.stringify(value))
-  } catch {
-    // ignore
-  }
+): { pageIdx: number; scrollPct: number } | null => {
+  const row = localResume(chapterId)
+  return row ? { pageIdx: row.pageIdx, scrollPct: row.scrollPct } : legacyResume(chapterId)
 }
 
 /** The first-run tap-zone overlay is shown once per device. */

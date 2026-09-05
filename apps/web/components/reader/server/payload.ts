@@ -47,6 +47,7 @@ export interface ReaderSeriesRow {
   id: number
   slug: string
   title: string
+  type: string
   coverKey: string | null
   readingDirection: 'ltr' | 'rtl' | 'vertical'
 }
@@ -103,6 +104,8 @@ export const buildReaderData = async (args: BuildReaderDataArgs): Promise<BuiltR
       title: series.title,
       href: seriesHref(series.slug),
       readingDirection: series.readingDirection,
+      type: series.type,
+      coverSrc: coverUrl,
     },
     chapter: {
       id: bundle.chapter.id,
@@ -129,7 +132,7 @@ export const buildReaderData = async (args: BuildReaderDataArgs): Promise<BuiltR
       placeholder: site.tags.end === null,
       tags: site.tags,
     },
-    viewer: { signedIn: !!user, resume },
+    viewer: { signedIn: !!user, userId: user?.id ?? null, resume },
     links: { subscribe: `/subscribe?return=${returnTo}`, signIn: `/login?next=${returnTo}` },
     nextPagesEndpoint:
       bundle.next && next && !next.locked ? `/api/chapters/${bundle.next.id}/pages?limit=3` : null,

@@ -148,6 +148,13 @@
       "when": 1788380014000,
       "tag": "9024_h_series_requests",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1788380015000,
+      "tag": "9023_h_reader_progress_and_chapter_reports",
+      "breakpoints": true
     }
   ]
 }
