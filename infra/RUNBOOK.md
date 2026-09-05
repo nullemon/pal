@@ -277,6 +277,11 @@ Most credentials now live in **Admin → System → Integrations**, not the envi
    Cloudflare. The worker picks the change up within **30 seconds**, or immediately on restart
    (`CREDENTIAL_TTL_MS`, `apps/worker/src/lib/config.ts`; the web app's memo in
    `apps/web/lib/config/store.ts` is the same 30s).
+
+   That memo is **per process**, and the web container runs one process per core
+   (`WEB_CONCURRENCY`, docs/18 §3). The worker that handled the save is correct immediately;
+   the others are up to 30 s behind, so a reload right after saving can land on one that has
+   not re-read yet. It resolves itself. `dc restart web` if you need it not to.
 2. **OAuth, Stripe, Resend, Turnstile, Discord, VAPID**: rotate at the provider, paste into
    the matching panel section, save. For Stripe, re-verify the webhook signing secret with a
    test event afterwards.

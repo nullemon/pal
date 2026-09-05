@@ -33,7 +33,12 @@ ENV NODE_ENV=production
 COPY --from=build /repo /repo
 WORKDIR /repo/apps/web
 EXPOSE 3000
-CMD ["pnpm", "start"]
+# `node scripts/serve.mjs`, not `pnpm start`, even though they run the same script: this is
+# PID 1's child under the compose `init: true` tini, and every layer between tini and the
+# process that owns the workers is one more place a SIGTERM can be dropped on `docker stop`.
+# serve.mjs runs `next start` once per core and forwards the signal to each worker itself
+# (WEB_CONCURRENCY; docs/20). One process per core, still one container and one port.
+CMD ["node", "scripts/serve.mjs"]
 
 FROM base AS worker
 ENV NODE_ENV=production

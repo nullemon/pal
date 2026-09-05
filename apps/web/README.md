@@ -26,7 +26,9 @@ relative to the app's working directory) are served at `/_storage/<key>` by
 | Script | What it does |
 |---|---|
 | `pnpm --filter @palscans/web dev` | Next dev server (Turbopack) |
-| `… build` / `… start` | production build / serve |
+| `… build` | production build |
+| `… start` | serve: `scripts/serve.mjs`, i.e. `next start` once per core behind `node:cluster` on one port (`WEB_CONCURRENCY`; docs/20). `WEB_CONCURRENCY=1` runs it in this process with no supervisor |
+| `… preflight` | `scripts/preflight.mjs` — the deployment checklist as a program (docs/18 §3½) |
 | `… typecheck` | `next typegen` then `tsc --noEmit` |
 | `… test` | vitest unit tests (`lib/**`) |
 | `… e2e` | Playwright against `next start` on port 3100 (build first; `E2E_PORT` overrides). Screenshots land in `test-results/f1/` |

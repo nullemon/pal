@@ -149,6 +149,14 @@ services:
     environment:
       <<: *app-env
       PORT: "3000"
+      # Web processes inside this container (apps/web/scripts/serve.mjs). Unset means one per
+      # core, which is the point: `next start` is a single Node process and React server
+      # rendering is synchronous, so one process serves ~30 reader pages a second no matter
+      # how many cores the box has — docs/20 measured 1.07 of 4 cores busy with three idle.
+      # Still one container, one port and one health check; the cluster primary shares the
+      # listening socket, so nothing above this line changes. Lower it on a small box: each
+      # worker is a full Next server at ~200-250 MB.
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -165,6 +173,11 @@ services:
       retries: 5
       start_period: 30s
 
+  # Exactly one of these, always. Unlike `web` it must never be scaled or clustered: it holds
+  # the publish scheduler, the view-stats rollup and the nightly backup on interval timers
+  # (apps/worker/src/index.ts), and N copies would run each of them N times — N dumps a night,
+  # N rollups racing over the same rows. Extra *job* throughput is WORKER_CONCURRENCY inside
+  # this one process, not more processes.
   worker:
     init: true
     build:

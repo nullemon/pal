@@ -268,6 +268,102 @@ it falls back to `SESSION_SECRET` — but setting it separately now means you ca
 later without making every stored credential unreadable. It costs one line today and saves a
 bad afternoon later.
 
+### One process per core
+
+There is one more line you may want, and the default is already right:
+
+```sh
+# WEB_CONCURRENCY=auto     # unset or `auto` = one web process per core. Leave it alone.
+```
+
+`next start` is **one Node process**, and React server rendering is synchronous work on its
+event loop. `docs/20-performance.md` measured what that costs: ~30 ms of CPU per reader page,
+so **one process tops out at ~30 pages a second** — and throughput did not move at all between
+one concurrent reader and thirty-two, at 1.07 of the box's 4 cores busy. Three cores sat idle.
+
+So `pnpm start` and the `web` container now run `apps/web/scripts/serve.mjs`, which is
+`next start` once per core behind Node's `cluster` module: **one container, one port, one
+process to signal**, `reverse_proxy web:3000` unchanged, the same `/api/health` check, and one
+`docker compose exec web`. On this 4-core box that took the reader from ~32 to ~90–110 pages a
+second. Ctrl-C and `docker stop` still take the whole thing down: the primary forwards the
+signal and each worker does the graceful drain `next start` already implements.
+
+Set `WEB_CONCURRENCY` only to size *down* — each worker is a full Next server at roughly
+200–250 MB, so a 2 GB machine wants `WEB_CONCURRENCY=2`. `WEB_CONCURRENCY=1` is the old
+single-process behaviour. Anything that is not a positive integer or `auto` is refused at
+startup rather than quietly serving on one core.
+
+**The worker is not clustered and must not be.** It holds the publish scheduler, the stats
+rollup and the nightly backup on interval timers; N copies would run each of them N times.
+`WORKER_CONCURRENCY` gives it more jobs in flight inside the one process.
+
+Two things change because each web process has its own memory, and both are worth knowing
+before you see them:
+
+- **A setting saved in the panel reaches the other web processes within 30 seconds**, not
+  instantly — the credentials/settings memo is per process and the TTL is the invalidation
+  (docs/19). Save an integration, reload, and the reload may land on a worker that has not
+  re-read yet. The staff sign-in path and the panel IP allowlist come from a 60-second
+  snapshot and behave the same way. Nothing is served *wrong*; it is late, briefly.
+- **The view buffer is per process**, so beacons are batched N ways. Counting stays honest
+  because the dedupe claim is in Redis and `view_events`' primary key is the final word —
+  which is one of several reasons `REDIS_URL` is not optional here (§4).
+
+And one thing to size rather than know: **the database connection pool is per process too**
+(`DATABASE_POOL_MAX`, default 10), so the web tier wants `WEB_CONCURRENCY × 10` connections
+and the worker another 10. The compose Postgres allows 100, which is comfortable on the 4-core
+box in §0 and tight on an 8-core one. Getting it wrong does not fail at boot: it fails as
+`FATAL: sorry, too many clients already` on whichever request needs a connection during your
+first spike. The preflight in §3½ does the arithmetic for you.
+
+---
+
+## 3½ · Preflight: check it before you boot it
+
+Everything above can be got wrong quietly. Before the first `up -d`, run the preflight — it
+reads the `.env` you just wrote, connects to the services the app will connect to, and prints
+a numbered list of what is not ready:
+
+```sh
+dc='docker compose --env-file .env -f infra/docker-compose.yml'
+$dc up -d postgres valkey                      # the app itself is still down
+$dc build web                                  # only needed the first time
+$dc run --rm --no-deps -w /repo web node apps/web/scripts/preflight.mjs --host palscans.org
+```
+
+Run it **in the image**, as above, rather than on the host: the container is on the compose
+network, so the `postgres:5432` and `valkey:6379` hostnames in your `.env` resolve to the
+services you just started — from the host they do not resolve at all, and you would be
+debugging the preflight instead of the deployment. (It will run on the host if you prefer —
+Node 22 and `pnpm install` in the checkout is all it needs, no build step — but then point
+`DATABASE_URL` and `REDIS_URL` at `127.0.0.1`, which is where compose publishes them.)
+
+It exits non-zero if anything is blocking, and every failure says what to do rather than only
+what is wrong. What it checks:
+
+| | |
+| --- | --- |
+| `SESSION_SECRET`, `INTERNAL_API_SECRET`, `CREDENTIALS_KEY` | present, long enough, high enough entropy, all different — and **not a literal `$(openssl …)`**, which is 26 characters that clear the sealing key's 16-character floor in silence (the trap above) |
+| `DATABASE_URL` | set, `postgres://` rather than PGlite, not carrying a well-known password |
+| `SITE_URL` | `https://`, no trailing path, matches `--host`, and the name resolves |
+| `TRUSTED_PROXY` | `xff` or `cloudflare`, never left at `none` |
+| `WEB_CONCURRENCY` | a number or `auto` |
+| Database | reachable; **every migration applied**, none pending and none edited after the fact |
+| Connection budget | `WEB_CONCURRENCY × DATABASE_POOL_MAX` + the worker's pool fits inside `max_connections` |
+| `pg_dump` / `pg_restore` | on `PATH` and not older than the server |
+| Redis / Valkey | reachable, and `maxmemory-policy` is `noeviction` so BullMQ jobs cannot be evicted |
+| Storage | driver is `s3` not `fs`, the four S3 values are set, and the bucket answers (`--write` also does the panel's write/read/delete round trip) |
+| **Backups** | `BACKUP_S3_BUCKET` is **not** the bucket `cdn.palscans.org` serves, and has a key that can write to it |
+| **CDN exposure** | `https://cdn.palscans.org/uploads/<missing key>` answers **403**, not 404 — the §2 check, automated |
+| Admin | an account holds the `admin` role **and** has TOTP enrolled |
+| Stored credentials | if `app_credentials` has rows, the current sealing key actually opens them (docs/19's silent-restore trap) |
+
+Add `--offline` to skip everything that needs the network (DNS, the bucket, the CDN probe)
+when you are checking a box before its DNS exists — and re-run it without the flag afterwards.
+It reads and reports only: it never writes a setting and never fixes anything.
+
+Re-run it after §5 and §6, when the admin account exists and the credentials are in the panel.
+
 ---
 
 ## 4 · First boot
@@ -475,7 +571,11 @@ Walk these in a private window:
 - [ ] **Admin → System → Backup** shows a green run — press **Back up now** once and watch it
 - [ ] the `rclone sync` cron job from `infra/RUNBOOK.md` → **Backups → 2** is installed;
       without it there is no object backup at all
-- [ ] you have read `docs/20-performance.md` and know what this box does per second
+- [ ] `node apps/web/scripts/preflight.mjs --host palscans.org` exits **0** — run it again now
+      that the admin account exists and the credentials are in the panel (§3½)
+- [ ] you have read `docs/20-performance.md` and know what this box does per second, and
+      `docker compose --env-file .env -f infra/docker-compose.yml exec web sh -c 'ps -o pid,args'`
+      shows one `next-server` per core, not one in total
 
 Then submit the sitemap to Google Search Console.
 
@@ -591,6 +691,9 @@ Honest list of what is not there, so nothing surprises you at 2am:
   in the panel. Every screen degrades to a clear "not configured" state rather than erroring.
 - **A credential change reaches other processes within 30 seconds**, not instantly — the store
   is memoised for 30s per process, in memory only. Restart the worker if you need it sooner.
+  With `WEB_CONCURRENCY` above 1 that now includes the other web processes, so a saved setting
+  can look like it did not take for up to 30 seconds depending on which worker answers the
+  reload (§3). `docker compose restart web` is the impatient version.
 - **`CREDENTIALS_KEY` has no re-key command.** Rotating it means re-entering the credentials
   in the panel.
 - **Deleting a reader's preference rows is a hard delete** (bookmarks, ratings, reactions,

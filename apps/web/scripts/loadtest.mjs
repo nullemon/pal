@@ -26,6 +26,8 @@
  *
  * Flags:
  *   --port N          port for the server it starts (default 3205)
+ *   --workers N       web processes to start (default: core count, what `pnpm start` runs).
+ *                     `--workers 1` is the single-process baseline docs/20 opens with.
  *   --url ORIGIN      measure a server you started yourself instead
  *   --concurrency N   in-flight requests per path (default 8)
  *   --duration S      measured seconds per path (default 10)
@@ -55,6 +57,12 @@ const flag = (name, fallback) => {
 const has = (name) => args.includes(`--${name}`)
 
 const PORT = Number(flag('port', 3205))
+/**
+ * Web processes to start. The default is what `pnpm start` runs in production — one per core
+ * (`scripts/serve.mjs`) — so a re-run measures the deployment rather than a shape nobody
+ * ships. `--workers 1` reproduces the single-process baseline in docs/20.
+ */
+const WORKERS = flag('workers', String(os.availableParallelism()))
 const EXTERNAL = flag('url', null)
 const CONCURRENCY = Number(flag('concurrency', 8))
 const DURATION_MS = Number(flag('duration', 10)) * 1000
@@ -88,11 +96,20 @@ const die = (msg) => {
 
 // ---------------------------------------------------------------- http client
 
-const agent = new http.Agent({
-  keepAlive: true,
-  maxSockets: CONCURRENCY,
-  maxFreeSockets: CONCURRENCY,
-})
+/**
+ * One keep-alive pool per measurement, sized to *that* measurement's concurrency.
+ *
+ * It has to be per measurement, not per run: a single agent sized from `--concurrency` caps
+ * the sweep's later steps at that many sockets, so "32 concurrent readers" would really be 8
+ * connections with 24 virtual readers queued inside undici's agent — measuring the client,
+ * not the server. That matters now that there is more than one server process, because
+ * connections are what the cluster distributes.
+ */
+const makeAgent = (sockets) =>
+  new http.Agent({ keepAlive: true, maxSockets: sockets, maxFreeSockets: sockets })
+
+/** The pool the current phase is using; `measure` swaps it and discovery uses the default. */
+let agent = makeAgent(CONCURRENCY)
 
 /**
  * One request, timed end to end — the body is read to completion, not just the headers.
@@ -174,13 +191,17 @@ const startServer = async () => {
   if (!existsSync(path.join(APP_DIR, '.next', 'BUILD_ID')))
     die('no production build found. Run `pnpm --filter @palscans/web build` first.')
 
-  server = spawn('pnpm', ['exec', 'next', 'start', '-p', String(PORT)], {
+  // `scripts/serve.mjs`, not `next start` directly: it is what `pnpm start` and the web
+  // container run, and at `--workers 1` it *is* `next start`, in this process, with no
+  // supervisor — so the baseline and the clustered run differ only in the process count.
+  server = spawn(process.execPath, [path.join(APP_DIR, 'scripts', 'serve.mjs')], {
     cwd: APP_DIR,
     stdio: JSON_OUT ? 'ignore' : ['ignore', 'ignore', 'inherit'],
     detached: true,
     env: {
       ...process.env,
       NODE_ENV: 'production',
+      WEB_CONCURRENCY: String(WORKERS),
       PORT: String(PORT),
       // The production guards in lib/env.ts are real: an explicit loopback SITE_URL is the
       // documented exemption for exactly this (a local `next start` verification run).
@@ -255,6 +276,8 @@ const measure = async (
   build,
   { concurrency = CONCURRENCY, durationMs = DURATION_MS } = {},
 ) => {
+  const previous = agent
+  agent = makeAgent(concurrency)
   for (let i = 0; i < WARMUP; i++) await request(build(0, i))
 
   const samples = []
@@ -277,6 +300,8 @@ const measure = async (
   }
   await Promise.all(Array.from({ length: concurrency }, (_, vu) => worker(vu)))
   const elapsedMs = Number(process.hrtime.bigint() - startedAt) / 1e6
+  agent.destroy()
+  agent = previous
 
   const sorted = [...samples].sort((a, b) => a - b)
   const ttfbSorted = [...ttfbs].sort((a, b) => a - b)
@@ -339,7 +364,9 @@ const main = async () => {
   const ids = findIds(chapterHtml)
   if (!ids.seriesId) die(`could not read seriesId out of ${chapterPath}`)
 
-  log(`server    ${ORIGIN}${EXTERNAL ? ' (yours)' : ' (next start, this script owns it)'}`)
+  log(
+    `server    ${ORIGIN}${EXTERNAL ? ' (yours)' : ` (${WORKERS} next worker(s), this script owns them)`}`,
+  )
   log(`targets   ${seriesPath} · ${chapterPath} · views ${ids.seriesId}/${ids.chapterId ?? 0}`)
   log(`load      ${CONCURRENCY} concurrent · ${DURATION_MS / 1000}s per path · ${WARMUP} warmup`)
   log('')
@@ -396,6 +423,8 @@ const main = async () => {
     node: process.version,
     cpu: os.cpus()[0]?.model ?? 'unknown',
     cores: os.cpus().length,
+    /** Serving processes. `external` when --url points at a server this script did not start. */
+    webWorkers: EXTERNAL ? 'external' : Number(WORKERS),
     memGb: Math.round(os.totalmem() / 1024 ** 3),
     platform: `${os.type()} ${os.release()}`,
     database: (process.env.DATABASE_URL ?? 'postgres://pal:pal@127.0.0.1:5433/palscans').replace(
@@ -439,6 +468,7 @@ const main = async () => {
   console.log(
     `machine   ${machine.cores}× ${machine.cpu}, ${machine.memGb} GB, node ${machine.node}`,
   )
+  console.log(`web       ${machine.webWorkers} process(es) on port ${HTTP_PORT}`)
   console.log(`db        ${machine.database}`)
   console.log(`redis     ${machine.redis}`)
   console.log(

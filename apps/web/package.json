@@ -6,12 +6,13 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "node scripts/serve.mjs",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "e2e": "playwright test",
     "lint": "biome check .",
     "verify:offline": "node scripts/verify-offline.mjs",
+    "preflight": "node scripts/preflight.mjs",
     "appearance:reresolve": "node --env-file-if-exists=../../.env --import tsx scripts/reresolve-appearance.mts",
     "perf:budget": "node scripts/perf-budget.mjs"
   },
