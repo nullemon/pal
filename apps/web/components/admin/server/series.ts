@@ -103,9 +103,11 @@ export const loadSeriesEditor = async (id: number): Promise<SeriesEditorData | n
       .from(seriesGenres)
       .where(eq(seriesGenres.seriesId, id)),
     db
+      // The editor's genre picker: live genres only, in the operator's order (migration 9028).
       .select({ id: genres.id, name: genres.name, kind: genres.kind })
       .from(genres)
-      .orderBy(asc(genres.kind), asc(genres.name)),
+      .where(isNull(genres.deletedAt))
+      .orderBy(asc(genres.kind), asc(genres.position), asc(genres.name)),
     db
       .select({ country: geoRestrictions.country, mode: geoRestrictions.mode })
       .from(geoRestrictions)

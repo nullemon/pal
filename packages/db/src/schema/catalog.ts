@@ -130,17 +130,38 @@ export interface FaqEntry {
   a: string
 }
 
-export const genres = pgTable('genres', {
-  id: identity(),
-  slug: citext('slug').notNull().unique(),
-  name: text('name').notNull(),
-  kind: text('kind').notNull().default('genre'), // 'genre' | 'theme' | 'format'
-  // SEO (docs/12 §9)
-  seoTitle: text('seo_title'),
-  seoDescription: text('seo_description'),
-  intro: jsonb('intro').$type<RichText | null>(), // rich text above the grid
-  faq: jsonb('faq').$type<FaqEntry[] | null>(), // → FAQPage
-})
+export const genres = pgTable(
+  'genres',
+  {
+    id: identity(),
+    slug: citext('slug').notNull().unique(),
+    name: text('name').notNull(),
+    kind: text('kind').notNull().default('genre'), // 'genre' | 'theme' | 'format'
+    /** Listing order within a kind, on /genres and in the browse filters (migration 9028). */
+    position: integer('position').notNull().default(0),
+    // SEO (docs/12 §9)
+    seoTitle: text('seo_title'),
+    seoDescription: text('seo_description'),
+    intro: jsonb('intro').$type<RichText | null>(), // rich text above the grid
+    faq: jsonb('faq').$type<FaqEntry[] | null>(), // → FAQPage
+    /** The genre this one was folded into, when it lost a merge (migration 9028). */
+    mergedIntoId: bigint('merged_into_id', { mode: 'number' }).references(
+      (): AnyPgColumn => genres.id,
+      { onDelete: 'set null' },
+    ),
+    /**
+     * Retired, not removed. `series_genres.genre_id` cascades on delete, so a hard delete of
+     * a genre in use silently detaches every series that carried it; soft delete keeps the
+     * join rows so a restore brings the attachments back with it.
+     */
+    deletedAt: deletedAt(),
+  },
+  (t) => [
+    index('genres_kind_position_idx')
+      .on(t.kind, t.position, t.name)
+      .where(sql`${t.deletedAt} IS NULL`),
+  ],
+)
 
 export const seriesGenres = pgTable(
   'series_genres',

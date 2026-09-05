@@ -37,7 +37,10 @@ export async function loadProxySnapshot(db?: Db): Promise<ProxySnapshot> {
       .select({ old: slugHistory.oldSlug, current: genres.slug })
       .from(slugHistory)
       .innerJoin(genres, eq(genres.id, slugHistory.entityId))
-      .where(eq(slugHistory.entityType, 'genre')),
+      // History that lands on a retired genre would 301 an old URL to a 404. A merge
+      // repoints the loser's history at the winner (queries/genres.ts), so only a genre
+      // deleted outright falls out here — and its old slugs then 404 directly.
+      .where(and(eq(slugHistory.entityType, 'genre'), isNull(genres.deletedAt))),
     database
       .select({ old: slugHistory.oldSlug, current: announcements.slug })
       .from(slugHistory)

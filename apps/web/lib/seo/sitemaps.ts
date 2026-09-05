@@ -178,7 +178,12 @@ export async function collectSitemapUrls(
   }
 
   if (want.has('genres')) {
-    const list = await db.select({ slug: genres.slug }).from(genres).orderBy(genres.slug)
+    // A retired genre is a 404, and a 404 in a sitemap is a crawl budget spent on nothing.
+    const list = await db
+      .select({ slug: genres.slug })
+      .from(genres)
+      .where(isNull(genres.deletedAt))
+      .orderBy(genres.slug)
     out.push({ name: 'genres.xml.gz', urls: list.map((g) => ({ loc: abs(genrePath(g.slug)) })) })
   }
 

@@ -32,6 +32,8 @@ export type AdminIcon =
   | 'bell'
   | 'plug'
   | 'calendar'
+  | 'tags'
+  | 'key'
 
 export interface AdminNavItem {
   label: string
@@ -61,6 +63,15 @@ export const adminNav: readonly AdminNavGroup[] = [
     label: m.content,
     items: [
       { label: m.series, href: '/admin/series', icon: 'library', permission: 'series.read' },
+      // The taxonomy behind /genres and the browse filters (migration 9028). Listing and
+      // renaming are `series.read` / `series.update` — the same gate as editing the series
+      // that carry them; the merge behind it is `series.delete`, like the series merge.
+      {
+        label: adminMessages.genreAdmin.navLabel,
+        href: '/admin/genres',
+        icon: 'tags',
+        permission: 'series.read',
+      },
       // Duplicate detection (docs/09 legacy import): pairs that look like one work under two
       // rows. Listing is `series.read`; the merge behind it is `series.delete`.
       {
@@ -216,6 +227,15 @@ export const adminNav: readonly AdminNavGroup[] = [
         permission: 'settings.write',
       },
       { label: m.access, href: '/admin/access', icon: 'shield', permission: 'settings.write' },
+      // What each role may do, as a matrix (Admin → Access → Roles). Same gate as the rest
+      // of Access — and `settings.write` is one of the two cells the screen refuses to
+      // revoke from `admin`, precisely because it is this item's own gate.
+      {
+        label: adminMessages.roles.navLabel,
+        href: '/admin/access/roles',
+        icon: 'key',
+        permission: 'settings.write',
+      },
       // Credentials the operator can type in rather than deploy (docs/19).
       {
         label: m.integrations,

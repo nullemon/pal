@@ -465,7 +465,7 @@ export async function browseSeries(q: BrowseQuery): Promise<PagedResult<SeriesSu
   return { items: rows.map(toSummary), page, pageSize, total: Number(total), totalPages }
 }
 
-/** Resolve genre slugs to ids; unknown slugs are dropped. */
+/** Resolve genre slugs to ids; unknown and retired slugs are dropped. */
 export async function genreIdsFor(
   slugs: string[],
 ): Promise<{ id: number; slug: string; name: string }[]> {
@@ -474,7 +474,7 @@ export async function genreIdsFor(
   return db
     .select({ id: genres.id, slug: genres.slug, name: genres.name })
     .from(genres)
-    .where(inArray(genres.slug, slugs))
+    .where(and(inArray(genres.slug, slugs), isNull(genres.deletedAt)))
 }
 
 export async function allGenres(): Promise<GenreSummary[]> {

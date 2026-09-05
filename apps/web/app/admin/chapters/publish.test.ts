@@ -77,10 +77,12 @@ beforeAll(async () => {
   await db
     .insert(notificationPrefs)
     .values({ userId: reader.inAppOff, kind: 'new_chapter', channel: 'in_app', enabled: false })
-})
+  // Migrating the whole journal on PGlite takes well past vitest's 10s default hook timeout
+  // on a loaded machine; the other database-backed suites here pass the same allowance.
+}, 120_000)
 
 afterAll(async () => {
-  await handle.close()
+  await handle?.close()
 })
 
 it('publish now notifies followers, not bookmarkers', async () => {

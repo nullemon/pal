@@ -162,6 +162,13 @@
       "when": 1788380016000,
       "tag": "9025_h_moderation_metric_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1788380020000,
+      "tag": "9028_h_genre_management",
+      "breakpoints": true
     }
   ]
 }

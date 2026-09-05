@@ -1,5 +1,5 @@
 import { BAYESIAN_C } from '@palscans/core'
-import { and, desc, eq, inArray, ne, not, sql } from 'drizzle-orm'
+import { and, desc, eq, inArray, isNull, ne, not, sql } from 'drizzle-orm'
 import type { Db } from '../client.js'
 import {
   bookmarks,
@@ -61,8 +61,10 @@ export const seriesBySlug = async (
       .select({ id: genres.id, slug: genres.slug, name: genres.name, kind: genres.kind })
       .from(seriesGenres)
       .innerJoin(genres, eq(genres.id, seriesGenres.genreId))
-      .where(eq(seriesGenres.seriesId, row.id))
-      .orderBy(genres.kind, genres.name),
+      // A retired genre keeps its `series_genres` rows (migration 9028) so a restore brings
+      // them back — but its page is gone, so its chip must not be rendered as a live link.
+      .where(and(eq(seriesGenres.seriesId, row.id), isNull(genres.deletedAt)))
+      .orderBy(genres.kind, genres.position, genres.name),
     db
       .select({ id: people.id, slug: people.slug, name: people.name, credit: seriesPeople.credit })
       .from(seriesPeople)

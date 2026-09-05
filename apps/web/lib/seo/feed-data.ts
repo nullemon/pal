@@ -146,7 +146,7 @@ export async function genreChapterItems(
   const [g] = await db
     .select({ id: genres.id, slug: genres.slug, name: genres.name })
     .from(genres)
-    .where(eq(genres.slug, slug))
+    .where(and(eq(genres.slug, slug), isNull(genres.deletedAt)))
     .limit(1)
   if (!g) return null
   const rows = await db

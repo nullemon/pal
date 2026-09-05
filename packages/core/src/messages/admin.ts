@@ -1934,4 +1934,237 @@ export const adminMessages = {
       sun: 'Sun',
     },
   },
+
+  /**
+   * Admin → Content → Genres (migration 9028). Every destructive string here names the
+   * consequence before the click, because the two actions on this screen that cannot be
+   * taken back by pressing Undo — a slug change and a merge — both change what a URL does.
+   */
+  genreAdmin: {
+    navLabel: 'Genres',
+    title: 'Genres',
+    subtitle:
+      'The taxonomy behind /genres, the browse filters and the genre picker on every series.',
+    kinds: {
+      genre: 'Genres',
+      theme: 'Themes',
+      format: 'Formats',
+    },
+    kindNames: {
+      genre: 'Genre',
+      theme: 'Theme',
+      format: 'Format',
+    },
+    kindHint:
+      'Genres, themes and formats are three separate sections on /genres and in the filters.',
+
+    colName: 'Name',
+    colSlug: 'Slug',
+    colKind: 'Kind',
+    colSeries: 'Series',
+    colOrder: 'Order',
+    colActions: '',
+    seriesCount: '{total} tagged · {published} live',
+    seriesCountHint:
+      'Everything carrying the tag, and the part of it a reader can see — drafts and trashed series make up the difference.',
+
+    newTitle: 'Add a genre',
+    newHint:
+      'The slug becomes the URL: /genres/<slug>. Leave it empty and it is generated from the name.',
+    namePlaceholder: 'Romance',
+    slugPlaceholder: 'romance',
+    add: 'Add genre',
+    created: '“{name}” added.',
+    nameRequired: 'Give the genre a name.',
+    slugInvalid: 'Slugs are lowercase letters, digits and hyphens.',
+    slugTaken: 'Another genre already uses that slug.',
+
+    edit: 'Edit',
+    save: 'Save',
+    cancel: 'Cancel',
+    saved: '“{name}” saved.',
+    slugChanged:
+      'The slug changed. /genres/{from} now 301s to /genres/{to} — old links and search results keep working.',
+    slugWarning:
+      'Changing the slug changes the page address. The old one keeps answering with a 301 (a slug_history row), so nothing breaks — but a redirect is not free, and search engines take a while to move.',
+
+    moveUp: 'Move up',
+    moveDown: 'Move down',
+    orderHint: 'The order readers see on /genres and in the filter panel, within each section.',
+    orderSaved: 'Order saved.',
+
+    deleteAction: 'Retire',
+    deleteTitle: 'Retire “{name}”?',
+    deleteUnused:
+      'Nothing is tagged with this genre. It disappears from /genres, from the browse filters and from the series editor, and /genres/{slug} starts answering 404.',
+    deleteInUse:
+      '{count} series are tagged with this genre. They keep the tag — the rows are not deleted, so restoring the genre brings every one of them back — but the tag stops being shown or filterable, and /genres/{slug} starts answering 404 with no redirect.',
+    deleteMergeInstead:
+      'If this genre is a duplicate of another, merge it instead: the series move across and the URL keeps answering with a 301.',
+    deleteButton: 'Retire genre',
+    deleteUndoHint: 'Reversible: the genre reappears in Retired below, with Restore next to it.',
+    deleted: '“{name}” retired.',
+    restore: 'Restore',
+    restored: '“{name}” restored.',
+    retiredTitle: 'Retired',
+    retiredHint:
+      'Not shown anywhere on the site. Their series_genres rows are intact, so restoring one brings its series back with it.',
+    mergedInto: 'Merged into {name}',
+    retiredCannotRestore: 'A genre that lost a merge cannot be restored — its series moved.',
+
+    mergeAction: 'Merge',
+    mergeTitle: 'Merge genres',
+    mergeHint:
+      'Fold one genre into another: every series tagged with the loser gains the winner instead, and /genres/<loser> 301s to /genres/<winner>.',
+    mergeWinner: 'Keep',
+    mergeLoser: 'Retire',
+    mergePick: 'Pick two genres',
+    mergePreview: 'Review merge',
+    mergeSwap: 'Swap sides',
+    mergeReview: 'Merge “{loser}” into “{winner}”',
+    mergeWinnerHint: 'Its name, slug, order and SEO text are what survives.',
+    mergeLoserHint: 'Its series move, its URL redirects, and the row is retired.',
+    mergeRefusedTitle: 'This merge is refused',
+    mergeRefusedHint: 'Nothing has been written.',
+    mergeWarningsTitle: 'Check before you merge',
+    mergeMovesTitle: 'What moves',
+    // Phrased so the number can be 1 without the sentence going ungrammatical.
+    mergeMove: 'Tagged only “{loser}”: {n}. They gain “{winner}” instead.',
+    mergeFold: 'Tagged with both already: {n}. The duplicate row is dropped, not doubled.',
+    mergeNothing: 'No series are tagged “{loser}”.',
+    mergeUrlTitle: 'What happens to the URL',
+    mergeUrlRedirect: 'A 301 from {from} to {to} is written to the redirects table.',
+    mergeUrlHistory:
+      'A slug_history row sends every path under {from} — the /feed included — to the winner.',
+    mergeUrlTombstone:
+      'The retired slug becomes {slug}, so the freed name can be used again without shadowing the redirect.',
+    mergeUrlCache:
+      'The proxy caches these rules for 60 seconds, so the redirect goes live within a minute.',
+    mergeAuditTitle: 'What is recorded',
+    mergeAuditHint:
+      'One genre.merge entry, written inside the same transaction as the move: both rows as they were, the counts, and the redirect left behind.',
+    mergeConfirmTyped: 'Type the retiring slug to confirm',
+    mergeButton: 'Merge and redirect',
+    mergeWorking: 'Merging…',
+    mergeDone: '{move} series moved, {merge} folded in. {from} now redirects to {to}.',
+    mergeFailed: 'The merge was refused and nothing was written.',
+    mergeSameGenre: 'Pick two different genres.',
+
+    empty: 'No genres yet. Add the first one.',
+    searchPlaceholder: 'Search name or slug…',
+  },
+
+  /**
+   * Admin → Access → Roles. The most security-sensitive screen on the site, so the copy does
+   * two jobs the rest of the panel does not have to: it says what each permission actually
+   * lets somebody do, in the terms an operator thinks in, and it explains the cells it will
+   * not let them change instead of ignoring the click.
+   */
+  roles: {
+    navLabel: 'Roles',
+    title: 'Roles and permissions',
+    subtitle:
+      'What each role may do. Code checks permissions, never roles — so this is the whole of it.',
+
+    roleNames: {
+      user: 'Reader',
+      supporter: 'Supporter',
+      premium: 'Premium',
+      uploader: 'Uploader',
+      moderator: 'Moderator',
+      admin: 'Administrator',
+    },
+    roleHints: {
+      user: 'A signed-up reader. No panel access.',
+      supporter: 'A reader who chipped in. Perks are entitlements, not permissions.',
+      premium: 'A paying reader. Early access and ad-free come from entitlements.',
+      uploader: 'Adds chapters to series somebody else set up.',
+      moderator: 'Works the queues: comments, reports, takedowns, bans.',
+      admin: 'Everything, including this screen.',
+    },
+
+    groups: {
+      panel: 'The panel',
+      catalogue: 'Catalogue',
+      chapters: 'Chapters',
+      community: 'Community',
+      accounts: 'Accounts',
+      system: 'System',
+    },
+
+    permissions: {
+      'admin.access':
+        'Open the admin panel at all. Without it every /admin page answers 404, even for an account that holds other permissions.',
+      'series.read': 'See the series list and open a series in the editor.',
+      'series.create': 'Add a new series to the catalogue.',
+      'series.update': 'Edit a series: title, slug, synopsis, artwork, genres, schedule and SEO.',
+      'series.delete':
+        'Move a series to the trash, and merge two series into one. Also gates merging genres.',
+      'series.feature': 'Put a series in the hero carousel and pin it to the top of listings.',
+      'chapter.read': 'See the chapter list, the upload queue and the release calendar.',
+      'chapter.create': 'Upload new chapters.',
+      'chapter.update':
+        'Edit a chapter: number, title, schedule and state. Also runs the job queue.',
+      'chapter.delete': 'Move a chapter to the trash.',
+      'chapter.publish': 'Publish a chapter, or schedule one to publish itself.',
+      'chapter.repair':
+        'Replace the pages of a chapter that already exists — and nothing else about it.',
+      'comment.moderate': 'Hide, restore, pin and delete reader comments.',
+      'user.read': 'See the user list and open an account.',
+      'user.update': 'Edit an account: profile fields, and resending its verification email.',
+      'user.ban':
+        'Ban, shadow-ban and comment-ban accounts. Never against staff — only an administrator can act on staff, whoever holds this.',
+      'user.role': 'Change what role an account holds, and clear its two-factor enrolment.',
+      'report.handle': 'Work the reports queue, the DMCA ledger and the series request board.',
+      'announcement.write': 'Write and publish announcements.',
+      'entitlement.grant': 'Grant and revoke premium features on an account.',
+      'settings.write':
+        'Change how the site is configured: appearance, SEO, access, integrations, ads, flags — and this screen.',
+      'audit.read': 'Read the audit log: who did what, and what changed.',
+    },
+
+    colPermission: 'Permission',
+    granted: 'Granted',
+    denied: 'Denied',
+    changed: 'Changed from default',
+    changedShort: 'Changed',
+    defaultIs: 'Default: {value}',
+    lockedLabel: 'Fixed',
+    lockedTitle: 'This one cannot be changed',
+    lockedBody:
+      '{permission} is fixed on for {role}. It is what opens the panel and what gates this screen, so revoking it would lock the last account that could undo the change out of the page that made it — with SQL as the only way back. That is the situation this screen exists to remove.',
+    lockedToast: '{permission} cannot be revoked from {role} — it is what gates this screen.',
+
+    escalationTitle: 'That role can now edit this screen',
+    escalationWarning:
+      'Granting {permission} to {role} lets that role edit this matrix, including its own row. Only give it to a role you trust with everything.',
+
+    resetLabel: 'Reset',
+    resetRole: 'Reset {role} to defaults',
+    resetAll: 'Reset every role to defaults',
+    resetAllConfirm: 'Reset the whole matrix',
+    resetAllBody: 'Every override is dropped and all six roles go back to what the code ships.',
+    noChanges: 'Nothing has been changed from the defaults.',
+    changeCount: '{n} cell changed from the default',
+    changeCountPlural: '{n} cells changed from the default',
+
+    saved: 'Permissions saved.',
+    savedDetail: '{n} change written to the audit log.',
+    savedDetailPlural: '{n} changes written to the audit log.',
+    saveFailed: 'Nothing was saved.',
+
+    howTitle: 'How this works',
+    howDefaults:
+      'Only the cells you change are stored. Everything else reads from the bundle compiled into the code, so a permission added in a later release arrives with the default that release gave it instead of being denied to everyone.',
+    howCache:
+      'A role’s permissions are resolved once when a session is loaded, not on every check — no permission check costs a query. Other app instances pick up a change within 15 seconds.',
+    howAudit: 'Every save writes an audit_log entry listing each cell that changed.',
+    howSessions:
+      'Changes apply to existing sessions on their next request. Nobody is signed out — use Users → Force logout if you want that too.',
+    legendTitle: 'Reading the grid',
+    legendGranted: 'Ticked: the role has it.',
+    legendDefault: 'Plain: still whatever the code ships.',
+    legendChanged: 'Marked “changed”: you have overridden the default here.',
+    legendLocked: 'Padlocked: fixed on, and the reason is on the row.',
+  },
 } as const

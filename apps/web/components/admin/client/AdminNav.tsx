@@ -11,6 +11,7 @@ import {
   FileText,
   Flag,
   Gauge,
+  KeyRound,
   LayoutTemplate,
   Library,
   ListChecks,
@@ -23,6 +24,7 @@ import {
   Settings,
   ShieldCheck,
   Stamp,
+  Tags,
   ToggleLeft,
   Upload,
   Users,
@@ -58,6 +60,8 @@ const icons: Record<AdminIcon, ComponentType<{ size?: number; className?: string
   shield: ShieldCheck,
   plug: PlugZap,
   calendar: CalendarDays,
+  tags: Tags,
+  key: KeyRound,
 }
 
 export function AdminNavLinks({ groups }: { groups: AdminNavGroup[] }) {

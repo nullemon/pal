@@ -105,7 +105,7 @@ export async function previewTemplates(
       .select({ id: genres.id, slug: genres.slug, name: genres.name, intro: genres.intro })
       .from(seriesGenres)
       .innerJoin(genres, eq(genres.id, seriesGenres.genreId))
-      .where(eq(seriesGenres.seriesId, s.id))
+      .where(and(eq(seriesGenres.seriesId, s.id), isNull(genres.deletedAt)))
     const authorRows = await db
       .select({ name: people.name })
       .from(seriesPeople)

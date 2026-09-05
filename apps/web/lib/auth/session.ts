@@ -8,6 +8,7 @@ import { z } from 'zod'
 import { getEnv } from '../env'
 import { activeUserBan } from './bans'
 import { getRedis } from './redis'
+import { permissionsForRole } from './roles'
 
 /**
  * Opaque sessions (docs/07): cookie `sid=<session-uuid>.<base64url secret>`; the row stores
@@ -170,6 +171,10 @@ export const loadEntitlements = async (userId: number): Promise<EntitlementRow[]
 /**
  * The `SessionUser` for a user id (null when deleted or account-banned — a ban therefore
  * ends every session immediately, cached or not). Exported for the OAuth + MFA flows.
+ *
+ * The role's permissions are resolved here, once, from the operator's matrix
+ * (`Admin → Access → Roles`, cached per process in ./roles) and carried on the user, so
+ * `can()` stays a synchronous lookup and no permission check costs a query.
  */
 export const loadSessionUser = async (userId: number): Promise<SessionUser | null> => {
   const db = await getDb()
@@ -186,7 +191,11 @@ export const loadSessionUser = async (userId: number): Promise<SessionUser | nul
     .limit(1)
   if (!row) return null
   if (await activeUserBan(row.id)) return null
-  return { ...row, entitlements: await loadEntitlements(row.id) }
+  const [entitlementRows, permissions] = await Promise.all([
+    loadEntitlements(row.id),
+    permissionsForRole(row.role),
+  ])
+  return { ...row, entitlements: entitlementRows, permissions }
 }
 
 /** Resolve a cookie value to its user; null for anything invalid, expired or revoked. */

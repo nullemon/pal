@@ -187,6 +187,7 @@ export function ConfirmTyped({
   onConfirm,
   onClose,
   tone = 'danger',
+  hint = adminMessages.admin.confirmTypedHint,
 }: {
   open: boolean
   title: string
@@ -196,6 +197,8 @@ export function ConfirmTyped({
   onConfirm: () => void | Promise<void>
   onClose: () => void
   tone?: 'danger' | 'brand'
+  /** Overrides "This cannot be undone." — a reversible action must not claim otherwise. */
+  hint?: string
 }) {
   const [typed, setTyped] = useState('')
   const id = useId()
@@ -229,7 +232,7 @@ export function ConfirmTyped({
           className="mt-1 h-9 w-full rounded-md border border-line bg-bg px-3 text-[13px] focus-visible:border-brand focus-visible:outline-none"
           autoComplete="off"
         />
-        <p className="mt-1 text-[12px] text-fg-subtle">{adminMessages.admin.confirmTypedHint}</p>
+        <p className="mt-1 text-[12px] text-fg-subtle">{hint}</p>
         <div className="mt-4 flex justify-end gap-2">
           <Button variant="outline" size="sm" onClick={onClose}>
             {messages.common.cancel}
