@@ -2,13 +2,25 @@
 
 import { messages } from '@palscans/core/messages'
 import { cn } from '@palscans/ui'
-import { Bell, Bookmark, CreditCard, Download, History, Settings, ShieldCheck } from 'lucide-react'
+import {
+  BarChart3,
+  Bell,
+  Bookmark,
+  CreditCard,
+  Download,
+  History,
+  ListOrdered,
+  Settings,
+  ShieldCheck,
+} from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
 const items = [
   { href: '/me/bookmarks', label: messages.me.nav.bookmarks, icon: Bookmark },
+  { href: '/me/lists', label: messages.me.nav.lists, icon: ListOrdered },
   { href: '/me/history', label: messages.me.nav.history, icon: History },
+  { href: '/me/stats', label: messages.me.nav.stats, icon: BarChart3 },
   { href: '/me/notifications', label: messages.me.nav.notifications, icon: Bell },
   { href: '/me/downloads', label: messages.me.nav.downloads, icon: Download },
   { href: '/me/settings', label: messages.me.nav.settings, icon: Settings },

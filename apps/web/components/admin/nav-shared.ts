@@ -7,6 +7,7 @@ import { messages } from '@palscans/core/messages'
  */
 export type AdminIcon =
   | 'gauge'
+  | 'chart-line'
   | 'library'
   | 'file-stack'
   | 'megaphone'
@@ -95,6 +96,13 @@ export const adminNav: readonly AdminNavGroup[] = [
         permission: 'comment.moderate',
       },
       { label: m.reports, href: '/admin/reports', icon: 'flag', permission: 'report.handle' },
+      // DMCA ledger (docs/07 "Content compliance"): the notices from /dmca and their outcome.
+      {
+        label: messages.takedowns.navLabel,
+        href: '/admin/takedowns',
+        icon: 'shield',
+        permission: 'report.handle',
+      },
       { label: m.users, href: '/admin/users', icon: 'users', permission: 'user.read' },
       // D · Notifications (docs/17 §D): what fires, to whom, and the send-test controls.
       {
@@ -132,6 +140,15 @@ export const adminNav: readonly AdminNavGroup[] = [
   {
     label: m.system,
     items: [
+      // Analytics (docs/13: "the System group gains … Analytics") — the view pipeline's
+      // numbers. `settings.write` keeps it where the rest of System already is: staff who
+      // run the site, not everyone who can open the panel.
+      {
+        label: messages.admin.analytics.navLabel,
+        href: '/admin/analytics',
+        icon: 'chart-line',
+        permission: 'settings.write',
+      },
       { label: m.seo, href: '/admin/seo', icon: 'search', permission: 'settings.write' },
       // E · Legacy site importer (docs/17 §E).
       {
@@ -164,6 +181,13 @@ export const adminNav: readonly AdminNavGroup[] = [
       },
       { label: m.featureFlags, href: '/admin/flags', icon: 'toggle', permission: 'settings.write' },
       { label: m.jobs, href: '/admin/jobs', icon: 'cpu', permission: 'chapter.update' },
+      // docs/17 §G — the nightly database dump, and the button that takes one now.
+      {
+        label: messages.backup.navLabel,
+        href: '/admin/system/backup',
+        icon: 'file-stack',
+        permission: 'settings.write',
+      },
       { label: m.auditLog, href: '/admin/audit', icon: 'scroll', permission: 'audit.read' },
     ],
   },

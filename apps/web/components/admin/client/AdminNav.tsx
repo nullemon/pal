@@ -4,6 +4,7 @@ import { cn } from '@palscans/ui'
 import {
   BadgeDollarSign,
   Bell,
+  ChartLine,
   Cpu,
   Files,
   FileText,
@@ -31,6 +32,7 @@ import { type AdminIcon, type AdminNavGroup, breadcrumbFor, isNavActive } from '
 
 const icons: Record<AdminIcon, ComponentType<{ size?: number; className?: string }>> = {
   gauge: Gauge,
+  'chart-line': ChartLine,
   bell: Bell,
   library: Library,
   'file-stack': Files,

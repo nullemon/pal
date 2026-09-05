@@ -120,6 +120,20 @@
       "when": 1788380006000,
       "tag": "9016_comment_listing_index",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1788380007000,
+      "tag": "9017_drop_unused_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1788380008000,
+      "tag": "9018_g_reading_lists",
+      "breakpoints": true
     }
   ]
 }

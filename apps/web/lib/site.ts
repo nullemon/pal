@@ -60,6 +60,8 @@ export const footerColumns: readonly FooterColumn[] = [
     links: [
       { label: messages.footer.bookmarks, href: '/me/bookmarks' },
       { label: messages.footer.readingHistory, href: '/me/history' },
+      { label: messages.me.lists.title, href: '/me/lists' },
+      { label: messages.me.stats.title, href: '/me/stats' },
       { label: messages.footer.notifications, href: '/me/settings#notifications' },
       { label: messages.footer.premium, href: '/subscribe' },
     ],
@@ -71,6 +73,8 @@ export const footerColumns: readonly FooterColumn[] = [
       { label: messages.footer.terms, href: '/terms' },
       { label: messages.footer.privacy, href: '/privacy' },
       { label: messages.footer.contact, href: '/contact' },
+      // docs/17 §G / docs/13: the uptime page, reachable from every page without an account.
+      { label: messages.status.navLabel, href: '/status' },
     ],
   },
 ]
