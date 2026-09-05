@@ -23,6 +23,8 @@ export default defineConfig({
      * files is not supposed to be load-bearing: adding one elsewhere in the suite should not
      * make a database fixture time out, which is exactly what happened here.
      */
-    hookTimeout: 60_000,
+    // Matches `apps/worker` and `packages/db`, which boot the same fixtures.
+    testTimeout: 180_000,
+    hookTimeout: 180_000,
   },
 })

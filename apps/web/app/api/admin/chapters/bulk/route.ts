@@ -4,7 +4,8 @@ import { bulkActionSchema } from '@/components/admin/schemas'
 import { audit } from '@/components/admin/server/audit'
 import { purgeCatalog } from '@/components/admin/server/cache'
 import { publishChapters, scheduleChapters } from '@/components/admin/server/chapters'
-import { ok, parseJson, withPermission } from '@/lib/auth'
+import { startWatermarkRun, WatermarkRunBusyError } from '@/components/admin/server/watermark'
+import { fail, ok, parseJson, withPermission } from '@/lib/auth'
 
 /**
  * POST /api/admin/chapters/bulk — the bulk bar (docs/04): publish now · schedule · set/clear
@@ -21,12 +22,16 @@ export const POST = withPermission('chapter.update', async (request, _ctx, user)
       ? 'chapter.publish'
       : body.action === 'delete' || body.action === 'restore'
         ? 'chapter.delete'
-        : 'chapter.update'
+        : body.action === 'reapply_watermark'
+          ? 'chapter.repair'
+          : 'chapter.update'
   if (!can(user, needs)) return Response.json({ error: 'forbidden' }, { status: 403 })
 
   const db = await getDb()
   const now = new Date()
   let affected: number[] = []
+  /** Set only by `reapply_watermark`: the run the panel should follow. */
+  let runId: string | null = null
   switch (body.action) {
     case 'publish_now':
       affected = await publishChapters(body.ids, now)
@@ -66,6 +71,17 @@ export const POST = withPermission('chapter.update', async (request, _ctx, user)
         .where(inArray(chapters.id, body.ids))
       affected = body.ids
       break
+    // Queued, not done here: re-marking even one chapter is a pile of CPU-bound encodes, and
+    // the operator watches it on Appearance → Watermark like any other run.
+    case 'reapply_watermark':
+      try {
+        runId = (await startWatermarkRun(body.ids, user.id)).id
+        affected = body.ids
+      } catch (err) {
+        if (err instanceof WatermarkRunBusyError) return fail(409, 'conflict')
+        throw err
+      }
+      break
   }
   await audit({
     actorId: user.id,
@@ -75,11 +91,12 @@ export const POST = withPermission('chapter.update', async (request, _ctx, user)
     before: { ids: body.ids },
     after: {
       affected,
+      ...(runId ? { runId } : {}),
       ...('publishedAt' in body ? { publishedAt: body.publishedAt } : {}),
       ...('earlyAccessUntil' in body ? { earlyAccessUntil: body.earlyAccessUntil } : {}),
     },
     request,
   })
   purgeCatalog()
-  return ok({ affected })
+  return ok({ affected, runId })
 })

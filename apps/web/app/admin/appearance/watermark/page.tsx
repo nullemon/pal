@@ -1,6 +1,12 @@
+import { can } from '@palscans/core'
 import { normalizeWatermark, WATERMARK_SETTING_KEY } from '@palscans/core/watermark'
 import { getDb, getSetting } from '@palscans/db'
 import { WatermarkScreen } from '@/components/admin/client/WatermarkScreen'
+import {
+  currentWatermark,
+  readWatermarkRun,
+  watermarkCounts,
+} from '@/components/admin/server/watermark'
 import { withPermission } from '@/lib/auth'
 import { watermarkFontAvailable } from '@/lib/watermark'
 
@@ -10,10 +16,22 @@ import { watermarkFontAvailable } from '@/lib/watermark'
  * sane values instead of a broken control.
  */
 export default async function WatermarkPage() {
-  await withPermission('settings.write', { returnTo: '/admin/appearance/watermark' })
-  const [raw, fontAvailable] = await Promise.all([
+  const user = await withPermission('settings.write', {
+    returnTo: '/admin/appearance/watermark',
+  })
+  const { fingerprint } = await currentWatermark()
+  const [raw, fontAvailable, run, counts] = await Promise.all([
     getSetting<unknown>(await getDb(), WATERMARK_SETTING_KEY, null),
     watermarkFontAvailable(),
+    readWatermarkRun(),
+    watermarkCounts(fingerprint),
   ])
-  return <WatermarkScreen initial={normalizeWatermark(raw)} fontAvailable={fontAvailable} />
+  return (
+    <WatermarkScreen
+      initial={normalizeWatermark(raw)}
+      fontAvailable={fontAvailable}
+      status={{ run, counts }}
+      canReapply={can(user, 'chapter.repair')}
+    />
+  )
 }

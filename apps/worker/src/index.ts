@@ -1,6 +1,7 @@
 import { getEnv } from '@palscans/core/env'
 import { getQueue } from '@palscans/core/queue'
 import { getStorage } from '@palscans/core/storage'
+import { watermarkRunLive } from '@palscans/core/watermark'
 import { chapters, closeDb, getDb, getSetting, series } from '@palscans/db'
 import { and, eq, isNotNull, isNull, lt, sql } from 'drizzle-orm'
 import { BACKUP_SETTING_KEY, type BackupRun, backupEnv, runBackup } from './jobs/backup.js'
@@ -11,6 +12,7 @@ import { registerNotifications } from './jobs/notify-index.js'
 import { publishDue } from './jobs/publish.js'
 import { type ArtKind, processSeriesArt } from './jobs/series-art.js'
 import { runStatsRollup } from './jobs/stats-rollup.js'
+import { readWatermarkRun, runWatermarkReapply } from './jobs/watermark-reapply.js'
 import { installWorkerConfig } from './lib/config.js'
 import { log } from './lib/log.js'
 import { revalidateWeb, runMaintenance } from './lib/revalidate.js'
@@ -104,6 +106,34 @@ const main = async () => {
     } finally {
       await source.close?.()
     }
+  })
+
+  /**
+   * `watermark.reapply` (docs/03): re-mark chapters that are already processed.
+   *
+   * One at a time and never twice in parallel — the run document is a single row and two
+   * walkers would fight over its cursor. The job body is the resumable walker, so a
+   * redelivered job (or the cold-run pickup in the tick below) carries on from the last
+   * committed chapter instead of re-encoding the catalogue.
+   */
+  let reapplyInflight = false
+  const runReapply = async (runId: string) => {
+    if (reapplyInflight) return
+    reapplyInflight = true
+    try {
+      await runWatermarkReapply(runId, {
+        db,
+        storage,
+        // Half the pipeline's width, floor 1: a background sweep must leave room for the
+        // upload somebody is watching.
+        pageConcurrency: Math.max(1, Math.floor(PAGE_CONCURRENCY / 2)),
+      })
+    } finally {
+      reapplyInflight = false
+    }
+  }
+  queue.process('watermark.reapply', async (job) => {
+    await runReapply(job.data.runId)
   })
 
   // Views (docs/02 "Views and ranking"): fold `view_events` into the daily stats tables and
@@ -200,6 +230,20 @@ const main = async () => {
       for (const s of stale) {
         log.warn('picking up stale processing chapter', { chapterId: s.id })
         void run(s.id)
+      }
+      // A watermark re-apply whose worker died, or that was started with no queue behind it
+      // (the web app's in-process queue does not survive a restart). The run row carries its
+      // own cursor, so picking it back up costs at most the chapter it was on.
+      const reapply = await readWatermarkRun(db).catch(() => null)
+      if (
+        reapply &&
+        watermarkRunLive(reapply) &&
+        !reapplyInflight &&
+        Date.now() - Date.parse(reapply.heartbeatAt ?? reapply.startedAt) >
+          (queue.kind === 'memory' ? 10_000 : 120_000)
+      ) {
+        log.warn('picking up a cold watermark re-apply', { runId: reapply.id })
+        void runReapply(reapply.id)
       }
       // cover / banner originals waiting for `series.art` (in-process web queue, lost job);
       // entries carrying an error are left for the admin to re-upload

@@ -48,6 +48,19 @@ export interface ChapterProcessing {
   mode?: 'all' | 'failed'
   /** Set by the upload commit: premium flag and target publish time applied when processing ends. */
   after?: { isPremium?: boolean; publishedAt?: string | null }
+  /**
+   * The watermark burned into the pages this document produced, as
+   * `watermarkFingerprint()` — `''` when the run applied no mark (docs/03 "Re-applying the
+   * mark").
+   *
+   * Written only by a run that finished successfully, so it describes the objects
+   * `chapter_pages` actually points at. It is the cheap index behind the panel's "which
+   * chapters carry the current mark" column; **absent** means the chapter was processed
+   * before this was recorded, which is not the same as "unmarked" and is never treated as
+   * such — only re-deriving the address from the original can settle that, which is what
+   * `watermark.reapply` does.
+   */
+  watermark?: string
   startedAt: string | null
   finishedAt: string | null
 }
@@ -84,6 +97,12 @@ export const chapters = pgTable(
     index('chapters_published_at_idx')
       .on(t.publishedAt.desc())
       .where(sql`${t.state} = 'published' AND ${t.deletedAt} IS NULL`), // "latest updates"
+    // migration 9030: which chapters carry the current watermark. Appearance → Watermark
+    // asks this five times per load, Chapters → Mark filters on it, and `watermark.reapply`
+    // walks it in id order between batches — all of them over the same partial set.
+    index('chapters_watermark_idx')
+      .on(sql`(${t.processing} ->> 'watermark')`, t.id)
+      .where(sql`${t.deletedAt} IS NULL AND ${t.pageCount} > 0`),
   ],
 )
 

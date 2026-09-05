@@ -283,6 +283,27 @@ export const adminMessages = {
       reprocess: 'Reprocess',
       pageErrors: '{n} pages failed',
       noChapters: 'No chapters yet. Upload the first one.',
+      colMark: 'Mark',
+      mark: {
+        current: 'Current',
+        stale: 'Old mark',
+        unknown: 'Not recorded',
+        unmarkable: 'No originals',
+        unprocessed: 'No pages',
+      },
+      markHints: {
+        current: 'Pages carry the watermark configured now.',
+        stale: 'Pages were built with a different watermark, or none.',
+        unknown: 'Built before the site recorded which mark it used.',
+        unmarkable: 'The uploaded originals are gone — only a fresh upload can re-mark this.',
+        unprocessed: 'Nothing processed yet.',
+      },
+      markFilter: 'Mark',
+      reapplyWatermark: 'Re-apply watermark',
+      reapplyQueued:
+        'Watermark re-apply queued for {n} chapters — watch it in Appearance → Watermark.',
+      reapplyBusy:
+        'A watermark re-apply is already running. Wait for it, or stop it in Appearance → Watermark.',
     },
     upload: {
       title: 'Bulk upload',
@@ -602,7 +623,7 @@ export const adminMessages = {
         'Burn a small line of attribution into every chapter page as it is processed, so it travels with the image when someone saves or reposts it.',
       enable: 'Watermark pages',
       enableHint:
-        'Applies to chapters processed from now on. Pages already published keep the images they have until the chapter is re-processed.',
+        'Applies to chapters processed from now on. Chapters that already have pages keep the images they have until you re-apply the mark below.',
       textLabel: 'Text',
       textHint: 'Keep it short — a domain reads best. Up to 64 characters.',
       cornerLabel: 'Corner',
@@ -636,11 +657,81 @@ export const adminMessages = {
       previewFailed: 'Could not render the preview.',
       noFont:
         'This server has no font installed that can draw the watermark, so pages are processed unmarked. Install a sans-serif face (the worker image ships DejaVu) and try again.',
-      applyTitle: 'Applying it to what is already published',
+      applyTitle: 'Chapters that are already published',
       applyBody:
-        'Saving changes nothing that exists. New uploads pick it up on their next processing run; to re-mark a chapter that is already live, open Chapters, use Re-process pages, and its images are rebuilt under fresh keys with the current settings.',
-      openChapters: 'Go to Chapters',
+        'Saving changes nothing that exists. Page images are content-addressed and cached forever, so a chapter only picks up a new mark when its pages are rebuilt from the originals you uploaded. That is what Re-apply does, in the background.',
+      openChapters: 'See every chapter and its mark',
       saved: 'Watermark saved',
+      savedStale:
+        'Saved. {n} chapters still carry the previous mark, or none — re-apply below to bring them across.',
+      savedAllCurrent: 'Saved. Every processed chapter already carries this mark.',
+      counts: {
+        current: 'On this mark',
+        currentHint: 'Pages were built with exactly these settings.',
+        stale: 'On an older mark',
+        staleHint: 'Built with different settings, or with the watermark off.',
+        unknown: 'Not recorded',
+        unknownHint:
+          'Processed before the site recorded which mark it used. A re-apply checks each one against its original and leaves it alone if it already matches.',
+        unmarkable: 'No originals kept',
+        unmarkableHint:
+          'The uploaded originals are gone, so these pages cannot be re-marked by anything but a fresh upload.',
+        processed: 'Chapters with pages',
+      },
+      reapply: 'Re-apply to {n} chapters',
+      reapplyNone: 'Nothing to re-apply',
+      reapplyHint:
+        'Runs in the background, one chapter at a time, and waits whenever an upload is being processed. You can close this page; stop it whenever you like.',
+      reapplyStarted: 'Re-apply queued',
+      reapplyBusy: 'A re-apply is already running.',
+      unmarkableWarning:
+        '{n} chapters no longer have their uploaded originals. Re-applying skips them and lists them below — they can only be fixed by uploading the chapter again.',
+      stop: 'Stop',
+      confirmStop: 'Stop the re-apply? Chapters already rebuilt keep their new mark.',
+      run: {
+        title: 'Re-apply run',
+        queued: 'Queued — waiting for the worker.',
+        running: 'Running.',
+        stopping: 'Stopping after the current chapter…',
+        done: 'Finished.',
+        cancelled: 'Stopped.',
+        failed: 'Stopped with an error.',
+        /** The same five states as a badge: one word, no sentence punctuation. */
+        pill: {
+          queued: 'Queued',
+          running: 'Running',
+          done: 'Finished',
+          cancelled: 'Stopped',
+          failed: 'Failed',
+        },
+        progress: '{done} of {total} chapters',
+        startedWhen: 'Started {when}.',
+        markLabel: 'Applying: {mark}',
+        markNone: 'Applying: no mark',
+        rebuilt: 'Rebuilt',
+        alreadyCurrent: 'Already correct',
+        skipped: 'Skipped',
+        pages: 'Pages',
+        orphaned: 'Superseded images',
+        orphanedHint:
+          'Old page objects are left in storage rather than deleted: they are still cached at the edge and in readers, and a wrong delete costs the catalogue. Remove them from the bucket by hand when you are satisfied.',
+        problems: 'Chapters this run could not do',
+        problemsMore: 'and {n} more',
+        errors: {
+          no_font:
+            'This server has no font that can draw the mark, so the run refused rather than rebuilding every page unmarked.',
+          settings_changed:
+            'The watermark was saved again after this run started. Nothing was half-applied — start a new run.',
+        },
+        reasons: {
+          no_sources: 'No uploaded originals recorded',
+          missing_originals: 'Uploaded originals are no longer in storage',
+          foreign_sources:
+            'Its recorded originals are not uploads — refused rather than risk marking a marked page',
+          processing: 'Busy in the image pipeline',
+          failed: 'Failed',
+        },
+      },
     },
     theme: {
       title: 'Theme',
@@ -858,6 +949,10 @@ export const adminMessages = {
         retry: 'Retry',
         runScheduler: 'Publish due chapters now',
         schedulerRan: '{n} chapters published',
+        watermarkRun: 'Watermark re-apply',
+        watermarkRunHint: 'Rebuilding published pages with the current mark.',
+        watermarkOpen: 'Open Appearance → Watermark',
+        watermarkIdle: 'No re-apply has been started.',
       },
     },
     /** docs/17 §C — Admin → System → Access. */

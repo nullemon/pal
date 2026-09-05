@@ -21,6 +21,12 @@ export interface JobMap {
   /** Walk the legacy WordPress site and import it, one resumable batch at a time (docs/17 §E). */
   'import.run': { runId: number }
   /**
+   * Bring already-processed chapters onto the watermark configured now (docs/03
+   * "Re-applying the mark"). The run document in `settings.watermark_reapply` is the
+   * checkpoint, so a redelivery resumes rather than restarting.
+   */
+  'watermark.reapply': { runId: string }
+  /**
    * Dump the database, verify it with `pg_restore -l`, upload it to the private backups
    * bucket and prune the retention window (docs/17 §G, docs/18 §9). The scheduler is the
    * usual producer; `Admin → System → Backup` enqueues the same job with `trigger: 'manual'`.

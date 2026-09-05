@@ -3,12 +3,18 @@ import { adminMessages } from '@palscans/core/messages/admin'
 import { chapters, getDb, series } from '@palscans/db'
 import { and, count, desc, eq, isNull } from 'drizzle-orm'
 import { z } from 'zod'
+import { WatermarkPill } from '@/components/admin/client/ChaptersTable'
 import {
   PAGE_SIZE,
   pageSchema,
   parseSearch,
   type SearchParams,
 } from '@/components/admin/server/params'
+import {
+  currentWatermark,
+  watermarkStateFilter,
+  watermarkStateSql,
+} from '@/components/admin/server/watermark'
 import {
   ChapterStatePill,
   EmptyRow,
@@ -30,6 +36,8 @@ const schema = z.object({
     .catch(undefined),
   series: z.coerce.number().int().positive().optional().catch(undefined),
   chapter: z.coerce.number().int().positive().optional().catch(undefined),
+  /** Which chapters carry the watermark configured now (docs/03 "Re-applying the mark"). */
+  mark: z.enum(['current', 'stale', 'unknown', 'unmarkable']).optional().catch(undefined),
   page: pageSchema,
 })
 
@@ -41,11 +49,13 @@ export default async function AdminChaptersPage({
   await withPermission('chapter.read', { returnTo: '/admin/chapters' })
   const p = parseSearch(schema, await searchParams)
   const db = await getDb()
+  const { fingerprint } = await currentWatermark()
   const where = and(
     isNull(chapters.deletedAt),
     p.state ? eq(chapters.state, p.state) : undefined,
     p.series ? eq(chapters.seriesId, p.series) : undefined,
     p.chapter ? eq(chapters.id, p.chapter) : undefined,
+    p.mark ? watermarkStateFilter(fingerprint, p.mark) : undefined,
   )
   const [rows, [total]] = await Promise.all([
     db
@@ -62,6 +72,7 @@ export default async function AdminChaptersPage({
         seriesTitle: series.title,
         seriesSlug: series.slug,
         updatedAt: chapters.updatedAt,
+        watermark: watermarkStateSql(fingerprint),
       })
       .from(chapters)
       .innerJoin(series, eq(series.id, chapters.seriesId))
@@ -77,6 +88,7 @@ export default async function AdminChaptersPage({
     const u = new URLSearchParams()
     if (p.state) u.set('state', p.state)
     if (p.series) u.set('series', String(p.series))
+    if (p.mark) u.set('mark', p.mark)
     u.set('page', String(page))
     return `/admin/chapters?${u.toString()}`
   }
@@ -98,6 +110,19 @@ export default async function AdminChaptersPage({
             </option>
           ))}
         </select>
+        <select
+          name="mark"
+          defaultValue={p.mark ?? ''}
+          className={`${selectClass} w-44`}
+          aria-label={m.markFilter}
+        >
+          <option value="">{`${m.markFilter}: ${adminMessages.admin.all}`}</option>
+          {(['current', 'stale', 'unknown', 'unmarkable'] as const).map((k) => (
+            <option key={k} value={k}>
+              {m.mark[k]}
+            </option>
+          ))}
+        </select>
         <button
           type="submit"
           className="h-9 rounded-md border border-line bg-surface-1 px-3 text-[13px] font-semibold hover:bg-surface-2"
@@ -111,6 +136,7 @@ export default async function AdminChaptersPage({
             <Th>{m.colChapter}</Th>
             <Th>{m.colSeries}</Th>
             <Th>{m.colState}</Th>
+            <Th>{m.colMark}</Th>
             <Th align="right">{m.colPages}</Th>
             <Th>{m.colPremium}</Th>
             <Th>{m.colPublished}</Th>
@@ -118,7 +144,7 @@ export default async function AdminChaptersPage({
           </tr>
         </thead>
         <tbody>
-          {rows.length === 0 ? <EmptyRow colSpan={7} /> : null}
+          {rows.length === 0 ? <EmptyRow colSpan={8} /> : null}
           {rows.map((r) => (
             <tr key={r.id} className="hover:bg-surface-2/60">
               <Td>
@@ -141,6 +167,9 @@ export default async function AdminChaptersPage({
               <Td className="max-w-[260px] truncate text-fg-muted">{r.seriesTitle}</Td>
               <Td>
                 <ChapterStatePill state={r.state} />
+              </Td>
+              <Td>
+                <WatermarkPill state={r.watermark} />
               </Td>
               <Td align="right">
                 <Num>{r.pageCount}</Num>

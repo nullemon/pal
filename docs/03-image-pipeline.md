@@ -12,7 +12,19 @@ covers/<series-slug>/<sha256[0:12]>.{avif,webp}            widths 200,400,800
 banners/<series-slug>/<sha256[0:12]>.{avif,webp}           widths 800,1600,2400
 pages/<series-id>/<chapter-id>/<idx:04d>-<sha[0:12]>.{avif,webp}   widths 480,720,1080,1440
 avatars/<user-id>/<sha256[0:12]>.webp                      widths 64,160
+
+uploads/<series-id>/<chapter-id>/<idx:04d>-<sha[0:12]>.<ext>       originals, private
+uploads/art/<series-id>/<sha256[0:12]>.<ext>                       cover/banner originals
 ```
+
+**Originals are kept.** Nothing in the pipeline deletes anything under `uploads/`, and the
+keys stay in `chapters.processing.sources` for the life of the chapter. That is not an
+accident of the implementation: it is what makes a page repairable — a re-encode at a new
+quality, a corrected long-strip split, or a changed watermark — without asking the uploader
+for the files again. Keep it that way, and do not put a lifecycle rule on that prefix. A
+chapter whose originals *have* gone (an imported one that never had them, or a bucket
+someone tidied) can still be read, but it can never be re-processed; the admin panel labels
+those chapters **No originals** rather than pretending otherwise.
 
 Full key form: `pages/1284/59310/0007-9f2c1ab4de07.720.avif`.
 
@@ -87,9 +99,80 @@ size, inset and opacity, with a live preview rendered from the same code on a re
 The settings are folded into the content address. Two different marks can therefore never
 share an object key, so a changed watermark simply re-processes to fresh keys and the old
 objects stop being referenced — the same property a re-uploaded page already had, and the
-reason nothing needs purging. **Chapters that are already published are not touched by a
-settings change**; they keep their images until someone re-processes them (Chapters →
-Re-process pages, which is the existing retry path with `failedOnly: false`).
+reason nothing needs purging.
+
+### Re-applying the mark
+
+Because the mark is in the pixels, **saving the watermark changes nothing that already
+exists.** Every processed chapter keeps the images it was built with — in the reader, in the
+CBZ download and in the offline cache, all of which read the same `chapter_pages` rows.
+Turning the watermark on for the first time would otherwise mark new uploads and leave the
+whole back catalogue bare, with nothing to say so.
+
+`watermark.reapply` (`apps/worker/src/jobs/watermark-reapply.ts`) closes that gap. It walks
+chapters in ascending id, rebuilds each one's pages from its uploaded originals under the
+mark configured now, writes the new content-addressed objects and re-points `chapter_pages`
+in one transaction. State, publish time and premium flags are never touched: it changes
+pixels, not publishing.
+
+**It cannot mark an image twice, structurally.** Its only input is
+`chapters.processing.sources`, checked for the `uploads/` prefix before a byte is read; it
+never opens a `pages/` object, so there is no path by which an already-marked image reaches
+the compositor. A chapter with no recorded sources, or whose sources are no longer in the
+bucket, is *reported* — never guessed at, never partially rewritten. Nothing is written to
+the database until every page of the chapter has been encoded and stored, and the row swap
+re-checks that the chapter has not moved underneath it, so a failure anywhere leaves
+`chapter_pages` pointing at objects that all still exist.
+
+**A sweep and a selection behave differently, on purpose.** A catalogue-wide run takes the
+chapters it can act on: still has originals, and not already stamped with this mark. It
+deliberately skips the ones with no originals at all — no run can ever fix those, and an
+imported catalogue can have tens of thousands of them, which would fill every report with
+the one thing it cannot do. Nothing is hidden: the panel counts them permanently and
+`Chapters → Mark` lists every one. When the operator has *named* chapters, every one of them
+is walked whatever state it is in, and each gets an outcome — rebuilt, already correct, or
+the reason it could not be done. Quietly doing nothing to a chapter somebody explicitly
+picked is the failure worth spending a few extra queries to avoid.
+
+**It proves rather than assumes what a chapter carries.** `chapters.processing.watermark`
+holds the fingerprint the pipeline burned in, which is the cheap index behind the panel's
+column and the SQL filter that keeps a re-run nearly free. A chapter processed before that
+field existed reads as *not recorded*, which is deliberately not the same as *stale*: for
+those the job re-derives the address from the original (decode, segment, hash — about a
+tenth of the cost of a full re-encode) and leaves the chapter completely alone when the keys
+already agree.
+
+**It yields and it resumes.** One chapter at a time, at half the pipeline's page
+concurrency, with a pause after each chapter it actually rebuilt, and it waits for the
+publish pipeline to go quiet before starting one — an upload always wins. The run document
+in `settings.watermark_reapply` is the checkpoint: the cursor and the counters commit
+together after every chapter, so a killed worker costs one chapter, and the worker's
+scheduler picks a run back up whose heartbeat has gone cold. Stop is read between chapters,
+so cancelling never leaves a chapter half-written.
+
+Both the worker and the panel write that one document — the worker its cursor, the panel
+`cancelRequested` — so **both write it with a `jsonb` merge, never whole**. A full write from
+either side throws away whatever the other set in between; when the worker did that, a Stop
+pressed mid-chapter was silently undone by the checkpoint that followed it and the sweep ran
+to the end of the catalogue.
+
+**It refuses rather than lie about fonts.** `chapter.process` warns and processes unmarked
+when the host has no face librsvg can draw with, which costs one chapter. Doing the same
+here would quietly rewrite the *entire catalogue* to unmarked pages and report success, so a
+run on a fontless host fails with `no_font` and writes nothing.
+
+**Superseded objects are left in place.** The run reports how many bytes stopped being
+referenced and deletes none of them. They are served `immutable` with a one-year
+`Cache-Control`, so edge caches and readers may still be holding the old URLs; a sweeper that
+gets the reachability query slightly wrong deletes the catalogue, while the storage it would
+save is a few MB per chapter on R2. Remove them from the bucket by hand once you are
+satisfied with the result.
+
+The operator drives all of this from **Appearance → Watermark**: how many chapters are on
+the current mark, on an older one, not recorded, or unmarkable; a Re-apply button that
+queues the run and shows live progress; and Stop. **Chapters** carries the same state as a
+per-row column with a filter, plus per-row and bulk *Re-apply watermark* through the ordinary
+bulk-action endpoint, which queues the same job on a narrower scope.
 
 The mark is drawn as SVG text, which means the host needs a font. `node:22-alpine` ships
 none and librsvg fails silently on a missing face, so the worker probes once per process and

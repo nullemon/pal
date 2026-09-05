@@ -169,6 +169,13 @@
       "when": 1788380020000,
       "tag": "9028_h_genre_management",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1788380024000,
+      "tag": "9030_watermark_reapply",
+      "breakpoints": true
     }
   ]
 }

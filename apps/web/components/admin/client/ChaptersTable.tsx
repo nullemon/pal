@@ -2,11 +2,22 @@
 
 import { fmt, messages } from '@palscans/core/messages'
 import { adminMessages } from '@palscans/core/messages/admin'
+import type { WatermarkPageState } from '@palscans/core/watermark'
 import { Button, cn, useToast } from '@palscans/ui'
-import { RefreshCw } from 'lucide-react'
+import { RefreshCw, Stamp } from 'lucide-react'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import type { BulkAction } from '../schemas'
-import { ChapterStatePill, EmptyRow, inputClass, Num, Table, Td, Th } from '../ui'
+import {
+  ChapterStatePill,
+  EmptyRow,
+  inputClass,
+  Num,
+  Pill,
+  type PillTone,
+  Table,
+  Td,
+  Th,
+} from '../ui'
 import { postJson } from './api'
 import { Modal } from './controls'
 import type { EditorPerms } from './SeriesEditor'
@@ -27,6 +38,31 @@ export interface ChapterRowData {
   errors: number
   done: number
   total: number
+  /** Which watermark this chapter's stored pages carry, against the one configured now. */
+  watermark: WatermarkPageState
+}
+
+/**
+ * Which mark a chapter's pages carry.
+ *
+ * The label says it; the tone only reinforces it. `unmarkable` is deliberately the loudest:
+ * it is the one state no re-apply can ever fix, because the uploaded originals are gone.
+ */
+const MARK_TONE: Record<WatermarkPageState, PillTone> = {
+  current: 'ok',
+  stale: 'warn',
+  unknown: 'neutral',
+  unmarkable: 'danger',
+  unprocessed: 'neutral',
+}
+
+export function WatermarkPill({ state }: { state: WatermarkPageState }) {
+  const m = adminMessages.admin.chapters
+  return (
+    <span title={m.markHints[state]}>
+      <Pill tone={MARK_TONE[state]}>{m.mark[state]}</Pill>
+    </span>
+  )
 }
 
 const toLocalInput = (d: Date) => {
@@ -94,14 +130,29 @@ export function ChaptersTable({
       const before = rows
       if (optimistic)
         setRows((rs) => rs.map((r) => (action.ids.includes(r.id) ? optimistic(r) : r)))
-      const res = await postJson<{ affected: number[] }>('/api/admin/chapters/bulk', action)
+      const res = await postJson<{ affected: number[]; runId: string | null }>(
+        '/api/admin/chapters/bulk',
+        action,
+      )
       setBusy(false)
       if (!res.ok) {
         setRows(before)
-        toast({ title: adminMessages.admin.errorSaving, description: res.message, tone: 'danger' })
+        toast({
+          title:
+            res.status === 409 && action.action === 'reapply_watermark'
+              ? m.reapplyBusy
+              : adminMessages.admin.errorSaving,
+          description: res.status === 409 ? undefined : res.message,
+          tone: 'danger',
+        })
         return false
       }
       const n = res.data.affected.length
+      if (action.action === 'reapply_watermark') {
+        toast({ title: fmt(m.reapplyQueued, { n }), tone: 'ok' })
+        setSelected(new Set())
+        return true
+      }
       if (action.action === 'delete') {
         toast({
           title: fmt(m.bulk.deleted, { n }),
@@ -124,7 +175,7 @@ export function ChaptersTable({
       setSelected(new Set())
       return true
     },
-    [rows, toast, m.bulk.deleted, m.bulk.updated],
+    [rows, toast, m.bulk.deleted, m.bulk.updated, m.reapplyBusy, m.reapplyQueued],
   )
 
   const ids = [...selected]
@@ -216,6 +267,17 @@ export function ChaptersTable({
               </Button>
             </>
           ) : null}
+          {perms.repair ? (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={busy}
+              onClick={() => run({ action: 'reapply_watermark', ids })}
+            >
+              <Stamp size={13} aria-hidden="true" />
+              {m.reapplyWatermark}
+            </Button>
+          ) : null}
           {perms.chapterDelete ? (
             <Button
               size="sm"
@@ -246,6 +308,7 @@ export function ChaptersTable({
             </Th>
             <Th>{m.colChapter}</Th>
             <Th>{m.colState}</Th>
+            <Th>{m.colMark}</Th>
             <Th align="right">{m.colPages}</Th>
             <Th>{m.colPremium}</Th>
             <Th>{m.colPublished}</Th>
@@ -254,7 +317,7 @@ export function ChaptersTable({
           </tr>
         </thead>
         <tbody>
-          {visible.length === 0 ? <EmptyRow colSpan={8}>{m.noChapters}</EmptyRow> : null}
+          {visible.length === 0 ? <EmptyRow colSpan={9}>{m.noChapters}</EmptyRow> : null}
           {visible.map((r) => {
             const early =
               r.earlyAccessUntil && new Date(r.earlyAccessUntil).getTime() > now.getTime()
@@ -288,6 +351,9 @@ export function ChaptersTable({
                       {fmt(m.pageErrors, { n: r.errors })}
                     </span>
                   ) : null}
+                </Td>
+                <Td>
+                  <WatermarkPill state={r.watermark} />
                 </Td>
                 <Td align="right">
                   <Num>{r.pageCount}</Num>
@@ -341,6 +407,18 @@ export function ChaptersTable({
                           {m.reprocess}
                         </button>
                       </>
+                    ) : null}
+                    {perms.repair && r.watermark !== 'current' && r.watermark !== 'unprocessed' ? (
+                      <button
+                        type="button"
+                        title={m.markHints[r.watermark]}
+                        disabled={busy || r.watermark === 'unmarkable'}
+                        className="inline-flex h-7 items-center gap-1 rounded-md border border-line px-2 text-[12px] font-semibold hover:bg-surface-2 disabled:cursor-not-allowed disabled:opacity-40"
+                        onClick={() => void run({ action: 'reapply_watermark', ids: [r.id] })}
+                      >
+                        <Stamp size={12} aria-hidden="true" />
+                        {m.reapplyWatermark}
+                      </button>
                     ) : null}
                     <a
                       href={`/admin/chapters?series=${seriesId}&chapter=${r.id}`}

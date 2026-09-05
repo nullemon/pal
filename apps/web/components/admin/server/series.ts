@@ -1,3 +1,4 @@
+import { type WatermarkPageState, watermarkPageState } from '@palscans/core/watermark'
 import {
   chapters,
   genres,
@@ -12,6 +13,7 @@ import {
 import { and, asc, count, desc, eq, ilike, isNotNull, isNull, or, sql } from 'drizzle-orm'
 import type { SeriesDoc } from '../schemas'
 import { PAGE_SIZE } from './params'
+import { currentWatermark } from './watermark'
 
 export interface SeriesListParams {
   q?: string
@@ -79,6 +81,8 @@ export interface SeriesEditorData {
     errors: number
     done: number
     total: number
+    /** Which mark this chapter's stored pages carry, against the one configured now. */
+    watermark: WatermarkPageState
   }>
 }
 
@@ -86,6 +90,7 @@ export const loadSeriesEditor = async (id: number): Promise<SeriesEditorData | n
   const db = await getDb()
   const [row] = await db.select().from(series).where(eq(series.id, id)).limit(1)
   if (!row) return null
+  const { fingerprint } = await currentWatermark()
   const [titles, credits, sg, allGenres, geo, chapterRows, linked] = await Promise.all([
     db
       .select({ title: seriesTitles.title, lang: seriesTitles.lang })
@@ -188,6 +193,14 @@ export const loadSeriesEditor = async (id: number): Promise<SeriesEditorData | n
       errors: Object.keys(c.processing?.errors ?? {}).length,
       done: c.processing?.progress.done ?? c.pageCount,
       total: c.processing?.progress.total ?? c.pageCount,
+      watermark: watermarkPageState(
+        {
+          pageCount: c.pageCount,
+          recorded: c.processing?.watermark ?? null,
+          hasSources: (c.processing?.sources.length ?? 0) > 0,
+        },
+        fingerprint,
+      ),
     })),
   }
 }

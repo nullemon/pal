@@ -135,6 +135,16 @@ export const bulkActionSchema = z.discriminatedUnion('action', [
   }),
   z.object({ action: z.literal('delete'), ids: z.array(z.number().int()).min(1).max(500) }),
   z.object({ action: z.literal('restore'), ids: z.array(z.number().int()).min(1).max(500) }),
+  /**
+   * Rebuild these chapters' pages with the watermark configured now (docs/03 "Re-applying
+   * the mark"). It queues the same job the Watermark screen starts, on a narrower scope —
+   * there is one runner and one run document, so a second start is refused rather than
+   * racing the first.
+   */
+  z.object({
+    action: z.literal('reapply_watermark'),
+    ids: z.array(z.number().int()).min(1).max(500),
+  }),
 ])
 export type BulkAction = z.infer<typeof bulkActionSchema>
 

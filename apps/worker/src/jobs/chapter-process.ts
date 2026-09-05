@@ -3,6 +3,7 @@ import {
   normalizeWatermark,
   WATERMARK_SETTING_KEY,
   type WatermarkConfig,
+  watermarkFingerprint,
 } from '@palscans/core/watermark'
 import {
   type ChapterProcessing,
@@ -85,7 +86,20 @@ export const processChapter = async (
     errors: { ...row.processing.errors },
     results: { ...(row.processing.results ?? {}) },
   }
-  const failedOnly = doc.mode === 'failed' && Object.keys(doc.errors).length > 0
+  // Read before the retry decision below, because what this run will burn in decides whether
+  // the previous run's kept results are still usable.
+  const watermark = await watermarkFor(db)
+  const applied = watermark ? watermarkFingerprint(watermark) : ''
+  // A "retry failed pages only" reuses the successful pages of the previous run. That is
+  // only sound while the mark has not moved: reusing them across a watermark change would
+  // leave one chapter carrying two different marks, page by page, with no way to tell from
+  // the outside. So a changed mark quietly promotes the retry to a full run.
+  const markMoved = doc.watermark !== undefined && doc.watermark !== applied
+  const failedOnly = doc.mode === 'failed' && Object.keys(doc.errors).length > 0 && !markMoved
+  if (markMoved && doc.mode === 'failed')
+    log.info('chapter.process: watermark changed since the last run — re-running every page', {
+      chapterId,
+    })
 
   // failed-only: re-run the sources that errored, plus any without a kept result
   const todo = failedOnly
@@ -116,7 +130,6 @@ export const processChapter = async (
   })
 
   const prefix = `pages/${row.seriesId}/${chapterId}`
-  const watermark = await watermarkFor(db)
   let dirty = false
   const flush = setInterval(() => {
     if (dirty) {
@@ -216,7 +229,9 @@ export const processChapter = async (
       ? 'published'
       : 'scheduled'
     : 'ready'
-  const lean: ChapterProcessing = { ...doc, results: undefined, mode: 'all' }
+  // Record what these pages actually carry, so the panel can say which chapters are on the
+  // current mark without decoding an image, and a later re-apply can skip them.
+  const lean: ChapterProcessing = { ...doc, results: undefined, mode: 'all', watermark: applied }
   await db.transaction(async (tx) => {
     await tx.delete(chapterPages).where(eq(chapterPages.chapterId, chapterId))
     if (rows.length) await tx.insert(chapterPages).values(rows)

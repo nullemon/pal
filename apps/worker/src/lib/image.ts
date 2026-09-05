@@ -188,11 +188,25 @@ export const blurHashFor = async (image: Sharp): Promise<string | null> => {
   }
 }
 
-/** Process one uploaded original into one or more encoded pages. Throws on decode failure. */
-export const processImage = async (
-  source: Uint8Array,
-  opts: ProcessOptions,
-): Promise<EncodedPage[]> => {
+/** One emitted page before any resize or encode: the pixels the content address is taken of. */
+export interface SourceSegment {
+  /** Offset from `startIdx`. */
+  offset: number
+  width: number
+  height: number
+  /** The oriented, stripped, cropped segment as PNG — the exact bytes `pageAddress` hashes. */
+  png: Buffer
+}
+
+/**
+ * Decode one uploaded original into the segments the pipeline would emit for it.
+ *
+ * Split out of {@link processImage} so a caller can ask *what address would this page have*
+ * without paying for eight encodes. `watermark.reapply` uses it to prove a chapter already
+ * carries the mark it is about to apply, and to leave it completely alone when it does —
+ * which is roughly a tenth of the cost of finding out by re-encoding.
+ */
+export const decodeSegments = async (source: Uint8Array): Promise<SourceSegment[]> => {
   const oriented = await sharp(source, { limitInputPixels: MAX_PIXELS, failOn: 'error' })
     .rotate()
     .png({ compressionLevel: 1 })
@@ -202,12 +216,57 @@ export const processImage = async (
   if (width > MAX_SIDE || height > MAX_SIDE) throw new Error(`image too large: ${width}×${height}`)
   if (width * height > MAX_PIXELS) throw new Error(`image too large: ${width}×${height}`)
 
+  const out: SourceSegment[] = []
+  for (const [i, seg] of segmentsFor(height).entries()) {
+    const png = await sharp(oriented.data)
+      .extract({ left: 0, top: seg.top, width, height: seg.height })
+      .png({ compressionLevel: 1 })
+      .toBuffer()
+    out.push({ offset: i, width, height: seg.height, png })
+  }
+  return out
+}
+
+/** What one original would be addressed as under a given mark, without encoding anything. */
+export interface PlannedPage {
+  /** Offset from the caller's `startIdx`, matching {@link ProcessOptions.startIdx}. */
+  offset: number
+  sha: string
+  width: number
+  height: number
+}
+
+/**
+ * The content addresses one original would produce under `watermark` — nothing else.
+ *
+ * The whole point of this shortcut is that it reads only the *original*: it can say what a
+ * chapter's pages should be called without ever touching a page object, which is what keeps
+ * a re-apply from feeding an already-marked image back through the compositor.
+ */
+export const plannedAddresses = async (
+  source: Uint8Array,
+  watermark?: WatermarkConfig | null,
+): Promise<PlannedPage[]> => {
+  const mark = watermark?.enabled ? watermark : null
+  return (await decodeSegments(source)).map((s) => ({
+    offset: s.offset,
+    sha: pageAddress(s.png, mark),
+    width: s.width,
+    height: s.height,
+  }))
+}
+
+/** Process one uploaded original into one or more encoded pages. Throws on decode failure. */
+export const processImage = async (
+  source: Uint8Array,
+  opts: ProcessOptions,
+): Promise<EncodedPage[]> => {
   const pages: EncodedPage[] = []
-  const segments = segmentsFor(height)
-  for (const [i, seg] of segments.entries()) {
-    const idx = opts.startIdx + i
-    const base = sharp(oriented.data).extract({ left: 0, top: seg.top, width, height: seg.height })
-    const segPng = await base.clone().png({ compressionLevel: 1 }).toBuffer()
+  const segments = await decodeSegments(source)
+  for (const seg of segments) {
+    const idx = opts.startIdx + seg.offset
+    const width = seg.width
+    const segPng = seg.png
     const mark = opts.watermark?.enabled ? opts.watermark : null
     const sha = pageAddress(segPng, mark)
     const variants: EncodedVariant[] = []

@@ -1,0 +1,30 @@
+-- Watermark re-apply (docs/03 "Re-applying the mark"): one index, no new tables, no new
+-- columns.
+--
+-- The feature itself needed neither. The run document lives in the generic `settings` table
+-- under `watermark_reapply`, and what a chapter's pages carry is a new optional field inside
+-- the `chapters.processing` JSONB document the pipeline already writes. A table for one row
+-- at a time, or a column for a string that is only meaningful next to `sources`, would both
+-- have been ceremony.
+--
+-- What did need help is the question Appearance → Watermark now asks on every load, and
+-- Chapters → Mark filters on:
+--
+--     ... where deleted_at is null and page_count > 0
+--         and (processing ->> 'watermark') = $1        -- "on this mark"
+--         and (processing ->> 'watermark') is null     -- "not recorded"
+--
+-- Both were sequential scans of `chapters` that this feature introduced, and there are five
+-- of them per page load. On a few thousand chapters that is nothing; on the catalogue this
+-- site is aiming at it is the page load.
+--
+-- Be honest about what it does not cover. The "on an older mark" bucket is `<> $1`, and the
+-- worker's own walk is `is distinct from $1` ordered by id — neither is an index-friendly
+-- predicate, so both still scan (the walk in bounded, ordered, LIMITed batches off the
+-- primary key, which is the right shape for a background sweep anyway).
+--
+-- Partial on the rows those queries can ever match, which is also what keeps it small: a
+-- chapter with no pages is never a candidate for re-marking. `IF NOT EXISTS`, so re-applying
+-- is a no-op, and declared in `packages/db/src/schema/chapters.ts` — an index without its
+-- model is exactly the drift the earlier migrations warn about.
+CREATE INDEX IF NOT EXISTS "chapters_watermark_idx" ON "chapters" USING btree (("processing" ->> 'watermark'), "id") WHERE "chapters"."deleted_at" is null AND "chapters"."page_count" > 0;

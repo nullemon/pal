@@ -1,8 +1,10 @@
+import { fmt } from '@palscans/core/messages'
 import { adminMessages } from '@palscans/core/messages/admin'
 import { getQueue } from '@palscans/core/queue'
 import { JobsPanel } from '@/components/admin/client/JobsPanel'
 import { loadQueue } from '@/components/admin/server/queue'
-import { PageHeader, Panel, PanelHeader, StatTile } from '@/components/admin/ui'
+import { readWatermarkRun } from '@/components/admin/server/watermark'
+import { PageHeader, Panel, PanelHeader, Pill, StatTile } from '@/components/admin/ui'
 import { withPermission } from '@/lib/auth'
 import { getEnv } from '@/lib/env'
 
@@ -24,7 +26,8 @@ export default async function JobsPage() {
   } catch {
     stats = null
   }
-  const items = await loadQueue()
+  const [items, watermarkRun] = await Promise.all([loadQueue(), readWatermarkRun()])
+  const w = adminMessages.admin.watermark
   return (
     <>
       <PageHeader title={m.title} subtitle={m.subtitle} />
@@ -48,6 +51,46 @@ export default async function JobsPage() {
             tone={stats && stats.failed > 0 ? 'danger' : undefined}
           />
         </div>
+      </Panel>
+      <Panel>
+        <PanelHeader
+          title={m.watermarkRun}
+          hint={m.watermarkRunHint}
+          aside={
+            <a className="text-brand-hover hover:underline" href="/admin/appearance/watermark">
+              {m.watermarkOpen}
+            </a>
+          }
+        />
+        {watermarkRun ? (
+          <div className="flex flex-wrap items-center gap-2 text-[13px]">
+            <Pill
+              tone={
+                watermarkRun.status === 'failed'
+                  ? 'danger'
+                  : watermarkRun.status === 'done'
+                    ? 'ok'
+                    : watermarkRun.status === 'cancelled'
+                      ? 'warn'
+                      : 'brand'
+              }
+            >
+              {w.run.pill[watermarkRun.status]}
+            </Pill>
+            <span className="tabular-nums text-fg-muted">
+              {fmt(w.run.progress, {
+                done: String(watermarkRun.totals.done),
+                total: String(watermarkRun.totals.chapters),
+              })}
+            </span>
+            <span className="text-fg-subtle">
+              {w.run.rebuilt} {watermarkRun.totals.rewritten} · {w.run.alreadyCurrent}{' '}
+              {watermarkRun.totals.alreadyCurrent} · {w.run.skipped} {watermarkRun.totals.skipped}
+            </span>
+          </div>
+        ) : (
+          <p className="text-[13px] text-fg-muted">{m.watermarkIdle}</p>
+        )}
       </Panel>
       <JobsPanel items={items} />
     </>

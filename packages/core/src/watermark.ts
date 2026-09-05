@@ -259,3 +259,219 @@ export const watermarkSvg = (g: WatermarkGeometry): string => {
   const common = `x="${g.x}" y="${g.y}" text-anchor="${g.anchor}"`
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${g.width}" height="${g.height}" viewBox="0 0 ${g.width} ${g.height}"><g font-family="${WATERMARK_FONT_STACK}" font-size="${g.fontSize}" font-weight="700" letter-spacing="${round2(g.fontSize * 0.01)}" opacity="${g.opacity}"><text ${common} fill="#000000" fill-opacity="0.85" stroke="#000000" stroke-opacity="0.85" stroke-width="${g.strokeWidth}" stroke-linejoin="round">${text}</text><text ${common} fill="#ffffff">${text}</text></g></svg>`
 }
+
+// ---------------------------------------------------------------------------
+// Re-applying the mark to what is already processed
+// ---------------------------------------------------------------------------
+
+/**
+ * `settings.watermark_reapply` — the one live (or last finished) re-apply run.
+ *
+ * A settings row rather than a table: there is at most one run at a time, the operator only
+ * ever needs the current one, and who started it is already in the audit log. The row *is*
+ * the checkpoint — see {@link WatermarkRun.cursor}.
+ */
+export const WATERMARK_REAPPLY_KEY = 'watermark_reapply'
+
+export const WATERMARK_RUN_STATUSES = ['queued', 'running', 'done', 'failed', 'cancelled'] as const
+export type WatermarkRunStatus = (typeof WATERMARK_RUN_STATUSES)[number]
+
+/**
+ * Why one chapter came out of a run untouched.
+ *
+ * `missing_originals` is the one that decides whether this feature is possible at all for a
+ * given chapter: the mark is composited from the *uploaded original*, never from a page the
+ * pipeline already wrote, so a chapter whose originals have gone cannot be re-marked by
+ * anything short of re-uploading it. It is reported per chapter rather than skipped
+ * silently, because "nothing happened" and "this can never happen" are different answers.
+ */
+export const WATERMARK_SKIP_REASONS = [
+  'no_sources',
+  'missing_originals',
+  'foreign_sources',
+  'processing',
+  'failed',
+] as const
+export type WatermarkSkipReason = (typeof WATERMARK_SKIP_REASONS)[number]
+
+export interface WatermarkRunProblem {
+  chapterId: number
+  seriesId?: number
+  /** Chapter number, so the panel has a label the operator recognises without another query. */
+  number?: number
+  reason: WatermarkSkipReason
+  detail?: string
+}
+
+export interface WatermarkRunTotals {
+  /** Candidates when the run started. An estimate: chapters can be added while it walks. */
+  chapters: number
+  /** Chapters the run has finished with, whatever the outcome. */
+  done: number
+  /** Chapters whose pages were rebuilt and re-pointed. */
+  rewritten: number
+  /** Chapters that already carried this exact mark — proved, not assumed, and left alone. */
+  alreadyCurrent: number
+  /** Chapters reported in `problems`. */
+  skipped: number
+  pages: number
+  /** Bytes of page variants that stopped being referenced. Not deleted — see docs/03. */
+  orphanBytes: number
+}
+
+/**
+ * One re-apply run (docs/03 "Re-applying the mark").
+ *
+ * Resumable: `cursor` is the highest chapter id fully finished, committed with the counters
+ * after every chapter, so a worker that dies mid-run restarts on the next chapter instead of
+ * re-encoding the catalogue from the top. Cancellable: `cancelRequested` is read between
+ * chapters, which is why stopping one never leaves a half-written chapter behind.
+ */
+export interface WatermarkRun {
+  id: string
+  status: WatermarkRunStatus
+  /**
+   * The mark this run applies, as {@link watermarkFingerprint} — `''` for "no mark".
+   *
+   * Pinned at start. If the operator saves different settings while it runs, the run stops
+   * with `settings_changed` rather than half-applying two different marks across the
+   * catalogue.
+   */
+  fingerprint: string
+  /** The mark's text as the panel should name it; empty when the run is removing the mark. */
+  label: string
+  /** Chapter ids in scope, or `null` for the whole catalogue. */
+  scope: number[] | null
+  /** Highest chapter id fully finished. The resume point. */
+  cursor: number
+  totals: WatermarkRunTotals
+  problems: WatermarkRunProblem[]
+  cancelRequested: boolean
+  startedBy: number | null
+  startedAt: string
+  updatedAt: string
+  /** Bumped every chapter; a run whose heartbeat has gone cold is picked back up. */
+  heartbeatAt: string | null
+  finishedAt: string | null
+  /** Set when `status` is `failed`: `no_font`, `settings_changed`, or an error message. */
+  error: string | null
+}
+
+/** Cap on the problem list so one bad batch cannot grow the settings row without bound. */
+export const WATERMARK_RUN_PROBLEM_LIMIT = 200
+
+/**
+ * A stored run row turned into a usable one. Never throws, for the same reason
+ * {@link normalizeWatermark} does not: a row written by an older build must not stop the
+ * worker, and the panel must always have something to render.
+ */
+export const normalizeWatermarkRun = (raw: unknown): WatermarkRun | null => {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
+  const o = raw as Record<string, unknown>
+  if (typeof o.id !== 'string' || !o.id) return null
+  const status = WATERMARK_RUN_STATUSES.includes(o.status as WatermarkRunStatus)
+    ? (o.status as WatermarkRunStatus)
+    : 'failed'
+  const t = (o.totals ?? {}) as Record<string, unknown>
+  const int = (v: unknown): number => {
+    const n = Number(v)
+    return Number.isFinite(n) && n >= 0 ? Math.floor(n) : 0
+  }
+  const iso = (v: unknown): string | null => (typeof v === 'string' && v ? v : null)
+  const problems = Array.isArray(o.problems)
+    ? o.problems
+        .filter((p): p is Record<string, unknown> => !!p && typeof p === 'object')
+        .map((p) => ({
+          chapterId: int(p.chapterId),
+          seriesId: p.seriesId === undefined ? undefined : int(p.seriesId),
+          number: p.number === undefined ? undefined : Number(p.number),
+          reason: (WATERMARK_SKIP_REASONS.includes(p.reason as WatermarkSkipReason)
+            ? p.reason
+            : 'failed') as WatermarkSkipReason,
+          detail: typeof p.detail === 'string' ? p.detail.slice(0, 300) : undefined,
+        }))
+        .slice(0, WATERMARK_RUN_PROBLEM_LIMIT)
+    : []
+  return {
+    id: o.id,
+    status,
+    fingerprint: typeof o.fingerprint === 'string' ? o.fingerprint : '',
+    label: typeof o.label === 'string' ? o.label : '',
+    scope: Array.isArray(o.scope) ? o.scope.map((n) => int(n)).filter((n) => n > 0) : null,
+    cursor: int(o.cursor),
+    totals: {
+      chapters: int(t.chapters),
+      done: int(t.done),
+      rewritten: int(t.rewritten),
+      alreadyCurrent: int(t.alreadyCurrent),
+      skipped: int(t.skipped),
+      pages: int(t.pages),
+      orphanBytes: int(t.orphanBytes),
+    },
+    problems,
+    cancelRequested: o.cancelRequested === true,
+    startedBy: typeof o.startedBy === 'number' ? o.startedBy : null,
+    startedAt: iso(o.startedAt) ?? new Date(0).toISOString(),
+    updatedAt: iso(o.updatedAt) ?? iso(o.startedAt) ?? new Date(0).toISOString(),
+    heartbeatAt: iso(o.heartbeatAt),
+    finishedAt: iso(o.finishedAt),
+    error: typeof o.error === 'string' ? o.error : null,
+  }
+}
+
+export const watermarkRunLive = (run: WatermarkRun | null): boolean =>
+  !!run && (run.status === 'queued' || run.status === 'running')
+
+/**
+ * What one chapter's stored pages carry, relative to the mark configured now.
+ *
+ * - `current` — the pipeline recorded this exact fingerprint for its pages.
+ * - `stale` — it recorded a different one (an older mark, or none).
+ * - `unknown` — processed before the fingerprint was recorded. Deliberately *not* folded
+ *   into `stale`: we genuinely do not know, and the only honest way to find out is to
+ *   re-derive the address from the original, which is what a run does.
+ * - `unmarkable` — there are pages but no usable originals, so no run can ever fix it.
+ * - `unprocessed` — no pages yet; the next processing run applies the current mark anyway.
+ */
+export const WATERMARK_PAGE_STATES = [
+  'current',
+  'stale',
+  'unknown',
+  'unmarkable',
+  'unprocessed',
+] as const
+export type WatermarkPageState = (typeof WATERMARK_PAGE_STATES)[number]
+
+/**
+ * How a catalogue stands against the mark configured now. The buckets partition the
+ * processed chapters exactly, in {@link watermarkPageState}'s priority order, so the panel's
+ * numbers always add up and nobody has to wonder where the missing chapters went.
+ */
+export interface WatermarkCounts {
+  /** Chapters with pages at all — the denominator. */
+  processed: number
+  current: number
+  stale: number
+  unknown: number
+  unmarkable: number
+  /** `stale + unknown`: what a re-apply run would work on. */
+  affected: number
+}
+
+export interface WatermarkStateInput {
+  pageCount: number
+  /** `chapters.processing.watermark`, absent for anything processed before it was recorded. */
+  recorded?: string | null
+  /** Whether `chapters.processing.sources` still names originals to composite from. */
+  hasSources: boolean
+}
+
+export const watermarkPageState = (
+  input: WatermarkStateInput,
+  current: string,
+): WatermarkPageState => {
+  if (input.pageCount <= 0) return 'unprocessed'
+  if (!input.hasSources) return 'unmarkable'
+  if (input.recorded === undefined || input.recorded === null) return 'unknown'
+  return input.recorded === current ? 'current' : 'stale'
+}
