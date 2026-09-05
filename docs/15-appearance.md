@@ -130,7 +130,7 @@ email subjects and intros. Everything else goes through the i18n catalogue.
 | Custom CSS | a text box applied after the theme, scoped to the public site; syntax-checked; changes audited |
 | Custom head / footer HTML | for analytics snippets (search-engine verification tags live on the SEO screen, `12-seo.md`); admin-only |
 | PWA | app name, short name, theme colour and icons are generated from the settings above; the install prompt copy is editable |
-| Email theme | logo, accent and footer text applied to every transactional template |
+| Email theme | logo, accent and footer text applied to every transactional template. No settings of its own: the mark is the generated icon from Brand (sent as a PNG the site serves itself, so no client has to render an SVG and a private bucket still works), the button is derived from the accent with its text colour computed to clear 4.5:1, and the small print is `email.footer` in Copy → Email |
 
 Both boxes are `appearance.advanced`, a permission only the `admin` role can hold and which
 `Access → Roles` refuses to grant to any other — a snippet is a `<script>` on every public

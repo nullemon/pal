@@ -2316,7 +2316,7 @@ export const adminMessages = {
         'These four strings are in the catalogue, but no age gate is built yet — mature series are blurred instead. Editing them changes nothing on the site today.',
       premium: 'The pitch, the perk list on a locked chapter, and the note under the plans.',
       email:
-        'Subjects and opening lines. The button labels and the "this link expires" lines are not editable: they are promises about how the link behaves, not voice.',
+        'Subjects, opening lines, and the small print under every mail. The button labels and the "this link expires" lines are not editable: they are promises about how the link behaves, not voice. The mark and the button colour are not here either — they come from Brand and Theme.',
     },
     entries: {
       'layouts.featured': 'Hero eyebrow',
@@ -2348,6 +2348,7 @@ export const adminMessages = {
       'email.passwordChanged.intro': 'Password changed · intro',
       'email.deletion.subject': 'Account deletion · subject',
       'email.deletion.intro': 'Account deletion · intro',
+      'email.footer': 'Small print under every email',
     },
     where: {
       'layouts.featured': 'Above the hero on the home page (directions B, C, E and F).',
@@ -2382,6 +2383,8 @@ export const adminMessages = {
       'email.passwordChanged.intro': 'Sent after a password change or reset.',
       'email.deletion.subject': 'Sent when a reader schedules their account for deletion.',
       'email.deletion.intro': 'The deletion date is appended to this line.',
+      'email.footer':
+        'Under the card in all four emails, and the last line of the plain-text version. {site} becomes the site name from Brand.',
     },
     formatting: {
       title: 'Formatting',

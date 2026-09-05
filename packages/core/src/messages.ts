@@ -1034,6 +1034,13 @@ export const messages = {
       cancel: 'Changed your mind? Sign in and cancel the deletion in Settings before then.',
       cta: 'Cancel deletion',
     },
+    /**
+     * The small print under every transactional mail (docs/15 "Email theme"). One line for
+     * all four, because it answers the one question they all raise — why did this arrive —
+     * and `{site}` is the operator's own site name, so it reads right after a rebrand.
+     */
+    footer:
+      'You are receiving this because this address was used to create or manage an account on {site}.',
   },
   // P5 · admin panel + upload pipeline — appended
   /** Shared by Admin → Users → detail and /me/security (docs/17 §C login history). */

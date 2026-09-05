@@ -62,7 +62,7 @@ const adjustFor = (
  * The type and status colours are operator-chosen, so no single hard-coded text colour is
  * safe on them — white on the default `manhwa` red is 3.9:1, which fails at badge sizes.
  */
-const inkOn = (bg: string): string => {
+export const inkOn = (bg: string): string => {
   const white = contrast('#ffffff', bg)
   const black = contrast('#100d17', bg)
   if (Math.max(white, black) >= 4.5) return white >= black ? '#ffffff' : '#100d17'
@@ -74,7 +74,7 @@ const inkOn = (bg: string): string => {
  * A solid swatch that a badge can print `inkOn()` on and still clear 4.5:1. Darkens (or
  * lightens) the operator's colour only as far as it has to, so the palette stays theirs.
  */
-const readableSwatch = (hexIn: string, towards: -1 | 1): string => {
+export const readableSwatch = (hexIn: string, towards: -1 | 1): string => {
   const c = oklch(hexIn)
   let cur = { ...c }
   for (let i = 0; i < 40; i++) {

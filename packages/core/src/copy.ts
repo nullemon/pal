@@ -146,6 +146,14 @@ export const COPY_ENTRIES: readonly CopyEntry[] = [
   }),
   entry('email.deletion.subject', 'email', messages.email.deletion.subject, { max: 120 }),
   entry('email.deletion.intro', 'email', messages.email.deletion.intro, { max: 400 }),
+  // The one string that renders in all four mails, and the only one an operator is likely to
+  // have a legal opinion about — an unsubscribe note, a postal address, a support address.
+  // `{site}` is the site name from Appearance → Brand, so the shipped wording follows a
+  // rename without being edited.
+  entry('email.footer', 'email', messages.email.footer, {
+    placeholders: ['site'],
+    max: 300,
+  }),
 ] as const
 
 export type CopyKey = (typeof COPY_ENTRIES)[number]['id']
