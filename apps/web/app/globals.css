@@ -191,3 +191,17 @@
   font-size: 1.125rem;
   line-height: 1.25;
 }
+
+/* docs/11 — one element per ad slot, sized by custom properties so a slot that is a
+   leaderboard on desktop and a banner on mobile does not need two elements in the DOM
+   (which would fire the network's tag twice). */
+[data-ad-slot] {
+  width: var(--ad-w);
+  height: var(--ad-h);
+}
+@media (min-width: 768px) {
+  [data-ad-slot] {
+    width: var(--ad-w-md, var(--ad-w));
+    height: var(--ad-h-md, var(--ad-h));
+  }
+}

@@ -6,6 +6,8 @@ export const AD_SLOTS = [
   'home_infeed',
   'series_top',
   'series_sidebar',
+  'reader_sky',
+  'reader_instrip',
   'reader_end',
   'mobile_anchor',
 ] as const
@@ -17,6 +19,8 @@ export const AD_SLOT_SIZES: Record<AdSlotId, { desktop: string; mobile: string }
   home_infeed: { desktop: 'native card', mobile: 'native card' },
   series_top: { desktop: '728×90', mobile: '320×100' },
   series_sidebar: { desktop: '300×250', mobile: '300×250' },
+  reader_sky: { desktop: '160×600 / 300×600', mobile: '—' },
+  reader_instrip: { desktop: '—', mobile: '300×250' },
   reader_end: { desktop: '336×280', mobile: '300×250' },
   mobile_anchor: { desktop: '—', mobile: '320×50' },
 }

@@ -27,7 +27,8 @@ export function Skyscrapers({ ads }: { ads: ReaderAds }) {
           width={w}
           height={h}
           label={label}
-          placeholder={ads.placeholder}
+          placeholder={ads.tags.sky === null}
+          tag={ads.tags.sky}
         />
       </aside>
       <aside
@@ -40,7 +41,8 @@ export function Skyscrapers({ ads }: { ads: ReaderAds }) {
           width={w}
           height={h}
           label={label}
-          placeholder={ads.placeholder}
+          placeholder={ads.tags.sky === null}
+          tag={ads.tags.sky}
         />
       </aside>
     </>
@@ -60,7 +62,8 @@ export function AdBand({ ads, n, className }: { ads: ReaderAds; n: number; class
         width={300}
         height={250}
         label={fmt(messages.readerUi.adInStrip, { n: ads.mobileInterval })}
-        placeholder={ads.placeholder}
+        placeholder={ads.tags.instrip === null}
+        tag={ads.tags.instrip}
       />
     </div>
   )
@@ -75,7 +78,8 @@ export function EndSlot({ ads, mobile }: { ads: ReaderAds; mobile: boolean }) {
       width={mobile ? 300 : 336}
       height={mobile ? 250 : 280}
       label={messages.readerUi.adEndOfChapter}
-      placeholder={ads.placeholder}
+      placeholder={ads.tags.end === null}
+      tag={ads.tags.end}
     />
   )
 }

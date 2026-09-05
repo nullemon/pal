@@ -210,19 +210,13 @@ export function SeriesF({
           <div className="container-page">
             <AdSlot
               slot="series_top"
-              width={728}
-              height={90}
-              label={messages.ads.leaderboard}
-              placeholder={ads.top.placeholder}
-              className="hidden md:flex"
-            />
-            <AdSlot
-              slot="series_top"
               width={320}
               height={100}
+              desktopWidth={728}
+              desktopHeight={90}
               label={messages.ads.leaderboard}
               placeholder={ads.top.placeholder}
-              className="md:hidden"
+              tag={ads.top.tag}
             />
           </div>
         ) : null}
@@ -339,6 +333,7 @@ export function SeriesF({
                 height={250}
                 label={messages.ads.mpu}
                 placeholder={ads.mpu.placeholder}
+                tag={ads.mpu.tag}
               />
             ) : null}
 

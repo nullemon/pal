@@ -215,6 +215,7 @@ export function HomeD({
                 width={300}
                 height={250}
                 placeholder={ads.sidebar.placeholder}
+                tag={ads.sidebar.tag}
                 className="lg:mx-0"
               />
             </div>
@@ -225,24 +226,16 @@ export function HomeD({
         <div className="flex min-w-0 flex-col gap-5">
           {ads.top.show ? (
             <>
-              <div className="hidden md:block">
-                <AdSlot
-                  slot="home_top"
-                  label={messages.ads.leaderboard}
-                  width={970}
-                  height={90}
-                  placeholder={ads.top.placeholder}
-                />
-              </div>
-              <div className="md:hidden">
-                <AdSlot
-                  slot="home_top"
-                  label={messages.ads.leaderboard}
-                  width={320}
-                  height={100}
-                  placeholder={ads.top.placeholder}
-                />
-              </div>
+              <AdSlot
+                slot="home_top"
+                label={messages.ads.leaderboard}
+                width={320}
+                height={100}
+                desktopWidth={970}
+                desktopHeight={90}
+                placeholder={ads.top.placeholder}
+                tag={ads.top.tag}
+              />
             </>
           ) : null}
 

@@ -206,19 +206,13 @@ export function SeriesD({
                 <>
                   <AdSlot
                     slot="series_top"
-                    width={728}
-                    height={90}
-                    label={messages.ads.leaderboard}
-                    placeholder={ads.top.placeholder}
-                    className="hidden md:flex"
-                  />
-                  <AdSlot
-                    slot="series_top"
                     width={320}
                     height={100}
+                    desktopWidth={728}
+                    desktopHeight={90}
                     label={messages.ads.leaderboard}
                     placeholder={ads.top.placeholder}
-                    className="md:hidden"
+                    tag={ads.top.tag}
                   />
                 </>
               ) : null}
@@ -279,6 +273,7 @@ export function SeriesD({
                   height={250}
                   label={messages.ads.mpu}
                   placeholder={ads.mpu.placeholder}
+                  tag={ads.mpu.tag}
                   className="shrink-0 lg:mx-0"
                 />
               ) : null}

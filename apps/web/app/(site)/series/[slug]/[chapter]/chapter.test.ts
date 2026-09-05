@@ -158,7 +158,10 @@ describe('settings', () => {
       { home: 'A', reader: { default_mode: 'paged' } },
       {
         reader: { skyscrapers: false, sky_size: '300x600', mobile_interval: 6 },
-        slots: { reader_end: { enabled: true, tag: 'x' } },
+        slots: {
+          reader_sky: { enabled: true, tag: '<script>sky</script>' },
+          reader_end: { enabled: true, tag: 'x' },
+        },
       },
     )
     expect(s.layout).toEqual({ default_mode: 'paged', background: 'dark' })
@@ -168,7 +171,8 @@ describe('settings', () => {
       mobile_interval: 6,
       end_slot: true,
     })
-    expect(s.endTag).toBe('x')
+    // A slot with no row configured stays null, so its box renders reserved and empty.
+    expect(s.tags).toEqual({ sky: '<script>sky</script>', instrip: null, end: 'x' })
     const d = parseReaderSiteSettings(null, { reader: { mobile_interval: 5 } })
     expect(d.ads.mobile_interval).toBe(4)
     expect(d.layout.default_mode).toBe('strip')

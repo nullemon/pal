@@ -27,7 +27,10 @@ const slotSchema = z
 
 const adsRowSchema = z.object({
   reader: readerAdsSchema.catch(readerAdsSchema.parse({})),
-  slots: z.object({ reader_end: slotSchema }).partial().catch({}),
+  slots: z
+    .object({ reader_sky: slotSchema, reader_instrip: slotSchema, reader_end: slotSchema })
+    .partial()
+    .catch({}),
 })
 
 const layoutsRowSchema = z.object({
@@ -37,14 +40,14 @@ const layoutsRowSchema = z.object({
 export interface ReaderSiteSettings {
   layout: ReaderLayout
   ads: ReaderAdsSetting
-  /** Ad network tag for the end slot, null until Business → Ads is filled in. */
-  endTag: string | null
+  /** Ad network tags for the reader's slots, null until Business → Ads is filled in. */
+  tags: { sky: string | null; instrip: string | null; end: string | null }
 }
 
 export const DEFAULT_READER_SITE_SETTINGS: ReaderSiteSettings = {
   layout: readerLayoutSchema.parse({}),
   ads: readerAdsSchema.parse({}),
-  endTag: null,
+  tags: { sky: null, instrip: null, end: null },
 }
 
 export const parseReaderSiteSettings = (layouts: unknown, ads: unknown): ReaderSiteSettings => {
@@ -53,7 +56,11 @@ export const parseReaderSiteSettings = (layouts: unknown, ads: unknown): ReaderS
   return {
     layout: l.success ? l.data.reader : DEFAULT_READER_SITE_SETTINGS.layout,
     ads: a.success ? a.data.reader : DEFAULT_READER_SITE_SETTINGS.ads,
-    endTag: a.success ? (a.data.slots.reader_end?.tag ?? null) : null,
+    tags: {
+      sky: a.success ? (a.data.slots.reader_sky?.tag ?? null) : null,
+      instrip: a.success ? (a.data.slots.reader_instrip?.tag ?? null) : null,
+      end: a.success ? (a.data.slots.reader_end?.tag ?? null) : null,
+    },
   }
 }
 

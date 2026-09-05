@@ -55,6 +55,11 @@ export interface ReaderAds {
   endSlot: boolean
   /** Draw the dashed placeholder (no network tag configured yet). */
   placeholder: boolean
+  /**
+   * The network's tag per reader slot, from `Admin → Business → Ads`. Null leaves the box
+   * reserved and empty, which is the state before a network is signed up.
+   */
+  tags: { sky: string | null; instrip: string | null; end: string | null }
 }
 
 export interface ReaderResume {

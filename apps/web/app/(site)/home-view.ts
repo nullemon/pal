@@ -58,7 +58,7 @@ export async function loadHomeView(
 
   const place = (id: 'home_top' | 'home_sidebar' | 'home_infeed') => {
     const slot = adSlot(ads, id)
-    return { show: withAds && slot.enabled, placeholder: slot.tag === null }
+    return { show: withAds && slot.enabled, placeholder: slot.tag === null, tag: slot.tag }
   }
 
   return {

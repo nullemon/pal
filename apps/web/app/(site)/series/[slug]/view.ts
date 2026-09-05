@@ -1,6 +1,7 @@
 import { fmt, messages } from '@palscans/core/messages'
 import { z } from 'zod'
-import { cachedLayoutsSetting } from '@/components/discovery/cached'
+import { cachedAds, cachedLayoutsSetting } from '@/components/discovery/cached'
+import { adSlot } from '@/components/discovery/settings'
 import type { SeriesViewProps } from '@/components/series/layouts/types'
 import { storageUrl } from '@/lib/comments/media'
 import { COMMENT_SORTS } from '@/lib/comments/types'
@@ -10,9 +11,6 @@ import { getEnv } from '@/lib/env'
 import { chapterRows, getSeries, loadRank, loadRecommended, viewerSeriesState } from './data'
 
 const searchSchema = z.object({ sort: z.enum(COMMENT_SORTS).catch('best') })
-
-/** `AdSlot`'s own default: the dashed placeholder outside production, nothing in it. */
-const AD_PLACEHOLDER = process.env.NODE_ENV !== 'production'
 
 /**
  * Everything any series direction needs, loaded once (docs/17 §F). Returns null when the
@@ -31,14 +29,19 @@ export async function loadSeriesView(
   const now = new Date()
   const user = await getAppUser()
   const gate = await entitlementGate()
-  const [chapters, rank, recommended, state, selected] = await Promise.all([
+  const [chapters, rank, recommended, state, selected, ads] = await Promise.all([
     chapterRows(series.id, user, now, gate.overrides),
     loadRank(series.id),
     loadRecommended(series.id),
     viewerSeriesState(user, series.id),
     cachedLayoutsSetting(),
+    cachedAds(),
   ])
-  const show = gate.showsAds(user, now)
+  const withAds = gate.showsAds(user, now)
+  const place = (id: 'series_top' | 'series_sidebar') => {
+    const slot = adSlot(ads, id)
+    return { show: withAds && slot.enabled, placeholder: slot.tag === null, tag: slot.tag }
+  }
   return {
     layout: selected.series,
     series,
@@ -54,9 +57,6 @@ export async function loadSeriesView(
     canDownload: gate.can('offline', user, now),
     earlyAccessMinutes: gate.overrides.early_access_minutes,
     site: { url: env.SITE_URL, name: env.SITE_NAME },
-    ads: {
-      top: { show, placeholder: AD_PLACEHOLDER },
-      mpu: { show, placeholder: AD_PLACEHOLDER },
-    },
+    ads: { top: place('series_top'), mpu: place('series_sidebar') },
   }
 }

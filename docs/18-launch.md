@@ -415,8 +415,12 @@ All in the admin panel, none require a redeploy:
 - **System → SEO** — site name, title separator, the per-page-type templates
   (`{title} Chapter {chapter} {sep} {site}` gives `Naruto Chapter 208 - PALScans`), sitemap
   and feed URLs.
-- **Business → Ads** — skyscrapers on desktop, the mobile interval (every 2/4/6 pages), network
-  tags. Slots render as labelled placeholders until you paste a real tag.
+- **Business → Ads** — skyscrapers on desktop, the mobile interval (every 2/4/6 pages), and a
+  tag box per slot. Paste the network's snippet and it renders and runs in that slot on the
+  next request; leave it empty and the box stays reserved at its final size so nothing shifts
+  when you do fill it. Nine slots: three on the home page, two on a series page, three in the
+  reader, and the mobile anchor. `ads.txt` is on the same screen and is served at `/ads.txt`
+  verbatim. Nothing renders at all for a reader holding `no_ads`.
 - **Community → Comments** — link posts are held for review by default. Leave that on.
 - **Business → Premium** — every premium feature can be switched to *Free for everyone* here,
   with no code change and no Stripe account.

@@ -250,24 +250,16 @@ export function HomeE({
 
       {ads.top.show ? (
         <div className="container-page">
-          <div className="hidden md:block">
-            <AdSlot
-              slot="home_top"
-              label={messages.ads.leaderboard}
-              width={970}
-              height={90}
-              placeholder={ads.top.placeholder}
-            />
-          </div>
-          <div className="md:hidden">
-            <AdSlot
-              slot="home_top"
-              label={messages.ads.leaderboard}
-              width={320}
-              height={100}
-              placeholder={ads.top.placeholder}
-            />
-          </div>
+          <AdSlot
+            slot="home_top"
+            label={messages.ads.leaderboard}
+            width={320}
+            height={100}
+            desktopWidth={970}
+            desktopHeight={90}
+            placeholder={ads.top.placeholder}
+            tag={ads.top.tag}
+          />
         </div>
       ) : null}
 
@@ -354,6 +346,7 @@ export function HomeE({
                 width={300}
                 height={250}
                 placeholder={ads.sidebar.placeholder}
+                tag={ads.sidebar.tag}
                 className="lg:mx-0"
               />
             </div>

@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { AdSlot } from './AdSlot'
+import { AdTag } from './AdTag'
 import { Chip } from './Chip'
 import { formatRelative } from './RelativeTime'
 import { SeriesCard } from './SeriesCard'
@@ -37,13 +38,88 @@ describe('Chip', () => {
 })
 
 describe('AdSlot', () => {
-  it('reserves the box and renders nothing for ad-free viewers', () => {
-    const { container, rerender } = render(<AdSlot slot="home_top" width={970} height={90} />)
+  it('reserves the box at its final size', () => {
+    const { container } = render(<AdSlot slot="home_top" width={320} height={100} />)
     const box = container.firstElementChild as HTMLElement
     expect(box.dataset.adSlot).toBe('home_top')
-    expect(box.style.height).toBe('90px')
-    rerender(<AdSlot slot="home_top" width={970} height={90} noAds />)
+    // The size is carried as custom properties so one element can be two sizes; globals.css
+    // turns them into width/height at the md breakpoint.
+    expect(box.style.getPropertyValue('--ad-w')).toBe('320px')
+    expect(box.style.getPropertyValue('--ad-h')).toBe('100px')
+  })
+
+  it('carries a second size for the desktop breakpoint instead of a second element', () => {
+    const { container } = render(
+      <AdSlot slot="home_top" width={320} height={100} desktopWidth={970} desktopHeight={90} />,
+    )
+    // One element per slot: the layouts used to render two (`hidden md:block` plus
+    // `md:hidden`), which would request and count the same slot twice once a tag is in.
+    expect(container.querySelectorAll('[data-ad-slot="home_top"]')).toHaveLength(1)
+    const box = container.firstElementChild as HTMLElement
+    expect(box.style.getPropertyValue('--ad-w')).toBe('320px')
+    expect(box.style.getPropertyValue('--ad-w-md')).toBe('970px')
+    expect(box.style.getPropertyValue('--ad-h-md')).toBe('90px')
+  })
+
+  it('renders nothing at all for an ad-free viewer, tag or no tag', () => {
+    const { container, rerender } = render(<AdSlot slot="home_top" width={970} height={90} noAds />)
     expect(container.firstElementChild).toBeNull()
+    rerender(<AdSlot slot="home_top" width={970} height={90} tag="<script>x()</script>" noAds />)
+    expect(container.firstElementChild).toBeNull()
+    expect(container.querySelector('[data-ad-tag]')).toBeNull()
+  })
+
+  it('drops the placeholder label once a network tag is in the slot', () => {
+    const { container, rerender } = render(
+      <AdSlot slot="home_top" width={970} height={90} placeholder label="Leaderboard" />,
+    )
+    expect(container.textContent).toContain('Leaderboard')
+    rerender(
+      <AdSlot
+        slot="home_top"
+        width={970}
+        height={90}
+        placeholder
+        label="Leaderboard"
+        tag="<div>ad</div>"
+      />,
+    )
+    expect(container.textContent).not.toContain('Leaderboard')
+    expect(container.querySelector('[data-ad-tag="home_top"]')).not.toBeNull()
+  })
+})
+
+/**
+ * jsdom leaves injected scripts inert whatever `runScripts` is set to under this runner, so
+ * these cover the mechanism — the script is re-created with its attributes and source, which
+ * is what lets a browser run it — and the guard against running it twice. That the tag really
+ * executes is checked in a real browser (`apps/web/e2e/ads.spec.ts` and the manual probe in
+ * docs/18 §7).
+ */
+describe('AdTag', () => {
+  const tag = '<div id="banner">here</div><script src="https://ads.example/t.js" async></script>'
+
+  it('injects the markup and re-creates the script with its attributes', () => {
+    const { container } = render(<AdTag slot="home_top" html={tag} />)
+    expect(container.querySelector('#banner')?.textContent).toBe('here')
+    const script = container.querySelector('script')
+    expect(script?.getAttribute('src')).toBe('https://ads.example/t.js')
+    expect(script?.hasAttribute('async')).toBe(true)
+  })
+
+  it('runs the tag once per mount, not once per render', () => {
+    const { container, rerender } = render(<AdTag slot="home_top" html={tag} />)
+    rerender(<AdTag slot="home_top" html={tag} />)
+    // Two script elements would mean two requests to the network and two impressions.
+    expect(container.querySelectorAll('script')).toHaveLength(1)
+    expect(container.querySelectorAll('#banner')).toHaveLength(1)
+  })
+
+  it('replaces the slot when the operator changes the tag', () => {
+    const { container, rerender } = render(<AdTag slot="home_top" html={tag} />)
+    rerender(<AdTag slot="home_top" html={'<div id="other">new</div>'} />)
+    expect(container.querySelector('#banner')).toBeNull()
+    expect(container.querySelector('#other')?.textContent).toBe('new')
   })
 })
 

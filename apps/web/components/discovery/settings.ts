@@ -54,6 +54,8 @@ export const adsSettingsSchema = z.object({
       home_top: adSlotSchema,
       home_sidebar: adSlotSchema,
       home_infeed: adSlotSchema,
+      series_top: adSlotSchema,
+      series_sidebar: adSlotSchema,
     })
     .partial()
     .catch({}),
@@ -62,7 +64,12 @@ export type AdsSettings = z.infer<typeof adsSettingsSchema>
 
 export const DEFAULT_ADS: AdsSettings = { slots: {} }
 
-export type HomeAdSlot = 'home_top' | 'home_sidebar' | 'home_infeed'
+export type HomeAdSlot =
+  | 'home_top'
+  | 'home_sidebar'
+  | 'home_infeed'
+  | 'series_top'
+  | 'series_sidebar'
 
 export function adSlot(ads: AdsSettings, id: HomeAdSlot): { enabled: boolean; tag: string | null } {
   return ads.slots[id] ?? { enabled: true, tag: null }

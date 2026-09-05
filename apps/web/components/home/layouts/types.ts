@@ -20,6 +20,12 @@ import type {
 export interface AdPlacement {
   show: boolean
   placeholder: boolean
+  /**
+   * The network's tag for this slot, from `Admin → Business → Ads`. Null until a network is
+   * configured, which is when the reserved box renders empty (or as a dashed placeholder
+   * outside production).
+   */
+  tag: string | null
 }
 
 /**

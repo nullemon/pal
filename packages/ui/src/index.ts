@@ -1,4 +1,5 @@
 export { AdSlot, type AdSlotProps } from './AdSlot'
+export { AdTag } from './AdTag'
 export { Avatar, type AvatarProps } from './Avatar'
 export {
   Button,
