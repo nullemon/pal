@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-labelledby="t07">
+  <title id="t07">PALScans logo concept 07 - Bracket Tag</title>
+  <!-- Scanlation heritage: the square-bracket group tag that has sat in front of release
+       filenames for twenty years, with a raw page tucked inside it. Three solids, one colour,
+       38px bracket weight at 512. -->
+  <g fill="#7c3aed">
+    <path d="M76 92 H162 V130 H114 V382 H162 V420 H76 Z"/>
+    <path d="M436 92 H350 V130 H398 V382 H350 V420 H436 Z"/>
+    <rect x="212" y="150" width="88" height="212" rx="13" transform="rotate(-6 256 256)"/>
+  </g>
+</svg>

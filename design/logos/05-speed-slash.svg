@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-labelledby="t05">
+  <title id="t05">PALScans logo concept 05 - Speed Slash</title>
+  <!-- Three speed lines raked 32 degrees, clipped by the tile. Bars are 52px on a 34px gutter;
+       the short one carries the gold so the white reading stays dominant. -->
+  <defs>
+    <clipPath id="c05"><rect width="512" height="512" rx="112"/></clipPath>
+  </defs>
+  <g clip-path="url(#c05)">
+    <rect width="512" height="512" fill="#7c3aed"/>
+    <g transform="rotate(-32 256 256)">
+      <rect x="130" y="144" width="270" height="52" rx="26" fill="#ffffff"/>
+      <rect x="96" y="230" width="320" height="52" rx="26" fill="#ffffff"/>
+      <rect x="160" y="316" width="212" height="52" rx="26" fill="#f5c451"/>
+    </g>
+  </g>
+</svg>

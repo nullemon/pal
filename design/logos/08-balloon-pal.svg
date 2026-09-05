@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-labelledby="t08">
+  <title id="t08">PALScans logo concept 08 - Balloon Pal</title>
+  <!-- Mascot. A speech balloon read as a face: the tail is the chin, the eyes are the only
+       detail. One colour, all features are true negative space so it inverts for free. -->
+  <path fill="#7c3aed" fill-rule="evenodd"
+    d="M160 86 H352 Q424 86 424 158 V286 Q424 358 352 358 H244 L150 420 L176 358 H160
+       Q88 358 88 286 V158 Q88 86 160 86 Z
+       M156 202 A26 26 0 0 1 208 202 V226 A26 26 0 0 1 156 226 Z
+       M304 202 A26 26 0 0 1 356 202 V226 A26 26 0 0 1 304 226 Z
+       M204 282 Q256 350 308 282 Q256 296 204 282 Z"/>
+</svg>

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-labelledby="t01">
+  <title id="t01">PALScans logo concept 01 - Panel Cut</title>
+  <!-- Monogram. A geometric P (stem 56, cap height 256) knocked out of the brand tile and then
+       split into two panels by a 24px gutter dropped exactly on the stem's right edge, so the
+       stem stays a clean bar and the bowl becomes its own panel. Two colours. -->
+  <defs>
+    <clipPath id="c01"><rect width="512" height="512" rx="112"/></clipPath>
+  </defs>
+  <g clip-path="url(#c01)">
+    <rect width="512" height="512" fill="#7c3aed"/>
+    <path fill="#ffffff" fill-rule="evenodd"
+      d="M172 128 H256 A84 84 0 0 1 256 296 H228 V384 H172 Z
+         M228 184 H256 A28 28 0 0 1 256 240 H228 Z"/>
+    <rect x="228" y="112" width="24" height="288" fill="#7c3aed"/>
+  </g>
+</svg>

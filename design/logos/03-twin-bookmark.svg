@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-labelledby="t03">
+  <title id="t03">PALScans logo concept 03 - Twin Bookmark</title>
+  <!-- Two ribbons at different depths: the chapter you are on and the one you saved.
+       Pure silhouette, one colour, nothing thinner than 124px at 512. -->
+  <g fill="#7c3aed">
+    <path d="M140 88 H216 Q240 88 240 112 V424 L178 348 L116 424 V112 Q116 88 140 88 Z"/>
+    <path d="M296 88 H372 Q396 88 396 112 V368 L334 292 L272 368 V112 Q272 88 296 88 Z"/>
+  </g>
+</svg>

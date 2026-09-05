@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-labelledby="t10">
+  <title id="t10">PALScans logo concept 10 - Aperture</title>
+  <!-- Geometric badge whose negative space is a reader's eye - equal parts manga eye and
+       scanner aperture. Octagon chamfer 94px; the lens is cut, not drawn, so the ground
+       shows through and the mark needs only one ink. -->
+  <g fill="#7c3aed">
+    <path fill-rule="evenodd"
+      d="M190 96 H322 L416 190 V322 L322 416 H190 L96 322 V190 Z
+         M136 256 Q256 124 376 256 Q256 388 136 256 Z"/>
+    <path d="M236 238 A20 20 0 0 1 276 238 V274 A20 20 0 0 1 236 274 Z"/>
+  </g>
+</svg>

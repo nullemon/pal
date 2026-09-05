@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-labelledby="t04">
+  <title id="t04">PALScans logo concept 04 - Panel Grid</title>
+  <!-- A manga page: one tall panel and two stacked panels split by a raked gutter, the way an
+       action beat breaks a grid. Sharp corners on purpose - real panels are not rounded.
+       Gutters are a constant 26px at 512. -->
+  <g fill="#7c3aed">
+    <rect x="104" y="104" width="140" height="304"/>
+    <path d="M270 104 H408 V206 L270 258 Z"/>
+    <path d="M270 284 L408 232 V408 H270 Z"/>
+  </g>
+</svg>

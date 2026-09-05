@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-labelledby="t02">
+  <title id="t02">PALScans logo concept 02 - Dog-Ear</title>
+  <!-- A page turned down at the corner, cut into two panels. Drawn as three separate solids so
+       the crease and the panel gutter are true negative space - one colour, no gradient, and it
+       reads the same on any ground. A: the flap. B: the upper panel. C: the lower panel. -->
+  <g fill="#7c3aed">
+    <path d="M264 88 H376 V200 Z"/>
+    <path d="M158 88 H242 L376 222 V268 H136 V110 Q136 88 158 88 Z"/>
+    <path d="M136 284 H376 V402 Q376 424 354 424 H158 Q136 424 136 402 Z"/>
+  </g>
+</svg>
