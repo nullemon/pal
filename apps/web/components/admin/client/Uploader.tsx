@@ -1,12 +1,17 @@
 'use client'
 
+import type {
+  ChapterIssue,
+  NumberSource,
+  PlannedChapter,
+  RejectReason,
+} from '@palscans/core/import'
 import { fmt, messages } from '@palscans/core/messages'
 import { adminMessages } from '@palscans/core/messages/admin'
 import { Button, cn, useToast } from '@palscans/ui'
-import { unzip } from 'fflate'
-import { AlertTriangle, FolderOpen, Plus, X } from 'lucide-react'
+import { AlertTriangle, FolderOpen, Info, Plus, X } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { inputClass, Panel, PanelHeader, selectClass } from '../ui'
+import { inputClass, Panel, PanelHeader, Pill, selectClass } from '../ui'
 import { api, postJson } from './api'
 import { Toggle } from './controls'
 import { SeriesSearch } from './SeriesEditor'
@@ -14,20 +19,23 @@ import {
   imageSize,
   isImageName,
   mimeFor,
-  naturalCompare,
-  parseChapterNumber,
+  planDrop,
   runPool,
+  sanitizeEntryPath,
   sha256Hex,
+  unzipEntries,
   uploadWithRetry,
 } from './upload-lib'
 import { formatChapterNumber } from './util'
 
 interface UPage {
   id: string
+  path: string
   name: string
   file: Blob
   type: string
   url: string
+  role: 'cover' | 'page' | 'extra'
   width: number
   height: number
   sha256: string
@@ -40,16 +48,31 @@ interface UPage {
 
 interface UChapter {
   id: string
-  name: string
+  group: string
   number: string
   title: string
+  volume: number | null
+  numberSource: NumberSource
+  candidates: string[]
+  issues: ChapterIssue[]
   pages: UPage[]
-  status: 'idle' | 'uploading' | 'committing' | 'queued' | 'failed'
+  /** What to do when this number already exists with pages — never decided silently. */
+  conflict: 'skip' | 'replace'
+  status: 'idle' | 'uploading' | 'committing' | 'queued' | 'skipped' | 'failed'
   chapterId?: number
   error?: string
 }
 
 type Existing = Array<{ id: number; number: number; state: string; pageCount: number }>
+type Rejection = { path: string; reason: RejectReason }
+
+/** One intent request carries a whole batch of chapters; route bodies are capped at 64 KB. */
+const INTENT_BATCH_FILES = 150
+const INTENT_BATCH_CHAPTERS = 20
+/** Mirrors MAX_PAGES_PER_CHAPTER on the upload intent (../schemas), without pulling zod in. */
+const MAX_PAGES = 400
+/** Images picked without a folder: one chapter, and deliberately no digits to read. */
+const LOOSE_GROUP = 'dropped-files'
 
 let seq = 0
 const uid = () => `u${++seq}`
@@ -89,55 +112,26 @@ const readEntry = (
     } else resolve()
   })
 
-const unzipToFiles = (file: File): Promise<Array<[string, File]>> =>
-  new Promise((resolve, reject) => {
-    file.arrayBuffer().then((buf) => {
-      unzip(
-        new Uint8Array(buf),
-        { filter: (f) => isImageName(f.name) && !f.name.includes('__MACOSX') },
-        (err, data) => {
-          if (err) return reject(err)
-          const stem = file.name.replace(/\.(cbz|zip)$/i, '')
-          resolve(
-            Object.entries(data).map(([name, bytes]) => {
-              const base = name.split('/').pop() ?? name
-              return [
-                `${stem}/${base}`,
-                new File([bytes as BlobPart], base, { type: mimeFor(base) ?? '' }),
-              ]
-            }),
-          )
-        },
-      )
-    }, reject)
-  })
-
-/** Group [path, file] pairs into chapters: the deepest folder containing images names the chapter. */
-const groupChapters = (pairs: Array<[string, File]>): Map<string, File[]> => {
-  const groups = new Map<string, File[]>()
-  for (const [path, file] of pairs) {
-    const parts = path.split('/')
-    const folder =
-      parts.length >= 2 ? (parts[parts.length - 2] ?? 'chapter') : file.name.replace(/\.[^.]+$/, '')
-    const list = groups.get(folder) ?? []
-    list.push(file)
-    groups.set(folder, list)
-  }
-  return groups
-}
+const isArchive = (name: string) => /\.(cbz|zip|cbr|rar|7z)$/i.test(name)
 
 export function Uploader({
   preset,
   canPublish,
+  canRepair,
 }: {
   preset: { id: number; title: string; slug: string } | null
   canPublish: boolean
+  canRepair: boolean
 }) {
   const m = adminMessages.admin.upload
+  const b = adminMessages.bulkImport
   const { toast } = useToast()
   const [series, setSeries] = useState(preset)
   const [existing, setExisting] = useState<Existing>([])
   const [chapters, setChapters] = useState<UChapter[]>([])
+  const [rejected, setRejected] = useState<Rejection[]>([])
+  const [quiet, setQuiet] = useState(0)
+  const [aborted, setAborted] = useState<string[]>([])
   const [busy, setBusy] = useState<string | null>(null)
   const [drag, setDrag] = useState(false)
   const [after, setAfter] = useState<{
@@ -146,10 +140,6 @@ export function Uploader({
     isPremium: boolean
   }>({ mode: 'ready', publishedAt: '', isPremium: false })
   const [uploading, setUploading] = useState(false)
-  const chaptersRef = useRef(chapters)
-  useEffect(() => {
-    chaptersRef.current = chapters
-  }, [chapters])
   const insertTarget = useRef<{ chapter: string; index: number } | null>(null)
   const insertInput = useRef<HTMLInputElement | null>(null)
 
@@ -160,66 +150,97 @@ export function Uploader({
     })
   }, [series])
 
+  /** Measure and hash the accepted images; the plan already decided order and role. */
   const buildPages = useCallback(
-    async (files: File[]): Promise<UPage[]> => {
-      const sorted = [...files].sort((a, b) => naturalCompare(a.name, b.name))
-      const pages: UPage[] = []
-      await runPool(sorted, 4, async (file) => {
-        const type = file.type || mimeFor(file.name) || ''
-        const image = isImageName(file.name) && type.startsWith('image/')
-        const size = image ? await imageSize(file) : null
-        const sha256 = image ? await sha256Hex(file) : ''
-        pages.push({
+    async (planned: PlannedChapter['pages'], files: Map<string, File>): Promise<UPage[]> => {
+      const pages: UPage[] = planned.map((p) => {
+        const file = files.get(p.path) as File
+        return {
           id: uid(),
-          name: file.name,
+          path: p.path,
+          name: p.name,
           file,
-          type,
-          url: image ? URL.createObjectURL(file) : '',
-          width: size?.width ?? 0,
-          height: size?.height ?? 0,
-          sha256,
-          warnings: image ? [] : [m.warnings.nonImage],
+          type: file.type || mimeFor(p.name) || '',
+          url: '',
+          role: p.role,
+          width: 0,
+          height: 0,
+          sha256: '',
+          warnings: [],
           progress: 0,
-          status: 'idle',
-        })
+          status: 'idle' as const,
+        }
       })
-      return pages.sort((a, b) => naturalCompare(a.name, b.name))
+      await runPool(pages, 4, async (page) => {
+        const size = await imageSize(page.file)
+        page.url = URL.createObjectURL(page.file)
+        page.width = size?.width ?? 0
+        page.height = size?.height ?? 0
+        page.sha256 = await sha256Hex(page.file)
+        if (!page.type) page.warnings = [m.warnings.nonImage]
+      })
+      return pages
     },
     [m.warnings.nonImage],
   )
 
   const addFiles = useCallback(
     async (pairs: Array<[string, File]>) => {
-      const expanded: Array<[string, File]> = []
+      const files = new Map<string, File>()
+      const rejections: Rejection[] = []
+      const aborts: string[] = []
       for (const [path, file] of pairs) {
-        if (/\.(cbz|zip)$/i.test(file.name)) {
+        if (isArchive(file.name)) {
           setBusy(fmt(m.unzipping, { name: file.name }))
           try {
-            expanded.push(...(await unzipToFiles(file)))
+            const result = await unzipEntries(file)
+            for (const entry of result.entries) files.set(entry.path, entry.file)
+            rejections.push(...result.rejected)
+            if (result.aborted) aborts.push(`${file.name}: ${b.aborted[result.aborted]}`)
           } catch {
             toast({ title: messages.errors.generic, description: file.name, tone: 'danger' })
           }
-        } else if (isImageName(file.name)) expanded.push([path, file])
+        } else {
+          const safe = sanitizeEntryPath(path.includes('/') ? path : `${LOOSE_GROUP}/${path}`)
+          if (!safe.ok) {
+            rejections.push({ path, reason: safe.reason })
+            continue
+          }
+          if (!isImageName(safe.path)) {
+            rejections.push({ path: safe.path, reason: 'not_image' })
+            continue
+          }
+          files.set(safe.path, file)
+        }
       }
-      setBusy(m.hashing)
-      const groups = groupChapters(expanded)
+      setBusy(b.reading)
+      const plan = planDrop(
+        [...files].map(([path, file]) => ({ path, bytes: file.size })),
+        { maxPages: MAX_PAGES },
+      )
       const built: UChapter[] = []
-      for (const [name, files] of groups) {
-        const n = parseChapterNumber(name)
+      for (const chapter of plan.chapters) {
         built.push({
           id: uid(),
-          name,
-          number: n === null ? '' : formatChapterNumber(n),
-          title: '',
-          pages: await buildPages(files),
+          group: chapter.group,
+          number: chapter.number ?? '',
+          title: chapter.title ?? '',
+          volume: chapter.volume,
+          numberSource: chapter.numberSource,
+          candidates: chapter.candidates,
+          issues: chapter.issues,
+          pages: await buildPages(chapter.pages, files),
+          conflict: 'skip',
           status: 'idle',
         })
       }
-      built.sort((a, b) => Number.parseFloat(a.number || '0') - Number.parseFloat(b.number || '0'))
       setChapters((cs) => [...cs, ...built])
+      setRejected((rs) => [...rs, ...rejections, ...plan.rejected])
+      setQuiet((n) => n + plan.quiet)
+      setAborted((a) => [...a, ...aborts])
       setBusy(null)
     },
-    [buildPages, m.hashing, m.unzipping, toast],
+    [buildPages, m.unzipping, toast],
   )
 
   const onDrop = async (e: React.DragEvent) => {
@@ -247,23 +268,25 @@ export function Uploader({
     await addFiles(pairs)
   }
 
-  // warnings computed over the current state (docs/04 "warnings surface inline before upload")
+  // Warnings computed over the current state (docs/04 "warnings surface inline before
+  // upload"): the plan's own issues, plus what only the series can tell us — a number that
+  // already exists, and a gap against what is already published.
   const annotated = useMemo(() => {
     const numbers = chapters
       .map((c) => Number.parseFloat(c.number))
       .filter((n) => Number.isFinite(n))
-    const maxExisting = existing.reduce((a, b) => Math.max(a, b.number), Number.NEGATIVE_INFINITY)
+    const maxExisting = existing.reduce((a, b2) => Math.max(a, b2.number), Number.NEGATIVE_INFINITY)
     const all = [...numbers, ...(Number.isFinite(maxExisting) ? [maxExisting] : [])].sort(
-      (a, b) => a - b,
+      (a, b2) => a - b2,
     )
     return chapters.map((c) => {
       const n = Number.parseFloat(c.number)
       const warnings: string[] = []
+      let clash: { id: number; pageCount: number } | null = null
       if (!Number.isFinite(n)) warnings.push(m.warnings.badNumber)
       else {
         const ex = existing.find((e) => e.number === n)
-        if (ex && ex.pageCount > 0)
-          warnings.push(fmt(m.warnings.exists, { n: formatChapterNumber(n) }))
+        if (ex && ex.pageCount > 0) clash = { id: ex.id, pageCount: ex.pageCount }
         const i = all.indexOf(n)
         const prev = i > 0 ? all[i - 1] : undefined
         if (prev !== undefined && n - prev > 1.5) warnings.push(m.warnings.gap)
@@ -271,7 +294,7 @@ export function Uploader({
       const widths = c.pages
         .map((p) => p.width)
         .filter((w) => w > 0)
-        .sort((a, b) => a - b)
+        .sort((a, b2) => a - b2)
       const median = widths[Math.floor(widths.length / 2)] ?? 0
       const seen = new Map<string, number>()
       const pages = c.pages.map((p, idx) => {
@@ -284,9 +307,29 @@ export function Uploader({
         }
         return { ...p, warnings: w }
       })
-      return { ...c, warnings, pages }
+      return { ...c, warnings, clash, pages }
     })
   }, [chapters, existing, m.warnings])
+
+  const conflicts = annotated.filter((c) => c.clash && c.status !== 'queued')
+  const issueText = (issue: ChapterIssue): string => {
+    switch (issue.kind) {
+      case 'ambiguous_number':
+        return fmt(b.issues.ambiguous_number, { candidates: issue.candidates.join(', ') })
+      case 'duplicate_number':
+        return fmt(b.issues.duplicate_number, { number: issue.number })
+      case 'missing_pages':
+        return fmt(b.issues.missing_pages, { numbers: issue.numbers.join(', ') })
+      case 'repeated_page_number':
+        return fmt(b.issues.repeated_page_number, { numbers: issue.numbers.join(', ') })
+      case 'extra_files':
+        return fmt(b.issues.extra_files, { count: issue.count })
+      case 'too_many_pages':
+        return fmt(b.issues.too_many_pages, { max: issue.max })
+      default:
+        return b.issues[issue.kind]
+    }
+  }
 
   const updateChapter = (id: string, patch: Partial<UChapter> | ((c: UChapter) => UChapter)) =>
     setChapters((cs) =>
@@ -307,22 +350,47 @@ export function Uploader({
 
   const upload = async (retryOnly = false) => {
     if (!series) return
+    // Skipped conflicts never reach the wire; the rest carry an explicit replace flag.
     const targets = annotated.filter(
       (c) =>
-        c.status !== 'queued' && c.pages.some((p) => !p.warnings.includes(m.warnings.nonImage)),
+        c.status !== 'queued' &&
+        !(c.clash && c.conflict === 'skip') &&
+        c.pages.some((p) => p.sha256 && !p.warnings.includes(m.warnings.nonImage)),
     )
+    for (const c of annotated)
+      if (c.clash && c.conflict === 'skip' && c.status !== 'queued')
+        updateChapter(c.id, { status: 'skipped' })
     if (targets.length === 0) return
     setUploading(true)
     try {
-      let intents: Record<
+      const intents = new Map<
         string,
         {
           chapterId: number
           files: Array<{ name: string; key: string; url: string; headers: Record<string, string> }>
         }
-      > = {}
+      >()
       const needIntent = targets.filter((c) => !retryOnly || !c.chapterId)
-      if (needIntent.length) {
+      // One request per batch: the manifest is JSON and route bodies are capped at 64 KB.
+      const batches: Array<typeof needIntent> = []
+      let batch: typeof needIntent = []
+      let batchFiles = 0
+      for (const c of needIntent) {
+        const count = c.pages.filter((p) => p.sha256).length
+        if (
+          batch.length > 0 &&
+          (batch.length >= INTENT_BATCH_CHAPTERS || batchFiles + count > INTENT_BATCH_FILES)
+        ) {
+          batches.push(batch)
+          batch = []
+          batchFiles = 0
+        }
+        batch.push(c)
+        batchFiles += count
+      }
+      if (batch.length) batches.push(batch)
+
+      for (const group of batches) {
         const res = await postJson<{
           chapters: Array<{
             chapterId: number
@@ -336,9 +404,10 @@ export function Uploader({
           }>
         }>('/api/upload/intent', {
           seriesId: series.id,
-          chapters: needIntent.map((c) => ({
+          chapters: group.map((c) => ({
             number: Number.parseFloat(c.number),
             title: c.title || null,
+            replace: c.clash ? c.conflict === 'replace' : false,
             files: c.pages
               .filter((p) => p.sha256)
               .map((p) => ({ name: p.name, bytes: p.file.size, sha256: p.sha256, type: p.type })),
@@ -350,84 +419,122 @@ export function Uploader({
             description: res.message || res.error,
             tone: 'danger',
           })
-          return
+          for (const c of group) updateChapter(c.id, { status: 'failed', error: res.error })
+          continue
         }
-        needIntent.forEach((c, i) => {
+        group.forEach((c, i) => {
           const r = res.data.chapters[i]
-          if (r) intents[c.id] = r
+          if (r) intents.set(c.id, r)
         })
       }
-      // assign keys / put targets
+      // The upload plan is a plain object, not React state: `runPool` must not race the
+      // renderer to find out where a page PUTs. What is written to state below is display.
+      interface PlanPage {
+        id: string
+        file: Blob
+        key: string
+        put: { url: string; headers: Record<string, string> }
+        done: boolean
+      }
+      const plan: Array<{ chapter: string; chapterId: number; pages: PlanPage[] }> = []
+      for (const c of targets) {
+        const it = intents.get(c.id)
+        if (it) {
+          const files = c.pages.filter((p) => p.sha256)
+          plan.push({
+            chapter: c.id,
+            chapterId: it.chapterId,
+            pages: files.flatMap((p, i): PlanPage[] => {
+              const f = it.files[i]
+              return f
+                ? [
+                    {
+                      id: p.id,
+                      file: p.file,
+                      key: f.key,
+                      put: { url: f.url, headers: f.headers },
+                      done: retryOnly && p.status === 'done',
+                    },
+                  ]
+                : []
+            }),
+          })
+          continue
+        }
+        // "Retry failed" on a chapter that already has an intent: the presigned PUTs from
+        // the first attempt are still valid (15 minutes), so only the files that did not
+        // land are sent again.
+        if (!retryOnly || !c.chapterId) continue
+        const kept = c.pages.flatMap((p): PlanPage[] =>
+          p.key && p.put
+            ? [{ id: p.id, file: p.file, key: p.key, put: p.put, done: p.status === 'done' }]
+            : [],
+        )
+        if (kept.length) plan.push({ chapter: c.id, chapterId: c.chapterId, pages: kept })
+      }
+      if (plan.length === 0) return
+      // assign keys / put targets (the grid's progress bars read these)
       setChapters((cs) =>
         cs.map((c) => {
-          const it = intents[c.id]
-          if (!it) return c
-          let fi = 0
+          const entry = plan.find((x) => x.chapter === c.id)
+          if (!entry) return c
           return {
             ...c,
-            chapterId: it.chapterId,
+            chapterId: entry.chapterId,
             status: 'uploading',
             pages: c.pages.map((p) => {
-              if (!p.sha256) return p
-              const f = it.files[fi++]
-              return f
+              const target = entry.pages.find((x) => x.id === p.id)
+              return target
                 ? {
                     ...p,
-                    key: f.key,
-                    put: { url: f.url, headers: f.headers },
-                    status: 'idle',
-                    progress: 0,
+                    key: target.key,
+                    put: target.put,
+                    status: target.done ? ('done' as const) : ('idle' as const),
+                    progress: target.done ? 1 : 0,
                   }
                 : p
             }),
           }
         }),
       )
-      intents = {}
-      // 4-wide across every file (docs/03 step 5)
-      const jobs: Array<{ chapter: string; page: string }> = []
-      for (const c of targets)
-        for (const p of c.pages)
-          if (p.sha256 && (!retryOnly || p.status !== 'done'))
-            jobs.push({ chapter: c.id, page: p.id })
-      const latest = async () => {
-        await new Promise((r) => setTimeout(r, 0))
-        return chaptersRef.current
-      }
-      const state = await latest()
-      await runPool(jobs, 4, async (job) => {
-        const c = state.find((x) => x.id === job.chapter)
-        const p = c?.pages.find((x) => x.id === job.page)
-        if (!c || !p?.put) return
+      // 4-wide across every file of every chapter (docs/03 step 5)
+      const jobs = plan.flatMap((entry) =>
+        entry.pages.filter((p) => !p.done).map((p) => ({ entry, page: p })),
+      )
+      const failures = new Set<string>()
+      await runPool(jobs, 4, async ({ entry, page }) => {
         const setPage = (patch: Partial<UPage>) =>
-          updateChapter(c.id, (ch) => ({
+          updateChapter(entry.chapter, (ch) => ({
             ...ch,
-            pages: ch.pages.map((x) => (x.id === p.id ? { ...x, ...patch } : x)),
+            pages: ch.pages.map((x) => (x.id === page.id ? { ...x, ...patch } : x)),
           }))
         setPage({ status: 'uploading', progress: 0 })
         try {
-          await uploadWithRetry(p.put.url, p.put.headers, p.file, (f) => setPage({ progress: f }))
+          await uploadWithRetry(page.put.url, page.put.headers, page.file, (f) =>
+            setPage({ progress: f }),
+          )
+          page.done = true
           setPage({ status: 'done', progress: 1 })
         } catch {
+          failures.add(page.id)
           setPage({ status: 'failed' })
         }
       })
-      // commit chapters whose files all landed (docs/03 step 6)
-      const done = await latest()
-      for (const c of done) {
-        if (!c.chapterId || c.status === 'queued') continue
-        const pages = c.pages.filter((p) => p.key)
-        if (pages.some((p) => p.status !== 'done')) {
-          updateChapter(c.id, {
+      // commit the chapters whose files all landed (docs/03 step 6)
+      let committed = 0
+      for (const entry of plan) {
+        const missed = entry.pages.filter((p) => failures.has(p.id) || !p.done).length
+        if (missed > 0) {
+          updateChapter(entry.chapter, {
             status: 'failed',
-            error: fmt(m.failedFiles, { n: pages.filter((p) => p.status !== 'done').length }),
+            error: fmt(m.failedFiles, { n: missed }),
           })
           continue
         }
-        updateChapter(c.id, { status: 'committing' })
+        updateChapter(entry.chapter, { status: 'committing' })
         const res = await postJson<{ chapterId: number }>('/api/upload/commit', {
-          chapterId: c.chapterId,
-          keys: pages.map((p) => p.key),
+          chapterId: entry.chapterId,
+          keys: entry.pages.map((p) => p.key),
           after: {
             mode: after.mode,
             publishedAt:
@@ -437,11 +544,13 @@ export function Uploader({
             isPremium: after.isPremium,
           },
         })
+        if (res.ok) committed += 1
         updateChapter(
-          c.id,
+          entry.chapter,
           res.ok ? { status: 'queued' } : { status: 'failed', error: res.message || res.error },
         )
       }
+      if (committed === 0) return
       toast({
         title: m.committed,
         tone: 'ok',
@@ -461,7 +570,16 @@ export function Uploader({
     0,
   )
   const anyFailed = annotated.some((c) => c.status === 'failed')
-  const pending = annotated.filter((c) => c.status !== 'queued').length
+  const pending = annotated.filter(
+    (c) => c.status !== 'queued' && !(c.clash && c.conflict === 'skip'),
+  ).length
+  const blocked = annotated.some(
+    (c) =>
+      c.status !== 'queued' &&
+      !(c.clash && c.conflict === 'skip') &&
+      (c.warnings.includes(m.warnings.badNumber) ||
+        c.issues.some((i) => i.kind === 'duplicate_number' || i.kind === 'too_many_pages')),
+  )
 
   return (
     <div className="grid gap-3.5 xl:grid-cols-[1fr_300px]">
@@ -502,8 +620,8 @@ export function Uploader({
           )}
         >
           <FolderOpen size={28} className="text-fg-subtle" aria-hidden="true" />
-          <div className="text-[15px] font-semibold">{m.dropzone}</div>
-          <p className="max-w-md text-[13px] text-fg-muted">{m.dropzoneHint}</p>
+          <div className="text-[15px] font-semibold">{b.dropzone}</div>
+          <p className="max-w-md text-[13px] text-fg-muted">{b.dropzoneHint}</p>
           <div className="mt-1 flex gap-2">
             <label className="inline-flex h-8 cursor-pointer items-center rounded-md border border-line bg-surface-2 px-3 text-[13px] font-semibold hover:bg-surface-3">
               {m.chooseFolder}
@@ -529,8 +647,99 @@ export function Uploader({
           {busy ? <div className="text-[12px] text-brand-hover">{busy}</div> : null}
         </div>
 
+        {annotated.length > 0 ? (
+          <Panel>
+            <PanelHeader
+              title={b.reviewTitle}
+              hint={b.reviewLead}
+              aside={
+                <button
+                  type="button"
+                  className="underline hover:text-fg"
+                  onClick={() => {
+                    setChapters([])
+                    setRejected([])
+                    setQuiet(0)
+                    setAborted([])
+                  }}
+                >
+                  {b.clear}
+                </button>
+              }
+            />
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[13px] text-fg-muted">
+              <span className="font-semibold text-fg">
+                {fmt(b.detected, { chapters: annotated.length, pages: totalFiles })}
+              </span>
+              {conflicts.length ? (
+                <span className="text-warn">{fmt(b.conflictCount, { n: conflicts.length })}</span>
+              ) : null}
+              {quiet ? <span>{fmt(b.rejectedQuiet, { n: quiet })}</span> : null}
+            </div>
+            {conflicts.length > 1 ? (
+              <div className="mt-3 flex items-center gap-2 text-[12px]">
+                <span className="text-fg-muted">{b.conflictAll}</span>
+                <button
+                  type="button"
+                  className="rounded-md border border-line bg-surface-2 px-2 py-1 font-semibold hover:bg-surface-3"
+                  onClick={() =>
+                    setChapters((cs) =>
+                      cs.map((c) => (c.status === 'queued' ? c : { ...c, conflict: 'skip' })),
+                    )
+                  }
+                >
+                  {b.conflict.skip}
+                </button>
+                {canRepair ? (
+                  <button
+                    type="button"
+                    className="rounded-md border border-line bg-surface-2 px-2 py-1 font-semibold hover:bg-surface-3"
+                    onClick={() =>
+                      setChapters((cs) =>
+                        cs.map((c) => (c.status === 'queued' ? c : { ...c, conflict: 'replace' })),
+                      )
+                    }
+                  >
+                    {b.conflict.replace}
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+            {aborted.map((a) => (
+              <p
+                key={a}
+                className="mt-3 rounded-md bg-danger/15 px-2.5 py-2 text-[12.5px] text-danger"
+              >
+                {a}
+              </p>
+            ))}
+            {rejected.length ? (
+              <details className="mt-3">
+                <summary className="cursor-pointer text-[12.5px] font-semibold text-warn">
+                  {fmt(b.rejectedTitle, { n: rejected.length })}
+                </summary>
+                <ul className="mt-2 flex max-h-48 flex-col gap-1 overflow-auto text-[12px] text-fg-muted">
+                  {rejected.slice(0, 60).map((r) => (
+                    <li key={`${r.path}-${r.reason}`} className="flex gap-2">
+                      <span className="truncate font-mono text-[11px]">{r.path}</span>
+                      <span className="ml-auto shrink-0 text-fg-subtle">
+                        {b.rejectedReasons[r.reason] ?? r.reason}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            ) : null}
+          </Panel>
+        ) : null}
+
         {annotated.map((c) => (
-          <Panel key={c.id}>
+          <Panel
+            key={c.id}
+            className={cn(
+              c.status === 'skipped' || (c.clash && c.conflict === 'skip') ? 'opacity-60' : '',
+            )}
+          >
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <label className="flex items-center gap-2 text-[12px] font-medium text-fg-muted">
                 {m.chapterNumber}
@@ -549,14 +758,22 @@ export function Uploader({
                 disabled={c.status === 'queued'}
                 onChange={(e) => updateChapter(c.id, { title: e.target.value })}
               />
-              <span className="text-[12px] text-fg-subtle">{c.name}</span>
+              <span className="text-[12px] text-fg-subtle" title={c.group}>
+                {fmt(b.foundIn, { path: c.group })}
+              </span>
               <span className="text-[12px] text-fg-muted">
                 · {fmt(m.pages, { n: c.pages.length })}
               </span>
+              <span className="text-[12px] text-fg-subtle">
+                ·{' '}
+                {c.numberSource === 'none'
+                  ? b.numberFrom.none
+                  : fmt(b.numberFrom[c.numberSource], { text: c.candidates[0] ?? '' })}
+              </span>
               {c.status === 'queued' ? (
-                <span className="rounded-full bg-ok/15 px-2 py-0.5 text-[11px] font-bold text-ok">
-                  {m.committed}
-                </span>
+                <Pill tone="ok">{m.committed}</Pill>
+              ) : c.status === 'skipped' ? (
+                <Pill tone="neutral">{b.conflict.skipped}</Pill>
               ) : null}
               {c.status === 'failed' ? (
                 <span className="rounded-full bg-danger/15 px-2 py-0.5 text-[11px] font-bold text-danger">
@@ -572,7 +789,32 @@ export function Uploader({
                 <X size={14} />
               </button>
             </div>
-            {c.warnings.length ? (
+            {c.clash && c.status !== 'queued' ? (
+              <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-warn/40 bg-warn/10 px-3 py-2 text-[12.5px]">
+                <AlertTriangle size={14} className="text-warn" aria-hidden="true" />
+                <span className="font-semibold text-warn">
+                  {fmt(b.conflict.title, {
+                    n: formatChapterNumber(c.number),
+                    pages: c.clash.pageCount,
+                  })}
+                </span>
+                <select
+                  className={`${selectClass} ml-auto w-56`}
+                  aria-label={fmt(b.conflict.title, {
+                    n: formatChapterNumber(c.number),
+                    pages: c.clash.pageCount,
+                  })}
+                  value={c.conflict}
+                  onChange={(e) =>
+                    updateChapter(c.id, { conflict: e.target.value as 'skip' | 'replace' })
+                  }
+                >
+                  <option value="skip">{b.conflict.skip}</option>
+                  {canRepair ? <option value="replace">{b.conflict.replace}</option> : null}
+                </select>
+              </div>
+            ) : null}
+            {c.warnings.length || c.issues.length ? (
               <ul className="mb-3 flex flex-wrap gap-2">
                 {c.warnings.map((w) => (
                   <li
@@ -581,6 +823,24 @@ export function Uploader({
                   >
                     <AlertTriangle size={12} aria-hidden="true" />
                     {w}
+                  </li>
+                ))}
+                {c.issues.map((issue) => (
+                  <li
+                    key={issue.kind}
+                    className={cn(
+                      'inline-flex items-center gap-1 rounded-md px-2 py-1 text-[12px] font-medium',
+                      issue.kind === 'extra_files'
+                        ? 'bg-surface-3 text-fg-muted'
+                        : 'bg-warn/15 text-warn',
+                    )}
+                  >
+                    {issue.kind === 'extra_files' ? (
+                      <Info size={12} aria-hidden="true" />
+                    ) : (
+                      <AlertTriangle size={12} aria-hidden="true" />
+                    )}
+                    {issueText(issue)}
                   </li>
                 ))}
               </ul>
@@ -625,6 +885,11 @@ export function Uploader({
                     <span className="tabular-nums">{idx + 1}</span>
                     <span className="tabular-nums">{p.width ? `${p.width}×${p.height}` : ''}</span>
                   </div>
+                  {p.role !== 'page' ? (
+                    <div className="absolute bottom-8 left-1.5 rounded-sm bg-surface-3/90 px-1 text-[10px] font-bold uppercase tracking-[0.04em] text-fg-muted">
+                      {p.role === 'cover' ? b.pageRole.cover : b.pageRole.extra}
+                    </div>
+                  ) : null}
                   {p.status !== 'idle' ? (
                     <div className="mt-1 h-1 overflow-hidden rounded-full bg-surface-3">
                       <div
@@ -686,7 +951,18 @@ export function Uploader({
             const target = insertTarget.current
             const files = e.target.files ? Array.from(e.target.files) : []
             if (!target || files.length === 0) return
-            const pages = await buildPages(files)
+            const map = new Map<string, File>()
+            for (const f of files) map.set(`inserted/${f.name}`, f)
+            const pages = await buildPages(
+              files.map((f) => ({
+                path: `inserted/${f.name}`,
+                name: f.name,
+                bytes: f.size,
+                role: 'page' as const,
+                num: null,
+              })),
+              map,
+            )
             updateChapter(target.chapter, (ch) => {
               const next = [...ch.pages]
               next.splice(target.index, 0, ...pages)
@@ -733,20 +1009,14 @@ export function Uploader({
         <Panel>
           <div className="flex flex-col gap-2">
             <Button
-              disabled={
-                !series ||
-                pending === 0 ||
-                uploading ||
-                annotated.some(
-                  (c) => c.status !== 'queued' && c.warnings.includes(m.warnings.badNumber),
-                )
-              }
+              disabled={!series || pending === 0 || uploading || blocked}
               onClick={() => upload(false)}
             >
               {uploading
                 ? fmt(m.uploading, { done: doneFiles, total: totalFiles })
                 : fmt(m.uploadN, { n: pending })}
             </Button>
+            {blocked ? <p className="text-[12px] text-warn">{b.blocked}</p> : null}
             {anyFailed && !uploading ? (
               <Button variant="outline" onClick={() => upload(true)}>
                 {m.retryFailed}

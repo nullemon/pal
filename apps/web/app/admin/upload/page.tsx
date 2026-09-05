@@ -31,7 +31,11 @@ export default async function UploadPage({
   return (
     <>
       <PageHeader title={m.title} subtitle={m.subtitle} />
-      <Uploader preset={preset} canPublish={can(user, 'chapter.publish')} />
+      <Uploader
+        preset={preset}
+        canPublish={can(user, 'chapter.publish')}
+        canRepair={can(user, 'chapter.repair')}
+      />
     </>
   )
 }

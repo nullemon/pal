@@ -3,6 +3,7 @@
  * an adapter interface, the docs/09 mapping as pure functions, redirect generation, and the
  * two read-only reports the admin screen shows. No database, no queue, no filesystem.
  */
+export * from './bulk.js'
 export * from './chapter-number.js'
 export * from './comment-html.js'
 export * from './config.js'

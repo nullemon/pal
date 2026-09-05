@@ -1815,4 +1815,123 @@ export const adminMessages = {
     viewAudit: 'Open the audit entry',
     failed: 'The merge was refused and nothing was written.',
   },
+
+  /**
+   * Bulk chapter import — the preview step (docs/03 "Upload flow", docs/04 "warnings
+   * surface inline before upload"). Every string here exists to make a guess visible: what
+   * was found, where the number came from, and what will happen to a chapter that already
+   * exists. Nothing in this screen commits anything.
+   */
+  bulkImport: {
+    dropzone: 'Drop chapter folders, or a ZIP/CBZ of them',
+    dropzoneHint:
+      'A ZIP may hold many chapters — each folder inside becomes one. Images are natural-sorted, and nothing leaves your browser until you press Upload.',
+    reading: 'Reading the drop…',
+    reviewTitle: 'What was found',
+    reviewLead: 'Correct anything below. Nothing is uploaded or created until you press Upload.',
+    detected: '{chapters} chapters · {pages} pages',
+    foundIn: 'from {path}',
+    clear: 'Clear all',
+    blocked: 'Fix the chapters marked above before uploading.',
+    numberFrom: {
+      marker: 'number read from “{text}”',
+      single: 'the only number in the name',
+      trailing: 'the last number in the name — check it',
+      none: 'no number found',
+    },
+    pageRole: {
+      cover: 'Cover',
+      extra: 'Extra',
+    },
+    issues: {
+      no_number: 'No chapter number in the name — type one',
+      ambiguous_number: 'More than one number here ({candidates}) — check it',
+      duplicate_number: 'Two folders both read as chapter {number}',
+      missing_pages: 'Page numbers skip {numbers}',
+      repeated_page_number: 'Two files claim page {numbers}',
+      extra_files: '{count} file(s) are not numbered pages — kept at the ends',
+      too_many_pages: 'More than {max} pages — split this chapter',
+      no_pages: 'No images in this folder',
+    },
+    conflictCount: 'Chapters that already exist: {n}',
+    conflictAll: 'All conflicts:',
+    conflict: {
+      title: 'Chapter {n} already exists with {pages} pages',
+      skip: 'Skip — keep the existing pages',
+      replace: 'Replace every page',
+      skipped: 'Skipped',
+    },
+    rejectedTitle: 'Entries not read: {n}',
+    rejectedQuiet: 'Junk entries ignored: {n}',
+    rejectedReasons: {
+      empty: 'Unusable name',
+      too_long: 'Path too long',
+      control_chars: 'Control characters in the name',
+      absolute: 'Absolute path',
+      traversal: 'Path escapes the archive',
+      too_deep: 'Nested too deep',
+      metadata: 'Archive metadata',
+      hidden: 'Hidden file',
+      directory: 'Folder',
+      not_image: 'Not an image',
+      entry_too_large: 'Larger than the per-file cap',
+      suspicious_ratio: 'Unpacks far larger than it claims to be',
+      entry_limit: 'Past the archive entry cap',
+      size_limit: 'Past the archive size cap',
+    },
+    aborted: {
+      entry_limit:
+        'this archive holds more entries than the reader accepts, so it was only partly read.',
+      size_limit:
+        'this archive unpacks larger than the reader accepts, so it was only partly read.',
+    },
+  },
+
+  /**
+   * The release calendar (docs/04 "Scheduling"): a week and a month of what publishes when,
+   * across every series, plus the finished chapters nobody has dated — the group that costs
+   * money. Moving a chapter here goes through the same publish/schedule transitions the
+   * bulk bar uses, so the early-access window and the notification fan-out still apply.
+   */
+  calendar: {
+    navLabel: 'Calendar',
+    title: 'Release calendar',
+    subtitle: 'What publishes when, across every series.',
+    week: 'Week',
+    month: 'Month',
+    today: 'Today',
+    previous: 'Previous',
+    next: 'Next',
+    legend: '{published} published · {scheduled} scheduled · {ready} ready with no date',
+    dragHint: 'Drag a chapter onto a day to move it. The time of day is kept.',
+    readyTitle: 'Ready · no date',
+    readyLead:
+      'Finished chapters with nothing scheduled. Every day one sits here it earns nothing.',
+    readyEmpty: 'Nothing waiting.',
+    readyMore: '+{n} more',
+    emptyRange: 'Nothing published or scheduled in this range.',
+    pages: '{n}p',
+    edit: 'Edit',
+    editTitle: 'Chapter {n} · {series}',
+    when: 'Publishes at',
+    reschedule: 'Reschedule',
+    publishNow: 'Publish now',
+    unschedule: 'Back to ready (clear the date)',
+    publishedLocked: 'Already published. Change it from the series editor.',
+    moved: 'Chapter {n} → {when}',
+    unscheduled: 'Chapter {n} is ready with no date',
+    publishedNow: 'Chapter {n} published',
+    moveFailed: 'That chapter did not move.',
+    pastDay: 'That day has already gone — use Edit → Publish now instead.',
+    close: 'Close',
+    weekdays: {
+      mon: 'Mon',
+      tue: 'Tue',
+      wed: 'Wed',
+      thu: 'Thu',
+      fri: 'Fri',
+      sat: 'Sat',
+      sun: 'Sun',
+    },
+  },
 } as const

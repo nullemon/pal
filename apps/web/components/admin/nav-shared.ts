@@ -31,6 +31,7 @@ export type AdminIcon =
   | 'shield'
   | 'bell'
   | 'plug'
+  | 'calendar'
 
 export interface AdminNavItem {
   label: string
@@ -72,6 +73,15 @@ export const adminNav: readonly AdminNavGroup[] = [
         label: m.chapters,
         href: '/admin/chapters',
         icon: 'file-stack',
+        permission: 'chapter.read',
+        // Exact: the release calendar below is its own item, and only one should light up.
+        exact: true,
+      },
+      // The release calendar (docs/04 "Scheduling"): the operator's week and month.
+      {
+        label: adminMessages.calendar.navLabel,
+        href: '/admin/chapters/calendar',
+        icon: 'calendar',
         permission: 'chapter.read',
       },
       {

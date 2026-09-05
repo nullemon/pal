@@ -48,6 +48,11 @@ export const PATCH = withPermission<{ id: string }>(
           ? { earlyAccessUntil: body.earlyAccessUntil ? new Date(body.earlyAccessUntil) : null }
           : {}),
         ...(body.state === 'draft' || body.state === 'ready' ? { state: body.state } : {}),
+        // Unscheduling from the release calendar: back to `ready` *and* no date, so the
+        // chapter shows up in the "ready, no date" rail instead of keeping a stale slot.
+        ...((body.state === 'draft' || body.state === 'ready') && body.publishedAt === null
+          ? { publishedAt: null }
+          : {}),
         updatedAt: now,
       })
       .where(eq(chapters.id, id.data))

@@ -157,6 +157,12 @@ export const uploadIntentSchema = z.object({
       z.object({
         number: z.number().min(0).max(99_999),
         title: nullableText(200).optional(),
+        /**
+         * The operator's answer to "chapter N already exists": absent or false means skip
+         * (the intent refuses with 409), true means replace its pages. A bulk import must
+         * never overwrite a chapter because nobody said not to.
+         */
+        replace: z.boolean().optional(),
         files: z.array(uploadFileSchema).min(1).max(400),
       }),
     )

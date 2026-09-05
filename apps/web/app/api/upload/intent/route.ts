@@ -1,4 +1,5 @@
-import { messages } from '@palscans/core/messages'
+import { fmt, messages } from '@palscans/core/messages'
+import { adminMessages } from '@palscans/core/messages/admin'
 import { chapters, getDb, series } from '@palscans/db'
 import { and, eq, isNull } from 'drizzle-orm'
 import { MAX_CHAPTER_BYTES, uploadIntentSchema } from '@/components/admin/schemas'
@@ -37,6 +38,8 @@ export const POST = withPermission('chapter.create', async (request, _ctx, user)
     chapterId: number
     number: number
     reused: boolean
+    /** True when this intent is rebuilding a chapter that already had pages. */
+    replaced: boolean
     files: Array<{
       name: string
       key: string
@@ -61,13 +64,27 @@ export const POST = withPermission('chapter.create', async (request, _ctx, user)
       .limit(1)
     let chapterId: number
     let reused = false
+    let replaced = false
     if (existing) {
+      // A chapter that already has pages is only ever replaced on purpose: the bulk preview
+      // makes the operator choose skip or replace, and `replace` is that answer. Without it
+      // the intent refuses rather than quietly rebuilding a published chapter.
+      if (existing.pageCount > 0 && ch.replace !== true)
+        return fail(
+          409,
+          'chapter_exists',
+          fmt(adminMessages.bulkImport.conflict.title, {
+            n: String(ch.number),
+            pages: existing.pageCount,
+          }),
+        )
       // replacing pages on an existing chapter is a repair (docs/04 "Repair")
       if (existing.pageCount > 0 && !can(user, 'chapter.repair'))
         return fail(403, 'forbidden', messages.errors.forbidden)
       if (existing.state === 'processing') return fail(409, 'already_processing')
       chapterId = existing.id
       reused = true
+      replaced = existing.pageCount > 0
     } else {
       const [created] = await db
         .insert(chapters)
@@ -95,7 +112,7 @@ export const POST = withPermission('chapter.create', async (request, _ctx, user)
         }
       }),
     )
-    out.push({ chapterId, number: ch.number, reused, files })
+    out.push({ chapterId, number: ch.number, reused, replaced, files })
   }
   await audit({
     actorId: user.id,
@@ -108,6 +125,7 @@ export const POST = withPermission('chapter.create', async (request, _ctx, user)
         number: c.number,
         files: c.files.length,
         reused: c.reused,
+        replaced: c.replaced,
       })),
     },
     request,
