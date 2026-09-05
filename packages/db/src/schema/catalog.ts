@@ -102,8 +102,26 @@ export const series = pgTable(
     index('series_type_status_idx')
       .on(t.type, t.status)
       .where(sql`${t.deletedAt} IS NULL AND ${t.state} = 'published'`),
-    index('series_pinned_idx')
-      .on(t.isPinned, t.lastChapterAt.desc().nullsLast())
+    /**
+     * The home feed's one ordering: pinned first, then newest update, then id as the
+     * tiebreak (migration 9034). Every column is DESC because the query is — `series_pinned_idx`
+     * before it led with `is_pinned` ASC, which no scan direction can turn into
+     * "pinned DESC, last_chapter_at DESC", so the planner read the whole index and sorted.
+     *
+     * The three nulls flags are spelled out because every one of them has to match the
+     * ORDER BY exactly, and the two libraries disagree about the default: Drizzle's `desc()`
+     * in an ORDER BY means NULLS FIRST (Postgres' rule), while `.desc()` *in an index* means
+     * NULLS LAST. Left implicit, this index would be built NULLS LAST on all three and the
+     * planner would refuse it for `ORDER BY is_pinned DESC, …, id DESC` — measured, 0.25 ms
+     * against 44.7 ms and a Seq Scan — even though `is_pinned` and `id` are NOT NULL and no
+     * row could tell the two apart.
+     */
+    index('series_home_feed_idx')
+      .on(
+        t.isPinned.desc().nullsFirst(),
+        t.lastChapterAt.desc().nullsLast(),
+        t.id.desc().nullsFirst(),
+      )
       .where(sql`${t.deletedAt} IS NULL AND ${t.state} = 'published'`),
   ],
 )

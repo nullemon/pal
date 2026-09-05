@@ -1,4 +1,4 @@
-export { escapeLike } from './_shared.js'
+export { escapeLike, pageWindow } from './_shared.js'
 export * from './analytics.js'
 export * from './chapters.js'
 export * from './duplicates.js'

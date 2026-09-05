@@ -1,11 +1,13 @@
 import { fmt, messages } from '@palscans/core/messages'
+import { pageWindow } from '@palscans/db'
 import { buttonClasses, cn, EmptyState } from '@palscans/ui'
 import { Shuffle, SlidersHorizontal } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { ActiveFilters, BrowseFilters, SORT_LABELS } from '@/components/discovery/BrowseFilters'
-import { cachedGenres } from '@/components/discovery/cached'
+import { cachedBrowse, cachedBrowseTotal, cachedGenres } from '@/components/discovery/cached'
 import {
+  BROWSE_PAGE_SIZE,
   BROWSE_SORTS,
   browseHref,
   isFiltered,
@@ -13,7 +15,7 @@ import {
 } from '@/components/discovery/filters'
 import { pageMetadata } from '@/components/discovery/metadata'
 import { Pagination } from '@/components/discovery/Pagination'
-import { browseSeries, genreIdsFor, withLatest } from '@/components/discovery/queries'
+import { genreIdsFor, withLatest } from '@/components/discovery/queries'
 import { SeriesGrid } from '@/components/discovery/SeriesGrid'
 import { siteCopy } from '@/lib/copy/settings'
 
@@ -45,16 +47,20 @@ export default async function BrowsePage({ searchParams }: PageProps<'/browse'>)
     genreIdsFor(params.exclude),
     siteCopy(),
   ])
-  const result = await browseSeries({
+  // The count first and the page second, both from the 60s catalogue cache: the count does
+  // not depend on `?page=`, so it clamps the page before the page number can become a cache
+  // key of its own (`filters.ts` accepts ten thousand of them). Same shape as `/`.
+  const filters = {
     type: params.type,
     status: params.status,
     includeGenreIds: include.map((g) => g.id),
     excludeGenreIds: exclude.map((g) => g.id),
     minChapters: params.minChapters,
     minRating: params.minRating,
-    sort: params.sort,
-    page: params.page,
-  })
+  }
+  const total = await cachedBrowseTotal(filters)
+  const { page } = pageWindow(params.page, total, BROWSE_PAGE_SIZE)
+  const result = await cachedBrowse({ ...filters, sort: params.sort, page, total })
   const items = await withLatest(result.items)
 
   return (

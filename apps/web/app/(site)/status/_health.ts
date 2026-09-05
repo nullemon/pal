@@ -250,3 +250,73 @@ export const collectStatus = async (probes: Probes = defaultProbes): Promise<Sta
   ])
   return summarise({ database, cache, storage, queueBacklog, workerHeartbeatAge })
 }
+
+/* ------------------------------------------------------------------ memoisation ------ */
+
+/**
+ * How long one round of probes answers for. Short enough that the page still reports an
+ * outage inside a quarter of a minute — which is well under the time it takes a reader to
+ * notice, reach for /status and read it — and long enough that the probes are a fixed cost
+ * per process rather than a cost per visitor.
+ */
+export const STATUS_TTL_MS = 12_000
+
+interface CachedStatus {
+  at: number
+  snapshot: StatusSnapshot
+}
+
+let cached: CachedStatus | undefined
+/** The round currently in flight, so a burst of requests shares one, not one each. */
+let inflight: Promise<StatusSnapshot> | undefined
+
+/**
+ * `collectStatus`, memoised in process (docs/17 §G).
+ *
+ * The route is `force-dynamic` with `revalidate = 0`, which is right — a status page must
+ * not be served from a cache that outlives the outage — but it meant five live probes per
+ * anonymous request on a page linked from the footer, with no rate limit in front of it. One
+ * of those five is `storage.head()`, which in production is a billed HTTPS round trip to R2:
+ * a few hundred requests a second on the page that reports outages is a way to cause one,
+ * and to be invoiced for it.
+ *
+ * Two mechanisms, and both are needed:
+ *
+ *   * **the TTL** turns a per-request cost into a per-`STATUS_TTL_MS` cost — at most five
+ *     probe rounds a minute per process;
+ *   * **the in-flight promise** is what handles the burst. A TTL alone still lets every
+ *     request that arrives while the first round is running start a round of its own, which
+ *     is exactly the shape of a traffic spike; sharing the promise makes a thousand
+ *     simultaneous readers one round of probes.
+ *
+ * Per process is the important qualifier. `WEB_CONCURRENCY` defaults to one worker per core,
+ * and each has its own module scope, so an 8-core box does up to 8 × 5 = 40 R2 HEADs a
+ * minute — ~57,600 a day, flat, regardless of traffic — against the unbounded number it does
+ * today. Add instances and it scales with the fleet, not with the visitors, which is the
+ * property that was missing.
+ *
+ * The page stays honest because it renders `checkedAt` rather than "now": a memoised
+ * snapshot says it was checked twelve seconds ago, and says so in the reader's own zone.
+ */
+export const cachedStatus = async (
+  probes: Probes = defaultProbes,
+  now: () => number = Date.now,
+): Promise<StatusSnapshot> => {
+  const t = now()
+  if (cached && t - cached.at < STATUS_TTL_MS) return cached.snapshot
+  inflight ??= collectStatus(probes)
+    .then((snapshot) => {
+      cached = { at: now(), snapshot }
+      return snapshot
+    })
+    .finally(() => {
+      inflight = undefined
+    })
+  return inflight
+}
+
+/** Tests and the dev server: forget the memoised round so the next call probes again. */
+export const resetStatusCache = (): void => {
+  cached = undefined
+  inflight = undefined
+}

@@ -1,0 +1,44 @@
+-- One index for the home feed's one ordering (docs/06 "Rendering strategy", docs/13).
+--
+-- `/` and the home data helper both sort by
+--
+--     ORDER BY is_pinned DESC, last_chapter_at DESC, id DESC
+--
+-- and `series_pinned_idx` was built as `(is_pinned, last_chapter_at DESC NULLS LAST)`. The
+-- leading column is ASC, so neither scan direction produces that order: forward gives
+-- `is_pinned ASC`, backward gives `last_chapter_at ASC`. The planner did the only thing left
+-- and read the whole partial index, then sorted — an Incremental Sort with `is_pinned` as
+-- the only presorted key, which on a two-valued column presorts nothing. Measured at 50k
+-- seeded series (42k published with a chapter): 42,504 buffers, 61 ms, versus 27 buffers and
+-- 0.26 ms once the index matches. The index is *smaller* than the one it replaces
+-- (1848 kB against 1992 kB) because the trailing `id` costs less than the padding did.
+--
+-- Two halves have to agree for that to happen, which is why the query changed in the same
+-- commit:
+--
+--   * the index leads with `is_pinned DESC` so the first key needs no reordering;
+--   * `last_chapter_at DESC NULLS LAST` here has to match the ORDER BY there. Drizzle's
+--     `desc(col)` emits bare `DESC`, which in Postgres means NULLS FIRST, and a pathkey with
+--     the wrong nulls flag is not the pathkey the index provides. Both call sites now write
+--     `desc nulls last` explicitly — the same idiom `browseSeries` already used — and since
+--     both also filter `last_chapter_at IS NOT NULL`, no row's position changes.
+--
+-- The same trap runs the other way and is why the schema says `.desc().nullsFirst()` on the
+-- two NOT NULL columns rather than the plainer `.desc()`: in an index definition Drizzle's
+-- `.desc()` expands to `DESC NULLS LAST`, so the tidy-looking model would have built
+-- `(is_pinned DESC NULLS LAST, …, id DESC NULLS LAST)` — a different index, and one the
+-- planner will not use for `ORDER BY is_pinned DESC, …, id DESC` even though both columns are
+-- NOT NULL and no row could tell the difference. Checked rather than assumed: pushing the
+-- model into an empty database produces this statement's index verbatim, and the NULLS LAST
+-- spelling measured 44.7 ms and a Seq Scan where this one measures 0.25 ms.
+--
+-- Dropped rather than kept alongside: nothing else in the codebase orders by `is_pinned`
+-- (`grep -rn 'desc(series.isPinned)'` finds the two call sites this migration exists for), so
+-- `series_pinned_idx` served no query the new index does not, and keeping both would have
+-- meant a second index to maintain on every insert into `series` for nothing. The index count
+-- on the table is unchanged.
+--
+-- Created before the old one is dropped so no statement in between runs without one, and
+-- both are guarded, so re-applying is a no-op.
+CREATE INDEX IF NOT EXISTS "series_home_feed_idx" ON "series" USING btree ("is_pinned" DESC,"last_chapter_at" DESC NULLS LAST,"id" DESC) WHERE "series"."deleted_at" IS NULL AND "series"."state" = 'published';--> statement-breakpoint
+DROP INDEX IF EXISTS "series_pinned_idx";

@@ -12,7 +12,9 @@ import {
   genreCounts,
   genres,
   getDb,
+  pageWindow,
   popular,
+  randomPublishedSeries,
   readingProgress,
   recentlyAdded,
   searchSeries,
@@ -255,6 +257,28 @@ export interface LatestUpdatesOptions {
   pageSize: number
   type?: SeriesSummary['type']
   chaptersPerSeries?: number
+  /** The row count, when the caller already has it from `latestUpdatesTotal`. */
+  total?: number
+}
+
+/** Published series with at least one chapter, in the tab the reader is on. */
+const latestUpdatesWhere = (type?: SeriesSummary['type']) =>
+  and(published(), isNotNull(series.lastChapterAt), type ? eq(series.type, type) : undefined)
+
+/** `count(*)` over `series` for a listing's filters — the half of a page that has no page. */
+async function countSeries(where: SQL | undefined): Promise<number> {
+  const db = await getDb()
+  const [row] = await db.select({ total: sql<number>`count(*)::int` }).from(series).where(where)
+  return Number(row?.total ?? 0)
+}
+
+/**
+ * How many rows the latest-updates feed has. Split out of `latestUpdates` so `/` can clamp
+ * `?page=` before the page number reaches a cache key — see `cachedLatestTotal`.
+ */
+export async function latestUpdatesTotal(type?: SeriesSummary['type']): Promise<number> {
+  await ensureConfig()
+  return countSeries(latestUpdatesWhere(type))
 }
 
 /**
@@ -265,22 +289,18 @@ export async function latestUpdates(opts: LatestUpdatesOptions): Promise<PagedRe
   await ensureConfig()
   const db = await getDb()
   const pageSize = Math.min(60, Math.max(1, opts.pageSize))
-  const where = and(
-    published(),
-    isNotNull(series.lastChapterAt),
-    opts.type ? eq(series.type, opts.type) : undefined,
-  )
-  const [{ total } = { total: 0 }] = await db
-    .select({ total: sql<number>`count(*)::int` })
-    .from(series)
-    .where(where)
-  const totalPages = Math.max(1, Math.ceil(Number(total) / pageSize))
-  const page = Math.min(Math.max(1, opts.page), totalPages)
+  const where = latestUpdatesWhere(opts.type)
+  const total = opts.total ?? (await latestUpdatesTotal(opts.type))
+  const { page, totalPages } = pageWindow(opts.page, total, pageSize)
+  // `desc nulls last`, not Drizzle's bare `desc` (which is NULLS FIRST): the ORDER BY has to
+  // match `series_home_feed_idx` down to the nulls flag or the planner falls back to reading
+  // the whole index and sorting it. `where` already excludes null `last_chapter_at`, so no
+  // row moves. See migration 9034.
   const rows = await db
     .select(cardColumns)
     .from(series)
     .where(where)
-    .orderBy(desc(series.isPinned), desc(series.lastChapterAt), desc(series.id))
+    .orderBy(desc(series.isPinned), sql`${series.lastChapterAt} desc nulls last`, desc(series.id))
     .limit(pageSize)
     .offset((page - 1) * pageSize)
   const latest = await latestChaptersFor(
@@ -292,7 +312,7 @@ export async function latestUpdates(opts: LatestUpdatesOptions): Promise<PagedRe
     items: rows.map((r) => ({ ...toSummary(r), chapters: latest.get(r.id) ?? [] })),
     page,
     pageSize,
-    total: Number(total),
+    total,
     totalPages,
   }
 }
@@ -366,16 +386,26 @@ export async function latestAnnouncement(): Promise<AnnouncementSummary | null> 
 
 // --- browse / genres --------------------------------------------------------------------
 
-export interface BrowseQuery {
+/** Everything that narrows the result set. Shared by the count and the page. */
+export interface BrowseFilters {
   type?: BrowseParams['type']
   status?: BrowseParams['status']
   includeGenreIds: number[]
   excludeGenreIds: number[]
   minChapters: number
   minRating: number
+}
+
+export interface BrowseQuery extends BrowseFilters {
   sort: BrowseSort
   page: number
   pageSize?: number
+  /**
+   * The matching row count, when the caller already has it (from `browseTotal`, usually out
+   * of the cache). Saves repeating the `count(*)` the clamp needed; omit it and the query
+   * counts for itself.
+   */
+  total?: number
 }
 
 type Database = Awaited<ReturnType<typeof getDb>>
@@ -431,11 +461,8 @@ function orderFor(sort: BrowseSort, mean: number): SQL[] {
   }
 }
 
-/** The browse grid: filters (include AND exclude genres), sort, real pagination. */
-export async function browseSeries(q: BrowseQuery): Promise<PagedResult<SeriesSummary>> {
-  await ensureConfig()
-  const db = await getDb()
-  const pageSize = Math.min(60, Math.max(1, q.pageSize ?? BROWSE_PAGE_SIZE))
+/** The `where` both halves of a browse share: the filters, without the sort or the page. */
+function browseWhere(db: Database, q: BrowseFilters): SQL | undefined {
   const conditions: (SQL | undefined)[] = [
     published(),
     q.type ? eq(series.type, q.type) : undefined,
@@ -447,13 +474,30 @@ export async function browseSeries(q: BrowseQuery): Promise<PagedResult<SeriesSu
     ...q.includeGenreIds.map((id) => inGenre(db, id)),
     q.excludeGenreIds.length ? not(inAnyGenre(db, q.excludeGenreIds)) : undefined,
   ]
-  const where = and(...conditions)
-  const [{ total } = { total: 0 }] = await db
-    .select({ total: sql<number>`count(*)::int` })
-    .from(series)
-    .where(where)
-  const totalPages = Math.max(1, Math.ceil(Number(total) / pageSize))
-  const page = Math.min(Math.max(1, q.page), totalPages)
+  return and(...conditions)
+}
+
+/**
+ * How many series match the filters, with no sort and no page. Separate from `browseSeries`
+ * so the caller can clamp `?page=` *before* it becomes a cache key: the page query is cached
+ * per argument list, and a page parameter that accepts ten thousand values is ten thousand
+ * cache entries per filter combination, each of them a cold count-and-sort. The count itself
+ * does not depend on the page, so one entry answers all of them.
+ */
+export async function browseTotal(q: BrowseFilters): Promise<number> {
+  await ensureConfig()
+  const db = await getDb()
+  return countSeries(browseWhere(db, q))
+}
+
+/** The browse grid: filters (include AND exclude genres), sort, real pagination. */
+export async function browseSeries(q: BrowseQuery): Promise<PagedResult<SeriesSummary>> {
+  await ensureConfig()
+  const db = await getDb()
+  const pageSize = Math.min(60, Math.max(1, q.pageSize ?? BROWSE_PAGE_SIZE))
+  const where = browseWhere(db, q)
+  const total = q.total ?? (await countSeries(where))
+  const { page, totalPages } = pageWindow(q.page, total, pageSize)
   const mean = q.sort === 'rating' ? await ratingMean() : 0
   const rows = await db
     .select(cardColumns)
@@ -462,7 +506,7 @@ export async function browseSeries(q: BrowseQuery): Promise<PagedResult<SeriesSu
     .orderBy(...orderFor(q.sort, mean))
     .limit(pageSize)
     .offset((page - 1) * pageSize)
-  return { items: rows.map(toSummary), page, pageSize, total: Number(total), totalPages }
+  return { items: rows.map(toSummary), page, pageSize, total, totalPages }
 }
 
 /** Resolve genre slugs to ids; unknown and retired slugs are dropped. */
@@ -522,16 +566,16 @@ export async function search(q: string, limit = 40): Promise<SearchHit[]> {
   return rows.map((r) => ({ ...toSummary(r), score: r.score, matchedTitle: r.matchedTitle }))
 }
 
+/**
+ * `/random`. The query lives in @palscans/db (`randomPublishedSeries`) — it is bounded
+ * primary-key probes rather than `ORDER BY random()` over the whole catalogue, which is what
+ * made this route a sequential scan on every hit. See the note there for the uniformity
+ * argument; the route itself is unchanged.
+ */
 export async function randomSeriesSlug(): Promise<string | null> {
   await ensureConfig()
   const db = await getDb()
-  const [row] = await db
-    .select({ slug: series.slug })
-    .from(series)
-    .where(published())
-    .orderBy(sql`random()`)
-    .limit(1)
-  return row?.slug ?? null
+  return randomPublishedSeries(db)
 }
 
 /** True when the popularity windows have any rollup rows (used to label rankings). */

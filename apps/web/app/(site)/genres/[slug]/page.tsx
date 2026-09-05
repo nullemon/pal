@@ -1,13 +1,15 @@
 import { truncateWords } from '@palscans/core'
 import { fmt, messages } from '@palscans/core/messages'
+import { pageWindow } from '@palscans/db'
 import { buttonClasses, cn, EmptyState } from '@palscans/ui'
 import { ChevronRight, Shuffle } from 'lucide-react'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { SORT_LABELS } from '@/components/discovery/BrowseFilters'
-import { cachedGenres } from '@/components/discovery/cached'
+import { cachedBrowse, cachedBrowseTotal, cachedGenres } from '@/components/discovery/cached'
 import {
+  BROWSE_PAGE_SIZE,
   BROWSE_SORTS,
   browseHref,
   genrePageParamsSchema,
@@ -16,7 +18,7 @@ import {
 import { JsonLd } from '@/components/discovery/JsonLd'
 import { pageMetadata, siteUrl } from '@/components/discovery/metadata'
 import { Pagination } from '@/components/discovery/Pagination'
-import { browseSeries, genreDetail, withLatest } from '@/components/discovery/queries'
+import { genreDetail, withLatest } from '@/components/discovery/queries'
 import { RichText, richTextToPlain } from '@/components/discovery/RichText'
 import { SeriesGrid } from '@/components/discovery/SeriesGrid'
 
@@ -66,17 +68,17 @@ export default async function GenrePage({ params, searchParams }: PageProps<'/ge
   const genre = await load(slug)
   if (!genre) notFound()
   const query = genrePageParamsSchema.parse(sp)
-  const [result, genres] = await Promise.all([
-    browseSeries({
-      includeGenreIds: [genre.id],
-      excludeGenreIds: [],
-      minChapters: 0,
-      minRating: 0,
-      sort: query.sort,
-      page: query.page,
-    }),
-    cachedGenres(),
-  ])
+  // Count, clamp, page — the same three steps as `/browse`, and for the same reason: the
+  // page number is part of the cache key, so it has to be a page that exists first.
+  const filters = {
+    includeGenreIds: [genre.id],
+    excludeGenreIds: [],
+    minChapters: 0,
+    minRating: 0,
+  }
+  const [total, genres] = await Promise.all([cachedBrowseTotal(filters), cachedGenres()])
+  const { page } = pageWindow(query.page, total, BROWSE_PAGE_SIZE)
+  const result = await cachedBrowse({ ...filters, sort: query.sort, page, total })
   const items = await withLatest(result.items)
   const href = (page: number, sort = query.sort) =>
     browseHref({ page, sort }, `/genres/${genre.slug}`)

@@ -1,10 +1,12 @@
 import { copyFn } from '@palscans/core/copy'
+import { pageWindow } from '@palscans/db'
 import {
   cachedAds,
   cachedAnnouncement,
   cachedGenres,
   cachedHero,
   cachedHomeLayout,
+  cachedLatestTotal,
   cachedLatestUpdates,
   cachedLayoutsSetting,
   cachedNewest,
@@ -27,13 +29,14 @@ export async function loadHomeView(
   searchParams: Record<string, string | string[] | undefined>,
 ): Promise<HomeViewProps & { layout: string }> {
   const params = homeParamsSchema.parse(searchParams)
-  const [user, layout, ads, gate, selected, appearanceCopy] = await Promise.all([
+  const [user, layout, ads, gate, selected, appearanceCopy, feedTotal] = await Promise.all([
     getSessionUser(),
     cachedHomeLayout(),
     cachedAds(),
     entitlementGate(),
     cachedLayoutsSetting(),
     siteCopySettings(),
+    cachedLatestTotal(params.type),
   ])
   const now = new Date()
   const withAds = gate.showsAds(user, now)
@@ -46,11 +49,22 @@ export async function loadHomeView(
   const sNewest = homeSection(layout, 'recently_added')
   const sAnnouncements = homeSection(layout, 'announcements')
 
+  /**
+   * Clamp `?page=` here, against a count that does not depend on it, rather than inside the
+   * feed query. `cachedLatestUpdates` keys on its arguments, so an unclamped page number is
+   * a cache entry of its own — `homeParamsSchema` accepts ten thousand of them and the type
+   * tabs multiply that by four, each entry a cold count-and-sort (measured: 80 ms at 50k
+   * series) for a page with nothing on it. Clamped, every out-of-range page is the last real
+   * page: one render, one key, same as `/browse` has always done.
+   */
+  const feedPageSize = Math.min(60, Math.max(1, sLatest.count))
+  const { page: feedPage } = pageWindow(params.page, feedTotal, feedPageSize)
+
   const [slides, trending, feed, popular, announcement, newest, resume, genres] = await Promise.all(
     [
       hero.enabled ? cachedHero(hero.count) : Promise.resolve([]),
       sTrending.enabled ? cachedTrending(Math.min(sTrending.count, 12)) : Promise.resolve([]),
-      cachedLatestUpdates(params.page, sLatest.count, params.type),
+      cachedLatestUpdates(feedPage, feedPageSize, params.type, feedTotal),
       sPopular.enabled ? cachedPopular(sPopular.count) : Promise.resolve(null),
       sAnnouncements.enabled ? cachedAnnouncement() : Promise.resolve(null),
       sNewest.enabled ? cachedNewest(sNewest.count) : Promise.resolve([]),
@@ -66,7 +80,9 @@ export async function loadHomeView(
 
   return {
     layout: selected.home,
-    params,
+    // the page actually served, not the one asked for, so every link a layout builds from
+    // these params points at a page that exists
+    params: { ...params, page: feedPage },
     user,
     now,
     overrides: gate.overrides,

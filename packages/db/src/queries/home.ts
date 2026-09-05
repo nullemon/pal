@@ -5,6 +5,7 @@ import {
   chapterRowColumns,
   clampPage,
   count,
+  pageWindow,
   publishedChapters,
   publishedSeries,
   seriesCardColumns,
@@ -48,9 +49,11 @@ export interface HomeFeedItem {
 
 export interface HomeFeed {
   items: HomeFeedItem[]
+  /** The page actually served — clamped to `totalPages`, so it can be lower than the one asked for. */
   page: number
   pageSize: number
   total: number
+  totalPages: number
   hasMore: boolean
 }
 
@@ -59,20 +62,25 @@ export interface HomeFeed {
  * its N most recent published chapters. Real `?page=` pagination (docs/06).
  */
 export const homeFeed = async (db: Db, opts: HomeFeedOptions = {}): Promise<HomeFeed> => {
-  const { page, pageSize } = clampPage(opts.page, opts.pageSize)
+  const { pageSize } = clampPage(opts.page, opts.pageSize)
   const perSeries = Math.min(10, Math.max(1, opts.chaptersPerSeries ?? 3))
   const where = and(publishedSeries(), isNotNull(series.lastChapterAt))
 
-  const [rows, [{ total } = { total: 0 }]] = await Promise.all([
-    db
-      .select(seriesCardColumns)
-      .from(series)
-      .where(where)
-      .orderBy(desc(series.isPinned), desc(series.lastChapterAt), desc(series.id))
-      .limit(pageSize)
-      .offset((page - 1) * pageSize),
-    db.select({ total: count() }).from(series).where(where),
-  ])
+  // The count first, not beside the page, because the page depends on it: an out-of-range
+  // `?page=` has to collapse onto the last real page before the OFFSET is built, or the
+  // request pays for a full sort to return nothing (`/browse` has always worked this way).
+  const [{ total } = { total: 0 }] = await db.select({ total: count() }).from(series).where(where)
+  const { page, totalPages } = pageWindow(opts.page, total, pageSize)
+  // `desc nulls last` rather than Drizzle's bare `desc`, which is NULLS FIRST: it has to
+  // match `series_home_feed_idx` for the planner to use it (migration 9034). The `where`
+  // above excludes nulls, so this changes no row's position.
+  const rows = await db
+    .select(seriesCardColumns)
+    .from(series)
+    .where(where)
+    .orderBy(desc(series.isPinned), sql`${series.lastChapterAt} desc nulls last`, desc(series.id))
+    .limit(pageSize)
+    .offset((page - 1) * pageSize)
 
   const ids = rows.map((r) => r.id)
   // Rank chapters per series in SQL and keep only the top N there, so a 400-chapter
@@ -134,6 +142,7 @@ export const homeFeed = async (db: Db, opts: HomeFeedOptions = {}): Promise<Home
     page,
     pageSize,
     total,
+    totalPages,
     hasMore: page * pageSize < total,
   }
 }

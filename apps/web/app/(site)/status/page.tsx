@@ -2,7 +2,7 @@ import { messages } from '@palscans/core/messages'
 import { cn, RelativeTime } from '@palscans/ui'
 import { CheckCircle2, TriangleAlert } from 'lucide-react'
 import type { Metadata } from 'next'
-import { type ComponentState, collectStatus } from './_health'
+import { type ComponentState, cachedStatus } from './_health'
 
 /**
  * `/status` — the public uptime page (docs/17 §G, docs/13 "Status page").
@@ -15,6 +15,11 @@ import { type ComponentState, collectStatus } from './_health'
  *     it — the only database call is the probe, and it is wrapped in a catch and a timeout.
  *     The layout above it is static, and the appearance query in the root layout already
  *     falls back to compiled defaults when the database is unreachable.
+ *  2b. **Not become the outage.** The render is dynamic, but the probes behind it are
+ *     memoised in process for `STATUS_TTL_MS` and shared by whatever arrives while a round
+ *     is running (`cachedStatus`), so five live checks — one of them a billed round trip to
+ *     R2 — are a cost per process per twelve seconds and not a cost per visitor. The page
+ *     stays truthful because it prints when it was checked, not "now".
  *  3. **Leak nothing.** Two words per component and a timestamp. No hostname, driver,
  *     version, queue depth, error message or hint about what is configured.
  */
@@ -38,7 +43,7 @@ const tone = (state: ComponentState) =>
     : { dot: 'bg-warn', text: 'text-warn' }
 
 export default async function StatusPage() {
-  const snapshot = await collectStatus()
+  const snapshot = await cachedStatus()
   const m = messages.status
   const healthy = snapshot.overall === 'operational'
 
