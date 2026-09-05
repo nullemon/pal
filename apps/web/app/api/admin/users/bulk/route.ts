@@ -34,6 +34,10 @@ export const POST = withPermission('user.read', async (request, _ctx, actor) => 
     .from(users)
     .where(and(inArray(users.id, ids), isNull(users.deletedAt)))
   const allowed = targets.filter((t) => t.id !== actor.id && canActOn(actor, t.role))
+  // The filter above asks "may I act on these accounts as they are now?" — a role change
+  // must also ask "may I hand out the role I am about to write?", or a moderator granted
+  // `user.role` promotes a reader they control to admin. Same gap the single-user route had.
+  if (action.kind === 'role' && !canActOn(actor, action.role)) return forbidden()
   const skipped = ids.length - allowed.length
   if (allowed.length === 0) return ok({ updated: 0, skipped, ids: [] })
 

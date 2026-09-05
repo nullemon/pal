@@ -57,6 +57,7 @@ export default async function LoginPage({
           returnTo={returnTo}
           email={params.link ? params.email : undefined}
           linkProvider={params.link}
+          initialStep={params.mfa ? 'totp' : 'password'}
         />
         {params.link ? null : (
           <>

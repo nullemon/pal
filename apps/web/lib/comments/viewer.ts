@@ -48,6 +48,11 @@ export const appUserFromSession = async (session: SessionUser | null): Promise<A
     createdAt: row.createdAt,
     commentBannedUntil: row.commentBannedUntil,
     entitlements: session.entitlements ?? [],
+    // Carried through, or `can()` silently falls back to the compiled role bundle and the
+    // operator's matrix in Admin → Access → Roles has no effect on anything reached from
+    // here — including `DELETE /api/comments/:id`. It failed open in both directions: a
+    // revoked `comment.moderate` still deleted, and a granted one still refused.
+    permissions: session.permissions,
   }
 }
 

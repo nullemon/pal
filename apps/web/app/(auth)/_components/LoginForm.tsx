@@ -12,13 +12,24 @@ interface Props {
   /** Pre-filled when the user is completing an OAuth link. */
   email?: string
   linkProvider?: string
+  /**
+   * `totp` when the OAuth callback has already set the challenge cookie and only the second
+   * factor is left. A redirect cannot answer `{mfa: true}` the way the password route does,
+   * so the step arrives as a query parameter instead.
+   */
+  initialStep?: Step
 }
 
-type Step = 'password' | 'totp'
+export type Step = 'password' | 'totp'
 
-export function LoginForm({ returnTo, email: initialEmail = '', linkProvider }: Props) {
+export function LoginForm({
+  returnTo,
+  email: initialEmail = '',
+  linkProvider,
+  initialStep = 'password',
+}: Props) {
   const router = useRouter()
-  const [step, setStep] = useState<Step>('password')
+  const [step, setStep] = useState<Step>(initialStep)
   const [email, setEmail] = useState(initialEmail)
   const [password, setPassword] = useState('')
   const [code, setCode] = useState('')

@@ -188,6 +188,8 @@ const countMoves = async (db: Db, w: number, l: number): Promise<MergeMove[]> =>
       (select count(*) from comments where series_id = ${l})::int as comments_move,
       (select count(*) from series_stats_daily d where d.series_id = ${l} and not exists (select 1 from series_stats_daily x where x.series_id = ${w} and x.bucket = d.bucket))::int as stats_move,
       (select count(*) from series_stats_daily d where d.series_id = ${l} and exists (select 1 from series_stats_daily x where x.series_id = ${w} and x.bucket = d.bucket))::int as stats_merge,
+      (select count(*) from series_follows f where f.series_id = ${l} and not exists (select 1 from series_follows x where x.user_id = f.user_id and x.series_id = ${w}))::int as follows_move,
+      (select count(*) from series_follows f where f.series_id = ${l} and exists (select 1 from series_follows x where x.user_id = f.user_id and x.series_id = ${w}))::int as follows_merge,
       (select count(*) from view_events v where v.series_id = ${l} and not exists (select 1 from view_events x where x.series_id = ${w} and x.bucket = v.bucket and x.viewer_key = v.viewer_key and x.chapter_id = v.chapter_id))::int as views_move,
       (select count(*) from view_events v where v.series_id = ${l} and exists (select 1 from view_events x where x.series_id = ${w} and x.bucket = v.bucket and x.viewer_key = v.viewer_key and x.chapter_id = v.chapter_id))::int as views_merge,
       (select count(*) from series_genres g where g.series_id = ${l} and not exists (select 1 from series_genres x where x.series_id = ${w} and x.genre_id = g.genre_id))::int as genres_move,
@@ -212,6 +214,7 @@ const countMoves = async (db: Db, w: number, l: number): Promise<MergeMove[]> =>
   return [
     pair('chapters', all - overlap, overlap),
     pair('bookmarks', n('bookmarks_move'), n('bookmarks_merge')),
+    pair('follows', n('follows_move'), n('follows_merge')),
     pair('ratings', n('ratings_move'), n('ratings_merge')),
     pair('reading_progress', n('progress_move'), n('progress_merge')),
     pair('reading_list_items', n('list_move'), n('list_merge')),
@@ -486,6 +489,20 @@ export const mergeSeries = async (db: Db, input: MergeInput): Promise<MergeResul
       where b.series_id = ${l}
         and not exists (select 1 from bookmarks x where x.user_id = b.user_id and x.series_id = ${w})`)
     await run(sql`delete from bookmarks where series_id = ${l}`)
+
+    // Follows are the subscription itself, so losing one silently unsubscribes a reader who
+    // never bookmarked — and losing a `mode: 'off'` row is worse: the bookmark moves without
+    // it, `mergeFollowers` reads that orphaned bookmark as an implicit follow on `all`, and
+    // the merge re-subscribes somebody who deliberately muted the series. On a collision the
+    // quieter of the two modes wins, because a merge may take notifications away from a
+    // reader who asked for that, and must never hand them back.
+    await run(sql`update series_follows f set series_id = ${w}
+      where f.series_id = ${l}
+        and not exists (select 1 from series_follows x where x.user_id = f.user_id and x.series_id = ${w})`)
+    await run(sql`update series_follows w set mode = 'off', updated_at = now()
+      from series_follows l
+      where w.user_id = l.user_id and w.series_id = ${w} and l.series_id = ${l} and l.mode = 'off'`)
+    await run(sql`delete from series_follows where series_id = ${l}`)
 
     await run(sql`update ratings r set series_id = ${w}
       where r.series_id = ${l}

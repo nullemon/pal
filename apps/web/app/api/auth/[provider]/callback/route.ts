@@ -2,7 +2,7 @@ import { getDb, oauthAccounts, users } from '@palscans/db'
 import { and, eq } from 'drizzle-orm'
 import { cookies } from 'next/headers'
 import { getSessionId, getSessionUser } from '@/lib/auth'
-import { signIn } from '@/lib/auth/flows'
+import { setMfaChallenge, signIn } from '@/lib/auth/flows'
 import { recordLoginEvent } from '@/lib/auth/login-events'
 import {
   completeOAuth,
@@ -67,6 +67,8 @@ export async function GET(
       username: users.username,
       email: users.email,
       deletedAt: users.deletedAt,
+      totpEnabledAt: users.totpEnabledAt,
+      totpSecret: users.totpSecret,
     })
     .from(oauthAccounts)
     .innerJoin(users, eq(users.id, oauthAccounts.userId))
@@ -82,6 +84,16 @@ export async function GET(
         outcome: 'banned',
       })
       return loginWith(url, { error: 'banned', provider, return: returnTo })
+    }
+    // A provider proves one factor. An account with TOTP enrolled must still present it —
+    // the password route branches here, and without the same branch a linked Google or
+    // Discord account was a one-factor door into the panel for staff, while
+    // `adminTotpMissing()` only ever checked that a factor was *enrolled*, never used.
+    if (linkedRow.totpEnabledAt && linkedRow.totpSecret) {
+      // No login event here, matching the password route: the sign-in has not happened yet,
+      // and the TOTP step records the outcome either way.
+      await setMfaChallenge(linkedRow.userId, returnTo)
+      return loginWith(url, { mfa: '1', return: returnTo })
     }
     await signIn(linkedRow.userId, linkedRow.email, request, provider, currentId)
     await recordLoginEvent({

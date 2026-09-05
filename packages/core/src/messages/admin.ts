@@ -1859,6 +1859,7 @@ export const adminMessages = {
     tables: {
       chapters: 'Chapters',
       bookmarks: 'Bookmarks',
+      follows: 'Follows',
       ratings: 'Ratings',
       reading_progress: 'Reading progress',
       reading_list_items: 'Reading list entries',

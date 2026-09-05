@@ -54,6 +54,12 @@ export const POST = withPermission<{ id: string }>('user.read', async (request, 
 
   switch (body.action) {
     case 'role': {
+      // Two questions, not one. The check above asked "may I act on this account as it is
+      // now?"; this asks "may I hand out the role I am about to write?". Without it, a
+      // moderator granted `user.role` through Admin → Access → Roles can promote a reader
+      // they control to admin and sign in as them — `canActOn(actor, target.role)` sees only
+      // a reader and says yes. The account-creation route has always asked both.
+      if (!canActOn(actor, body.role)) return forbidden()
       if (body.confirm !== (target.username ?? target.email))
         return fail(400, 'confirm', messages.errors.validation)
       before = { role: target.role }

@@ -13,6 +13,8 @@ export const authParamsSchema = z.object({
   reset: z.string().optional(),
   token: z.string().optional(),
   sent: z.string().optional(),
+  /** Set by the OAuth callback when the account has a second factor still to present. */
+  mfa: z.literal('1').optional(),
 })
 
 export type AuthParams = z.infer<typeof authParamsSchema>

@@ -96,6 +96,7 @@ beforeEach(async () => {
     'reading_lists',
     'comments',
     'bookmarks',
+    'series_follows',
     'ratings',
     'chapter_groups',
     'chapter_pages',
@@ -166,6 +167,14 @@ beforeEach(async () => {
       (${ids.reader}, ${ids.winner}, 'reading'),
       (${ids.reader}, ${ids.loser}, 'completed'),
       (${ids.reader2}, ${ids.loser}, 'planned')`)
+  // follows: reader2 follows the loser without bookmarking it, and reader has muted the
+  // loser while keeping it on a shelf. Both are cases the `leaves nothing behind` sweep can
+  // only catch if a row actually exists — a column walk over a table the fixture never
+  // populates passes vacuously, which is how follows went missing from the merge unnoticed.
+  await db.execute(sql`insert into series_follows (user_id, series_id, mode) values
+      (${ids.reader2}, ${ids.loser}, 'all'),
+      (${ids.reader}, ${ids.winner}, 'all'),
+      (${ids.reader}, ${ids.loser}, 'off')`)
   await db.execute(sql`insert into ratings (user_id, series_id, score) values
       (${ids.reader}, ${ids.winner}, 8),
       (${ids.reader}, ${ids.loser}, 4),
