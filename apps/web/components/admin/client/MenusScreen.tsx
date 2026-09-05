@@ -1,7 +1,7 @@
 'use client'
 
 import { adminMessages } from '@palscans/core/messages/admin'
-import { Button, cn, useToast } from '@palscans/ui'
+import { Button, cn } from '@palscans/ui'
 import { ChevronDown, ChevronUp, Plus, X } from 'lucide-react'
 import { useState } from 'react'
 import { parseInline } from '@/lib/chrome/inline'
@@ -16,8 +16,8 @@ import {
   SUPPORT_NETWORKS,
 } from '@/lib/site'
 import { Field, Hint, inputClass, Panel, PanelHeader, selectClass } from '../ui'
-import { putJson } from './api'
-import { SaveBar, Toggle } from './controls'
+import { AppearanceWorkflow, type AppearanceWorkflowState } from './AppearanceWorkflow'
+import { Toggle } from './controls'
 
 type Header = MenusSetting['header'][number]
 type Column = MenusSetting['footer'][number]
@@ -42,17 +42,22 @@ const fromLocalInput = (value: string): string | null => {
 /**
  * Appearance → Header, footer, menus (docs/15).
  *
- * One document, one Save. Everything on this screen is a link list, and the list controls are
- * plain buttons rather than drag-and-drop: reordering has to work with a keyboard, and "Move
- * up" is the version that does without a second implementation for it.
+ * One document, one draft, one Publish. Everything on this screen is a link list, and the
+ * list controls are plain buttons rather than drag-and-drop: reordering has to work with a
+ * keyboard, and "Move up" is the version that does without a second implementation for it.
+ *
+ * Saving no longer changes the site. `initial` is the draft when there is one and what is
+ * live when there is not, and `AppearanceWorkflow` owns everything after that.
  */
-export function MenusScreen({ initial }: { initial: MenusSetting }) {
+export function MenusScreen({
+  initial,
+  workflow,
+}: {
+  initial: MenusSetting
+  workflow: AppearanceWorkflowState
+}) {
   const m = adminMessages.menus
-  const { toast } = useToast()
-  const [saved, setSaved] = useState(initial)
   const [s, setS] = useState(initial)
-  const [saving, setSaving] = useState(false)
-  const dirty = JSON.stringify(s) !== JSON.stringify(saved)
   const set = (patch: Partial<MenusSetting>) => setS((prev) => ({ ...prev, ...patch }))
 
   const move = <T,>(list: readonly T[], from: number, to: number): T[] => {
@@ -78,24 +83,13 @@ export function MenusScreen({ initial }: { initial: MenusSetting }) {
 
   return (
     <div className="flex flex-col gap-3.5">
-      <SaveBar
-        dirty={dirty}
-        saving={saving}
-        onDiscard={() => setS(saved)}
-        onSave={async () => {
-          setSaving(true)
-          const res = await putJson<MenusSetting>('/api/admin/appearance/menus', s)
-          setSaving(false)
-          if (!res.ok)
-            return toast({
-              title: adminMessages.admin.errorSaving,
-              description: res.message,
-              tone: 'danger',
-            })
-          setSaved(res.data)
-          setS(res.data)
-          toast({ title: m.saved, tone: 'ok' })
-        }}
+      <AppearanceWorkflow
+        scope="menus"
+        endpoint="/api/admin/appearance/menus"
+        doc={s}
+        saved={initial}
+        onApply={setS}
+        {...workflow}
       />
 
       <Panel>

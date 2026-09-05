@@ -1,29 +1,27 @@
 import { adminMessages } from '@palscans/core/messages/admin'
-import { getDb, getSetting } from '@palscans/db'
 import { MenusScreen } from '@/components/admin/client/MenusScreen'
+import { workflowState } from '@/components/admin/server/appearance'
 import { PageHeader } from '@/components/admin/ui'
+import { loadScopeState } from '@/lib/appearance/versions'
 import { withPermission } from '@/lib/auth'
-import { menusFromChrome } from '@/lib/chrome/form'
-import { siteChromeFresh } from '@/lib/chrome/load'
-import { menusSettingSchema } from '@/lib/chrome/schema'
 
 /**
  * Appearance → Header, footer, menus (docs/15).
  *
- * The form is seeded from the *resolved* chrome rather than the raw row, so an operator whose
- * site has never been configured opens the screen on the links the site is actually showing
- * and edits from there — instead of an empty form that would wipe the footer on first save.
+ * The form opens on the **draft** when one is saved and on what is **live** otherwise —
+ * never on an empty form, which is what would wipe the footer on an unconfigured site's
+ * first save. `loadScopeState` reads uncached for the same reason it always did: this
+ * screen's job is showing what is stored, and `revalidateTag` leaves one stale render behind
+ * a publish.
  */
 export default async function MenusPage() {
   await withPermission('settings.write', { returnTo: '/admin/appearance/menus' })
-  const raw = await getSetting<Record<string, unknown>>(await getDb(), 'menus', {})
-  const stored = menusSettingSchema.safeParse(raw)
-  const initial = stored.success ? stored.data : menusFromChrome(await siteChromeFresh(), raw)
+  const state = await loadScopeState('menus')
   const m = adminMessages.menus
   return (
     <>
       <PageHeader title={m.title} subtitle={m.subtitle} />
-      <MenusScreen initial={initial} />
+      <MenusScreen initial={state.draft?.doc ?? state.live} workflow={workflowState(state)} />
     </>
   )
 }

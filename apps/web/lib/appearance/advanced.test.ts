@@ -275,15 +275,22 @@ describe('3 · the permission gate holds', () => {
   })
 
   it('lets no settings.write route take the block from a request body', () => {
-    // These three all write the appearance document and are all `settings.write`. Each must
-    // carry the stored block forward rather than trust what was posted, imported or reverted.
-    for (const rel of [
-      'app/api/admin/appearance/theme/route.ts',
-      'app/api/admin/appearance/theme/publish/route.ts',
-      'app/api/admin/appearance/theme/presets/route.ts',
-    ]) {
-      expect(read(rel), rel).toContain('carryAdvanced(')
-    }
+    // The theme routes were rewritten onto generic per-scope machinery, so the guarantee
+    // moved with them: `sanitize()` in `lib/appearance/versions.ts` is the one choke point
+    // every write passes through — saving a draft, publishing one, and reverting to an old
+    // version. The preset import still carries its own, since it never reaches that path.
+    const versions = read('lib/appearance/versions.ts')
+    expect(versions).toContain('carryAdvanced(')
+    // Both directions, named individually so a deleted call site fails rather than a count
+    // that a refactor could satisfy by accident: on the way into storage (saveDraft), and
+    // back out of it when a revert republishes a document written months ago.
+    expect(versions, 'saveDraft must sanitize').toMatch(
+      /const doc = await sanitize\(scope, input, database\)/,
+    )
+    expect(versions, 'publishScope must sanitize a reverted version').toMatch(
+      /const restored = await sanitize\(scope, parsed, database\)/,
+    )
+    expect(read('app/api/admin/appearance/theme/presets/route.ts')).toContain('carryAdvanced(')
   })
 
   it('carryAdvanced replaces whatever was posted', () => {

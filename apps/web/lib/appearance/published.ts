@@ -22,7 +22,7 @@ export interface PublishedAppearance {
   advanced: AdvancedDoc
 }
 
-const themeDefaultOf = (settings: unknown): ThemeDefault => {
+export const themeDefaultOf = (settings: unknown): ThemeDefault => {
   const v = (settings as { theme?: { default?: unknown } } | null)?.theme?.default
   return v === 'light' || v === 'system' ? v : 'dark'
 }

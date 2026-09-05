@@ -5,6 +5,7 @@ import { BottomNav } from '@/components/shell/BottomNav'
 import { CustomCode, CustomFooterCode } from '@/components/shell/CustomCode'
 import { Footer } from '@/components/shell/Footer'
 import { Header } from '@/components/shell/Header'
+import { PreviewBar } from '@/components/shell/PreviewBar'
 import { SiteCopyProvider } from '@/lib/copy/SiteCopyProvider'
 
 /**
@@ -33,6 +34,8 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
         <Footer />
         <BottomNav />
         <CustomFooterCode />
+        {/* Renders nothing at all unless this request is a staff draft preview (docs/15). */}
+        <PreviewBar />
       </ToastProvider>
     </SiteCopyProvider>
   )

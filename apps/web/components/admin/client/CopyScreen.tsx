@@ -21,12 +21,11 @@ import {
 } from '@palscans/core/formatting'
 import { fmt } from '@palscans/core/messages'
 import { adminMessages } from '@palscans/core/messages/admin'
-import { useToast } from '@palscans/ui'
 import { RotateCcw } from 'lucide-react'
 import { useId, useMemo, useState } from 'react'
 import { Field, Hint, inputClass, Panel, PanelHeader, Pill, textareaClass } from '../ui'
-import { putJson } from './api'
-import { SaveBar, Segmented } from './controls'
+import { AppearanceWorkflow, type AppearanceWorkflowState } from './AppearanceWorkflow'
+import { Segmented } from './controls'
 
 const m = adminMessages.copyScreen
 
@@ -48,6 +47,7 @@ export interface CopyScreenProps {
   /** Only the strings that differ from the catalogue; everything else opens empty. */
   initialCopy: Record<string, string>
   initialFormatting: FormattingSettings
+  workflow: AppearanceWorkflowState
 }
 
 type Draft = { copy: Record<string, string>; formatting: FormattingSettings }
@@ -73,18 +73,9 @@ const where = (id: string) => m.where[id as keyof typeof m.where] ?? ''
  * alternative — saving something the renderer will silently fall back from — is how an
  * operator ends up believing the panel is broken.
  */
-export function CopyScreen({ initialCopy, initialFormatting }: CopyScreenProps) {
-  const { toast } = useToast()
-  const [saved, setSaved] = useState<Draft>({
-    copy: initialCopy,
-    formatting: initialFormatting,
-  })
+export function CopyScreen({ initialCopy, initialFormatting, workflow }: CopyScreenProps) {
+  const saved: Draft = { copy: initialCopy, formatting: initialFormatting }
   const [draft, setDraft] = useState<Draft>({ copy: initialCopy, formatting: initialFormatting })
-  const [saving, setSaving] = useState(false)
-
-  const dirty =
-    JSON.stringify({ ...draft, copy: pruned(draft.copy) }) !==
-    JSON.stringify({ ...saved, copy: pruned(saved.copy) })
 
   const problems = useMemo(() => {
     const out: Record<string, string> = {}
@@ -108,37 +99,21 @@ export function CopyScreen({ initialCopy, initialFormatting }: CopyScreenProps) 
   const setText = (id: string, value: string) =>
     setDraft((d) => ({ ...d, copy: { ...d.copy, [id]: value } }))
 
-  const save = async () => {
-    setSaving(true)
-    const body = { copy: pruned(draft.copy), formatting: draft.formatting }
-    const res = await putJson<{ copy: Record<string, string>; formatting: FormattingSettings }>(
-      '/api/admin/appearance/copy',
-      body,
-    )
-    setSaving(false)
-    if (!res.ok) {
-      toast({
-        title: adminMessages.admin.errorSaving,
-        description: res.message,
-        tone: 'danger',
-      })
-      return
-    }
-    setSaved({ copy: res.data.copy, formatting: res.data.formatting })
-    setDraft({ copy: res.data.copy, formatting: res.data.formatting })
-    toast({ title: m.saved, tone: 'ok' })
-  }
-
   return (
     <div className="flex flex-col gap-3.5">
-      <SaveBar
-        dirty={dirty}
+      <AppearanceWorkflow
+        scope="copy"
+        endpoint="/api/admin/appearance/copy"
+        doc={{ copy: pruned(draft.copy), formatting: draft.formatting }}
+        saved={{ copy: pruned(saved.copy), formatting: saved.formatting }}
         canSave={Object.keys(problems).length === 0}
-        saving={saving}
-        onDiscard={() => setDraft(saved)}
-        onSave={() => void save()}
-        status={fmt(m.overriddenCount, { n: changedCount, total: COPY_ENTRIES.length })}
-      />
+        onApply={(d) => setDraft({ copy: { ...d.copy }, formatting: d.formatting })}
+        {...workflow}
+      >
+        <span className="text-[12px] text-fg-muted">
+          {fmt(m.overriddenCount, { n: changedCount, total: COPY_ENTRIES.length })}
+        </span>
+      </AppearanceWorkflow>
 
       <FormattingPanel
         value={draft.formatting}

@@ -103,7 +103,19 @@ export const advancedFormSchema = z.object({
   footer_html: z.string().max(SNIPPET_MAX_LENGTH),
 })
 export type AdvancedForm = z.infer<typeof advancedFormSchema>
-export const themePublishSchema = z.object({ versionId: z.number().int().positive().optional() })
+
+/**
+ * The body every `POST /api/admin/appearance/<scope>/publish` takes (docs/15 "History").
+ *
+ * `versionId` absent publishes the draft; present reverts to that version. `dropMissingAssets`
+ * is the operator's second click after a `409 missing_assets` — "restore it anyway, without
+ * the images that are no longer in storage". It defaults to absent so a restore that would
+ * put a broken mark on the site is never the accidental outcome of one click.
+ */
+export const appearancePublishSchema = z.object({
+  versionId: z.number().int().positive().optional(),
+  dropMissingAssets: z.boolean().optional(),
+})
 export const presetSchema = z.object({
   name: z.string().trim().min(1).max(60),
   settings: z.record(z.string(), z.unknown()),

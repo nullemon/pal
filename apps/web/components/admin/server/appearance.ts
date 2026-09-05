@@ -1,20 +1,27 @@
-import {
-  appearanceSettings,
-  getDb,
-  getSetting,
-  publishedAppearance,
-  themePresets,
-  users,
-} from '@palscans/db'
-import { desc, eq, inArray } from 'drizzle-orm'
+import { getDb, getSetting, publishedAppearance, themePresets } from '@palscans/db'
+import { desc } from 'drizzle-orm'
 import { readerAdsSchema, readerLayoutSchema } from '@/components/reader/server/settings'
-import {
-  type AdvancedDoc,
-  carryAdvanced,
-  EMPTY_ADVANCED,
-  parseAppearance,
-} from '@/lib/appearance/schema'
+import { type AdvancedDoc, EMPTY_ADVANCED, parseAppearance } from '@/lib/appearance/schema'
+import type { AppearanceScope } from '@/lib/appearance/scope'
+import { loadScopeState, type ScopeState } from '@/lib/appearance/versions'
+import type { AppearanceWorkflowState } from '../client/AppearanceWorkflow'
 import { BUILT_LAYOUTS, DIRECTIONS, type LayoutsSetting } from '../schemas-appearance'
+
+/**
+ * The scope state, minus the documents, in the shape the shared workflow control takes.
+ *
+ * Deliberately drops `live` and the draft/published documents: a screen seeds its form from
+ * one of them and the workflow needs none, and shipping every document twice is how an
+ * admin page's payload doubles without anyone noticing.
+ */
+export const workflowState = (state: ScopeState<AppearanceScope>): AppearanceWorkflowState => ({
+  hasDraft: state.draft !== null,
+  draftSavedAt: state.draft?.savedAt ?? null,
+  draftBy: state.draft?.by ?? null,
+  publishedAt: state.published?.publishedAt ?? null,
+  publishedBy: state.published?.by ?? null,
+  versions: state.versions,
+})
 
 export const loadLayoutsSetting = async (): Promise<LayoutsSetting> => {
   const db = await getDb()
@@ -37,62 +44,30 @@ export const loadLayoutsSetting = async (): Promise<LayoutsSetting> => {
 }
 
 /**
- * The Theme screen's payload. `themeDoc` strips the advanced block on the way out: the
- * screen is `settings.write`, the block is `appearance.advanced`, and there is no reason for
- * custom code to be in the props of a screen that cannot save it. It also means the client
- * cannot post it back by accident — belt as well as the braces in the route.
+ * Appearance → Theme: the same scope state every other Appearance screen loads
+ * (`lib/appearance/versions.ts`), plus the presets, which only this screen has.
  */
-const themeDoc = (settings: unknown) => carryAdvanced(parseAppearance(settings), EMPTY_ADVANCED)
-
 export const loadThemeScreen = async () => {
   const db = await getDb()
-  const rows = await db
-    .select({
-      id: appearanceSettings.id,
-      settings: appearanceSettings.settings,
-      status: appearanceSettings.status,
-      publishedAt: appearanceSettings.publishedAt,
-      createdAt: appearanceSettings.createdAt,
-      createdBy: users.username,
-    })
-    .from(appearanceSettings)
-    .leftJoin(users, eq(users.id, appearanceSettings.createdBy))
-    .where(inArray(appearanceSettings.status, ['draft', 'published', 'archived']))
-    .orderBy(desc(appearanceSettings.id))
-    .limit(30)
-  const published = rows.find((r) => r.status === 'published') ?? null
-  const draft = rows.find((r) => r.status === 'draft') ?? null
-  const presets = await db
-    .select({
-      id: themePresets.id,
-      name: themePresets.name,
-      settings: themePresets.settings,
-      isBuiltin: themePresets.isBuiltin,
-    })
-    .from(themePresets)
-    .orderBy(desc(themePresets.isBuiltin), themePresets.name)
+  const [state, presets] = await Promise.all([
+    loadScopeState('theme', db),
+    db
+      .select({
+        id: themePresets.id,
+        name: themePresets.name,
+        settings: themePresets.settings,
+        isBuiltin: themePresets.isBuiltin,
+      })
+      .from(themePresets)
+      .orderBy(desc(themePresets.isBuiltin), themePresets.name),
+  ])
   return {
-    draft: draft ? { id: draft.id, doc: themeDoc(draft.settings) } : null,
-    published: published
-      ? {
-          id: published.id,
-          doc: themeDoc(published.settings),
-          publishedAt: published.publishedAt?.toISOString() ?? null,
-          by: published.createdBy,
-        }
-      : null,
-    versions: rows.map((r) => ({
-      id: r.id,
-      status: r.status,
-      createdAt: r.createdAt.toISOString(),
-      publishedAt: r.publishedAt?.toISOString() ?? null,
-      by: r.createdBy,
-    })),
+    ...state,
     presets: presets.map((p) => ({
       id: p.id,
       name: p.name,
       isBuiltin: p.isBuiltin,
-      doc: themeDoc(p.settings),
+      doc: parseAppearance(p.settings),
     })),
   }
 }

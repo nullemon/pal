@@ -1,4 +1,5 @@
-import { getDb, getSetting, settings } from '@palscans/db'
+import { appearanceSettings, getDb, getSetting } from '@palscans/db'
+import { eq } from 'drizzle-orm'
 import sharp from 'sharp'
 import {
   brandAssetConfirmSchema,
@@ -6,9 +7,10 @@ import {
   brandAssetSlotSchema,
 } from '@/components/admin/schemas-appearance'
 import { audit } from '@/components/admin/server/audit'
-import { purgeSettings } from '@/components/admin/server/cache'
+import { type BrandDocument, scopeAdapter } from '@/lib/appearance/documents'
+import { draftDocument, saveDraft } from '@/lib/appearance/versions'
 import { fail, ok, parseJson, withPermission } from '@/lib/auth'
-import { brandSettingSchema } from '@/lib/chrome/schema'
+import { BRAND_SLOTS, brandSettingSchema } from '@/lib/chrome/schema'
 import { getStorage, presignUpload, storageUrl } from '@/lib/storage'
 
 /**
@@ -33,6 +35,11 @@ import { getStorage, presignUpload, storageUrl } from '@/lib/storage'
  *   look safe.
  * - **The cap is 2 MB.** A site logo that is bigger than that is a mistake, and the whole
  *   object is read into memory here to validate it.
+ * - **The setting it writes is the draft, not the live row.** Confirming an upload used to
+ *   change the header immediately, which made "a draft you can edit without affecting the
+ *   live site" untrue for the most visible field on the screen. The object still lands in
+ *   storage at once — there is nowhere else for bytes to go — but nothing points at it until
+ *   Brand is published.
  */
 
 export const MAX_BRAND_BYTES = 2 * 1024 * 1024
@@ -121,25 +128,16 @@ export const PATCH = withPermission('settings.write', async (request, _ctx, user
     cacheControl: 'public, max-age=31536000, immutable',
   })
 
-  const db = await getDb()
-  const before = brandSettingSchema.parse((await getSetting<unknown>(db, 'brand', {})) ?? {})
+  const before = await brandDraftBase()
   const asset = { key: publicKey, width, height, type: contentType }
-  const value = { ...before, [slot]: asset }
-  const now = new Date()
-  await db
-    .insert(settings)
-    .values({ key: 'brand', value, updatedBy: user.id, updatedAt: now })
-    .onConflictDoUpdate({
-      target: settings.key,
-      set: { value, updatedBy: user.id, updatedAt: now },
-    })
+  const id = await saveDraft('brand', { ...before, [slot]: asset }, user.id)
   // The original has served its purpose; leaving it would keep an unvalidated file around.
   await storage.delete(key).catch(() => undefined)
-  purgeSettings()
   await audit({
     actorId: user.id,
-    action: 'settings.brand_asset',
-    targetType: 'settings',
+    action: 'settings.brand.draft_asset',
+    targetType: 'appearance',
+    targetId: id,
     before: { [slot]: before[slot] },
     after: { [slot]: asset },
     request,
@@ -147,35 +145,67 @@ export const PATCH = withPermission('settings.write', async (request, _ctx, user
   return ok({ slot, asset: { ...asset, url: storageUrl(publicKey) } })
 })
 
-/** DELETE — clear one slot and go back to the built-in mark. The object itself is removed. */
+/**
+ * DELETE — unlink one slot in the draft and go back to the built-in mark.
+ *
+ * **The object is only removed when no stored version still points at it.** Before Appearance
+ * had history, deleting the setting and deleting the file were the same act and it cost
+ * nothing; now every brand version records a key, and unlinking a mark from the live site is
+ * not a reason to make five months of history unrestorable — a restore would come back with a
+ * hole where the logo was. So the check below is the pair of `missingBrandAssets`: one keeps
+ * a referenced object alive, the other refuses to publish a document whose object went away
+ * anyway (bucket lifecycle rules, a restore from an older backup).
+ *
+ * An unreferenced object is still deleted immediately, which is what an operator who uploaded
+ * the wrong image expects — including the case that matters, uploading something they should
+ * not have and taking it straight back out.
+ */
 export const DELETE = withPermission('settings.write', async (request, _ctx, user) => {
   const parsed = await parseJson(request, brandAssetSlotSchema)
   if (!parsed.ok) return parsed.response
   const { slot } = parsed.data
-  const db = await getDb()
-  const before = brandSettingSchema.parse((await getSetting<unknown>(db, 'brand', {})) ?? {})
+  const before = await brandDraftBase()
   const gone = before[slot]
-  const value = { ...before, [slot]: null }
-  const now = new Date()
-  await db
-    .insert(settings)
-    .values({ key: 'brand', value, updatedBy: user.id, updatedAt: now })
-    .onConflictDoUpdate({
-      target: settings.key,
-      set: { value, updatedBy: user.id, updatedAt: now },
-    })
+  const id = await saveDraft('brand', { ...before, [slot]: null }, user.id)
+  let kept = false
   if (gone) {
-    const storage = await getStorage()
-    await storage.delete(gone.key).catch(() => undefined)
+    kept = await keyIsReferenced(gone.key, id)
+    if (!kept) {
+      const storage = await getStorage()
+      await storage.delete(gone.key).catch(() => undefined)
+    }
   }
-  purgeSettings()
   await audit({
     actorId: user.id,
-    action: 'settings.brand_asset',
-    targetType: 'settings',
+    action: 'settings.brand.draft_asset',
+    targetType: 'appearance',
+    targetId: id,
     before: { [slot]: gone },
-    after: { [slot]: null },
+    after: { [slot]: null, object_kept: kept },
     request,
   })
   return ok({ slot, asset: null })
 })
+
+/**
+ * The document an upload edits: the draft when there is one, otherwise a copy of what is
+ * live. Uploading is the one Brand action that used to bypass the form's Save entirely, and
+ * it now folds into the same draft — otherwise "edit a draft without affecting the live site"
+ * would be false for the field operators change most visibly.
+ */
+const brandDraftBase = async (): Promise<BrandDocument> => {
+  const db = await getDb()
+  return (await draftDocument('brand', db)) ?? (await scopeAdapter('brand').live(db))
+}
+
+/** Is this object still named by the live row, or by any stored brand version but `exceptId`? */
+const keyIsReferenced = async (key: string, exceptId: number): Promise<boolean> => {
+  const db = await getDb()
+  const live = brandSettingSchema.parse((await getSetting<unknown>(db, 'brand', {})) ?? {})
+  if (BRAND_SLOTS.some((s) => live[s]?.key === key)) return true
+  const rows = await db
+    .select({ id: appearanceSettings.id, settings: appearanceSettings.settings })
+    .from(appearanceSettings)
+    .where(eq(appearanceSettings.scope, 'brand'))
+  return rows.some((row) => row.id !== exceptId && JSON.stringify(row.settings).includes(key))
+}

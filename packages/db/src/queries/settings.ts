@@ -74,12 +74,18 @@ export const getSeoSetting = async <T>(db: Db, key: string, fallback: T): Promis
   return row ? (row.value as T) : fallback
 }
 
-/** The published appearance document and its resolved CSS token block (docs/15). */
+/**
+ * The published theme document and its resolved CSS token block (docs/15).
+ *
+ * Scoped to `theme` since 9033: the table now carries one published row per Appearance
+ * screen, and `<head>` wants that one. Without the predicate this would return whichever of
+ * the four published rows the planner reached first.
+ */
 export const publishedAppearance = async (db: Db) => {
   const [row] = await db
     .select()
     .from(appearanceSettings)
-    .where(eq(appearanceSettings.status, 'published'))
+    .where(and(eq(appearanceSettings.status, 'published'), eq(appearanceSettings.scope, 'theme')))
     .limit(1)
   return row ?? null
 }

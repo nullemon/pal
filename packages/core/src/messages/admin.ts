@@ -2468,6 +2468,8 @@ export const adminMessages = {
       'Rendered from the mark above. With nothing chosen the shipped icons are used, unchanged.',
     iconsDefault:
       'Using the built-in icons. Pick a logo or upload a monogram to generate your own.',
+    iconsDraftNote:
+      'These are the published icons. Favicons and app icons are generated from what is live, so they follow this draft only once you publish it — and a draft preview on the site shows the published ones too.',
     dropImage: 'Drop an image, or choose one',
     replace: 'Replace',
     uploading: 'Uploading...',
@@ -2629,5 +2631,57 @@ export const adminMessages = {
       document_write:
         'Line {line}: document.write() after the page has loaded replaces the whole document. Most vendors ship a version that does not use it.',
     },
+  },
+
+  /**
+
+  /**
+   * The draft → preview → publish → history workflow shared by every Appearance screen
+   * (docs/15 "Presets, preview, history"). One vocabulary on purpose: an operator learns
+   * "Save draft", "Publish", "Preview on site" and "Version history" once, on Theme, and
+   * finds the same four words on Brand, Menus and Copy.
+   */
+  appearanceVersions: {
+    saveDraft: 'Save draft',
+    saving: 'Saving…',
+    publish: 'Publish',
+    publishing: 'Publishing…',
+    discardDraft: 'Discard draft',
+    draftSaved: 'Draft saved. The site still shows what is published.',
+    draftDiscarded: 'Draft discarded',
+    publishedToast: 'Published. The site is showing it now.',
+    revertedToast: 'Restored version {id}. The site is showing it now.',
+    lastPublished: 'Published {time} by {name}',
+    neverPublished: 'Never published from this screen',
+    draftBadge: 'Draft · not published',
+    draftBadgeHint: 'Saved {time} by {name}',
+    liveBadge: 'Published',
+    unsavedBadge: 'Unsaved changes',
+    previewOnSite: 'Preview on site',
+    previewHint: 'Opens the site with this draft, for staff only.',
+    versionHistory: 'Version history',
+    history: 'Version history',
+    historyEmpty: 'Nothing has been published from this screen yet.',
+    version: 'v{id}',
+    status: { draft: 'Draft', published: 'Published', archived: 'Archived' },
+    whatChanged: 'What changed',
+    hideChanges: 'Hide',
+    loadingChanges: 'Loading…',
+    noChanges: 'Nothing changed in this version.',
+    firstVersion: 'The first version — every field starts here.',
+    colField: 'Field',
+    colBefore: 'Before',
+    colAfter: 'After',
+    restore: 'Restore',
+    restoreThis: 'Restore this version',
+    restoreBody:
+      'The site changes immediately. The version you are replacing stays in this list, so this is reversible.',
+    missingAssetsTitle: 'Some images from that version are gone',
+    missingAssetsBody:
+      'These uploads are no longer in storage, so restoring as-is would leave the site with a broken mark: {slots}. Restore the rest and leave them empty?',
+    restoreWithout: 'Restore without them',
+    scopes: { theme: 'Theme', brand: 'Brand', menus: 'Menus', copy: 'Copy' },
+    previewBanner: 'Draft preview',
+    exitPreview: 'Exit',
   },
 } as const

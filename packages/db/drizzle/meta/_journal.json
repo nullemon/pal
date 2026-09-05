@@ -176,6 +176,13 @@
       "when": 1788380024000,
       "tag": "9030_watermark_reapply",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1788380030000,
+      "tag": "9033_appearance_scopes",
+      "breakpoints": true
     }
   ]
 }

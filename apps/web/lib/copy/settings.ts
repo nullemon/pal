@@ -90,8 +90,30 @@ const cachedSiteCopy = unstable_cache(
   { revalidate: 60, tags: ['settings'] },
 )
 
-/** The copy and formatting for this request. Never throws, never blocks a render. */
+/**
+ * The copy and formatting for this request. Never throws, never blocks a render.
+ *
+ * A staff preview (docs/15) swaps the draft in for one viewer. The check is free for
+ * everyone else and for every prerender — see `lib/appearance/preview.ts` for why reading
+ * Next's draft-mode flag does not make a route dynamic — so the cached read below is still
+ * what serves every reader.
+ */
 export const siteCopySettings = cache(async (): Promise<SiteCopySettings> => {
+  try {
+    const { previewScopes } = await import('@/lib/appearance/preview')
+    if ((await previewScopes()).includes('copy')) {
+      const { draftDocument } = await import('@/lib/appearance/versions')
+      const draft = await draftDocument('copy')
+      if (draft)
+        return {
+          copy: resolveCopy(draft.copy),
+          overrides: draft.copy,
+          formatting: draft.formatting,
+        }
+    }
+  } catch {
+    // A preview that cannot be resolved is not a preview; fall through to what is published.
+  }
   try {
     return await cachedSiteCopy()
   } catch {

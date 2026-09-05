@@ -160,23 +160,63 @@ Three things about how it is built are load-bearing:
 - **Presets**: save the current appearance as a named preset; ship with the six mockup
   directions' palettes and pairings as starting presets; export / import as JSON.
 - **Preview**: every change is a draft until published. Staff see the draft on the live
-  site with `?preview=appearance`; nobody else does.
+  site; nobody else does.
 - **History**: each publish is a version with a diff; revert restores it in one click and
   purges the cache. All of it lands in `audit_log`.
+
+### How it is built
+
+Four screens have this workflow — Theme, Brand, Menus and Copy — and they share one
+implementation over one table. `appearance_settings.scope` names the screen; the partial
+unique indexes give each scope **one draft row and one published row**. The generic half is
+`apps/web/lib/appearance/versions.ts`; what each screen's document *is*, and what publishing
+it writes, is `apps/web/lib/appearance/documents.ts`.
+
+**They publish separately.** Brand and Menus render into the same header, but each screen has
+its own Save control, its own operator and its own audit trail; a single publish button would
+mean shipping a colleague's half-finished footer the moment you renamed the site. A *preview*
+can carry several scopes at once, and the banner names the ones it is showing.
+
+**Only the theme's published row is what the site reads.** Brand, Menus and Copy still render
+from `settings.site` / `settings.brand` / `settings.menus` / `settings.copy` / `settings.formatting`,
+because other screens own parts of those rows (System → Settings owns the rest of
+`settings.site`). Publishing writes them, exactly as the old Save did. `appearance_settings`
+holds the draft and the changelog beside them — which is also why a site with no version rows
+renders precisely as it did before any of this existed.
+
+**Preview is Next's Draft Mode, not a query parameter.** `GET /api/admin/appearance/preview?scope=…`
+is behind `settings.write`; it calls `draftMode().enable()` and sets a cookie naming the
+scopes. A query parameter would have to be read by the layout, which would make every route
+dynamic for everyone; draft mode is the one request-scoped input the framework keeps off the
+static path — `draftMode()` resolves to "off" during a prerender without marking the render
+dynamic, and the `__prerender_bypass` cookie is what makes *that browser's* requests render on
+demand. The bypass cookie is a cache instruction and not a credential, so the render path
+re-checks `settings.write` on the session every time (`apps/web/lib/appearance/preview.ts`).
+
+**Restoring a brand version checks its uploads.** A version records object keys. Publishing or
+restoring one whose logo has left storage is refused with the list of slots rather than
+putting a broken mark on the site; the operator can then restore it without those images. Two
+rules keep that case rare: an upload is content-addressed so replacing a logo never overwrites
+one, and clearing a slot only deletes the object when no stored version still points at it.
+Favicons and PWA icons are the documented gap — they are generated from what is *published*,
+so a draft preview shows the published ones.
 
 ## Data model
 
 ```sql
 CREATE TABLE appearance_settings (
   id           bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  settings     jsonb NOT NULL,                  -- the full document
-  resolved_css text  NOT NULL,                  -- the derived token block, cached
+  scope        text  NOT NULL DEFAULT 'theme',  -- theme | brand | menus | copy
+  settings     jsonb NOT NULL,                  -- the document for that scope
+  resolved_css text  NOT NULL,                  -- the derived token block, cached (theme only)
   status       text  NOT NULL DEFAULT 'draft',  -- draft | published | archived
   published_at timestamptz,
   created_by   bigint REFERENCES users(id),
   created_at   timestamptz NOT NULL DEFAULT now()
 );
-CREATE UNIQUE INDEX ON appearance_settings ((status)) WHERE status = 'published';
+-- One published row and one draft row per screen (migration 9033).
+CREATE UNIQUE INDEX ON appearance_settings (scope) WHERE status = 'published';
+CREATE UNIQUE INDEX ON appearance_settings (scope) WHERE status = 'draft';
 
 CREATE TABLE theme_presets (
   id         bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

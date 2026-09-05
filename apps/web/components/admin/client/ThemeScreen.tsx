@@ -1,19 +1,9 @@
 'use client'
 
-import { fmt, messages } from '@palscans/core/messages'
+import { messages } from '@palscans/core/messages'
 import { adminMessages } from '@palscans/core/messages/admin'
 import { Button, cn, useToast } from '@palscans/ui'
-import {
-  Bookmark,
-  Check,
-  ExternalLink,
-  History,
-  Pipette,
-  Star,
-  ThumbsUp,
-  TriangleAlert,
-  Zap,
-} from 'lucide-react'
+import { Bookmark, Check, Pipette, Star, ThumbsUp, TriangleAlert, Zap } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { resolveAppearance } from '@/lib/appearance/resolve'
 import {
@@ -24,9 +14,9 @@ import {
   parseAppearance,
 } from '@/lib/appearance/schema'
 import { inputClass, Panel, selectClass } from '../ui'
-import { postJson, putJson } from './api'
-import { Modal, Segmented, Toggle, TopBarActions } from './controls'
-import { relativeTime } from './util'
+import { AppearanceWorkflow, type AppearanceWorkflowState } from './AppearanceWorkflow'
+import { postJson } from './api'
+import { Modal, Segmented, Toggle } from './controls'
 
 const m = adminMessages.admin.theme
 
@@ -124,87 +114,35 @@ function HexInput({
   )
 }
 
-/** Appearance → Theme, per design/mockups/admin/AdminTheme.dc.html: the token resolver runs live. */
+/**
+ * Appearance → Theme, per design/mockups/admin/AdminTheme.dc.html: the token resolver runs
+ * live.
+ *
+ * The draft/publish/history controls moved into `AppearanceWorkflow`, which Brand, Menus and
+ * Copy now share — one vocabulary, one implementation, and this screen gains the version
+ * diff it never had.
+ */
 export function ThemeScreen({
   initial,
-  hasDraft,
-  published,
-  versions,
+  workflow,
   presets: initialPresets,
 }: {
   initial: AppearanceDoc
-  hasDraft: boolean
-  published: { id: number; publishedAt: string | null; by: string | null } | null
-  versions: Array<{
-    id: number
-    status: string
-    createdAt: string
-    publishedAt: string | null
-    by: string | null
-  }>
+  workflow: AppearanceWorkflowState
   presets: Array<{ id: number; name: string; isBuiltin: boolean; doc: AppearanceDoc }>
 }) {
   const { toast } = useToast()
-  const [saved, setSaved] = useState(initial)
   const [doc, setDoc] = useState(initial)
-  const [draft, setDraft] = useState(hasDraft)
-  const [busy, setBusy] = useState(false)
   const [presets, setPresets] = useState(initialPresets)
-  const [modal, setModal] = useState<'history' | 'preset' | null>(null)
+  const [modal, setModal] = useState<'preset' | null>(null)
   const [presetName, setPresetName] = useState('')
   const [previewTheme, setPreviewTheme] = useState<'dark' | 'light'>('dark')
   const resolved = useMemo(() => resolveAppearance(doc), [doc])
-  const dirty = JSON.stringify(doc) !== JSON.stringify(saved)
-  const now = new Date()
 
   const set = (patch: (d: AppearanceDoc) => AppearanceDoc) =>
     setDoc((d) => parseAppearance(patch(structuredClone(d))))
   const color = (k: 'accent' | 'secondary', v: string) =>
     set((d) => ({ ...d, color: { ...d.color, [k]: v } }))
-
-  const saveDraft = async () => {
-    setBusy(true)
-    const res = await putJson<{ id: number }>('/api/admin/appearance/theme', { settings: doc })
-    setBusy(false)
-    if (!res.ok)
-      return toast({
-        title: adminMessages.admin.errorSaving,
-        description: res.message,
-        tone: 'danger',
-      })
-    setSaved(doc)
-    setDraft(true)
-    toast({ title: m.draftSaved, tone: 'ok' })
-  }
-  const publish = async (versionId?: number) => {
-    setBusy(true)
-    if (!versionId && dirty) {
-      const res = await putJson<{ id: number }>('/api/admin/appearance/theme', { settings: doc })
-      if (!res.ok) {
-        setBusy(false)
-        return toast({
-          title: adminMessages.admin.errorSaving,
-          description: res.message,
-          tone: 'danger',
-        })
-      }
-      setSaved(doc)
-    }
-    const res = await postJson<{ id: number }>(
-      '/api/admin/appearance/theme/publish',
-      versionId ? { versionId } : {},
-    )
-    setBusy(false)
-    if (!res.ok)
-      return toast({
-        title: adminMessages.admin.errorSaving,
-        description: res.message,
-        tone: 'danger',
-      })
-    setDraft(false)
-    toast({ title: versionId ? fmt(m.reverted, { id: versionId }) : m.publishedToast, tone: 'ok' })
-    if (versionId) window.location.reload()
-  }
 
   const tokens = previewTheme === 'dark' ? resolved.dark : resolved.light
   const previewStyle = Object.fromEntries(Object.entries(tokens)) as React.CSSProperties
@@ -220,45 +158,16 @@ export function ThemeScreen({
 
   return (
     <>
-      <TopBarActions>
-        <div className="mr-1 hidden text-[13px] text-fg-muted lg:block">
-          {published?.publishedAt
-            ? fmt(m.lastPublished, {
-                time: relativeTime(new Date(published.publishedAt), now),
-                name: published.by ?? adminMessages.admin.audit.system,
-              })
-            : m.neverPublished}
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-9"
-          disabled={!dirty || busy}
-          onClick={() => setDoc(saved)}
-        >
-          {adminMessages.admin.discard}
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-9"
-          disabled={!dirty || busy}
-          onClick={saveDraft}
-        >
-          {m.saveDraft}
-        </Button>
-        <Button
-          size="sm"
-          className="h-9 font-semibold"
-          disabled={busy || (!dirty && !draft)}
-          onClick={() => publish()}
-        >
-          <Check size={14} aria-hidden="true" />
-          {adminMessages.admin.saveChanges}
-        </Button>
-      </TopBarActions>
+      <AppearanceWorkflow
+        scope="theme"
+        endpoint="/api/admin/appearance/theme"
+        doc={doc}
+        saved={initial}
+        onApply={setDoc}
+        {...workflow}
+      />
 
-      <div className="flex flex-col items-start gap-6 xl:flex-row">
+      <div className="mt-3 flex flex-col items-start gap-6 xl:flex-row">
         <div className="flex min-w-0 flex-1 flex-col gap-3">
           {/* 1. accent */}
           <Section title={m.accent} hint={m.accentHint}>
@@ -939,38 +848,8 @@ export function ThemeScreen({
               </div>
             </div>
           </div>
-          <div className="mt-3 flex items-center">
-            {draft || dirty ? (
-              <span className="inline-flex h-6 items-center gap-1.5 rounded-full bg-warn/15 px-2.5 text-[12px] font-semibold text-warn">
-                <span className="size-1.5 rounded-full bg-warn" />
-                {adminMessages.admin.draftNotPublished}
-              </span>
-            ) : (
-              <span className="inline-flex h-6 items-center gap-1.5 rounded-full bg-ok/15 px-2.5 text-[12px] font-semibold text-ok">
-                <span className="size-1.5 rounded-full bg-ok" />
-                {adminMessages.admin.published}
-              </span>
-            )}
-          </div>
-          <div className="mt-2 grid grid-cols-2 gap-2">
-            <a
-              href="/?preview=appearance"
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-line text-[13px] font-semibold hover:bg-surface-2"
-            >
-              <ExternalLink size={13} aria-hidden="true" />
-              {adminMessages.admin.previewOnSite}
-            </a>
-            <button
-              type="button"
-              onClick={() => setModal('history')}
-              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-line text-[13px] font-semibold hover:bg-surface-2"
-            >
-              <History size={13} aria-hidden="true" />
-              {adminMessages.admin.versionHistory}
-            </button>
-          </div>
+          {/* The draft badge, the preview link and the version log are the shared workflow's
+              (rendered above the panels); the presets below belong to this screen alone. */}
           <div className="mt-3 border-t border-line pt-3">
             <div className="mb-1.5 flex items-center justify-between text-[12px] font-medium text-fg-muted">
               {m.presetsPanel}
@@ -1002,43 +881,6 @@ export function ThemeScreen({
         </aside>
       </div>
 
-      <Modal open={modal === 'history'} title={m.history} onClose={() => setModal(null)}>
-        <ul className="flex max-h-80 flex-col gap-1 overflow-y-auto text-[13px]">
-          {versions.map((v) => (
-            <li
-              key={v.id}
-              className="flex items-center gap-2 rounded-md border border-line bg-bg px-3 py-1.5"
-            >
-              <span className="font-semibold tabular-nums">{fmt(m.version, { id: v.id })}</span>
-              <span
-                className={cn(
-                  'rounded-full px-1.5 text-[10px] font-bold uppercase',
-                  v.status === 'published'
-                    ? 'bg-ok/15 text-ok'
-                    : v.status === 'draft'
-                      ? 'bg-warn/15 text-warn'
-                      : 'bg-surface-3 text-fg-muted',
-                )}
-              >
-                {m.status[v.status as keyof typeof m.status] ?? v.status}
-              </span>
-              <span className="text-fg-muted">
-                <time dateTime={v.createdAt}>{relativeTime(new Date(v.createdAt), now)}</time> ·{' '}
-                {v.by ?? adminMessages.admin.audit.system}
-              </span>
-              {v.status !== 'published' ? (
-                <button
-                  type="button"
-                  className="ml-auto text-[12px] font-semibold text-brand-hover hover:underline"
-                  onClick={() => publish(v.id)}
-                >
-                  {adminMessages.admin.revert}
-                </button>
-              ) : null}
-            </li>
-          ))}
-        </ul>
-      </Modal>
       <Modal
         open={modal === 'preset'}
         title={m.savePreset}

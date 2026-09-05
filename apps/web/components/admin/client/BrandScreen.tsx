@@ -10,8 +10,8 @@ import type { LogoPreset } from '@/lib/chrome/presets'
 import { splitWordmark } from '@/lib/site'
 import { BRAND_SLOTS, type BrandForm, type BrandSlot } from '../schemas-appearance'
 import { Field, Hint, inputClass, Panel, PanelHeader, selectClass } from '../ui'
-import { api, patchJson, postJson, putJson } from './api'
-import { SaveBar } from './controls'
+import { AppearanceWorkflow, type AppearanceWorkflowState } from './AppearanceWorkflow'
+import { api, patchJson, postJson } from './api'
 import { sha256Hex, uploadWithRetry } from './upload-lib'
 
 export interface BrandAssetView {
@@ -95,19 +95,30 @@ export interface PresetView extends LogoPreset {
   svg: string
 }
 
+/** The stored shape of an upload: the view carries a URL the document does not. */
+const assetSetting = (view: BrandAssetView | null | undefined) =>
+  view ? { key: view.key, width: view.width, height: view.height, type: view.type } : null
+
 /**
  * Appearance → Brand (docs/15).
  *
- * The text fields and the logo choice save together through the SaveBar; an upload is its own
- * transaction and lands the moment it is confirmed. That split is deliberate — an operator who
- * drops a logo in and navigates away should still have the logo, and a half-finished rename
- * should not take an upload with it.
+ * Everything on this screen — the text fields, the logo choice **and the uploads** — is one
+ * draft, and Publish is what the site sees. The uploads used to be their own transaction that
+ * went live the instant they were confirmed, which made "a draft you can edit without
+ * affecting the live site" untrue for the most visible field on the screen; they now land in
+ * the same draft. The bytes still reach storage immediately (there is nowhere else for them
+ * to go) and nothing points at them until Publish.
+ *
+ * An upload is still saved the moment it is confirmed rather than on Save — an operator who
+ * drops a logo in and navigates away should still have the logo — so `assets` below is
+ * always what the *stored draft* holds, and the dirty state is driven by the form fields.
  */
 export function BrandScreen({
   initial,
   presets,
   assets: initialAssets,
   icons,
+  workflow,
 }: {
   initial: BrandForm
   presets: readonly PresetView[]
@@ -117,43 +128,29 @@ export function BrandScreen({
     sizes: Array<{ asset: IconAsset; href: string }>
     social: string
   } | null
+  workflow: AppearanceWorkflowState
 }) {
   const m = adminMessages.brand
   const router = useRouter()
-  const { toast } = useToast()
-  const [saved, setSaved] = useState(initial)
   const [s, setS] = useState(initial)
-  const [saving, setSaving] = useState(false)
   const [assets, setAssets] = useState<Assets>(initialAssets)
-  const dirty = JSON.stringify(s) !== JSON.stringify(saved)
+  /** An upload writes the draft server-side, so one may exist that the page load did not see. */
+  const [uploadedDraft, setUploadedDraft] = useState(false)
   const [lead, rest] = splitWordmark(s.name)
   const logo = assets.logo_dark ?? assets.logo_light ?? null
   const chosen = presets.find((p) => p.id === s.logo_preset) ?? null
+  const slots = Object.fromEntries(BRAND_SLOTS.map((k) => [k, assetSetting(assets[k])]))
 
   return (
     <div className="flex flex-col gap-3.5">
-      <SaveBar
-        dirty={dirty}
-        saving={saving}
-        onDiscard={() => setS(saved)}
-        onSave={async () => {
-          setSaving(true)
-          const res = await putJson<BrandForm>('/api/admin/appearance/brand', s)
-          setSaving(false)
-          if (!res.ok)
-            return toast({
-              title: adminMessages.admin.errorSaving,
-              description: res.message,
-              tone: 'danger',
-            })
-          setSaved(res.data)
-          setS(res.data)
-          // The generated icons are server-rendered and their URLs carry a version derived
-          // from the mark and the background: without this the previews below would still be
-          // the ones from before the save.
-          router.refresh()
-          toast({ title: m.saved, tone: 'ok' })
-        }}
+      <AppearanceWorkflow
+        scope="brand"
+        endpoint="/api/admin/appearance/brand"
+        doc={{ ...s, ...slots }}
+        saved={{ ...initial, ...slots }}
+        onApply={setS}
+        {...workflow}
+        hasDraft={workflow.hasDraft || uploadedDraft}
       />
 
       <div className="grid gap-3.5 lg:grid-cols-2">
@@ -291,7 +288,13 @@ export function BrandScreen({
               key={slot}
               slot={slot}
               asset={assets[slot] ?? null}
-              onChange={(next) => setAssets((a) => ({ ...a, [slot]: next }))}
+              onChange={(next) => {
+                setAssets((a) => ({ ...a, [slot]: next }))
+                setUploadedDraft(true)
+                // The generated icon previews are server-rendered; without this they would
+                // still be the ones from before the upload.
+                router.refresh()
+              }}
             />
           ))}
         </div>
@@ -346,6 +349,7 @@ export function BrandScreen({
           ) : (
             <Hint>{m.iconsDefault}</Hint>
           )}
+          {workflow.hasDraft || uploadedDraft ? <Hint>{m.iconsDraftNote}</Hint> : null}
         </div>
       </Panel>
     </div>
