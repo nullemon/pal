@@ -59,6 +59,14 @@ export const adminNav: readonly AdminNavGroup[] = [
     label: m.content,
     items: [
       { label: m.series, href: '/admin/series', icon: 'library', permission: 'series.read' },
+      // Duplicate detection (docs/09 legacy import): pairs that look like one work under two
+      // rows. Listing is `series.read`; the merge behind it is `series.delete`.
+      {
+        label: messages.duplicates.navLabel,
+        href: '/admin/series/duplicates',
+        icon: 'search',
+        permission: 'series.read',
+      },
       {
         label: m.chapters,
         href: '/admin/chapters',
@@ -97,6 +105,14 @@ export const adminNav: readonly AdminNavGroup[] = [
         permission: 'comment.moderate',
       },
       { label: m.reports, href: '/admin/reports', icon: 'flag', permission: 'report.handle' },
+      // Queue health (docs/04 Community, docs/07 SLA): the three queues' age, throughput and
+      // who is working them. Same gate as the queues themselves — see app/admin/moderation.
+      {
+        label: messages.queueHealth.navLabel,
+        href: '/admin/moderation',
+        icon: 'gauge',
+        permission: 'report.handle',
+      },
       // DMCA ledger (docs/07 "Content compliance"): the notices from /dmca and their outcome.
       {
         label: messages.takedowns.navLabel,
@@ -210,18 +226,31 @@ export const adminNav: readonly AdminNavGroup[] = [
   },
 ]
 
-export const isNavActive = (pathname: string, item: AdminNavItem): boolean =>
+const covers = (pathname: string, item: AdminNavItem): boolean =>
   item.exact
     ? pathname === item.href
     : pathname === item.href || pathname.startsWith(`${item.href}/`)
 
-/** Breadcrumb for the top bar: group label › item label, from the pathname. */
-export const breadcrumbFor = (pathname: string): { group: string; page: string } => {
+/**
+ * The nav entry a path belongs to: the longest one that covers it. Nested screens exist
+ * (`/admin/series/duplicates` sits under `/admin/series`), and without the longest-match
+ * rule a prefix item would light up alongside the one the reader is actually on.
+ */
+const bestFor = (pathname: string): { group: string; item: AdminNavItem } | null => {
   let best: { group: string; item: AdminNavItem } | null = null
   for (const g of adminNav)
     for (const item of g.items)
-      if (isNavActive(pathname, item) && (!best || item.href.length > best.item.href.length))
+      if (covers(pathname, item) && (!best || item.href.length > best.item.href.length))
         best = { group: g.label, item }
+  return best
+}
+
+export const isNavActive = (pathname: string, item: AdminNavItem): boolean =>
+  covers(pathname, item) && bestFor(pathname)?.item.href === item.href
+
+/** Breadcrumb for the top bar: group label › item label, from the pathname. */
+export const breadcrumbFor = (pathname: string): { group: string; page: string } => {
+  const best = bestFor(pathname)
   if (!best) return { group: m.dashboard, page: m.overview }
   return { group: best.group, page: best.item.label }
 }

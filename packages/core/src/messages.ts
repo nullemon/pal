@@ -3332,6 +3332,245 @@ export const messages = {
     surpriseMe: 'Surprise me',
     surpriseMeHint: 'Open a random series',
   },
+
+  /**
+   * Admin → Community → Queue health (docs/04 "Community", docs/14 §3, docs/07 SLA). The
+   * screens beside it answer "what is in my queue"; this one answers "is it being worked",
+   * which is a different question with a different headline number — the age of the oldest
+   * untouched item, not the size of the pile.
+   */
+  queueHealth: {
+    navLabel: 'Queue health',
+    title: 'Moderation queue health',
+    subtitle:
+      'How long the queues have been waiting, how fast decisions are being made, and who is making them.',
+
+    heroLead: 'Oldest untouched item',
+    heroHint: 'Nothing else on this screen matters while this number is large.',
+    allClear: 'Every queue is clear',
+    allClearHint: 'No open report, no comment held for review, no unanswered notice.',
+    overdue: 'Overdue',
+    onTime: 'On time',
+    waiting: 'Waiting {age}',
+    since: 'since {when}',
+    openItem: 'Open',
+
+    staleTitle: 'Waiting longest',
+    staleHint:
+      'The oldest item in each queue, oldest first. A total can look healthy with one six-week-old notice buried in it.',
+    queues: {
+      report: 'Report',
+      comment: 'Held comment',
+      takedown: 'DMCA notice',
+    },
+    slaReport: 'Reports are expected to be triaged within 24 hours.',
+    slaTakedown: 'DMCA notices are answered within 48 hours of receipt (docs/07).',
+
+    depthsTitle: 'Queue depth right now',
+    openReports: 'Open reports',
+    openReportsHint: 'Untouched, any kind',
+    triagedReports: 'Triaged, not closed',
+    triagedReportsHint: 'Seen, still open',
+    commentsHeld: 'Comments held',
+    commentsHeldHint: 'Awaiting review',
+    commentsShadow: 'Shadowed comments',
+    commentsShadowHint: 'Visible only to their author',
+    reportedComments: 'Reported comments',
+    reportedCommentsHint: 'Open reports on a comment',
+    imagesPending: 'Images pending',
+    imagesPendingHint: 'Community uploads',
+    takedownsUnacknowledged: 'Notices unacknowledged',
+    takedownsUnacknowledgedHint: 'Received, untouched',
+    takedownsOpen: 'Notices open',
+    takedownsOpenHint: 'Not yet closed',
+
+    ageTitle: 'Open reports by age',
+    ageHint:
+      'Every open report, banded by how long it has been sitting there. The counts are in the key; the bar is the shape.',
+    ageEmpty: 'No open reports.',
+    bands: {
+      fresh: 'Under 24 hours',
+      aging: '1 to 7 days',
+      stale: 'Over a week',
+    },
+    bandTone: {
+      fresh: "Today's work",
+      aging: 'Slipping',
+      stale: 'Explain yourself',
+    },
+    colBand: 'Age',
+    colOpen: 'Open',
+    colShare: 'Share',
+    colKind: 'Kind',
+    colOldest: 'Oldest',
+    byKindTitle: 'Open reports by kind',
+    byKindHint: 'Ordered by the age of the oldest item in each lane, not by count.',
+
+    window: 'Window',
+    windowDays: '{n}d',
+    windowHint: 'Scopes the three panels below. The queue depth and ages above are as of now.',
+
+    ttaTitle: 'Time to action',
+    ttaHint:
+      'From the moment a report was raised to the moment a moderator decided it, over the reports actually decided in this window.',
+    ttaTakedownTitle: 'Time to answer a notice',
+    median: 'Median',
+    p90: '90th percentile',
+    worst: 'Slowest',
+    handled: 'Decided',
+    handledHint: 'in this window',
+    ttaEmpty: 'Nothing was decided in this window.',
+    ttaMedianHint: 'Half were faster than this',
+    ttaP90Hint: 'One in ten was slower',
+
+    flowTitle: 'Opened against resolved',
+    flowHint: 'Two lines that cross tell you more than either count alone.',
+    opened: 'Opened',
+    resolved: 'Resolved',
+    flowAria: 'Reports opened and resolved per day, {from} to {to}',
+    netGrew: 'The open queue grew by {n} over this window.',
+    netShrank: 'The open queue shrank by {n} over this window.',
+    netLevel: 'Opened and resolved balanced out over this window.',
+    flowEmpty: 'No reports were raised or resolved in this window.',
+
+    moderatorsTitle: 'Actions per moderator',
+    moderatorsHint:
+      'Counted from the audit log: report, comment, community image, user and takedown actions. Settings, appearance and billing changes are admin work and are not counted here.',
+    moderatorsEmpty: 'No moderation actions in this window.',
+    moderatorsRestricted:
+      'Only your own row is shown. The full breakdown per moderator is part of the audit log, which needs the audit.read permission.',
+    colModerator: 'Moderator',
+    colTotal: 'Actions',
+    colReports: 'Reports',
+    colComments: 'Comments',
+    colUsers: 'Users',
+    colTakedowns: 'Notices',
+    colLastAction: 'Last action',
+    colTrend: 'Per day',
+    you: 'you',
+    system: 'System',
+  },
+
+  /**
+   * Admin → Content → Duplicates, and the merge behind it (docs/09 legacy import). Nothing
+   * on the detection screen asserts that two rows are the same work: it shows the evidence
+   * and its weight, and the operator decides.
+   */
+  duplicates: {
+    navLabel: 'Duplicates',
+    title: 'Possible duplicate series',
+    subtitle:
+      'Pairs that look like one work under two rows. Scored from titles, alternative titles, slugs and credits — evidence, not a verdict.',
+    empty: 'No pair scores above the threshold.',
+    emptyHint:
+      'Detection compares every title and alternative title with pg_trgm, plus slugs reduced to their root. Lower the threshold to see weaker matches.',
+    threshold: 'Minimum score',
+    thresholdHint: 'Below 40 the matches are mostly titles that share a template.',
+    apply: 'Apply',
+    score: 'Score',
+    whyTitle: 'Why this pair was flagged',
+    reasons: {
+      title_similarity: 'Titles are similar',
+      exact_alias: 'A title matches exactly',
+      slug_root: 'Slugs share a root',
+      shared_creator: 'Same credited creator',
+      same_type: 'Same type',
+      type_mismatch: 'Different type',
+      shared_genres: 'Shared genres',
+      same_year: 'Same release year',
+    },
+    altTitles: 'Alternative titles',
+    noAltTitles: 'none',
+    chapters: '{n} chapters',
+    bookmarks: '{n} bookmarks',
+    overlap: '{n} chapter numbers exist on both sides',
+    overlapOne: 'Chapter {n} exists on both sides',
+    noOverlap: 'No chapter number is used on both sides',
+    reviewMerge: 'Review merge',
+    reviewMergeSwapped: 'Review merge the other way',
+    scanned: '{n} pairs above {min}, from {series} live series.',
+    scannedOne: '1 pair above {min}, from {series} live series.',
+  },
+
+  merge: {
+    title: 'Merge series',
+    subtitle:
+      'Everything that points at the losing series moves to the winner, in one transaction, and the losing URL keeps answering.',
+    pick: 'Pick a pair from Duplicates, or pass ?winner= and ?loser= ids.',
+    winner: 'Winner — kept',
+    loser: 'Loser — retired',
+    swap: 'Swap sides',
+    winnerHint: 'Its slug, cover, synopsis and type are what survives.',
+    loserHint: 'Its rows move, its title becomes an alias, its URL redirects.',
+
+    refusedTitle: 'This merge is refused',
+    refusedHint: 'Nothing has been written. Each reason has to be resolved before merging.',
+    warningsTitle: 'Check before you merge',
+
+    movesTitle: 'What moves',
+    movesHint:
+      'Counted now, and counted again inside the transaction — a preview that has gone stale cannot be confirmed.',
+    colTable: 'Table',
+    colMove: 'Moved',
+    colMerge: 'Folded in',
+    movesEmpty: 'Nothing points at the losing series.',
+    totals: '{move} rows move · {merge} fold into a row the winner already has',
+    tables: {
+      chapters: 'Chapters',
+      bookmarks: 'Bookmarks',
+      ratings: 'Ratings',
+      reading_progress: 'Reading progress',
+      reading_list_items: 'Reading list entries',
+      comments: 'Comments',
+      series_stats_daily: 'Daily view stats',
+      view_events: 'View events',
+      series_genres: 'Genres',
+      series_people: 'Credits',
+      series_titles: 'Alternative titles',
+      geo_restrictions: 'Geo restrictions',
+      takedowns: 'DMCA notices',
+      reports: 'Reports',
+      import_map: 'Importer mapping',
+      slug_history: 'Slug history',
+      linked_series: 'Related-series links',
+      redirects: 'Existing redirects',
+    },
+    conflictNote:
+      'The winner’s row is kept, except reading progress, where the later position wins.',
+
+    chaptersTitle: 'Chapter numbers on both sides',
+    chaptersIdentical:
+      'Same pages — the loser’s copy is retired and its comments and read marks move',
+    chaptersDiffer: 'Different pages — this is what refuses the merge',
+    colNumber: 'Chapter',
+    colWinnerPages: 'Winner pages',
+    colLoserPages: 'Loser pages',
+    colVerdict: 'Verdict',
+
+    urlTitle: 'What happens to the URL',
+    urlRedirect: 'A 301 from {from} to {to} is written to the redirects table.',
+    urlHistory:
+      'A slug_history row sends every path under {from} — chapter URLs included — to the winner.',
+    urlTombstone:
+      'The losing slug is retired to {slug}, because a soft-deleted slug is served as 410 Gone and 410 is checked before slug history.',
+    urlCache:
+      'The proxy caches these rules for 60 seconds, so the redirect goes live within a minute.',
+
+    auditTitle: 'What is recorded',
+    auditHint:
+      'One series.merge entry, written inside the same transaction: both rows as they were, every per-table count, the chapters retired, and the redirect left behind.',
+
+    confirm: 'Merge {loser} into {winner}',
+    confirmButton: 'Merge and redirect',
+    confirmTyped: 'Type the losing slug to confirm',
+    confirmMismatch: 'That is not the losing slug.',
+    working: 'Merging…',
+    doneTitle: 'Merged',
+    done: '{move} rows moved and {merge} folded in. {from} now redirects to {to}.',
+    viewWinner: 'Open the winner',
+    viewAudit: 'Open the audit entry',
+    failed: 'The merge was refused and nothing was written.',
+  },
 } as const
 
 export type Messages = typeof messages

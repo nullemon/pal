@@ -417,7 +417,8 @@ export const setRequestStatus = async (
   return updated[0] ? requestById(db, updated[0].id) : null
 }
 
-export type MergeResult =
+/** Named for the board because `MergeResult` is the *series* merge's (`./merge.ts`). */
+export type RequestMergeResult =
   | { ok: true; moved: number; target: RequestRow }
   | { ok: false; reason: 'missing' | 'self' | 'target_merged' }
 
@@ -432,7 +433,7 @@ export const mergeRequests = async (
   db: Db,
   sourceId: number,
   targetId: number,
-): Promise<MergeResult> => {
+): Promise<RequestMergeResult> => {
   if (sourceId === targetId) return { ok: false, reason: 'self' }
   const rows = await db
     .select({ id: seriesRequests.id, merged: seriesRequests.mergedIntoId })

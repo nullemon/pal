@@ -155,6 +155,13 @@
       "when": 1788380015000,
       "tag": "9023_h_reader_progress_and_chapter_reports",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1788380016000,
+      "tag": "9025_h_moderation_metric_indexes",
+      "breakpoints": true
     }
   ]
 }

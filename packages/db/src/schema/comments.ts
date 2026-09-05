@@ -210,6 +210,10 @@ export const reports = pgTable(
     index('reports_open_target_created_idx')
       .on(t.kind, t.targetId, t.createdAt.desc())
       .where(sql`${t.status} = 'open'`),
+    // Time-to-action percentiles on Admin → Queue health, which read only handled reports.
+    // Partial, because the open ones — the majority of a healthy queue — never qualify
+    // (migration 9025).
+    index('reports_handled_at_idx').on(t.handledAt.desc()).where(sql`${t.handledAt} is not null`),
   ],
 )
 

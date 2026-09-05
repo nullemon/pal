@@ -59,6 +59,11 @@ export const auditLog = pgTable(
   (t) => [
     index('audit_log_target_idx').on(t.targetType, t.targetId, t.createdAt.desc()),
     index('audit_log_actor_idx').on(t.actorId, t.createdAt.desc()),
+    // "who did what in this window" — Admin → Queue health counts moderator actions with
+    // `action LIKE 'report.%'` over a date range, which without this is a sequential scan
+    // of every row ever written. `action` first so the prefix match narrows before the
+    // range does (migration 9025).
+    index('audit_log_action_created_idx').on(t.action, t.createdAt.desc()),
   ],
 )
 
