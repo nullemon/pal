@@ -1,10 +1,17 @@
-import { messages } from '@palscans/core/messages'
-import { getDb, notificationPrefs, notifications, pushSubscriptions } from '@palscans/db'
+import { fmt, messages } from '@palscans/core/messages'
+import {
+  followedSeries,
+  getDb,
+  notificationPrefs,
+  notifications,
+  pushSubscriptions,
+} from '@palscans/db'
 import { EmptyState } from '@palscans/ui'
 import { and, desc, eq, isNull, sql } from 'drizzle-orm'
 import type { Metadata } from 'next'
 import { z } from 'zod'
 import { NOTIFICATION_CHANNELS, NOTIFICATION_KINDS } from '@/lib/auth/schemas'
+import { storageUrl } from '@/lib/comments/media'
 import { getLink } from '@/lib/discord'
 import { discordStatus, pushStatus } from '@/lib/env'
 import { readDigestState, readNotificationSettings } from '@/lib/notifications'
@@ -15,12 +22,12 @@ import {
   NotificationRow,
   type PrefRow,
   PrefsMatrix,
-  unreadLabel,
 } from '../_components/NotificationsClient'
 import { PageTitle, Section } from '../_components/Section'
 import { requireAccount } from '../_lib'
 import { DigestPanel } from './_components/DigestPanel'
 import { DiscordPanel } from './_components/DiscordPanel'
+import { type FollowRowView, FollowsPanel } from './_components/FollowsPanel'
 import { NotConfigured } from './_components/NotConfigured'
 import { PushPanel } from './_components/PushPanel'
 
@@ -74,33 +81,46 @@ const toItem = (row: {
 export default async function NotificationsPage() {
   const user = await requireAccount('/me/notifications')
   const db = await getDb()
-  const [rows, [unreadRow], prefRows, settings, digest, discordLink, devices] = await Promise.all([
-    db
-      .select({
-        id: notifications.id,
-        kind: notifications.kind,
-        payload: notifications.payload,
-        readAt: notifications.readAt,
-        createdAt: notifications.createdAt,
-      })
-      .from(notifications)
-      .where(eq(notifications.userId, user.id))
-      .orderBy(desc(notifications.createdAt))
-      .limit(50),
-    db
-      .select({ n: sql<number>`count(*)::int` })
-      .from(notifications)
-      .where(and(eq(notifications.userId, user.id), isNull(notifications.readAt))),
-    db.select().from(notificationPrefs).where(eq(notificationPrefs.userId, user.id)),
-    readNotificationSettings(db),
-    readDigestState(db, user.id),
-    getLink(db, user.id),
-    db
-      .select({ n: sql<number>`count(*)::int` })
-      .from(pushSubscriptions)
-      .where(eq(pushSubscriptions.userId, user.id)),
-  ])
+  const [rows, [unreadRow], prefRows, settings, digest, discordLink, devices, follows] =
+    await Promise.all([
+      db
+        .select({
+          id: notifications.id,
+          kind: notifications.kind,
+          payload: notifications.payload,
+          readAt: notifications.readAt,
+          createdAt: notifications.createdAt,
+        })
+        .from(notifications)
+        .where(eq(notifications.userId, user.id))
+        .orderBy(desc(notifications.createdAt))
+        .limit(50),
+      db
+        .select({ n: sql<number>`count(*)::int` })
+        .from(notifications)
+        .where(and(eq(notifications.userId, user.id), isNull(notifications.readAt))),
+      db.select().from(notificationPrefs).where(eq(notificationPrefs.userId, user.id)),
+      readNotificationSettings(db),
+      readDigestState(db, user.id),
+      getLink(db, user.id),
+      db
+        .select({ n: sql<number>`count(*)::int` })
+        .from(pushSubscriptions)
+        .where(eq(pushSubscriptions.userId, user.id)),
+      followedSeries(db, user.id),
+    ])
   const unread = unreadRow?.n ?? 0
+  const followRows: FollowRowView[] = follows.map((f) => ({
+    seriesId: f.seriesId,
+    slug: f.slug,
+    title: f.title,
+    coverUrl: storageUrl(f.coverKey),
+    chapterCount: f.chapterCount,
+    lastChapterAt: f.lastChapterAt?.toISOString() ?? null,
+    mode: f.mode,
+    source: f.source,
+    bookmarkStatus: f.bookmarkStatus,
+  }))
   const items = rows.map(toItem)
   const prefs: PrefRow[] = NOTIFICATION_KINDS.flatMap((kind) =>
     NOTIFICATION_CHANNELS.map((channel) => ({
@@ -122,7 +142,9 @@ export default async function NotificationsPage() {
       <PageTitle title={messages.me.notifications.title}>
         <div className="flex items-center gap-3">
           {unread > 0 ? (
-            <span className="text-[13px] text-fg-muted">{unreadLabel(unread)}</span>
+            <span className="text-[13px] text-fg-muted">
+              {fmt(messages.me.notifications.unread, { n: unread })}
+            </span>
           ) : null}
           <MarkAllReadButton unread={unread} />
         </div>
@@ -139,6 +161,19 @@ export default async function NotificationsPage() {
             ))}
           </ol>
         )}
+        <Section
+          id="follows"
+          title={messages.follows.manage}
+          action={
+            followRows.length > 0 ? (
+              <span className="text-[13px] text-fg-muted">
+                {fmt(messages.follows.count, { n: followRows.length })}
+              </span>
+            ) : null
+          }
+        >
+          <FollowsPanel initial={followRows} />
+        </Section>
         <Section id="push" title={messages.notify.push.title}>
           {push.configured && pushKey && settings.push.enabled ? (
             <PushPanel publicKey={pushKey} otherDevices={devices[0]?.n ?? 0} />

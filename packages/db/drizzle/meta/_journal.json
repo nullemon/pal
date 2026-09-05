@@ -134,6 +134,13 @@
       "when": 1788380008000,
       "tag": "9018_g_reading_lists",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1788380010000,
+      "tag": "9020_h_series_follows",
+      "breakpoints": true
     }
   ]
 }

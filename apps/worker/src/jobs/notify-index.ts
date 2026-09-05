@@ -3,6 +3,7 @@ import type { Db } from '@palscans/db'
 import { readNotificationSettings } from '../../../web/lib/notifications/index.js'
 import { log } from '../lib/log.js'
 import { notifyOneChapter, sweepNewChapters } from './notify-chapter.js'
+import { latestCommentId, sweepCommentNotices } from './notify-comment.js'
 import { runDigestPass } from './notify-digest.js'
 import { runRoleSyncPass } from './notify-discord.js'
 import { workerSite } from './notify-site.js'
@@ -36,6 +37,12 @@ export const registerNotifications = (
   const site = workerSite()
   let ticks = 0
   let running = false
+  /**
+   * The comment sweep's watermark. `null` means "not started": the first pass sets it to the
+   * newest comment id so a fresh worker does not replay every reply ever written as a
+   * notification. From then on it only moves forward.
+   */
+  let commentAfter: number | null = null
 
   const tick = async () => {
     if (running) return
@@ -43,6 +50,10 @@ export const registerNotifications = (
     try {
       const settings = await readNotificationSettings(db)
       await sweepNewChapters(db, { settings, site })
+      // Replies and mentions: the submit path already sent these, and the fan-out is
+      // idempotent, so this only catches what a crash or a failed send left behind.
+      commentAfter ??= await latestCommentId(db)
+      commentAfter = (await sweepCommentNotices(db, { settings, after: commentAfter })).after
       await runDigestPass(db, { settings, site })
       if (ticks % ROLE_SYNC_EVERY === 0) await runRoleSyncPass(db, settings)
     } catch (err) {

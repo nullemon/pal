@@ -1,13 +1,13 @@
 'use server'
 
 import { messages } from '@palscans/core/messages'
-import { getDb } from '@palscans/db'
+import { getDb, setFollowMode, unfollowSeries } from '@palscans/db'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { getSessionUser } from '@/lib/auth'
 import { getLink, issueCode, unlink } from '@/lib/discord'
 import { discordStatus } from '@/lib/env'
-import { DIGEST_FREQUENCIES, setDigestFrequency } from '@/lib/notifications'
+import { DIGEST_FREQUENCIES, followModeSchema, setDigestFrequency } from '@/lib/notifications'
 
 /**
  * The reader's own notification settings that are not push subscriptions (docs/17 §D).
@@ -59,6 +59,47 @@ export async function createDiscordCode(): Promise<LinkCodeResult> {
   const { code, expiresAt } = await issueCode(db, user.id)
   revalidatePath(PAGE)
   return { ok: true, message: code, code, expiresAt: expiresAt.toISOString() }
+}
+
+/**
+ * Per-series notification settings (docs/17 §D). The management screen writes through these
+ * rather than through `/api/follows/:id` for the same reason the digest does: the page is
+ * the only caller, Next checks the origin, and `getSessionUser()` — never the client — says
+ * whose follows are being changed.
+ */
+const seriesIdSchema = z.number().int().positive()
+
+export async function saveFollowMode(
+  rawSeriesId: unknown,
+  rawMode: unknown,
+): Promise<ActionResult> {
+  const user = await getSessionUser()
+  if (!user) return { ok: false, message: messages.errors.unauthorized }
+  const seriesId = seriesIdSchema.safeParse(rawSeriesId)
+  const mode = followModeSchema.safeParse(rawMode)
+  if (!seriesId.success || !mode.success) return { ok: false, message: messages.errors.validation }
+  const db = await getDb()
+  if (!(await setFollowMode(db, user.id, seriesId.data, mode.data)))
+    return { ok: false, message: messages.errors.notFound }
+  revalidatePath(PAGE)
+  return { ok: true, message: messages.follows.savedToast }
+}
+
+export type UnfollowResult = ActionResult & { muted?: boolean }
+
+export async function unfollowSeriesAction(rawSeriesId: unknown): Promise<UnfollowResult> {
+  const user = await getSessionUser()
+  if (!user) return { ok: false, message: messages.errors.unauthorized }
+  const seriesId = seriesIdSchema.safeParse(rawSeriesId)
+  if (!seriesId.success) return { ok: false, message: messages.errors.validation }
+  const db = await getDb()
+  const outcome = await unfollowSeries(db, user.id, seriesId.data)
+  revalidatePath(PAGE)
+  return {
+    ok: true,
+    muted: outcome === 'muted',
+    message: outcome === 'muted' ? messages.follows.modeHints.off : messages.follows.savedToast,
+  }
 }
 
 export async function unlinkDiscord(): Promise<ActionResult> {

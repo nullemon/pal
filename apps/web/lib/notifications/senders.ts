@@ -1,5 +1,5 @@
 import { messages } from '@palscans/core/messages'
-import { bookmarks, chapters, series } from '@palscans/db'
+import { chapters, series } from '@palscans/db'
 import { and, eq, isNull } from 'drizzle-orm'
 import { createDiscordBot, type DiscordBot, postWebhook } from '../discord/client'
 import { newChapterMessage } from '../discord/embed'
@@ -14,6 +14,7 @@ import {
   markDigestRun,
   renderDigest,
 } from './digest'
+import { seriesRecipients } from './follows'
 import type { Mailer } from './mail'
 import { loadPrefs, prefAllows } from './prefs'
 import { type PushPayload, type PushSender, sendPush } from './push'
@@ -108,27 +109,22 @@ export const fanoutNewChapter = async (
 
   // ── push ───────────────────────────────────────────────────────────────────────────────
   // A channel that cannot send is skipped *before* any query: an unconfigured deployment must
-  // not pay for a bookmarker scan on every tick, and it must not write a ledger row either.
+  // not pay for a follower scan on every tick, and it must not write a ledger row either.
   const canPush =
     deps.settings.push.enabled && (deps.pushSender !== undefined || (await pushConfig()) !== null)
   if (canPush && !done.has(`chapter:${chapterId}:push`)) {
-    const readers = await db
-      .select({ userId: bookmarks.userId })
-      .from(bookmarks)
-      .where(eq(bookmarks.seriesId, chapter.seriesId))
-    const ids = readers.map((r) => r.userId)
-    const prefs = await loadPrefs(db, ids)
-    const allowed = ids.filter((id) => prefAllows(prefs, id, 'new_chapter', 'push'))
-    const skipped = ids.filter((id) => !allowed.includes(id))
+    // Followers, not bookmarkers (docs/17 §D): the per-series mode decides first, the
+    // reader's global matrix second, and a bookmark with no follow row still means `all`.
+    const { allowed, skipped } = await seriesRecipients(db, chapter.seriesId, 'new_chapter', 'push')
     if (skipped.length)
       await recordDeliveries(
         db,
-        skipped.map<DeliveryInput>((id) => ({
-          userId: id,
+        skipped.map<DeliveryInput>((s) => ({
+          userId: s.userId,
           kind: 'new_chapter',
           channel: 'push',
           status: 'skipped',
-          detail: 'preference off',
+          detail: s.reason,
           dedupeKey: `chapter:${chapterId}:push`,
         })),
       )
@@ -190,27 +186,29 @@ export const fanoutNewChapter = async (
       })
     }
     if (deps.settings.discord.dms && bot.configured) {
-      const readers = await db
-        .select({ userId: bookmarks.userId })
-        .from(bookmarks)
-        .where(eq(bookmarks.seriesId, chapter.seriesId))
-      const ids = readers.map((r) => r.userId)
-      const prefs = await loadPrefs(db, ids)
+      const { allowed, skipped } = await seriesRecipients(
+        db,
+        chapter.seriesId,
+        'new_chapter',
+        'discord',
+      )
+      const reasons = new Map(skipped.map((s) => [s.userId, s.reason]))
       const links = await linkedAccounts(db)
       for (const link of links) {
-        if (!ids.includes(link.userId)) continue
-        if (!prefAllows(prefs, link.userId, 'new_chapter', 'discord')) {
+        const reason = reasons.get(link.userId)
+        if (reason) {
           ledger.push({
             userId: link.userId,
             kind: 'new_chapter',
             channel: 'discord',
             status: 'skipped',
             target: link.discordId,
-            detail: 'preference off',
+            detail: reason,
             dedupeKey: `chapter:${chapterId}:discord`,
           })
           continue
         }
+        if (!allowed.includes(link.userId)) continue
         const res = await bot.dm(link.discordId, message)
         if (res.ok) summary.discord.dms += 1
         else summary.discord.failed += 1

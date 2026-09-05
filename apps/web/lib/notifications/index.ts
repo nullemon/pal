@@ -49,6 +49,17 @@ export {
   setDigestFrequency,
 } from './digest'
 export {
+  digestFollowedSeries,
+  digestMutedSeries,
+  type FollowerRow,
+  loadFollowers,
+  mergeFollowers,
+  type Recipients,
+  type SkipReason,
+  seriesRecipients,
+  splitRecipients,
+} from './follows'
+export {
   consoleMailer,
   type Mail,
   type Mailer,
@@ -101,6 +112,7 @@ export {
 } from './senders'
 export {
   coerceNotificationSettings,
+  DEFAULT_FOLLOW_MODE,
   DIGEST_FREQUENCIES,
   DISCORD_EVENTS,
   type DigestFrequency,
@@ -108,6 +120,12 @@ export {
   type DiscordWebhook,
   defaultNotificationSettings,
   discordWebhookUrlSchema,
+  FOLLOW_MODES,
+  type FollowMode,
+  followAllows,
+  followInDigest,
+  followModeSchema,
+  isFollowMode,
   type NotificationSettings,
   notificationSettingsSchema,
   readNotificationSettings,

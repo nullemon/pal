@@ -1,6 +1,7 @@
 import { isStaff } from '@palscans/core'
 import { COMMENT_MAX_CHARS } from '@palscans/core/comments'
 import { db } from '@palscans/db'
+import { ChapterFollowStrip } from '@/components/series/FollowControl'
 import { turnstileEnabled, turnstileSiteKey } from '@/lib/auth/turnstile'
 import { challengeRequired } from '@/lib/comments/pipeline'
 import { listComments, PAGE_SIZE, viewerFor } from '@/lib/comments/queries'
@@ -52,14 +53,21 @@ export async function CommentsSection({
     challenge: !!turnstile && !!user && !isStaff(user) && challengeRequired(user, settings, false),
   }
   return (
-    <section id="comments" aria-labelledby="comments-title" className={className}>
-      <CommentThread
-        target={targetKey(target)}
-        initial={page}
-        viewer={viewer}
-        config={config}
-        enabled={enabled && settings.enabled}
-      />
-    </section>
+    <>
+      {/* docs/17 §D — the follow control in the reader. The end of a chapter is where a
+          reader decides whether they want the next one, and this island is the only thing
+          the reader renders that already knows which chapter it is on. The series page has
+          its own control in the header, so this is chapters only. */}
+      {target.kind === 'chapter' ? <ChapterFollowStrip chapterId={target.id} /> : null}
+      <section id="comments" aria-labelledby="comments-title" className={className}>
+        <CommentThread
+          target={targetKey(target)}
+          initial={page}
+          viewer={viewer}
+          config={config}
+          enabled={enabled && settings.enabled}
+        />
+      </section>
+    </>
   )
 }

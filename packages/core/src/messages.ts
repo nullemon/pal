@@ -3093,6 +3093,60 @@ export const messages = {
     },
     legend: 'Each component is checked when this page loads.',
   },
+
+  /**
+   * H · Following a series, and per-series notification settings (docs/17 §D).
+   *
+   * A bookmark is a shelf; a follow is a subscription. The copy has to keep saying so,
+   * because the two controls sit next to each other on the series page and a reader who
+   * reads "Follow" as "Bookmark" will end up with a library they did not ask for.
+   */
+  follows: {
+    follow: 'Follow',
+    following: 'Following',
+    followHint: 'Tells you when a new chapter goes up. Separate from your bookmark.',
+    followedToast: 'Following {title}',
+    unfollowedToast: 'Unfollowed {title}',
+    mutedToast: 'Muted {title} — it stays on your shelf',
+    savedToast: 'Notification setting saved',
+    settingsTitle: 'Notify me about this series',
+    unfollow: 'Unfollow',
+    modes: {
+      all: 'Everything',
+      push: 'Push',
+      in_app: 'In app',
+      digest: 'Digest only',
+      off: 'Muted',
+    },
+    modeHints: {
+      all: 'In app, push, Discord and the email digest.',
+      push: 'A push notification and the bell on the site. No email.',
+      in_app: 'Only the bell on the site.',
+      digest: 'Only the daily or weekly email. Nothing instant.',
+      off: 'Nothing at all. The series stays on your shelf.',
+    },
+    manage: 'Series you follow',
+    manageHint:
+      'A follow is not a bookmark: unfollow a finished series and it stays in your library. Each row can be as loud or as quiet as you like — the table below still has the last word on every channel.',
+    empty: 'You are not following any series yet.',
+    emptyHint: 'The follow button is on every series page and at the end of every chapter.',
+    viaBookmark: 'From your bookmark',
+    viaBookmarkHint:
+      'You bookmarked this before follows existed, so it still notifies you. Pick a setting to make it yours.',
+    count: '{n} series',
+    filterAll: 'All',
+    reader: 'Caught up? Follow this series and we will tell you when the next chapter lands.',
+  },
+
+  /** Comment replies and @mentions (docs/14 "Notifications"). */
+  commentNotify: {
+    reply: '{name} replied to your comment',
+    mention: '{name} mentioned you',
+    onSeries: 'on {title}',
+    pushReply: 'New reply',
+    pushMention: 'You were mentioned',
+    open: 'Open the thread',
+  },
 } as const
 
 export type Messages = typeof messages

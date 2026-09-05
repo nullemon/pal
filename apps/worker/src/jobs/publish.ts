@@ -7,15 +7,16 @@ import {
   notificationPrefs,
   notifications,
   series,
+  seriesFollows,
 } from '@palscans/db'
 import { and, asc, eq, inArray, isNull, lte } from 'drizzle-orm'
-import { prefAllows } from '../../../web/lib/notifications/index.js'
+import { mergeFollowers, splitRecipients } from '../../../web/lib/notifications/index.js'
 import { log } from '../lib/log.js'
 
 /**
  * docs/04 "Scheduling": every 30 seconds publish anything whose `published_at` is due and fan
- * out `new_chapter` notifications to bookmarkers. `series.last_chapter_at` is maintained by
- * the counter trigger (migration 0002), which is its only owner.
+ * out `new_chapter` notifications to the readers following it. `series.last_chapter_at` is
+ * maintained by the counter trigger (migration 0002), which is its only owner.
  *
  * Publishing is also where the early-access window is applied: a chapter opens Premium-only
  * for `entitlements.early_access_minutes` and then becomes free to everyone, without anyone
@@ -65,7 +66,7 @@ export const publishDue = async (db: Db, now = new Date()): Promise<number[]> =>
             updatedAt: now,
           })
           .where(eq(series.id, c.seriesId))
-        await notifyBookmarkers(tx, c.id, c.seriesId, c.number)
+        await notifyFollowers(tx, c.id, c.seriesId, c.number)
         published.push(c.id)
       })
     } catch (err) {
@@ -78,7 +79,16 @@ export const publishDue = async (db: Db, now = new Date()): Promise<number[]> =>
 
 type Tx = Parameters<Parameters<Db['transaction']>[0]>[0]
 
-export const notifyBookmarkers = async (
+/**
+ * The in-app row for a chapter going live, to everyone **following** the series (docs/17 §D).
+ *
+ * Following is its own thing: `series_follows` decides, and a bookmark with no row there is
+ * still an implicit follow on `all` — the behaviour every bookmarker had before follows
+ * existed, so publishing this changed nobody's notifications. Two gates, both of which must
+ * pass: the per-series `mode` (`followAllows`) and the reader's global `new_chapter × in_app`
+ * preference (`prefAllows`, whose rows are sparse — a missing one means "on").
+ */
+export const notifyFollowers = async (
   tx: Tx | Db,
   chapterId: number,
   seriesId: number,
@@ -89,14 +99,19 @@ export const notifyBookmarkers = async (
     .from(series)
     .where(eq(series.id, seriesId))
     .limit(1)
-  const readers = await tx
-    .select({ userId: bookmarks.userId })
-    .from(bookmarks)
-    .where(eq(bookmarks.seriesId, seriesId))
-  if (readers.length === 0) return
-  // D · Notifications (docs/17 §D): the in-app row is a send like any other, so it obeys the
-  // reader's `new_chapter × in_app` preference. Rows are sparse — a missing one means "on".
-  const ids = readers.map((r) => r.userId)
+  const [follows, marks] = await Promise.all([
+    tx
+      .select({ userId: seriesFollows.userId, mode: seriesFollows.mode })
+      .from(seriesFollows)
+      .where(eq(seriesFollows.seriesId, seriesId)),
+    tx.select({ userId: bookmarks.userId }).from(bookmarks).where(eq(bookmarks.seriesId, seriesId)),
+  ])
+  const followers = mergeFollowers(
+    follows,
+    marks.map((m) => m.userId),
+  )
+  if (followers.length === 0) return
+  const ids = followers.map((f) => f.userId)
   const prefs = await tx
     .select({
       userId: notificationPrefs.userId,
@@ -106,7 +121,7 @@ export const notifyBookmarkers = async (
     })
     .from(notificationPrefs)
     .where(inArray(notificationPrefs.userId, ids))
-  const recipients = ids.filter((id) => prefAllows(prefs, id, 'new_chapter', 'in_app'))
+  const { allowed: recipients } = splitRecipients(followers, prefs, 'new_chapter', 'in_app')
   if (recipients.length === 0) return
   const payload = {
     chapterId,
@@ -124,3 +139,10 @@ export const notifyBookmarkers = async (
     })),
   )
 }
+
+/**
+ * The name `chapter-process.ts` imports. It has always meant "tell the people who asked to
+ * be told"; since follows exist that is `series_follows` with the bookmarks behind it, so
+ * the alias points at the same fan-out rather than at a second, bookmark-only one.
+ */
+export const notifyBookmarkers = notifyFollowers

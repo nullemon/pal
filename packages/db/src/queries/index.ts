@@ -1,6 +1,7 @@
 export { escapeLike } from './_shared.js'
 export * from './analytics.js'
 export * from './chapters.js'
+export * from './follows.js'
 export * from './genres.js'
 export * from './home.js'
 export * from './lists.js'

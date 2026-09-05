@@ -42,4 +42,6 @@ export const postJson = <T>(url: string, body: unknown) =>
   api<T>(url, { method: 'POST', body: JSON.stringify(body) })
 export const patchJson = <T>(url: string, body: unknown) =>
   api<T>(url, { method: 'PATCH', body: JSON.stringify(body) })
+export const putJson = <T>(url: string, body: unknown) =>
+  api<T>(url, { method: 'PUT', body: JSON.stringify(body) })
 export const del = <T>(url: string) => api<T>(url, { method: 'DELETE' })

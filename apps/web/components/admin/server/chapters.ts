@@ -4,11 +4,14 @@ import {
   type ChapterProcessing,
   chapters,
   getDb,
+  notificationPrefs,
   notifications,
   series,
+  seriesFollows,
 } from '@palscans/db'
 import { and, eq, inArray, isNull } from 'drizzle-orm'
 import { entitlementOverrides } from '@/lib/entitlements'
+import { mergeFollowers, splitRecipients } from '@/lib/notifications/follows'
 
 /**
  * Chapter state transitions used by the bulk bar, the uploader and the retry button. The
@@ -17,7 +20,7 @@ import { entitlementOverrides } from '@/lib/entitlements'
 export const PUBLISHABLE = ['draft', 'ready', 'scheduled', 'published'] as const
 
 /**
- * Publish now: state → published, published_at kept if already in the past, bookmarkers
+ * Publish now: state → published, published_at kept if already in the past, followers
  * notified. `series.last_chapter_at` is the counter trigger's to maintain.
  *
  * Applies the early-access window the same way the scheduler does, so a chapter published
@@ -71,7 +74,7 @@ export const publishChapters = async (ids: number[], now = new Date()): Promise<
             updatedAt: now,
           })
           .where(eq(series.id, r.seriesId))
-        await notifyBookmarkers(tx, r.id, r.seriesId, r.number)
+        await notifyFollowers(tx, r.id, r.seriesId, r.number)
       }
     }
   })
@@ -80,8 +83,17 @@ export const publishChapters = async (ids: number[], now = new Date()): Promise<
 
 type Tx = Parameters<Parameters<Awaited<ReturnType<typeof getDb>>['transaction']>[0]>[0]
 
-/** docs/04 "fans out notifications to bookmarkers" — one `new_chapter` row per bookmark. */
-export const notifyBookmarkers = async (
+/**
+ * The in-app row for a chapter the panel publishes immediately, to everyone **following**
+ * the series — the same two gates the scheduled path applies in
+ * `apps/worker/src/jobs/publish.ts`: the per-series `mode` (a bookmark with no
+ * `series_follows` row is still an implicit follow on `all`) and the reader's global
+ * `new_chapter × in_app` preference, whose rows are sparse so a missing one means "on".
+ *
+ * The button used to insert one row per bookmark and consult neither, which meant a reader
+ * who muted a series still heard from it whenever a moderator pressed Publish now.
+ */
+export const notifyFollowers = async (
   tx: Tx,
   chapterId: number,
   seriesId: number,
@@ -92,11 +104,34 @@ export const notifyBookmarkers = async (
     .from(series)
     .where(eq(series.id, seriesId))
     .limit(1)
-  const readers = await tx
-    .select({ userId: bookmarks.userId })
-    .from(bookmarks)
-    .where(eq(bookmarks.seriesId, seriesId))
-  if (readers.length === 0) return
+  const [follows, marks] = await Promise.all([
+    tx
+      .select({ userId: seriesFollows.userId, mode: seriesFollows.mode })
+      .from(seriesFollows)
+      .where(eq(seriesFollows.seriesId, seriesId)),
+    tx.select({ userId: bookmarks.userId }).from(bookmarks).where(eq(bookmarks.seriesId, seriesId)),
+  ])
+  const followers = mergeFollowers(
+    follows,
+    marks.map((m) => m.userId),
+  )
+  if (followers.length === 0) return
+  const prefs = await tx
+    .select({
+      userId: notificationPrefs.userId,
+      kind: notificationPrefs.kind,
+      channel: notificationPrefs.channel,
+      enabled: notificationPrefs.enabled,
+    })
+    .from(notificationPrefs)
+    .where(
+      inArray(
+        notificationPrefs.userId,
+        followers.map((f) => f.userId),
+      ),
+    )
+  const { allowed } = splitRecipients(followers, prefs, 'new_chapter', 'in_app')
+  if (allowed.length === 0) return
   const payload = {
     chapterId,
     seriesId,
@@ -105,8 +140,8 @@ export const notifyBookmarkers = async (
     seriesSlug: s?.slug ?? '',
   }
   await tx.insert(notifications).values(
-    readers.map((r) => ({
-      userId: r.userId,
+    allowed.map((userId) => ({
+      userId,
       kind: 'new_chapter',
       payload,
       groupKey: `series:${seriesId}`,

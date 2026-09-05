@@ -7,6 +7,7 @@ import { CommentsSection } from '@/components/comments/CommentsSection'
 import { StatusBadge, TypeBadge } from '@/components/discovery/Badges'
 import { BookmarkButton, DownloadButton, RateButton } from '@/components/series/ActionIslands'
 import { ChapterTable } from '@/components/series/ChapterTable'
+import { FollowControl } from '@/components/series/FollowControl'
 import { NovelCard } from '@/components/series/NovelCard'
 import { RecommendedGrid } from '@/components/series/RecommendedGrid'
 import { SeriesCover } from '@/components/series/SeriesCover'
@@ -191,6 +192,9 @@ export function SeriesD({
                   signedIn={!!user}
                   initial={state.bookmarkStatus !== null}
                 />
+                {/* A follow is not the bookmark above it: the shelf stays a shelf, this decides
+                    whether and how the next chapter reaches the reader (docs/17 §D). */}
+                <FollowControl seriesId={series.id} seriesSlug={series.slug} />
                 <RateButton
                   seriesId={series.id}
                   seriesSlug={series.slug}

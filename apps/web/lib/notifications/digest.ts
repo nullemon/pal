@@ -9,6 +9,7 @@ import {
   users,
 } from '@palscans/db'
 import { and, asc, eq, gt, inArray, isNull, lte, notExists, sql } from 'drizzle-orm'
+import { digestFollowedSeries, digestMutedSeries } from './follows'
 import type { DigestFrequency } from './settings'
 import type { NotifyDb } from './types'
 
@@ -185,8 +186,12 @@ export const buildDigest = (
 }
 
 /**
- * Everything published in the window on a series the reader bookmarked (anything but
- * `dropped`) or is part-way through, minus the chapters they already read.
+ * Everything published in the window on a series the reader follows, bookmarked (anything
+ * but `dropped`) or is part-way through, minus the chapters they already read.
+ *
+ * The three sources are a union and the per-series setting is a veto over all of them
+ * (`digestMutedSeries`): a reader who set one series to `push` or `off` must not find it in
+ * the mail because they also have reading progress on it.
  */
 export const collectDigestRows = async (
   db: NotifyDb,
@@ -194,10 +199,13 @@ export const collectDigestRows = async (
   since: Date,
   until: Date,
 ): Promise<DigestRow[]> => {
-  const followed = db
-    .select({ seriesId: bookmarks.seriesId })
-    .from(bookmarks)
-    .where(and(eq(bookmarks.userId, userId), sql`${bookmarks.status} <> 'dropped'`))
+  const followed = digestFollowedSeries(db, userId)
+    .union(
+      db
+        .select({ seriesId: bookmarks.seriesId })
+        .from(bookmarks)
+        .where(and(eq(bookmarks.userId, userId), sql`${bookmarks.status} <> 'dropped'`)),
+    )
     .union(
       db
         .select({ seriesId: readingProgress.seriesId })
@@ -226,6 +234,7 @@ export const collectDigestRows = async (
         gt(chapters.publishedAt, since),
         lte(chapters.publishedAt, until),
         inArray(chapters.seriesId, followed),
+        digestMutedSeries(userId),
         notExists(
           db
             .select({ one: sql`1` })

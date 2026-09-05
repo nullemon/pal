@@ -21,10 +21,11 @@ import {
   linkAllowlist,
   reports,
   series,
-  users,
   wordFilters,
 } from '@palscans/db'
 import { and, desc, eq, gt, inArray, isNull, or, sql } from 'drizzle-orm'
+import { resolveMentions } from './mentions'
+import { notifyForComment } from './notify'
 import type { RateLimiter } from './rate-limit'
 import type { CommentSettings } from './settings'
 import type { CommentTarget } from './types'
@@ -502,6 +503,12 @@ export const submitComment = async (input: SubmitInput): Promise<SubmitOutcome> 
   // A shadow-banned author must see nothing unusual: no holds, no review notices.
   if (shadowBanned) status = 'shadow'
 
+  // docs/14 §1 — `@name` is resolved here, on the server, not taken on the client's word: a
+  // mention of a live account keeps its node (canonical username + `userId`, so the link is
+  // guaranteed to resolve) and a mention of nobody degrades to plain text. What is stored is
+  // therefore what is true, and `comment_mentions` below is written from the same answer.
+  const resolved = await resolveMentions(db, body, { max: settings.max_mentions })
+
   const [inserted] = await db
     .insert(comments)
     .values({
@@ -509,7 +516,7 @@ export const submitComment = async (input: SubmitInput): Promise<SubmitOutcome> 
       seriesId,
       chapterId,
       parentId: input.parentId,
-      body,
+      body: resolved.body,
       isSpoiler: input.isSpoiler,
       status,
       automodScore: result.score,
@@ -525,17 +532,16 @@ export const submitComment = async (input: SubmitInput): Promise<SubmitOutcome> 
     .returning({ id: comments.id })
   if (!inserted) throw new Error('comment insert returned no row')
 
-  if (mentioned.length > 0) {
-    const targets = await db
-      .select({ id: users.id })
-      .from(users)
-      .where(and(inArray(users.username, mentioned), isNull(users.deletedAt)))
-    if (targets.length)
-      await db
-        .insert(commentMentions)
-        .values(targets.map((t) => ({ commentId: inserted.id, userId: t.id })))
-        .onConflictDoNothing()
-  }
+  if (resolved.mentioned.length > 0)
+    await db
+      .insert(commentMentions)
+      .values(resolved.mentioned.map((m) => ({ commentId: inserted.id, userId: m.userId })))
+      .onConflictDoNothing()
+
+  // docs/14 "Notifications" — the parent's author and the mentioned accounts hear about it.
+  // Best-effort and idempotent: a held or shadowed comment tells nobody (the fan-out checks
+  // `status` itself), a failure here cannot fail the post, and the worker's sweep retries.
+  if (status === 'published') await notifyForComment(db, inserted.id)
 
   return { ok: true, id: inserted.id, status, hasLink: result.hasLink }
 }
