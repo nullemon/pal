@@ -97,12 +97,16 @@ export const seriesRequests = pgTable(
 )
 
 /**
- * One vote per person per request — the primary key, not an application check.
+ * One vote per *identity* per request — the primary key, not an application check.
  *
  * `voterKey` is `HMAC(secret, 'rq:v1|' || identity)` truncated to 16 bytes: the account id
  * for a signed-in reader, the client address for everyone else. There is deliberately no day
  * bucket in it (unlike `viewEvents.viewerKey`), because a key that rotated daily would hand
  * every anonymous reader a fresh vote every morning.
+ *
+ * Identity, not person: a reader who votes anonymously and then signs in has two of them and
+ * leaves two rows. Migration 9024 has the full argument for why that is left alone — finding
+ * the anonymous row means keying on an address, and addresses are shared.
  */
 export const seriesRequestVotes = pgTable(
   'series_request_votes',
@@ -116,7 +120,9 @@ export const seriesRequestVotes = pgTable(
   },
   (t) => [
     primaryKey({ columns: [t.requestId, t.voterKey] }),
-    // Backstop for the reader who voted anonymously and then signed in: two keys, one account.
+    // One account, one row, whatever `voterKey` says — which matters when the key changes and
+    // the account does not: a rotated app secret, or a merge moving rows keyed under an older
+    // one. It does *not* fuse an anonymous vote with a later signed-in one; see above.
     uniqueIndex('series_request_votes_user_uidx')
       .on(t.requestId, t.userId)
       .where(sql`${t.userId} IS NOT NULL`),

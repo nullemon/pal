@@ -165,6 +165,30 @@ describe('one vote per person, enforced by the database', () => {
     expect((await requestById(db, id))?.voteCount).toBe(2)
   })
 
+  /**
+   * The rule the schema actually enforces, pinned here because migration 9024 used to claim a
+   * stronger one. One *identity* is one vote; a reader who votes anonymously and then signs in
+   * has two identities and leaves two rows, and the board counts two. The fix would be to look
+   * the anonymous row up by the signing-in reader's address and claim it — which is refused on
+   * purpose: an address is shared by households, campuses and carrier NATs, so claiming that
+   * row would take a stranger's vote away more often than it would tidy up after one person.
+   */
+  it('counts a reader who voted anonymously and then signed in twice, by design', async () => {
+    const created = await createRequest(db, { title: 'Second Life Ranker', voterKey: key(20) })
+    const id = created.ok ? created.request.id : 0
+    // Same human, now signed in: `voterKey` is derived from the account id, not the address.
+    await voteForRequest(db, { requestId: id, voterKey: key(21), userId: ids.reader })
+    const rows = await db
+      .select({ userId: seriesRequestVotes.userId })
+      .from(seriesRequestVotes)
+      .where(eq(seriesRequestVotes.requestId, id))
+    expect(rows).toHaveLength(2)
+    expect((await requestById(db, id))?.voteCount).toBe(2)
+    // Withdrawing while signed in clears both keys it can prove belong to that account.
+    await unvoteRequest(db, { requestId: id, voterKey: key(21), userId: ids.reader })
+    expect((await requestById(db, id))?.voteCount).toBe(1)
+  })
+
   it('reports back which rows the viewer has voted for', async () => {
     const a = await createRequest(db, { title: 'Eleceed', voterKey: key(7) })
     const b = await createRequest(db, { title: 'Jujutsu Kaisen', voterKey: key(8) })
@@ -284,6 +308,31 @@ describe('triage', () => {
     await voteForRequest(db, { requestId: bId, voterKey: key(15) })
     expect((await requestById(db, aId))?.voteCount).toBe(4)
     expect((await requestById(db, bId))?.voteCount).toBe(0)
+  })
+
+  /**
+   * What `series_request_votes_user_uidx` is for. The primary key cannot catch this: the same
+   * account's rows carry different `voter_key`s (an app-secret rotation, or rows written
+   * before one), so only the partial index on `(request_id, user_id)` stops the merge's
+   * unqualified `ON CONFLICT DO NOTHING` from landing a second vote for one account.
+   */
+  it('cannot give one account two votes on the survivor, whatever key its rows carry', async () => {
+    const a = await createRequest(db, { title: 'Omniscient Reader' })
+    const b = await createRequest(db, { title: 'Omniscient Readers Viewpoint' })
+    const aId = a.ok ? a.request.id : 0
+    const bId = b.ok ? b.request.id : 0
+    await voteForRequest(db, { requestId: aId, voterKey: key(22), userId: ids.reader })
+    await voteForRequest(db, { requestId: bId, voterKey: key(23), userId: ids.reader })
+    await voteForRequest(db, { requestId: bId, voterKey: key(24), userId: ids.other })
+    expect((await requestById(db, aId))?.voteCount).toBe(1)
+
+    const merged = await mergeRequests(db, bId, aId)
+    expect(merged.ok && merged.target.voteCount).toBe(2)
+    const owners = await db
+      .select({ userId: seriesRequestVotes.userId })
+      .from(seriesRequestVotes)
+      .where(eq(seriesRequestVotes.requestId, aId))
+    expect(owners.map((r) => r.userId).sort()).toEqual([ids.other, ids.reader].sort())
   })
 
   it('sorts by most wanted and by newest', async () => {

@@ -14,8 +14,10 @@
 --     dedupe cannot be lost to a race between two requests, a retry, or a second app
 --     instance. Fuzzy near-misses ("Solo Levelling") are the search's job, not the index's.
 --   * `series_request_votes` is keyed by `(request_id, voter_key)`. `voter_key` is an HMAC of
---     the voter's identity (account id, else client address), so one person is one vote per
---     request as a property of the primary key. Application code never has to check first.
+--     the voter's identity (account id, else client address), so one *identity* is one vote
+--     per request as a property of the primary key. Application code never has to check
+--     first. Identity is not the same as person — see the index below for where the two come
+--     apart, and why that is left alone.
 --   * `vote_count` is denormalised and maintained by the statement-level trigger below, the
 --     same way `series.chapter_count` is (migration 0002) — the board sorts by votes on
 --     every load and must never count rows to do it.
@@ -94,7 +96,7 @@ CREATE INDEX IF NOT EXISTS "series_requests_series_idx" ON "series_requests" USI
 CREATE INDEX IF NOT EXISTS "series_requests_user_idx" ON "series_requests" USING btree ("user_id","created_at" DESC) WHERE "series_requests"."user_id" IS NOT NULL;--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "series_requests_merged_idx" ON "series_requests" USING btree ("merged_into_id") WHERE "series_requests"."merged_into_id" IS NOT NULL;--> statement-breakpoint
 
--- One vote per person per request, and the primary key is what says so.
+-- One vote per identity per request, and the primary key is what says so.
 --
 -- `voter_key` is HMAC(app secret, 'rq:v1|' || identity) truncated to 16 bytes, where the
 -- identity is the account id for a signed-in reader and the client address for everyone
@@ -116,10 +118,25 @@ DO $$ BEGIN
   ALTER TABLE "series_request_votes" ADD CONSTRAINT "series_request_votes_user_id_users_id_fk"
     FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE set null ON UPDATE no action;
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;--> statement-breakpoint
--- The second lock on the same rule. An account's key is derived from its id, so the primary
--- key already covers the ordinary case — but a reader who voted anonymously and then signed
--- in carries two identities, and this index is what stops the account half of that from
--- voting again on a request the same person has already voted for.
+-- One account, one row, whatever `voter_key` says.
+--
+-- The primary key already covers the ordinary case, because an account's key is derived from
+-- its id and so never changes on its own. This index covers the cases where it *does* change
+-- while the account behind it does not: the app secret is rotated (every `voter_key` is a new
+-- value, and the reader's old vote would otherwise be joined by a second one), and a staff
+-- merge, which moves the loser's rows onto the winner with `ON CONFLICT DO NOTHING` — an
+-- unqualified conflict clause, so this index is one of the things it defers to, and a person
+-- who voted for both titles under two different keys still counts once afterwards.
+--
+-- What it deliberately does *not* do is fuse the two identities of one human. A reader who
+-- voted anonymously and then signed in leaves two rows: the anonymous one has `user_id IS
+-- NULL` and is not in this index at all, and its `voter_key` (`HMAC('a:<address>')`) is not
+-- the account's (`HMAC('u:<id>')`), so the primary key does not collide either. That is one
+-- vote too many on the board, and it is the lesser evil: the only way to find the anonymous
+-- row is to look up the signing-in reader's address, and an address is shared — by a
+-- household, a campus, a carrier-grade NAT. Claiming that row would silently take somebody
+-- else's vote away far more often than it would tidy up after the same person. Over-counting
+-- by one is a wrong number; deleting a stranger's vote is a wrong answer.
 CREATE UNIQUE INDEX IF NOT EXISTS "series_request_votes_user_uidx" ON "series_request_votes" USING btree ("request_id","user_id") WHERE "series_request_votes"."user_id" IS NOT NULL;--> statement-breakpoint
 -- "Which of these has this viewer already voted for" — one query for a whole page.
 CREATE INDEX IF NOT EXISTS "series_request_votes_voter_idx" ON "series_request_votes" USING btree ("voter_key");--> statement-breakpoint

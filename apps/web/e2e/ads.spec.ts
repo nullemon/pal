@@ -22,6 +22,9 @@ test('every rendered slot is unique in the DOM', async ({ page }) => {
     const ids = await page
       .locator('[data-ad-slot]')
       .evaluateAll((els) => els.map((e) => e.getAttribute('data-ad-slot') ?? ''))
+    // A page with no slots at all satisfies "no slot appears twice" — and would have gone on
+    // satisfying it if the slots stopped rendering entirely. Say what must be there first.
+    expect(ids.length, `${path} renders no ad slots at all`).toBeGreaterThan(0)
     expect(new Set(ids).size, `${path} renders a slot twice: ${ids.join(', ')}`).toBe(ids.length)
   }
 })

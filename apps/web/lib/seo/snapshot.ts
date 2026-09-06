@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { announcements, type Db, genres, getDb, redirects, series, slugHistory } from '@palscans/db'
-import { and, eq, isNotNull, isNull, or, sql } from 'drizzle-orm'
+import { and, eq, isNull, ne, not, type SQL, sql } from 'drizzle-orm'
 import { unstable_cache } from 'next/cache'
 import { readAccessSetting } from '../auth/invites'
 import { getEnv } from '../env'
@@ -15,6 +15,13 @@ import { loadSeoSettings } from './settings'
 
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '0.0.0.0'])
 
+/**
+ * A series a reader can still reach. Its negation is exactly the `gone` set (docs/12 §10:
+ * 410 for removed series), so the two are written once and cannot drift apart — a slug that
+ * 410s must never also be the target of a 301.
+ */
+const isLive = and(ne(series.state, 'removed'), isNull(series.deletedAt)) as SQL
+
 export async function loadProxySnapshot(db?: Db): Promise<ProxySnapshot> {
   const database = db ?? (await getDb())
   const env = getEnv()
@@ -23,7 +30,7 @@ export async function loadProxySnapshot(db?: Db): Promise<ProxySnapshot> {
   // database itself — so they ride along in the same 60s snapshot as the SEO rules.
   const access = await readAccessSetting()
 
-  const [rules, seriesSlugs, genreSlugs, announcementSlugs, removed] = await Promise.all([
+  const [rules, seriesSlugs, genreSlugs, announcementSlugs, goneRows] = await Promise.all([
     database
       .select({ from: redirects.fromPath, to: redirects.toPath, status: redirects.status })
       .from(redirects)
@@ -32,7 +39,11 @@ export async function loadProxySnapshot(db?: Db): Promise<ProxySnapshot> {
       .select({ old: slugHistory.oldSlug, current: series.slug })
       .from(slugHistory)
       .innerJoin(series, eq(series.id, slugHistory.entityId))
-      .where(eq(slugHistory.entityType, 'series')),
+      // Same rule as the genres below, for the same reason: history that lands on a series
+      // nobody can reach is a 301 into a dead end. A removed or trashed series answers 410
+      // (it is in `gone`), so the old slug would 301 to a 410 — two requests to say what one
+      // can. Its old slugs are added to `gone` instead, just below, and answer 410 directly.
+      .where(and(eq(slugHistory.entityType, 'series'), isLive)),
     database
       .select({ old: slugHistory.oldSlug, current: genres.slug })
       .from(slugHistory)
@@ -46,15 +57,28 @@ export async function loadProxySnapshot(db?: Db): Promise<ProxySnapshot> {
       .from(slugHistory)
       .innerJoin(announcements, eq(announcements.id, slugHistory.entityId))
       .where(eq(slugHistory.entityType, 'announcement')),
+    // Everything under /series/ that must answer 410: the current slug of every removed or
+    // trashed series, and every slug it used to have. The left join is what carries the old
+    // ones — without them an old URL falls through to a bare 404, which tells a crawler far
+    // less than "this is gone" and keeps it coming back.
     database
-      .select({ slug: series.slug })
+      .select({ slug: series.slug, old: slugHistory.oldSlug })
       .from(series)
-      .where(or(eq(series.state, 'removed'), isNotNull(series.deletedAt))),
+      .leftJoin(
+        slugHistory,
+        and(eq(slugHistory.entityId, series.id), eq(slugHistory.entityType, 'series')),
+      )
+      .where(not(isLive)),
   ])
 
   const host = new URL(env.SITE_URL).hostname.toLowerCase()
   const toMap = (rows: { old: string; current: string }[]) =>
     Object.fromEntries(rows.map((r) => [r.old.toLowerCase(), r.current]))
+  const gone = new Set<string>()
+  for (const row of goneRows) {
+    gone.add(row.slug.toLowerCase())
+    if (row.old) gone.add(row.old.toLowerCase())
+  }
 
   return {
     canonicalHost: LOCAL_HOSTS.has(host) || host.startsWith('www.') ? null : host,
@@ -67,7 +91,7 @@ export async function loadProxySnapshot(db?: Db): Promise<ProxySnapshot> {
       genre: toMap(genreSlugs),
       announcement: toMap(announcementSlugs),
     },
-    gone: removed.map((r) => r.slug.toLowerCase()),
+    gone: [...gone],
     indexnowKey: settings.sitemap.indexnow_key,
     staffPath: access.staff_path,
     panelIps: access.panel_ips,
