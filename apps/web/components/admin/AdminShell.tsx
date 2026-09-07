@@ -4,6 +4,7 @@ import { ToastProvider } from '@palscans/ui'
 import { ArrowLeft } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { siteChrome } from '@/lib/chrome/load'
+import { MONOGRAM_LETTER, MONOGRAM_RADIUS, MONOGRAM_TAIL } from '@/lib/chrome/monogram'
 import { AdminNavLinks, Breadcrumb } from './client/AdminNav'
 import { ZodJitless } from './client/ZodJitless'
 import { navForUser } from './nav'
@@ -25,16 +26,12 @@ export async function AdminShell({ user, children }: { user: SessionUser; childr
       <div className="flex min-h-dvh bg-bg-deep text-fg">
         <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-line bg-bg/95 md:flex">
           <div className="flex h-[60px] shrink-0 items-center gap-2.5 border-b border-line px-4">
-            <svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">
-              <rect width="28" height="28" rx="7" className="fill-brand-hover" />
-              <path
-                d="M10.5 20V8h4.7a4 4 0 0 1 0 8h-4.7"
-                stroke="currentColor"
-                className="text-brand-ink"
-                strokeWidth="2.2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
+            {/* The site's mark on the panel's lighter tile — geometry shared with the
+                header and the share card, colours its own. */}
+            <svg width="28" height="28" viewBox="0 0 512 512" aria-hidden="true">
+              <rect width="512" height="512" rx={MONOGRAM_RADIUS} className="fill-brand-hover" />
+              <path d={MONOGRAM_LETTER} fillRule="evenodd" className="fill-brand-ink" />
+              <path d={MONOGRAM_TAIL} className="fill-gold" />
             </svg>
             <div className="text-[17px] leading-5 tracking-[-0.01em]">
               <span className="font-extrabold">PAL</span>

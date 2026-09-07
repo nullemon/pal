@@ -20,7 +20,7 @@ import { storageUrl } from '@/lib/storage'
  * `/brand/<version>/<asset>` route renders from what is live and 404s any other version, so
  * showing a draft's version here would show four broken images. The screen says so.
  *
- * The ten logo directions travel to the client as markup rather than as an import, so the
+ * The eleven logo directions travel to the client as markup rather than as an import, so the
  * catalogue's 13 KB of SVG stays in the server bundle and only the picker's own copy crosses.
  */
 export default async function BrandPage() {

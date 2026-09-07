@@ -1,4 +1,5 @@
 import { ImageResponse } from 'next/og'
+import { MONOGRAM_LETTER, MONOGRAM_RADIUS, MONOGRAM_TAIL } from '@/lib/chrome/monogram'
 import { getStorage } from '@/lib/storage'
 import {
   coverInitials,
@@ -286,16 +287,13 @@ export const renderOgCard = async (input: OgCardInput): Promise<Uint8Array> => {
           >
             <MetaLine chapters={input.chapters} rating={input.rating} />
             <div style={{ display: 'flex', alignItems: 'center', height: 44, gap: 14 }}>
-              <svg width="44" height="44" viewBox="0 0 28 28" role="img" aria-label="PALScans">
-                <rect width="28" height="28" rx="7" fill={BRAND} />
-                <path
-                  d="M10 20V8h5a3.8 3.8 0 0 1 0 7.6h-5"
-                  fill="none"
-                  stroke="#ffffff"
-                  strokeWidth="2.4"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
+              {/* The site mark, geometry shared with the header and the admin sidebar
+                  (`lib/chrome/monogram`). Fixed colours rather than Tailwind classes: satori
+                  rasterises this, and there is no stylesheet inside an OG card. */}
+              <svg width="44" height="44" viewBox="0 0 512 512" role="img" aria-label="PALScans">
+                <rect width="512" height="512" rx={MONOGRAM_RADIUS} fill={BRAND} />
+                <path d={MONOGRAM_LETTER} fillRule="evenodd" fill="#ffffff" />
+                <path d={MONOGRAM_TAIL} fill={GOLD} />
               </svg>
               <div
                 style={{

@@ -144,7 +144,7 @@ describe('renderIcon', () => {
 })
 
 /**
- * The picker (docs/15 "Logo"): choosing one of the ten directions has to reach the favicon and
+ * The picker (docs/15 "Logo"): choosing one of the eleven directions has to reach the favicon and
  * the PWA icons, not just the header — which means the rasteriser reads the preset's own art
  * and never touches storage.
  */

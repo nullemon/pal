@@ -1,6 +1,6 @@
-# PALScans — ten logo directions
+# PALScans — eleven logo directions
 
-Ten different marks for palscans.org, not ten versions of one. Each is a hand-written SVG on a
+Eleven different marks for palscans.org, not eleven versions of one. Each is a hand-written SVG on a
 512 grid with a transparent ground, using only `--color-brand` `#7c3aed`, `--color-gold`
 `#f5c451` and white. No gradients, no strokes, no effects — every mark is solid fills, so it
 survives being scaled, single-colour printed, or handed to the Appearance resolver in
@@ -24,7 +24,7 @@ is the only prerequisite. It writes nothing outside `design/logos/sheets/`.
 
 | file | what it is |
 | --- | --- |
-| `01-…svg` – `10-…svg` | the ten concepts, 512 × 512, transparent |
+| `01-…svg` – `11-…svg` | the eleven concepts, 512 × 512, transparent |
 | `wordmark.svg` | `PALScans` outlined from Archivo ExtraBold + Regular, `currentColor`, used for every lockup |
 | `render.mjs` | rebuilds `sheets/` |
 
@@ -140,16 +140,38 @@ close enough to a stop-sign silhouette to feel faintly cautionary.
 
 ---
 
+## 11 — Balloon P
+
+**The site's default mark.** The `P` again, but the bowl is squared off into a speech balloon —
+62px corner radii on the outer edge, a semicircular counter, walls held at a constant 56–58 all
+the way round — and a gold tail drops from the balloon into the empty quarter beside the stem,
+which is the part of a `P` that is always dead space. It answers the two things the site has to
+say in one shape: a letter for the name, and dialogue for what is on the page. It is also the
+only mark here whose accent survives the favicon: the counter closes at 16px and the tail is
+still a gold spark against purple, which is what stops it collapsing into the same anonymous
+letter-tile as everything else in a tab strip.
+
+Drawn a second time in `apps/web/lib/chrome/monogram.ts` because three surfaces need it in
+their own colours — the header follows the operator's accent, the admin sidebar sits on a
+lighter tile, and the OG card is rasterised by satori with no stylesheet at all.
+`preset-art.test.ts` compares that copy against this file.
+**Weakest point:** it is a letter in a rounded square, which is the most crowded shape on the
+internet — 01 has the same problem and solves it with a gutter where this solves it with a tail.
+The tail also sits close enough to the counter that a very small render muddies the two
+together before either is properly gone.
+
+---
+
 ## Notes on the constraints
 
-- **Gold never stands alone.** `#f5c451` is 1.6:1 against white, so in 05 and 06 it only ever
-  appears inside a purple container. Any concept using gold outside one would break on a light
+- **Gold never stands alone.** `#f5c451` is 1.6:1 against white, so in 05, 06 and 11 it only
+  ever appears inside a purple container. Any concept using gold outside one would break on a light
   theme.
 - **Brand purple on the two grounds.** `#7c3aed` is 5.7:1 on white and 3.4:1 on `#100d17` —
   above the 3:1 floor for non-text, which is why the container-less marks (02, 03, 04, 07, 08,
   09, 10) can be a single ink and still work on both.
-- **Maskable.** 01, 05 and 06 own their container and are rendered full-bleed. The rest are
+- **Maskable.** 01, 05, 06 and 11 own their container and are rendered full-bleed. The rest are
   free-standing glyphs and are placed at 80% on a ground; the sheets show them that way with the
   safe circle and square drawn on top.
-- **16px.** 03, 05 and 01 pass cleanly. 04, 07 and 10 survive as a simplified silhouette. 02 and
+- **16px.** 03, 05, 01 and 11 pass cleanly. 04, 07 and 10 survive as a simplified silhouette. 02 and
   06 lose their story but stay identifiable. 08 becomes a face-shaped blob. 09 does not pass.

@@ -47,7 +47,7 @@ export const brandFormSchema = z.object({
   name: z.string().trim().min(1).max(60),
   tagline: z.string().trim().max(200),
   wordmark: z.enum(['logo', 'logo+name', 'name']),
-  /** One of the ten directions in `design/logos/`, or null for "use my own". */
+  /** One of the eleven directions in `design/logos/`, or null for "use my own". */
   logo_preset: z.enum(LOGO_PRESET_IDS).nullable(),
   monogram_bg: z
     .string()

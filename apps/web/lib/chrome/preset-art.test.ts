@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { MONOGRAM_LETTER, MONOGRAM_TAIL } from './monogram'
 import { LOGO_PRESET_ART } from './preset-art'
 import { LOGO_PRESET_IDS, LOGO_PRESETS } from './presets'
 
@@ -41,7 +42,7 @@ describe('logo preset art', () => {
   })
 
   /**
-   * The three that draw their own tile or disc must not be inset into the maskable safe zone,
+   * The four that draw their own tile or disc must not be inset into the maskable safe zone,
    * and the seven free-standing glyphs must be. `design/logos/README.md` is the record; this
    * checks the flag against the markup rather than against the prose.
    */
@@ -56,7 +57,23 @@ describe('logo preset art', () => {
       '01-panel-cut',
       '05-speed-slash',
       '06-scan-pass',
+      '11-balloon-p',
     ])
+  })
+
+  /**
+   * `11-balloon-p` is the site's built-in mark as well as a preset, and the header, the admin
+   * sidebar and the OG card each redraw it with their own colours from `lib/chrome/monogram`.
+   * That is four copies of one geometry; this is what stops the design file and the code from
+   * describing different logos. Whitespace is collapsed because the SVG wraps its `d` across
+   * two lines for legibility and the constant does not.
+   */
+  it('draws the built-in monogram from the same paths the app renders', () => {
+    const art = LOGO_PRESET_ART['11-balloon-p'].replace(/\s+/g, ' ')
+    expect(art, 'design/logos/11-balloon-p.svg vs lib/chrome/monogram.ts').toContain(
+      MONOGRAM_LETTER,
+    )
+    expect(art).toContain(MONOGRAM_TAIL)
   })
 
   it('carries no script, event handler or external reference', () => {

@@ -28,7 +28,7 @@ import type { BrandSetting } from './schema'
  * free-standing mark is inset into the middle 80% — the safe zone the spec guarantees
  * survives every mask — and the rest is filled with the operator's background colour.
  * Transparency is not allowed there: a transparent maskable icon comes out with a black
- * surround on most launchers. Three of the ten presets draw their own tile or disc
+ * surround on most launchers. Four of the eleven presets draw their own tile or disc
  * (`ownsContainer`) and are rendered full-bleed instead, because insetting them would frame a
  * frame.
  */

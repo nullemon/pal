@@ -1,12 +1,12 @@
 /**
- * The ten logo directions in `design/logos/` offered as a picker in Appearance → Brand
+ * The eleven logo directions in `design/logos/` offered as a picker in Appearance → Brand
  * (docs/15 "Logo"), so an operator can choose one without opening a design tool.
  *
  * Client-safe and art-free: this is the catalogue — ids, names and the two facts the renderer
  * needs — while the SVG source lives in `./preset-art.ts`. Keeping them apart means the admin
  * picker and the resolver can name a preset without either of them carrying 13 KB of markup.
  *
- * `ownsContainer` is the one that matters for icons. Three of the marks are drawn *inside*
+ * `ownsContainer` is the one that matters for icons. Four of the marks are drawn *inside*
  * their own brand-coloured tile or disc and must be rendered full-bleed; the other seven are
  * free-standing glyphs on transparent ground, which have to be inset into the maskable safe
  * zone over a background colour or Android will crop them. `design/logos/README.md` records
@@ -24,6 +24,7 @@ export const LOGO_PRESET_IDS = [
   '08-balloon-pal',
   '09-stacked-wordmark',
   '10-aperture',
+  '11-balloon-p',
 ] as const
 
 export type LogoPresetId = (typeof LOGO_PRESET_IDS)[number]
@@ -97,6 +98,12 @@ export const LOGO_PRESETS: readonly LogoPreset[] = [
     name: 'Aperture',
     note: 'An octagon whose negative space is a reader’s eye. Holds its shape small; the pupil closes by 20px.',
     ownsContainer: false,
+  },
+  {
+    id: '11-balloon-p',
+    name: 'Balloon P',
+    note: 'The P’s bowl squared into a speech balloon, with a gold tail. The site’s default mark: the letter carries it at favicon size after the counter closes, and the tail is what stops it being one more letter in a box.',
+    ownsContainer: true,
   },
 ]
 

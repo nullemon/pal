@@ -65,7 +65,7 @@ export type BrandSlot = (typeof BRAND_SLOTS)[number]
 export const brandSettingSchema = z.object({
   wordmark: z.enum(['logo', 'logo+name', 'name']).catch('logo+name'),
   /**
-   * One of the ten directions in `design/logos/`, or null for "use my own".
+   * One of the eleven directions in `design/logos/`, or null for "use my own".
    *
    * A preset and an upload are two sources for the *same* setting rather than two settings:
    * whichever is chosen last wins, and the uploads below are kept either way, so picking a
@@ -81,7 +81,7 @@ export const brandSettingSchema = z.object({
    * transparent maskable icon comes out with a black surround on most Android launchers — and
    * the right colour depends on the mark, so the operator picks it.
    *
-   * The default is the site's own dark ground rather than the accent: seven of the ten logo
+   * The default is the site's own dark ground rather than the accent: seven of the eleven logo
    * directions are drawn *in* the accent, and on an accent square they disappear entirely.
    * `#100d17` is also the manifest's background and theme colour, so an installed app opens on
    * the colour its icon sits on.

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-labelledby="t11">
+  <title id="t11">PALScans logo concept 11 - Balloon P</title>
+  <!-- Monogram + mascot. The P's bowl is squared off into a speech balloon (stem 58, cap
+       height 276, walls a constant 56-58) and given a gold tail that falls the depth of the
+       stem into the empty quarter beside it. Letter and comic in one shape: nothing is layered over
+       anything, so it holds together when the counter closes at favicon size. -->
+  <defs>
+    <clipPath id="c11"><rect width="512" height="512" rx="112"/></clipPath>
+  </defs>
+  <g clip-path="url(#c11)">
+    <rect width="512" height="512" fill="#7c3aed"/>
+    <path fill="#ffffff" fill-rule="evenodd"
+      d="M150 118 H302 A62 62 0 0 1 364 180 V224 A62 62 0 0 1 302 286 H208 V394 H150 Z
+         M208 174 H278 A28 28 0 0 1 278 230 H208 Z"/>
+    <path fill="#f5c451" d="M232 286 H296 L236 372 Z"/>
+  </g>
+</svg>

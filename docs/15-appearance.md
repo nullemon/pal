@@ -22,7 +22,7 @@ change here reaches every page, every email and the PWA icon in one save.
 | Setting | Notes |
 |---|---|
 | Site name, tagline | used in the header wordmark fallback, footer, `<title>` templates, emails, manifest |
-| Logo | pick one of the ten directions in `design/logos/`, or upload your own: separate uploads for dark and light backgrounds, SVG preferred; a monogram for small sizes and the PWA icon; sizes generated automatically |
+| Logo | pick one of the eleven directions in `design/logos/`, or upload your own: separate uploads for dark and light backgrounds, SVG preferred; a monogram for small sizes and the PWA icon; sizes generated automatically |
 | Favicon | generated from the monogram in every required size, including maskable |
 | Default social image | 1200×630 used when a page has no better OG image |
 | Wordmark style | logo only · logo + name · name only |

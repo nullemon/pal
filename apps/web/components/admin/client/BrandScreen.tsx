@@ -28,7 +28,7 @@ const ACCEPT = 'image/png,image/jpeg,image/webp,image/avif,image/svg+xml'
 const MAX_BYTES = 2 * 1024 * 1024
 
 /**
- * One of the ten marks, drawn at a given size. The markup is generated from the SVGs in
+ * One of the eleven marks, drawn at a given size. The markup is generated from the SVGs in
  * `design/logos/` by `design/logos/emit-preset-art.mjs` and reaches this screen as a prop from
  * the server — it is never operator input, which is what makes inlining it safe.
  */

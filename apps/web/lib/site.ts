@@ -100,7 +100,7 @@ export interface BrandChrome {
   tagline: string
   wordmark: WordmarkStyle
   /**
-   * One of the ten directions in `design/logos/` (`lib/chrome/presets.ts`), or null for
+   * One of the eleven directions in `design/logos/` (`lib/chrome/presets.ts`), or null for
    * "use my own". A preset wins over the uploads below, which stay stored so that switching
    * back to a custom logo does not mean uploading it again. With both unset, the built-in
    * monogram renders — the site as it shipped.

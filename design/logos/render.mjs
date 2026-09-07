@@ -66,6 +66,7 @@ const CONCEPTS = [
   { file: '08-balloon-pal.svg', name: 'Balloon Pal', note: 'mascot', mask: INK },
   { file: '09-stacked-wordmark.svg', name: 'Stacked Wordmark', note: 'wordmark only', mask: INK, wordmarkOnly: true },
   { file: '10-aperture.svg', name: 'Aperture', note: 'eye / badge', mask: INK },
+  { file: '11-balloon-p.svg', name: 'Balloon P', note: 'monogram + balloon', mask: BRAND, bleed: true },
 ]
 
 // ---------------------------------------------------------------------------- helpers

@@ -1,32 +1,35 @@
 import Link from 'next/link'
 import { siteChrome } from '@/lib/chrome/load'
+import { MONOGRAM_LETTER, MONOGRAM_RADIUS, MONOGRAM_TAIL } from '@/lib/chrome/monogram'
 import { LOGO_PRESET_ART } from '@/lib/chrome/preset-art'
 import { logoPreset } from '@/lib/chrome/presets'
 import { type BrandChrome, scaledWidth, splitWordmark } from '@/lib/site'
 
 /**
- * The built-in mark. Still hand-drawn, still `currentColor`-free so it follows the accent
- * from Appearance → Theme — and still what renders when the operator has chosen nothing,
- * which is the whole fallback story for docs/15 "Brand and identity".
+ * The built-in mark — Balloon P, the same geometry as the `11-balloon-p` preset, and what
+ * renders when the operator has chosen nothing. That is the whole fallback story for docs/15
+ * "Brand and identity".
+ *
+ * Drawn from `lib/chrome/monogram` rather than inlined from `preset-art.ts` because this copy
+ * is the *themed* one: the tile follows the accent from Appearance → Theme through
+ * `fill-brand`, where a preset is fixed brand-purple by definition. Only the colours differ.
+ *
+ * No `<defs>`, no clip path and no `<title>`: the header renders this alongside the bottom
+ * nav and the 404 panel, and an SVG carrying element ids stops being safe the moment a page
+ * contains two of it.
  */
 export function Monogram({ size = 30 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 28 28" aria-hidden="true" className="shrink-0">
-      <rect width="28" height="28" rx="7" className="fill-brand" />
-      <path
-        d="M10 20V8h5a3.8 3.8 0 0 1 0 7.6h-5"
-        fill="none"
-        className="stroke-brand-ink"
-        strokeWidth="2.4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+    <svg width={size} height={size} viewBox="0 0 512 512" aria-hidden="true" className="shrink-0">
+      <rect width="512" height="512" rx={MONOGRAM_RADIUS} className="fill-brand" />
+      <path d={MONOGRAM_LETTER} fillRule="evenodd" className="fill-brand-ink" />
+      <path d={MONOGRAM_TAIL} className="fill-gold" />
     </svg>
   )
 }
 
 /**
- * One of the ten directions from `design/logos/`, chosen in Appearance → Brand.
+ * One of the eleven directions from `design/logos/`, chosen in Appearance → Brand.
  *
  * Inlined into the markup rather than fetched as an image: the header is above the fold on
  * every page, so an `<img>` here is a request in the critical path and a chance to shift the
@@ -86,7 +89,7 @@ function LogoImages({ brand, height }: { brand: BrandChrome; height: number }) {
 /**
  * The header/footer wordmark (docs/15): logo only · logo + name · name only.
  *
- * The mark has three sources, in this order: one of the ten built-in logo directions if the
+ * The mark has three sources, in this order: one of the eleven built-in logo directions if the
  * operator picked one, then their own upload, then the hand-drawn monogram the site has always
  * shipped. So "logo only" is never nothing, and an operator who has configured nothing sees
  * exactly what they saw before Appearance existed.
