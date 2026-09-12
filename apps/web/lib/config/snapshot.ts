@@ -1,6 +1,6 @@
 import 'server-only'
 import type { CreateStorageOptions } from '@palscans/core/storage'
-import { configureStorage } from '@palscans/core/storage'
+import { configureStorage, enqueueMirror } from '@palscans/core/storage'
 import { getEnv } from '../env'
 import { type ConfigMirror, configMirror } from './mirror'
 import { credentialUnreadable, resolveConfig } from './store'
@@ -76,12 +76,42 @@ export const installStorageResolver = (): void => {
       forcePathStyle: values['s3.force_path_style'] === 'true',
       publicUrl: values['storage.public_cdn_url'] || undefined,
     }
+    /**
+     * The vault and the mirror inherit everything but the bucket name, because the common
+     * case is three buckets in one R2 account and only the name differs. Filling in an
+     * endpoint and a key is what moves one into a separate account — which is the whole
+     * point of the mirror, and optional for the vault.
+     *
+     * A blank bucket means "not configured": the vault falls back to the image bucket (the
+     * behaviour before the split) and the mirror is simply off.
+     */
+    const derived = (prefix: string) => {
+      const bucket = values[`${prefix}.bucket`] || undefined
+      if (!bucket) return undefined
+      return {
+        s3: {
+          bucket,
+          endpoint: values[`${prefix}.endpoint`] || s3.endpoint,
+          region: s3.region,
+          accessKeyId: values[`${prefix}.access_key_id`] || s3.accessKeyId,
+          secretAccessKey: values[`${prefix}.secret_access_key`] || s3.secretAccessKey,
+          forcePathStyle: s3.forcePathStyle,
+        },
+      }
+    }
+    const vault = derived('vault')
+    const objectBackup = derived('objects_backup')
+
     // The fingerprint covers only what changes the client; the secret is hashed in by
     // length and last characters rather than value so it never reaches a log line.
     const secret = s3.secretAccessKey ?? ''
+    const mark = (v: string | undefined) => `${(v ?? '').length}:${(v ?? '').slice(-4)}`
     return {
       driver,
       s3,
+      vault,
+      objectBackup,
+      onWrite: enqueueMirror,
       fs: { root: env.STORAGE_FS_ROOT, publicUrl: values['storage.public_cdn_url'] || undefined },
       fingerprint: [
         driver,
@@ -92,6 +122,16 @@ export const installStorageResolver = (): void => {
         `${secret.length}:${secret.slice(-4)}`,
         s3.forcePathStyle,
         s3.publicUrl,
+        // Without these a bucket or key change on either secondary would keep serving the
+        // old client until the process restarted.
+        vault?.s3.bucket,
+        vault?.s3.endpoint,
+        vault?.s3.accessKeyId,
+        mark(vault?.s3.secretAccessKey),
+        objectBackup?.s3.bucket,
+        objectBackup?.s3.endpoint,
+        objectBackup?.s3.accessKeyId,
+        mark(objectBackup?.s3.secretAccessKey),
       ].join('|'),
     }
   })

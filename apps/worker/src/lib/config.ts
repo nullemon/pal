@@ -1,6 +1,6 @@
 import { configureCredentials } from '@palscans/core'
 import { getEnv } from '@palscans/core/env'
-import { type CreateStorageOptions, configureStorage } from '@palscans/core/storage'
+import { type CreateStorageOptions, configureStorage, enqueueMirror } from '@palscans/core/storage'
 import { type Db, readSealedCredentials } from '@palscans/db'
 
 /**
@@ -83,6 +83,10 @@ const trimmed = (values: Record<string, string>, id: string): string | undefined
   return value || undefined
 }
 
+/** `vault` + `BUCKET` -> `VAULT_S3_BUCKET`, matching the registry's `env` names. */
+const envFor = (prefix: string, suffix: string): string =>
+  `${prefix === 'objects_backup' ? 'OBJECT_BACKUP' : prefix.toUpperCase()}_S3_${suffix}`
+
 /**
  * Point `getStorage()` at the resolved configuration, exactly as the web app does. Returned
  * so a test can call it directly; the storage adapter rebuilds when the fingerprint changes.
@@ -105,10 +109,45 @@ export const storageResolverFor =
         values['s3.force_path_style'] === 'true' || (env.S3_FORCE_PATH_STYLE ?? false),
       publicUrl,
     }
+    /**
+     * Same inheritance as the web resolver (`apps/web/lib/config/snapshot.ts`): the vault and
+     * the mirror take the image bucket's account unless given one of their own, and a blank
+     * bucket name means the profile is not configured at all.
+     */
+    const derived = (prefix: string) => {
+      const bucket = trimmed(values, `${prefix}.bucket`) ?? process.env[envFor(prefix, 'BUCKET')]
+      if (!bucket) return undefined
+      return {
+        s3: {
+          bucket,
+          endpoint:
+            trimmed(values, `${prefix}.endpoint`) ??
+            process.env[envFor(prefix, 'ENDPOINT')] ??
+            s3.endpoint,
+          region: s3.region,
+          accessKeyId:
+            trimmed(values, `${prefix}.access_key_id`) ??
+            process.env[envFor(prefix, 'ACCESS_KEY_ID')] ??
+            s3.accessKeyId,
+          secretAccessKey:
+            trimmed(values, `${prefix}.secret_access_key`) ??
+            process.env[envFor(prefix, 'SECRET_ACCESS_KEY')] ??
+            s3.secretAccessKey,
+          forcePathStyle: s3.forcePathStyle,
+        },
+      }
+    }
+    const vault = derived('vault')
+    const objectBackup = derived('objects_backup')
+
     const secret = s3.secretAccessKey ?? ''
+    const mark = (v: string | undefined) => `${(v ?? '').length}:${(v ?? '').slice(-4)}`
     return {
       driver,
       s3,
+      vault,
+      objectBackup,
+      onWrite: enqueueMirror,
       fs: { root: env.STORAGE_FS_ROOT, publicUrl },
       fingerprint: [
         driver,
@@ -119,6 +158,14 @@ export const storageResolverFor =
         `${secret.length}:${secret.slice(-4)}`,
         s3.forcePathStyle,
         s3.publicUrl,
+        vault?.s3.bucket,
+        vault?.s3.endpoint,
+        vault?.s3.accessKeyId,
+        mark(vault?.s3.secretAccessKey),
+        objectBackup?.s3.bucket,
+        objectBackup?.s3.endpoint,
+        objectBackup?.s3.accessKeyId,
+        mark(objectBackup?.s3.secretAccessKey),
       ].join('|'),
     }
   }

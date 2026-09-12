@@ -5,8 +5,14 @@ Short, ordered, copy-pasteable. Every step that changes data or config also writ
 
 ## Backups
 
-Two separate things, and only one of them is automatic. **The database backs itself up; object
-storage does not, and will not until you schedule the `rclone sync` in §2 below.**
+Two separate things, and **both are now automatic** — provided each has a bucket configured.
+The database dumps itself nightly (§1); every durable object is mirrored into the image backup
+bucket as it is written, with an hourly sweep catching whatever the write path could not see
+(docs/08 "The mirror"). Check both on **Admin → System → Integrations → Storage**: an
+unconfigured bucket reads *Not configured* rather than pretending.
+
+The `rclone sync` in §2 below is no longer the only object backup. It is still a reasonable
+belt-and-braces copy if you want one outside Cloudflare entirely.
 
 ### 1 · The database — the `db.backup` worker job
 
@@ -236,10 +242,21 @@ dc exec -T postgres psql -U pal -d postgres -c "drop database palscans_old"
 ### 2 · Object storage
 
 **R2 has no object versioning** — `GetBucketVersioning` and `PutBucketVersioning` are both on
-Cloudflare's unimplemented list — so there is nothing to roll back to inside the bucket and a
-deleted object is gone. The only object backup is the `rclone sync` copy in
-**Backups → 2 · Object storage** above. If that cron job was never installed, there is nothing
-to restore from and this step is the whole story.
+Cloudflare's unimplemented list — so there is nothing to roll back to *inside* the bucket and a
+deleted object is gone from it. What you restore from is the image backup bucket, which the
+application fills itself (docs/08 "The mirror").
+
+The application's own restore puts a single object back and is the one to reach for first: it
+compares the live object against the mirrored copy and rewrites it when it is missing or the
+size no longer matches. Ordinary deletes are deliberately **not** propagated to the mirror, so
+an accidental delete is exactly the case it covers.
+
+If the mirror bucket was never configured, there is nothing to restore from and the
+`rclone sync` copy in **Backups → 2** is the whole story.
+
+To put a whole prefix back, or to force a sweep to re-queue everything missing, the hourly
+`object.reconcile` job already does it — it lists both sides and queues the difference, so
+restoring after a bad delete is a matter of letting one sweep run rather than a manual copy.
 
 To put one prefix back:
 
@@ -354,8 +371,21 @@ the middle of a DMCA response.
    cdn.palscans.org/banners/<slug>
    ```
 
-   `uploads/` is not in that list on purpose: the WAF rule in docs/18 §2 blocks it at the
-   edge, so it was never publicly cached. Step 2 is still what removes those files.
+   `uploads/` is not in that list on purpose: it lives in the vault bucket, which has no
+   hostname, so it was never publicly cached. Step 2 is still what removes those files.
+
+   **Then purge the mirror.** Deleting an object does not remove its mirrored copy — that is
+   deliberate, and it is the one place where it works against you. A takedown that must erase
+   every trace has to call `purgeFromBackup` for each key, or delete the matching
+   `public/<key>` and `private/<key>` entries from the image backup bucket by hand:
+
+   ```
+   rclone delete r2-imagebackup:palscans-image-backup/public/pages/<numeric id>/
+   rclone delete r2-imagebackup:palscans-image-backup/private/uploads/<numeric id>/
+   ```
+
+   Skip this and the files are still there, off the internet but present, which for a legal
+   notice is usually not the same as gone.
 
    Then check one URL you know was cached: it should answer 404 (deleted) or 403 (blocked by
    the WAF rule), not 200.

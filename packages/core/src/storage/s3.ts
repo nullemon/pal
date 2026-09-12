@@ -31,6 +31,12 @@ export interface S3StorageOptions {
   accessKeyId?: string
   secretAccessKey?: string
   publicUrl?: string
+  /**
+   * Set for a bucket that is not meant to have a hostname — the vault and the mirror. It
+   * moves the "where do readers fetch this from" requirement off the constructor and onto
+   * `getUrl`, which is the only method that actually needs an answer.
+   */
+  noPublicUrl?: boolean
   forcePathStyle?: boolean
   client?: S3Client
 }
@@ -44,8 +50,10 @@ export class S3Storage implements Storage {
   constructor(opts: S3StorageOptions = {}) {
     const env = getEnv()
     this.bucket = opts.bucket ?? env.S3_BUCKET ?? 'palscans'
-    this.publicUrl = opts.publicUrl ?? env.PUBLIC_CDN_URL ?? ''
-    if (!this.publicUrl) throw new Error('PUBLIC_CDN_URL is required for the s3 storage driver')
+    this.publicUrl = opts.noPublicUrl ? '' : (opts.publicUrl ?? env.PUBLIC_CDN_URL ?? '')
+    if (!this.publicUrl && !opts.noPublicUrl) {
+      throw new Error('PUBLIC_CDN_URL is required for the s3 storage driver')
+    }
     const accessKeyId = opts.accessKeyId ?? env.S3_ACCESS_KEY_ID
     const secretAccessKey = opts.secretAccessKey ?? env.S3_SECRET_ACCESS_KEY
     this.client =
@@ -123,6 +131,7 @@ export class S3Storage implements Storage {
   }
 
   getUrl(key: string): string {
+    if (!this.publicUrl) throw new Error('This bucket has no public URL by design')
     return joinUrl(this.publicUrl, assertSafeKey(key))
   }
 

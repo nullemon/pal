@@ -7,17 +7,60 @@
                      │
         ┌────────────┴──────────────┐
         │                           │
-   palscans.org                    cdn.palscans.org
-   (Caddy → Next.js)           (R2 bucket, public prefix, immutable cache)
-        │
+   palscans.org                   palimages.org
+   (Caddy → Next.js)         (R2 image bucket, immutable cache)
+        │                           ▲
+        │                           │ browser PUTs straight to a presigned URL
    ┌────┴──────┬───────────┬──────────────┐
  Next.js     Worker      Postgres 16    Redis / Valkey
  (2 procs)  (BullMQ)    (+ PgBouncer)
+        │
+        └── vault (R2, no hostname) ── mirror (R2, no hostname)
 ```
 
 Everything except R2 and Cloudflare runs from one `docker-compose.yml` on a single machine
 until traffic forces otherwise. Distributed systems bought before they are needed are the
 most common way a project like this dies.
+
+## Object storage
+
+Four R2 buckets. Only one of them has a hostname, and that is the design rather than an
+accident of setup.
+
+| Bucket | Holds | Custom domain |
+| --- | --- | --- |
+| image | `covers/` `banners/` `pages/` `avatars/` `brand/` | **yes** — `palimages.org` |
+| vault | `uploads/` (raw originals), `sitemaps/`, `_healthcheck/` | never |
+| image backup | a verified copy of everything durable | never |
+| database backup | nightly `pg_dump` archives | never |
+
+R2 has no bucket policies and no per-prefix ACL: **public access is all-or-nothing per
+bucket**, and connecting a custom domain turns it on for every object in it. Page images need
+a public hostname; the raw originals must not have one. Those two requirements cannot both be
+met inside one bucket, and the separation — not a WAF rule — is what settles it.
+`packages/core/src/storage/profiles.ts` is the routing table and the security boundary; it is
+default-deny, so a prefix nobody has thought about lands in the bucket with no address.
+
+Reader traffic never touches the origin, and neither does an upload: the admin panel unzips a
+CBZ **in the browser** and PUTs each image straight to a presigned URL, so the only bytes the
+server handles are the worker's re-encode pass.
+
+### The mirror
+
+**R2 has no object versioning** — `GetBucketVersioning` and `PutBucketVersioning` are both on
+Cloudflare's unimplemented list — so a deleted or corrupted object has nowhere to come back
+from unless something copied it first. Every durable object is mirrored into a bucket with
+different credentials, by two paths that cover different gaps:
+
+- **write time**, for everything the app and worker produce;
+- **an hourly reconcile sweep**, for the originals the browser uploaded directly, which no
+  `put` in any of our processes ever sees. Two listings and a set difference, so it stays
+  cheap at fifty thousand pages, and it doubles as the repair path for a dropped job.
+
+Each copy is size-verified after writing — a truncated copy looks exactly like a good one
+until the day you need it. Deletes are **not** propagated: surviving an accidental delete is
+most of what a mirror is for. `restoreFromBackup()` puts an object back when it is missing or
+its size no longer matches.
 
 ## Environments
 
@@ -91,7 +134,10 @@ available" refresh instead of reloading underneath the user.
 - Postgres: WAL archiving to R2 with point-in-time recovery, plus a nightly `pg_dump`
   retained 30 days. **Restore-test monthly** into staging and time it. A backup you have
   never restored is a hypothesis.
-- R2: object versioning on, lifecycle rule expiring noncurrent versions after 30 days.
+- R2: **no object versioning exists** — Cloudflare has not implemented it, so there is no
+  undelete and no lifecycle rule to configure. The application's own object mirror above is
+  the entire recovery story for images; an earlier version of this document assumed
+  versioning and the runbook's object restore depended on it.
 - Documented targets: RPO 5 minutes, RTO 1 hour, with the runbook in `infra/RUNBOOK.md`.
 
 ## Observability

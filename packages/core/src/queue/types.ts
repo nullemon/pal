@@ -32,6 +32,18 @@ export interface JobMap {
    * usual producer; `Admin → System → Backup` enqueues the same job with `trigger: 'manual'`.
    */
   'db.backup': { trigger?: 'schedule' | 'manual'; actorId?: number }
+  /**
+   * Copy one durable object into the image backup bucket (docs/08 "The mirror"). Enqueued
+   * by the storage router after every write it sees, and by the reconcile sweep for
+   * everything it does not — a browser uploading straight to a presigned URL never passes
+   * through the app, so the sweep is the only thing that catches those.
+   */
+  'object.mirror': { profile: 'public' | 'private'; key: string }
+  /**
+   * Diff the primary buckets against the mirror and enqueue whatever is missing. Cheap by
+   * design: two listings and a set difference, not a HEAD per object.
+   */
+  'object.reconcile': { limit?: number }
 }
 export type JobName = keyof JobMap
 

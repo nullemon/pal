@@ -40,7 +40,8 @@ the platform does. 4 cores handles a normal release day comfortably.
 
 ## 1 · DNS
 
-You create **two** records by hand. The third one R2 creates for you.
+You create **two** records by hand. The third is created for you when you connect the image
+bucket's domain in §2.
 
 ```
 A      palscans.org    <server ip>     proxied (orange cloud)
@@ -50,16 +51,14 @@ CNAME  www             palscans.org    proxied (orange cloud)
 Set SSL/TLS mode to **Full (strict)**. Caddy gets a real certificate on the origin, so
 Flexible would be a downgrade.
 
-**`cdn.palscans.org` does not point at your server.** Do not add an A record for it. It is
-created for you when you connect the bucket's custom domain — **do that in §2, not here**, and
-read §2 first: connecting the domain makes *every object in the bucket* world-readable, and
-one of the prefixes in there is your raw uploads. Cloudflare writes the DNS record itself,
-pointing at R2's edge, and serves the bucket from its cache.
+**The image hostname does not point at your server.** Do not add a record for it. It is
+created when you connect the custom domain to the image bucket in §2, and Cloudflare writes
+it itself, pointing at R2's edge.
 
 That is the whole point of choosing R2 (docs/08): page images are served by Cloudflare
 directly from the bucket, so reader traffic — by far the largest thing this site does — never
-touches your server and R2 charges nothing for egress. Pointing `cdn.` at your own IP would
-route every page image through your box and throw that away.
+touches your server, and R2 charges nothing for egress. Pointing the image hostname at your
+own IP would route every page image through your box and throw that away.
 
 The A record for `palscans.org` is only for the app itself: HTML, the admin panel, the API.
 
@@ -70,136 +69,148 @@ running without R2. With R2 connected you can ignore it — nothing will resolve
 
 ## 2 · Object storage
 
-Create the R2 bucket (`palscans`) and an API token scoped to it. Keep the endpoint, bucket
-name, access key ID and secret to hand. **You do not put them in a file** — they go into the
-admin panel in step 6.
+### Three buckets, and why
 
-Then read the rest of this section before you press **Connect Domain**. Getting it wrong
-publishes things that must not be published.
+The site stores three kinds of thing with three different risk profiles, so they get three
+buckets. The app routes every object by its key prefix and there is no way to pass the wrong
+one — `packages/core/src/storage/profiles.ts` is the routing table, and it is the security
+boundary, so it is deliberately short enough to read in one go.
 
-### What is in the bucket
-
-The app uses **one** bucket for everything it stores, and only some of it is meant to be
-public. These are the keys the code actually writes:
-
-| Prefix | What it is | Written by | Public? |
+| Bucket | Holds | Custom domain | Why |
 | --- | --- | --- | --- |
-| `covers/<slug>/<sha>.<w>.<fmt>` | re-encoded covers | `apps/worker/src/jobs/series-art.ts` | **yes** |
-| `banners/<slug>/<sha>.<w>.<fmt>` | re-encoded banners | same | **yes** |
-| `pages/<seriesId>/<chapterId>/…` | re-encoded page images | `apps/worker/src/jobs/chapter-process.ts` | **yes** (but see the premium note below) |
-| `avatars/<userId>/<sha>.webp` | re-encoded reader avatars | `apps/web/lib/auth/avatar.ts` | **yes** |
-| `uploads/<seriesId>/<chapterId>/…` | the **raw files you uploaded**, exactly as they came off your disk, for every chapter including premium ones — never deleted | `apps/web/app/api/upload/intent/route.ts`, `apps/worker/src/jobs/import/chapters.ts` | **no** |
-| `uploads/art/<seriesId>/…` | raw cover/banner originals (deleted once processed) | `apps/web/app/api/admin/series/[id]/art/route.ts` | **no** |
-| `sitemaps/…` | built sitemap files — the app reads them server-side and serves them itself | `apps/web/lib/seo/sitemaps.ts` | **no** |
-| `_healthcheck/…` | the object Integrations → Storage **Test** writes and deletes | `apps/web/lib/config/tests.ts` | **no** |
+| `palimages` | `covers/` `banners/` `pages/` `avatars/` `brand/` | **yes** — e.g. `palimages.org` | what a reader's browser fetches |
+| `palscans-vault` | `uploads/` `sitemaps/` `_healthcheck/` | **never** | raw originals; unreachable by construction |
+| `palscans-image-backup` | a copy of everything durable | **never** | R2 has no versioning, so this is the only undelete |
 
-The `uploads/` prefix is the one that matters. It is the un-re-encoded original of every page
-of every chapter — including premium chapters — kept permanently so a failed encode can be
-retried, and it carries whatever EXIF the source had.
+Plus a fourth, `palscans-backups`, for nightly **database** dumps (§9). Four buckets sounds
+like a lot; they cost $0.015/GB/month each and creating one takes about fifteen seconds.
 
-### R2 has no per-prefix public access
-
-There is no way to publish `covers/` and `pages/` and keep the rest private at the bucket
-level. R2 has no bucket policies and no per-prefix ACL; **public access is all-or-nothing per
-bucket**, and connecting a custom domain turns it on for every object. (Per-prefix anonymous
-access is a *MinIO* feature — it is what `minio-init` does in `infra/docker-compose.yml`
-under the `selfhosted` profile, and it is where the earlier version of this section came
-from. It does not transfer to R2.)
-
-Cloudflare's own answer is: put the bucket behind a custom domain, then restrict it with the
-zone's security products. That works because a custom domain is a hostname in *your* zone, so
-WAF custom rules, cache rules and Access all apply to it — none of which are available on the
-`r2.dev` development URL.
+**Why the vault is separate, specifically.** R2 has no bucket policies and no per-prefix ACL:
+**public access is all-or-nothing per bucket**, and connecting a custom domain turns it on for
+every object. Page images need a public hostname. Your raw uploads — the un-re-encoded
+original of every page of every chapter, including premium ones, carrying whatever EXIF the
+source had — must not have one. In one bucket those two requirements are in direct conflict,
+and the earlier version of this document resolved it with a Cloudflare WAF rule listing the
+public prefixes. That worked, and it was **a single control**: delete the rule, or turn the
+`r2.dev` URL back on, and every original you had ever uploaded was downloadable, with nothing
+else in the way and no other symptom. A bucket with no hostname attached cannot leak that way,
+because there is no address to leak through.
 
 ### Do this
 
-1. **R2 → your bucket → Settings → Public access → Connect Domain**, enter
-   `cdn.palscans.org`. Cloudflare writes the DNS record itself (step 1 — it must not be an A
-   record to your server).
-2. **Leave the `r2.dev` development URL disabled.** It is a Cloudflare-managed hostname
-   outside your zone, so nothing you configure below applies to it; if it is on, the whole
-   bucket stays reachable through it no matter what the WAF says. Check
+1. Create `palimages`, `palscans-vault` and `palscans-image-backup`. Create an API token
+   scoped to them. **You do not put the keys in a file** — they go into the admin panel in
+   step 6.
+2. On **`palimages` only**: Settings → Public access → **Connect Domain**, enter
+   `palimages.org` (or `cdn.palimages.org` — whatever you set as the Public image URL in the
+   panel). Cloudflare writes the DNS record itself.
+3. **Connect no domain to the other two, ever.** That is the whole mechanism.
+4. **Leave the `r2.dev` development URL disabled on all of them.** It is a Cloudflare-managed
+   hostname outside your zone, so nothing you configure in your zone applies to it; if it is
+   on, that bucket is reachable through it no matter what your WAF says. Check
    **Public access → Public Development URL** reads *Not allowed*.
-3. Add one **WAF custom rule** on the `palscans.org` zone
-   (Security → WAF → Custom rules → Create rule). Edit it as an *expression*, not with the
-   visual builder:
+5. Add one **WAF custom rule** on the `palscans.org` zone (Security → WAF → Custom rules).
+   Edit it as an *expression*, not with the visual builder:
 
    ```
-   (http.host eq "cdn.palscans.org"
+   (http.host eq "palimages.org"
      and not starts_with(http.request.uri.path, "/covers/")
      and not starts_with(http.request.uri.path, "/banners/")
      and not starts_with(http.request.uri.path, "/pages/")
-     and not starts_with(http.request.uri.path, "/avatars/"))
+     and not starts_with(http.request.uri.path, "/avatars/")
+     and not starts_with(http.request.uri.path, "/brand/"))
    ```
 
-   Action: **Block**. Custom rules are available on every plan, including Free (5 rules), and
-   `starts_with()` needs no paid plan either.
+   Action: **Block**. Custom rules are on every plan including Free.
 
-   The four allowed prefixes are exactly the "public" rows in the table above. If you ever
-   add a prefix that the browser must fetch, it goes in this rule too — otherwise it 403s
-   with no other symptom.
+   This is now belt and braces rather than the only thing standing between a stranger and
+   your uploads: there is nothing private in this bucket to protect. It still earns its place
+   — it refuses a directory listing, and it fails closed if a future prefix is added to the
+   public routing table without anyone thinking about it.
 
-4. **Verify it, from a machine that is not signed in to anything:**
+### Verify it, from a machine that is not signed in to anything
 
-   ```sh
-   CDN=https://cdn.palscans.org
-   code() { curl -s -o /dev/null -w '%{http_code}' "$1"; }
+```sh
+IMG=https://palimages.org
+code() { curl -s -o /dev/null -w '%{http_code}' "$1"; }
 
-   # must be 200 — paste a real cover key from Admin → Content → Series
-   echo "cover     $(code "$CDN/covers/<slug>/<sha>.640.webp")"
+# must be 200 — paste a real cover key from Admin → Content → Series
+echo "cover   $(code "$IMG/covers/<slug>/<sha>.640.webp")"
 
-   # must all be 403
-   for p in /uploads/probe /uploads/art/probe /sitemaps/sitemap.xml /_healthcheck/probe /; do
-     echo "$p  $(code "$CDN$p")"
-   done
-   ```
+# must all be 403
+for p in /uploads/probe /sitemaps/sitemap.xml /_healthcheck/probe /; do
+  echo "$p  $(code "$IMG$p")"
+done
+```
 
-   The deliberate trick in the second loop is that those paths do not exist. An **unprotected**
-   bucket answers `404` for a missing key; the WAF rule answers `403` before R2 is ever asked.
-   So `403` on all five means the rule is live and matching; a `404` anywhere means it is not,
-   and your bucket is open. A `200` means it is not, and something real is being served.
+The deliberate trick in the second loop is that those paths do not exist **and no longer
+could**, because nothing writes them to this bucket. An unprotected bucket answers `404` for
+a missing key; the WAF rule answers `403` before R2 is ever asked. So `403` everywhere means
+the rule is live; a `404` means it is not matching, and a `200` means something real is being
+served and you have the buckets crossed over.
 
-5. Re-run the check after any change to the bucket's public-access settings, and after adding
-   any prefix to the rule.
+Press **Test** on Admin → System → Integrations → Storage as well. It round-trips each
+configured bucket and — the check worth having — refuses to pass if two of the three names
+turn out to be the same bucket, which every individual round trip would otherwise report as
+working perfectly.
 
 ### What this does and does not protect
 
-**It does** stop anyone from reading your raw uploads, your sitemap files or a directory
-listing over `cdn.palscans.org`, which is the exposure that matters here.
+**It does** put your raw uploads somewhere with no internet-facing address at all.
 
 **It does not** make premium pages private. Page images for locked chapters live under
-`pages/` alongside free ones, and the app protects them by handing subscribers a *presigned*
-URL against the R2 S3 endpoint that expires after two hours
-(`apps/web/lib/storage/upload.ts`, `SIGNED_URL_TTL_SEC = 7200`). The same object is also
-reachable, unsigned and forever, at `https://cdn.palscans.org/<that key>`. The only thing
-standing in the way is that the key contains a 12-hex-character content hash, so it cannot be
-guessed — but it *can* be copied out of a presigned URL and shared, and the copy will not
-expire. Treat premium page keys as secrets, not as access control. Splitting `pages/` across
-two buckets is not possible without a code change: the app has exactly one bucket setting.
+`pages/` alongside free ones and must, because the reader's browser has to fetch them. The app
+hands subscribers a *presigned* URL that expires after two hours
+(`apps/web/lib/storage/upload.ts`, `SIGNED_URL_TTL_SEC = 7200`), but the same object is also
+reachable, unsigned and forever, at `https://palimages.org/<that key>`. The only thing in the
+way is that the key contains a 12-hex-character content hash, so it cannot be guessed — but it
+*can* be copied out of a presigned URL and shared, and the copy will not expire. Treat premium
+page keys as secrets, not as access control.
 
-**It is a single control.** Delete the rule, or turn the `r2.dev` URL back on, and the whole
-bucket is public again with no other warning. Note it wherever you keep the runbook.
+### The image mirror
 
-### Backups do not go in this bucket
+Every durable object is copied into `palscans-image-backup`, because **R2 has no object
+versioning** — `GetBucketVersioning` and `PutBucketVersioning` are both on Cloudflare's
+unimplemented list — so without a copy somewhere else, a deleted or corrupted image is simply
+gone.
 
-Create a **second** R2 bucket for them (`palscans-backups`), and never connect a domain to it.
-A database dump inside a bucket that has a public hostname attached is one WAF-rule mistake
-away from being downloadable. §9 and `infra/RUNBOOK.md` both assume the separate bucket.
+Two things feed it, and both are needed:
+
+- **At write time.** Everything the app and worker produce — page variants, covers, banners,
+  avatars — is queued for mirroring the moment it is written.
+- **An hourly reconcile sweep.** Uploads from the admin panel go from your *browser* straight
+  to a presigned URL, so the raw originals never pass through the server and nothing there can
+  notice them. The sweep lists both sides and queues the difference. It is two listings and a
+  set difference, not a request per object, so it stays cheap at fifty thousand pages. It is
+  also the repair path for anything a failed job dropped.
+
+Each copy is verified by size after it is written: a truncated copy is indistinguishable from
+a good one until the day you need it, so the job checks now and retries rather than reporting
+a backup it does not have. A delete on the primary is deliberately **not** propagated —
+surviving an accidental delete is most of what this is for.
+
+`WORKER_MIRROR_MS` (default 1 h) and `WORKER_MIRROR_BATCH` (default 2 000 objects per sweep)
+tune it. The batch cap matters on the first sweep of an existing site, which has everything to
+do at once and would otherwise starve the jobs readers are waiting on; the sweep reports that
+it stopped early rather than claiming to be finished.
+
+### Database backups do not go in any of these
+
+Create a **fourth** bucket, `palscans-backups`, and never connect a domain to it either. §9
+and `infra/RUNBOOK.md` both assume the separate bucket. A database dump contains every user
+row, every session and the sealed `app_credentials` table.
 
 ### Two things the old version of this document got wrong
 
-- It said to make prefixes public. R2 cannot; see above.
+- It said to make prefixes public. R2 cannot; see above. The answer is separate buckets.
 - It said to "leave versioning on" for `covers/` and `pages/`, and the runbook's object
-  restore depended on it. **R2 has no object versioning at all** — `GetBucketVersioning` and
-  `PutBucketVersioning` are both on Cloudflare's unimplemented list. Object recovery is
-  whatever you copy elsewhere yourself (`rclone sync` to the backups bucket); there is no
-  undelete.
+  restore depended on it. **R2 has no object versioning at all.** That is what the mirror
+  above exists to replace.
 
 Images are content-addressed, so a restored object is byte-identical and never needs a cache
 purge. That property is worth preserving.
 
 ---
-
 ## 3 · The server
 
 ```sh
@@ -406,8 +417,9 @@ what is wrong. What it checks:
 | `pg_dump` / `pg_restore` | on `PATH` and not older than the server |
 | Redis / Valkey | reachable, and `maxmemory-policy` is `noeviction` so BullMQ jobs cannot be evicted |
 | Storage | driver is `s3` not `fs`, the four S3 values are set, and the bucket answers (`--write` also does the panel's write/read/delete round trip) |
-| **Backups** | `BACKUP_S3_BUCKET` is **not** the bucket `cdn.palscans.org` serves, and has a key that can write to it |
-| **CDN exposure** | `https://cdn.palscans.org/uploads/<missing key>` answers **403**, not 404 — the §2 check, automated |
+| **Buckets** | the vault and the image backup bucket are set, and the three are genuinely three different buckets — the failure every individual read/write test still reports as working |
+| **Backups** | `BACKUP_S3_BUCKET` is **not** the bucket the public hostname serves, and has a key that can write to it |
+| **CDN exposure** | `<image host>/uploads/<missing key>` answers **403**, not 404 — the §2 check, automated. A failure with no vault configured; a warning with one, since nothing private is in that bucket |
 | Admin | an account holds the `admin` role **and** has TOTP enrolled |
 | Stored credentials | if `app_credentials` has rows, the current sealing key actually opens them (docs/19's silent-restore trap) |
 
@@ -532,10 +544,15 @@ unset. Nothing here needs a redeploy.
 
 Do these in order:
 
-1. **Storage** — driver *S3 / Cloudflare R2*, then the endpoint, bucket, access key ID, secret
-   and region (`auto` for R2), and the public CDN URL (`https://cdn.palscans.org`). Press
-   **Test**: it writes a small object, reads it back, compares the bytes and deletes it. If
-   that passes, your bucket works. Save.
+1. **Storage** — driver *S3 / Cloudflare R2*, then the endpoint, image bucket, access key ID,
+   secret and region (`auto` for R2), and the public image URL (`https://palimages.org`).
+   Then the **vault bucket** and the **image backup bucket** from §2 — each needs only its
+   name if it is in the same R2 account; fill in an endpoint and key only to put one in a
+   different account, which is worth doing for the mirror.
+
+   Press **Test**: it writes a small object to each configured bucket, reads it back, compares
+   the bytes and deletes it — and then checks the three names are three different buckets,
+   which is the mistake every individual round trip reports as working perfectly. Save.
 2. **Email** — either a Resend API key, or SMTP host/port/username/password. Set the *from*
    address to something on your domain. Press **Test** to send yourself a message.
 3. **Sign-in providers** *(optional)* — Google and Discord client IDs and secrets. The
@@ -605,9 +622,14 @@ working and the search rankings transfer.
 
 Walk these in a private window:
 
-- [ ] `/` renders; covers load from `cdn.palscans.org`, not the app host
-- [ ] **the §2 bucket check passes**: `https://cdn.palscans.org/uploads/probe` answers **403**,
-      not 404 and not 200. This is the one that costs you if it is wrong.
+- [ ] `/` renders; covers load from your image host, not the app host
+- [ ] **the §2 bucket check passes**: `<image host>/uploads/probe` answers **403**, not 200.
+      A 404 is survivable once the vault exists — nothing private is in that bucket — but it
+      means the WAF rule is not matching, so fix it anyway.
+- [ ] **Admin → System → Integrations → Storage** → **Test** is green, including
+      *Buckets are separate*. Three names that are secretly one bucket is invisible otherwise.
+- [ ] the worker log shows no `object mirror is behind` line after an hour, or shows one that
+      is shrinking — the first sweep of an existing catalogue has everything to copy
 - [ ] a series page, then a chapter — pages render, the reader settings sheet opens
 - [ ] register a throwaway account; the verification mail arrives
 - [ ] post a comment containing a link — it should be **held**, not published

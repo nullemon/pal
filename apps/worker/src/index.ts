@@ -9,6 +9,7 @@ import { processChapter } from './jobs/chapter-process.js'
 import { openSource, readImportConfig } from './jobs/import/resolve.js'
 import { runImport } from './jobs/import-run.js'
 import { registerNotifications } from './jobs/notify-index.js'
+import { mirrorEnv, runObjectMirror, runObjectReconcile } from './jobs/object-mirror.js'
 import { publishDue } from './jobs/publish.js'
 import { type ArtKind, processSeriesArt } from './jobs/series-art.js'
 import {
@@ -43,6 +44,9 @@ const BACKUP_MS = backupEnv().WORKER_BACKUP_MS
  * worker that restarts twice an hour during a deploy must not take a dump each time.
  */
 let lastBackup = 0
+/** How often the object mirror's reconcile sweep is enqueued (docs/08 "The mirror"). */
+const MIRROR_MS = mirrorEnv().WORKER_MIRROR_MS
+let lastMirror = 0
 /** How often a *full* `sitemap.build` is enqueued (docs/12 §5: nightly). Seeded, like backups. */
 const SITEMAP_MS = sitemapEnv().WORKER_SITEMAP_MS
 let lastSitemap = 0
@@ -215,6 +219,19 @@ const main = async () => {
     await runSitemapBuild({ db, storage }, { kind: job.data.kind, seriesIds: job.data.seriesIds })
   })
 
+  /**
+   * The object mirror (docs/08). `object.mirror` copies one object; `object.reconcile` is the
+   * producer that finds the ones nothing told us about — an admin-panel upload goes from the
+   * browser straight to a presigned URL, so the originals under `uploads/` never pass through
+   * a `put` any process here can see.
+   */
+  queue.process('object.mirror', async (job) => {
+    await runObjectMirror(job.data.profile, job.data.key)
+  })
+  queue.process('object.reconcile', async (job) => {
+    await runObjectReconcile(job.data?.limit)
+  })
+
   for (const name of ['notify.comment', 'email.send', 'webhook.deliver'] as const) {
     queue.process(name, async (job) => {
       log.warn(`no handler for ${name} in apps/worker yet — acknowledged`, { id: job.id })
@@ -260,6 +277,16 @@ const main = async () => {
           'stats.rollup',
           {},
           { jobId: `stats.rollup:${Math.floor(Date.now() / ROLLUP_MS)}` },
+        )
+      }
+      // The mirror's reconcile sweep, same producer pattern. Cheap (two listings) and the
+      // only thing that notices an object no `put` in this process ever saw.
+      if (Date.now() - lastMirror >= MIRROR_MS) {
+        lastMirror = Date.now()
+        await queue.add(
+          'object.reconcile',
+          {},
+          { jobId: `object.reconcile:${Math.floor(Date.now() / MIRROR_MS)}` },
         )
       }
       // The `db.backup` producer, on the same pattern. `lastBackup` moves when the job is

@@ -8,14 +8,23 @@ Everything else is CRUD.
 Content-addressed, so every object is immutable and can be cached forever:
 
 ```
+# image bucket — has a public hostname, because a browser fetches these
 covers/<series-slug>/<sha256[0:12]>.{avif,webp}            widths 200,400,800
 banners/<series-slug>/<sha256[0:12]>.{avif,webp}           widths 800,1600,2400
 pages/<series-id>/<chapter-id>/<idx:04d>-<sha[0:12]>.{avif,webp}   widths 480,720,1080,1440
 avatars/<user-id>/<sha256[0:12]>.webp                      widths 64,160
+brand/<slot>-<sha256[0:12]>.{png,svg}                      the operator's logo
 
-uploads/<series-id>/<chapter-id>/<idx:04d>-<sha[0:12]>.<ext>       originals, private
+# vault — no hostname at all, which is what makes these private
+uploads/<series-id>/<chapter-id>/<idx:04d>-<sha[0:12]>.<ext>       originals
 uploads/art/<series-id>/<sha256[0:12]>.<ext>                       cover/banner originals
 ```
+
+The prefix decides the bucket, and nothing in the app picks one by hand:
+`packages/core/src/storage/profiles.ts` routes every key, default-deny, so a prefix added
+without thought lands in the vault rather than on the internet. R2 has no per-prefix ACL —
+public access is all-or-nothing per bucket — so separate buckets is the only way these two
+groups can coexist. See docs/08 "Object storage".
 
 **Originals are kept.** Nothing in the pipeline deletes anything under `uploads/`, and the
 keys stay in `chapters.processing.sources` for the life of the chapter. That is not an
@@ -25,6 +34,10 @@ for the files again. Keep it that way, and do not put a lifecycle rule on that p
 chapter whose originals *have* gone (an imported one that never had them, or a bucket
 someone tidied) can still be read, but it can never be re-processed; the admin panel labels
 those chapters **No originals** rather than pretending otherwise.
+
+Every original is also mirrored into the image backup bucket — by the hourly reconcile sweep
+rather than at write time, because the browser PUTs them straight to a presigned URL and no
+process here ever sees the write (docs/08 "The mirror").
 
 Full key form: `pages/1284/59310/0007-9f2c1ab4de07.720.avif`.
 

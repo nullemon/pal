@@ -1213,8 +1213,11 @@ export const adminMessages = {
         'Tested against what is in the boxes above, including changes you have not saved.',
       checkStates: { pass: 'Pass', fail: 'Fail', skip: 'Unverified' },
       checks: {
-        cdnUrl: 'Public CDN URL',
+        cdnUrl: 'Public image URL',
         write: 'Write an object',
+        vaultRoundTrip: 'Vault bucket',
+        backupRoundTrip: 'Image backup bucket',
+        bucketsDistinct: 'Buckets are separate',
         readBack: 'Read it back',
         bytes: 'Compare the bytes',
         cleanup: 'Delete it again',
@@ -1244,6 +1247,17 @@ export const adminMessages = {
         notSet: 'Not set, so there is nothing to check.',
         unexpected: 'Unexpected failure: {detail}',
         cdnUrlOk: 'Readers will load images from {url}.',
+        profileRoundTripOk: 'Wrote, read back and removed a test object in {bucket}.',
+        profileRoundTripFailed: 'The {bucket} bucket refused the round trip: {detail}',
+        vaultNotSet:
+          'No vault bucket. Raw uploads stay in the image bucket, where the only thing hiding them from the internet is a Cloudflare rule you could delete by accident.',
+        backupNotSet:
+          'No image backup bucket. R2 has no object versioning, so a deleted or corrupted image cannot be recovered.',
+        bucketsAllDistinct: 'Each configured bucket is a different bucket.',
+        bucketsCollide:
+          'The {a} and {b} buckets are both "{bucket}". They must be different buckets or the split does nothing: {consequence}',
+        collideVault: 'raw uploads would sit behind the public hostname exactly as before.',
+        collideBackup: 'the mirror would be in the bucket it is meant to protect you from losing.',
         cdnUrlMissing:
           'Not set. The S3 driver needs a public hostname to build image URLs from, so covers and pages would have no address.',
         writeOk: 'Wrote {bytes} bytes to {key}.',

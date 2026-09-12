@@ -1198,6 +1198,48 @@ const checkCdnExposure = async () => {
     )
   else pass(SECTION_STORAGE, 'PUBLIC_CDN_URL', url.origin)
 
+  /**
+   * The three buckets (docs/08 "Object storage"). A missing vault is not a failure — the site
+   * runs as a single bucket, as it always did — but it is the difference between "raw uploads
+   * are unreachable because there is no address" and "raw uploads are hidden by one WAF rule".
+   */
+  const imageBucket = get('S3_BUCKET')
+  const vaultBucket = get('VAULT_S3_BUCKET')
+  const mirrorBucket = get('OBJECT_BACKUP_S3_BUCKET')
+  if (vaultBucket) pass(SECTION_STORAGE, 'Vault bucket', vaultBucket)
+  else
+    warn(
+      SECTION_STORAGE,
+      'Vault bucket',
+      'not set — raw uploads share the bucket that has a public hostname',
+      'Set VAULT_S3_BUCKET (or Admin → System → Integrations → Storage). Without it the only ' +
+        'thing keeping every un-re-encoded original off the internet is the Cloudflare WAF ' +
+        'rule, which is a single control: delete it and the lot is downloadable. docs/18 §2.',
+    )
+  if (mirrorBucket) pass(SECTION_STORAGE, 'Image backup bucket', mirrorBucket)
+  else
+    warn(
+      SECTION_STORAGE,
+      'Image backup bucket',
+      'not set — a deleted or corrupted image cannot be recovered',
+      'Set OBJECT_BACKUP_S3_BUCKET. R2 has no object versioning, so without a mirror there ' +
+        'is no undelete for images at all. docs/08 "The mirror".',
+    )
+  for (const [a, b, x, y] of [
+    ['S3_BUCKET', 'VAULT_S3_BUCKET', imageBucket, vaultBucket],
+    ['S3_BUCKET', 'OBJECT_BACKUP_S3_BUCKET', imageBucket, mirrorBucket],
+    ['VAULT_S3_BUCKET', 'OBJECT_BACKUP_S3_BUCKET', vaultBucket, mirrorBucket],
+  ]) {
+    if (x && y && x === y)
+      fail(
+        SECTION_STORAGE,
+        'Buckets are separate',
+        `${a} and ${b} are both "${x}"`,
+        'They must name different buckets or the split does nothing — and every individual ' +
+          'read/write test still passes, because writing and reading one bucket works fine.',
+      )
+  }
+
   if (OFFLINE) return skip(SECTION_STORAGE, 'CDN exposure', 'skipped (--offline)')
   const probe = `${url.origin}/uploads/preflight-${randomBytes(4).toString('hex')}`
   let status
@@ -1219,20 +1261,33 @@ const checkCdnExposure = async () => {
   }
   if (status === 403)
     pass(SECTION_STORAGE, 'CDN exposure', `${probe.replace(/preflight-\w+/, 'preflight-…')} → 403`)
-  else if (status === 404)
-    fail(
-      SECTION_STORAGE,
-      'CDN exposure',
-      `a missing key under /uploads/ answers 404, not 403 — the bucket is open`,
-      'The WAF custom rule from docs/18 §2 is not live or not matching. 404 means R2 was ' +
-        'asked and had nothing; 403 means the rule blocked the request before R2 was asked. ' +
-        'Until it is fixed, every raw upload — the un-re-encoded original of every page of ' +
-        'every chapter, premium included — is world-readable at ' +
-        `${url.origin}/uploads/… . Add the rule (Security → WAF → Custom rules, edited as an ` +
-        'expression), then re-run this. Also confirm Public access → Public Development URL ' +
-        'reads "Not allowed": the r2.dev hostname is outside your zone and no rule applies to it.',
-    )
-  else
+  else if (status === 404) {
+    // 404 means R2 was asked and had nothing; 403 means the rule refused before R2 was asked.
+    // What that costs you depends entirely on whether anything private is in this bucket.
+    if (vaultBucket)
+      warn(
+        SECTION_STORAGE,
+        'CDN exposure',
+        `a missing key under /uploads/ answers 404, not 403 — the WAF rule is not matching`,
+        'Not urgent: with a vault configured there are no uploads in this bucket to expose. ' +
+          'The rule is still worth having — it refuses a directory listing, and it fails ' +
+          'closed if a prefix is ever added to the public routing table without anyone ' +
+          'thinking about it. docs/18 §2.',
+      )
+    else
+      fail(
+        SECTION_STORAGE,
+        'CDN exposure',
+        `a missing key under /uploads/ answers 404, not 403 — the bucket is open`,
+        'The WAF custom rule from docs/18 §2 is not live or not matching, and you have no ' +
+          'vault bucket, so every raw upload — the un-re-encoded original of every page of ' +
+          'every chapter, premium included — is world-readable at ' +
+          `${url.origin}/uploads/… . Set VAULT_S3_BUCKET, or add the rule (Security → WAF → ` +
+          'Custom rules, edited as an expression), then re-run this. Also confirm Public ' +
+          'access → Public Development URL reads "Not allowed": the r2.dev hostname is ' +
+          'outside your zone and no rule applies to it.',
+      )
+  } else
     warn(
       SECTION_STORAGE,
       'CDN exposure',

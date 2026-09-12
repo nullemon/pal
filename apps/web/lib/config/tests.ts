@@ -242,6 +242,90 @@ const storageChecks = async (v: Record<string, string>): Promise<Check[]> => {
   } catch {
     checks.push(fail(m.checks.cleanup, fmt(R.cleanupFailed, { key })))
   }
+
+  /**
+   * The vault and the mirror, each proved the same way: written, read back, removed.
+   *
+   * Blank is not a failure — the site runs as a single bucket, as it always did — but it is
+   * reported rather than passed over, because "no vault" and "no mirror" are both a security
+   * or durability position the operator should be taking on purpose.
+   */
+  const secondary = async (
+    prefix: string,
+    label: string,
+    absent: string,
+  ): Promise<string | null> => {
+    const bucket = v[`${prefix}.bucket`] ?? ''
+    if (!bucket) {
+      checks.push(skip(label, absent))
+      return null
+    }
+    const endpoint = v[`${prefix}.endpoint`] || v['s3.endpoint'] || ''
+    if (endpoint) {
+      try {
+        const verdict = await checkHost(new URL(endpoint).hostname)
+        if (!verdict.allowed) {
+          checks.push(fail(label, verdict.reason ?? R.s3BadEndpoint))
+          return bucket
+        }
+      } catch {
+        checks.push(fail(label, R.s3BadEndpoint))
+        return bucket
+      }
+    }
+    try {
+      const target = await createStorage({
+        driver: 's3',
+        s3: {
+          bucket,
+          endpoint: endpoint || undefined,
+          region: v['s3.region'] || 'auto',
+          accessKeyId: v[`${prefix}.access_key_id`] || v['s3.access_key_id'] || undefined,
+          secretAccessKey:
+            v[`${prefix}.secret_access_key`] || v['s3.secret_access_key'] || undefined,
+          forcePathStyle: v['s3.force_path_style'] === 'true',
+          noPublicUrl: true,
+        },
+      })
+      const probe = `_healthcheck/${randomUUID()}.txt`
+      await target.put(probe, body, { contentType: 'text/plain', cacheControl: 'no-store' })
+      const back = await target.get(probe)
+      await target.delete(probe)
+      if (!back || Buffer.compare(Buffer.from(back), Buffer.from(body)) !== 0) {
+        checks.push(fail(label, R.bytesDiffer))
+        return bucket
+      }
+      checks.push(pass(label, fmt(R.profileRoundTripOk, { bucket })))
+    } catch (err) {
+      checks.push(fail(label, fmt(R.profileRoundTripFailed, { bucket, detail: reason(err) })))
+    }
+    return bucket
+  }
+
+  const vaultBucket = await secondary('vault', m.checks.vaultRoundTrip, R.vaultNotSet)
+  const backupBucket = await secondary('objects_backup', m.checks.backupRoundTrip, R.backupNotSet)
+
+  /**
+   * Three names that are secretly one bucket is the failure this whole split exists to
+   * prevent, and it is invisible: every round trip above passes, because writing and reading
+   * one bucket works perfectly well.
+   */
+  const imageBucket = v['s3.bucket'] ?? ''
+  const collisions: Check[] = []
+  const collide = (a: string, b: string, bucket: string, consequence: string) =>
+    collisions.push(
+      fail(m.checks.bucketsDistinct, fmt(R.bucketsCollide, { a, b, bucket, consequence })),
+    )
+  if (vaultBucket && imageBucket && vaultBucket === imageBucket)
+    collide('image', 'vault', vaultBucket, R.collideVault)
+  if (backupBucket && imageBucket && backupBucket === imageBucket)
+    collide('image', 'image backup', backupBucket, R.collideBackup)
+  if (backupBucket && vaultBucket && backupBucket === vaultBucket)
+    collide('vault', 'image backup', backupBucket, R.collideBackup)
+  if (collisions.length > 0) checks.push(...collisions)
+  else if (vaultBucket || backupBucket)
+    checks.push(pass(m.checks.bucketsDistinct, R.bucketsAllDistinct))
+
   return checks
 }
 
