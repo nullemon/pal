@@ -100,9 +100,16 @@ function LogoImages({ brand, height }: { brand: BrandChrome; height: number }) {
 export async function Wordmark({
   size = 'md',
   brand,
+  compact = false,
 }: {
   size?: 'sm' | 'md'
   brand?: BrandChrome
+  /**
+   * Drop the site name below `sm`, leaving the mark alone. The header is a fixed row of
+   * controls and the name is the one part of it that can go without losing a function —
+   * keeping it is what pushed the row past the viewport on a phone.
+   */
+  compact?: boolean
 }) {
   const b = brand ?? (await siteChrome()).brand
   const markSize = size === 'sm' ? 24 : 30
@@ -115,7 +122,7 @@ export async function Wordmark({
     <Link
       href="/"
       aria-label={`${b.name} home`}
-      className="flex items-center gap-2.5 rounded-md text-fg"
+      className="flex min-w-0 shrink-0 items-center gap-2.5 rounded-md text-fg"
     >
       {showMark ? (
         preset ? (
@@ -130,7 +137,7 @@ export async function Wordmark({
         <span
           className={`font-display font-extrabold leading-none tracking-[-0.04em] ${
             size === 'sm' ? 'text-[17px]' : 'text-[21px]'
-          }`}
+          }${compact ? ' hidden sm:inline' : ''}`}
         >
           {lead}
           {rest ? <span className="font-normal tracking-[-0.02em]">{rest}</span> : null}

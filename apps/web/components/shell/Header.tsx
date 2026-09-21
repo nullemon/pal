@@ -22,10 +22,10 @@ export async function Header() {
   const mobileLinks = chrome.header.filter((l) => l.mobile)
   return (
     <header className="sticky top-0 z-30 border-b border-line bg-bg/90 backdrop-blur-[14px]">
-      <div className="container-page flex h-16 items-center gap-3 md:gap-5">
-        <Wordmark brand={chrome.brand} />
+      <div className="container-page flex h-16 min-w-0 items-center gap-2 sm:gap-3 md:gap-5">
+        <Wordmark brand={chrome.brand} compact />
         {chrome.header.length > 0 ? (
-          <nav aria-label={messages.nav.primary} className="hidden md:block">
+          <nav aria-label={messages.nav.primary} className="hidden min-w-0 lg:block">
             <NavLinks links={chrome.header} />
           </nav>
         ) : null}
@@ -44,12 +44,12 @@ export async function Header() {
             autoComplete="off"
             className="h-[38px] min-w-0 flex-1 bg-transparent text-sm text-fg outline-none placeholder:text-fg-muted"
           />
-          <kbd className="hidden lg:inline rounded-[5px] border border-line bg-surface-2 px-1.5 py-[3px] font-body text-[11px] font-semibold leading-none text-fg-muted">
+          <kbd className="hidden xl:inline rounded-[5px] border border-line bg-surface-2 px-1.5 py-[3px] font-body text-[11px] font-semibold leading-none text-fg-muted">
             {messages.nav.searchHint}
           </kbd>
         </form>
 
-        <div className="ml-auto flex items-center gap-2 md:ml-0 md:gap-3">
+        <div className="ml-auto flex min-w-0 items-center gap-1.5 sm:gap-2 md:ml-0 md:gap-3">
           <Link
             href="/search"
             aria-label={messages.nav.search}
@@ -64,14 +64,14 @@ export async function Header() {
             prefetch={false}
             aria-label={randomLink.hint}
             title={randomLink.label}
-            className={iconButton}
+            className={`${iconButton} hidden sm:inline-flex`}
           >
             <Shuffle size={18} />
           </Link>
           {/* "Request a series" opens a modal in place rather than navigating: a reader
               forty chapters into something should not lose their place to ask for a title.
               The board itself is /requests, linked from the modal and the footer. */}
-          <RequestTrigger />
+          <RequestTrigger className="hidden sm:inline-flex" />
           <Link
             href="/me/settings#notifications"
             aria-label={messages.nav.notifications}
@@ -86,10 +86,11 @@ export async function Header() {
           {chrome.primaryButton ? (
             <Link
               href={chrome.primaryButton.href}
-              className={buttonClasses('primary', 'md', 'rounded-[10px]')}
+              aria-label={chrome.primaryButton.label}
+              className={buttonClasses('primary', 'md', 'rounded-[10px] px-3 sm:px-4')}
             >
               <Zap size={16} aria-hidden="true" />
-              {chrome.primaryButton.label}
+              <span className="hidden sm:inline">{chrome.primaryButton.label}</span>
             </Link>
           ) : null}
           <Link

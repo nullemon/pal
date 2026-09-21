@@ -48,9 +48,20 @@ export async function POST(request: Request): Promise<Response> {
     ip: clientIp(request),
   })
   if (!gate.ok) return fail(gate.status, gate.error, gate.message)
-  // No provider in production: refuse before an unverifiable account exists.
-  if ((await getMailer()).kind === 'none')
-    return fail(503, 'mail_unavailable', messages.errors.mailUnavailable)
+  /**
+   * Mail is optional, and signing up is not. An operator who has not configured a provider
+   * yet — which includes every operator on their first afternoon — used to find registration
+   * refused outright, and the launch guide tells them to register *before* the panel where
+   * mail is configured. So the account is created either way.
+   *
+   * With no provider there is no route to verification, so the address is marked verified on
+   * creation rather than leaving the reader stranded on a screen whose only button cannot
+   * work. The cost is real and belongs to the operator: unverified addresses mean nothing
+   * until they set a provider up, so `require_verification` is honoured only when there is a
+   * provider that could honour it.
+   */
+  const mailerKind = (await getMailer()).kind
+  const canVerifyByEmail = mailerKind !== 'none'
 
   const db = await getDb()
   const [existing] = await db
@@ -76,25 +87,34 @@ export async function POST(request: Request): Promise<Response> {
   const passwordHash = await hashPassword(password)
   const [created] = await db
     .insert(users)
-    .values({ email, passwordHash, username: username ?? null, lastLoginMethod: 'password' })
+    .values({
+      email,
+      passwordHash,
+      username: username ?? null,
+      lastLoginMethod: 'password',
+      // Nothing can ever verify this address while no provider exists; an account that can
+      // never leave the unverified state is worse than one that was never checked.
+      emailVerifiedAt: canVerifyByEmail ? null : new Date(),
+    })
     .returning({ id: users.id })
   if (!created) return fail(500, 'server_error', messages.errors.serverError)
 
-  const sent = await sendVerification(created.id, email)
+  const sent = canVerifyByEmail ? await sendVerification(created.id, email) : { ok: false as const }
   await signIn(created.id, email, request, 'password')
   await recordLoginEvent({ request, userId: created.id, method: 'password', outcome: 'success' })
   const returnTo = safeReturnPath(parsed.data.return)
   // `require_verification` (docs/17 §C): the account exists and is signed in — so the resend
   // button works — but registration ends on the verification screen instead of the site.
-  const next = gate.access.require_verification
-    ? '/verify'
-    : username
-      ? returnTo
-      : `/onboarding?return=${encodeURIComponent(returnTo)}`
+  const next =
+    gate.access.require_verification && canVerifyByEmail
+      ? '/verify'
+      : username
+        ? returnTo
+        : `/onboarding?return=${encodeURIComponent(returnTo)}`
   return ok({
     return: next,
     verificationSent: sent.ok,
-    verificationRequired: gate.access.require_verification,
+    verificationRequired: gate.access.require_verification && canVerifyByEmail,
     breachChecked: breach.checked,
   })
 }
