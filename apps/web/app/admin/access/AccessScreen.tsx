@@ -208,6 +208,17 @@ export function AccessScreen({
             </div>
             <div className="flex items-start justify-between gap-4 border-t border-line-soft pt-4">
               <div className="flex flex-col gap-0.5">
+                <span className="text-[13px] font-semibold">{m.staffTotp}</span>
+                <Hint>{m.staffTotpHint}</Hint>
+              </div>
+              <Toggle
+                checked={s.access.staff_totp}
+                ariaLabel={m.staffTotp}
+                onChange={(v) => setAccess({ staff_totp: v })}
+              />
+            </div>
+            <div className="flex items-start justify-between gap-4 border-t border-line-soft pt-4">
+              <div className="flex flex-col gap-0.5">
                 <span className="text-[13px] font-semibold">{m.turnstile}</span>
                 <Hint>{m.turnstileHint}</Hint>
                 <Hint className={turnstileConfigured ? 'text-ok' : 'text-warn'}>

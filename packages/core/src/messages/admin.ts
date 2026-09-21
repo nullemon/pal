@@ -975,6 +975,9 @@ export const adminMessages = {
       requireVerification: 'Require email verification',
       requireVerificationHint:
         'New accounts land on the verification screen instead of the site until they confirm the address.',
+      staffTotp: 'Require two-factor for admins',
+      staffTotpHint:
+        'An admin password on its own is one reused credential away from someone owning the site. Turn this off only while you are setting up, and turn it back on before you have readers.',
       turnstile: 'Cloudflare Turnstile',
       turnstileHint: 'Challenge the registration and sign-in forms.',
       turnstileConfigured: 'Turnstile keys are set.',

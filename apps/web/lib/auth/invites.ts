@@ -67,6 +67,16 @@ export const accessSettingSchema = z.object({
    * restriction. Needs TRUSTED_PROXY set, or every request looks like the proxy's own IP.
    */
   panel_ips: z.array(z.string().trim().max(64)).max(100),
+  /**
+   * Whether an admin must hold a second factor before the panel opens (docs/07).
+   *
+   * On by default, and worth leaving on: an admin password is one reused credential away
+   * from someone owning the whole site. It is a setting rather than a rule because a fresh
+   * deployment has no readers to protect and an operator who wants to look around first is
+   * making a real, reversible choice about their own risk — a wall they cannot pass just
+   * teaches them to look for a way round it.
+   */
+  staff_totp: z.boolean(),
 })
 export type AccessSetting = z.infer<typeof accessSettingSchema>
 
@@ -77,6 +87,7 @@ export const DEFAULT_ACCESS: AccessSetting = {
   turnstile: true,
   staff_path: STAFF_PATH_DEFAULT,
   panel_ips: [],
+  staff_totp: true,
 }
 
 export const readAccessSetting = async (): Promise<AccessSetting> => {

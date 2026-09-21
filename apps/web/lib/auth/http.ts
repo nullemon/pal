@@ -149,9 +149,18 @@ export const sameOrigin = (request: Request): boolean => {
 export const csrfFailed = () => fail(403, 'csrf', messages.errors.forbidden)
 export const totpRequired = () => fail(403, 'totp_required', messages.errors.totpRequired)
 
-/** docs/07: TOTP is mandatory for the admin role — permission routes refuse admins without it. */
+/**
+ * docs/07: TOTP is mandatory for the admin role — permission routes refuse admins without it,
+ * unless the operator has turned `staff_totp` off in Admin → System → Access.
+ *
+ * Checked here as well as in `app/admin/layout.tsx` on purpose: the layout guards the pages
+ * and this guards every mutation behind them, so turning the requirement off in one place
+ * without the other would leave the panel open and its API shut, or worse the other way round.
+ */
 const adminTotpMissing = async (user: SessionUser): Promise<boolean> => {
   if (user.role !== 'admin') return false
+  const { readAccessSetting } = await import('./invites')
+  if (!(await readAccessSetting()).staff_totp) return false
   const { findUserById } = await import('./users')
   const row = await findUserById(user.id)
   return !row?.totpEnabledAt

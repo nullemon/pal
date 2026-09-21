@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import type { ReactNode } from 'react'
 import { AdminShell } from '@/components/admin/AdminShell'
 import { withPermission } from '@/lib/auth'
+import { readAccessSetting } from '@/lib/auth/invites'
 import { findUserById } from '@/lib/auth/users'
 
 export const dynamic = 'force-dynamic'
@@ -19,7 +20,7 @@ export const metadata: Metadata = {
  */
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   const user = await withPermission('admin.access', { returnTo: '/admin' })
-  if (user.role === 'admin') {
+  if (user.role === 'admin' && (await readAccessSetting()).staff_totp) {
     const row = await findUserById(user.id)
     // `#totp` matters. The page explains the redirect inside the two-factor section, which
     // is well below the fold — landing at the top of a long settings page with no visible
