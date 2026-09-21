@@ -37,7 +37,25 @@ COPY . .
 # `--build-arg NODE_BUILD_MEMORY=2048`.
 ARG NODE_BUILD_MEMORY=3072
 ENV NODE_OPTIONS=--max-old-space-size=${NODE_BUILD_MEMORY}
-RUN pnpm turbo run build
+# `next build` prerenders pages that read the catalogue, and the image is built *before* the
+# real database exists — docs/18 §4 migrates after the first boot, and `.env` is excluded from
+# the build context on purpose, so there is no DATABASE_URL here at all. The client then falls
+# back to `pglite://.data/pglite` and dies on `mkdir /repo/.data/pglite`, having already
+# compiled and type-checked successfully, which reads like anything but a missing database.
+#
+# So give the build its own throwaway PGlite with the schema applied. Those pages prerender an
+# empty catalogue rather than crashing: the home page renders per request and is unaffected,
+# `/announcements` carries `revalidate = 300` and fills in within five minutes of first boot,
+# and `generateStaticParams` simply finds nothing to pre-render and serves on demand instead.
+#
+# Deleted before the final stages copy `/repo`, so no database file reaches the image. The
+# `DATABASE_URL` here never leaves this stage either — `web` and `worker` are `FROM base` and
+# read the real one from the environment at runtime.
+ENV DATABASE_URL=pglite://.data/build
+RUN mkdir -p .data/build \
+ && pnpm db:migrate \
+ && pnpm turbo run build \
+ && rm -rf .data
 
 FROM base AS web
 ENV NODE_ENV=production
