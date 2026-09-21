@@ -26,6 +26,17 @@ RUN pnpm install --frozen-lockfile
 
 FROM deps AS build
 COPY . .
+# `next build` type-checks after it compiles, and tsc holds the whole program graph in memory.
+# V8 derives its default old-space ceiling from the *host's* RAM, so on a 2 GB machine it
+# lands near 1 GB — under what this repo's graph needs, and the build dies with "Reached heap
+# limit" having already compiled successfully. That ceiling is V8's own, not the operating
+# system's, which is why adding swap does not help: it has to be raised explicitly.
+#
+# Scoped to this stage. The `web` and `worker` stages are `FROM base`, so neither inherits it
+# and no runtime process is handed a 3 GB heap. Override for a smaller box with
+# `--build-arg NODE_BUILD_MEMORY=2048`.
+ARG NODE_BUILD_MEMORY=3072
+ENV NODE_OPTIONS=--max-old-space-size=${NODE_BUILD_MEMORY}
 RUN pnpm turbo run build
 
 FROM base AS web

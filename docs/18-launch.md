@@ -331,6 +331,42 @@ server IP> https://palscans.org/ -H 'CF-Connecting-IP: 1.2.3.4'`. Before the loc
 answers; after it, it does not. Until it does not, treat the panel IP allowlist and every
 per-IP rate limit as advisory.
 
+### Building on a small box
+
+The image builds on the server, and `next build` type-checks after it compiles. tsc holds the
+whole program graph in memory, and **V8 sizes its default heap ceiling from the host's RAM** —
+on a 2 GB machine that lands near 1 GB, which this repo exceeds. The build then dies like this,
+which is confusing because the hard part already succeeded:
+
+```
+✓ Compiled successfully in 2.4min
+  Running TypeScript ...
+FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory
+```
+
+That ceiling is V8's own, not the operating system's, so **adding swap does not fix it** — swap
+is what stops the *kernel* killing you, and nothing here asked the kernel. `infra/Dockerfile`
+raises it explicitly (`NODE_BUILD_MEMORY`, default 3072 MB) in the build stage only; no runtime
+process is handed that heap. On a box with less than about 6 GB of RAM plus swap combined, lower
+it:
+
+```sh
+dc build --build-arg NODE_BUILD_MEMORY=2048 web
+```
+
+Swap is still worth having on a small box — the compile phase before this one is genuinely
+memory-hungry, and 4 GB is enough:
+
+```sh
+fallocate -l 4G /swapfile && chmod 600 /swapfile
+mkswap /swapfile && swapon /swapfile
+echo '/swapfile none swap sw 0 0' >> /etc/fstab
+```
+
+Set `WEB_CONCURRENCY=1`, `WORKER_CONCURRENCY=1` and `WORKER_PAGE_CONCURRENCY=1` on a single-core
+box. That last one defaults to **4** — four pages decoded and AVIF-encoded at once, which on one
+core buys nothing and on 2 GB is an out-of-memory kill waiting for a release day.
+
 ### One process per core
 
 There is one more line you may want, and the default is already right:
