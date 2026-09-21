@@ -51,8 +51,19 @@ ENV NODE_OPTIONS=--max-old-space-size=${NODE_BUILD_MEMORY}
 # Deleted before the final stages copy `/repo`, so no database file reaches the image. The
 # `DATABASE_URL` here never leaves this stage either — `web` and `worker` are `FROM base` and
 # read the real one from the environment at runtime.
-ENV DATABASE_URL=pglite://.data/build
-RUN mkdir -p .data/build \
+# The path is `DEFAULT_PGLITE_URL` from packages/db/src/client.ts, and that is deliberate:
+# `turbo.json` declares no `globalEnv`, so turbo strips DATABASE_URL out of every task
+# environment it runs. `next build` therefore cannot see this variable however it is set, and
+# falls back to the client's own default — so the default is where the database has to be.
+# Migration is not run through turbo, so it does read this.
+ENV DATABASE_URL=pglite://.data/pglite
+# Order matters, and not in the obvious direction. `db:migrate` runs `src/migrate.ts` through
+# tsx, which imports `@palscans/core` — resolved to `packages/core/dist`, which `.dockerignore`
+# keeps out of the build context precisely so a host build cannot leak into the image. So core
+# and db have to be compiled *before* the migration runs, and the web build has to come after
+# it, because that is the step that needs a database to prerender against.
+RUN pnpm turbo run build --filter=@palscans/core --filter=@palscans/db \
+ && mkdir -p .data/pglite \
  && pnpm db:migrate \
  && pnpm turbo run build \
  && rm -rf .data
