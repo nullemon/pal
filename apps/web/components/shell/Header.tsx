@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { RequestTrigger } from '@/components/requests/RequestTrigger'
 import { siteChrome } from '@/lib/chrome/load'
 import { randomLink } from '@/lib/site'
+import { AccountButton } from './AccountButton'
 import { NavLinks } from './NavLinks'
 import { Wordmark } from './Wordmark'
 
@@ -93,13 +94,7 @@ export async function Header() {
               <span className="hidden sm:inline">{chrome.primaryButton.label}</span>
             </Link>
           ) : null}
-          <Link
-            href="/login"
-            aria-label={messages.nav.account}
-            className="hidden size-[38px] shrink-0 items-center justify-center rounded-full border border-line bg-surface-2 text-[13px] font-bold text-fg-muted transition-colors hover:text-fg sm:inline-flex"
-          >
-            R
-          </Link>
+          <AccountButton />
         </div>
       </div>
 
