@@ -6,7 +6,7 @@ import { notFound, ok, withPermission } from '@/lib/auth'
 
 export const DELETE = withPermission<{ id: string }>(
   'settings.write',
-  async (request, ctx, user) => {
+  async (_request, ctx, user) => {
     const id = idParam.safeParse((await ctx.params).id)
     if (!id.success) return notFound()
     const db = await getDb()
@@ -22,7 +22,6 @@ export const DELETE = withPermission<{ id: string }>(
       targetType: 'word_filter',
       targetId: id.data,
       before: row,
-      request,
     })
     return ok({ id: id.data })
   },

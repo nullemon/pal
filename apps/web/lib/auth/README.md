@@ -35,11 +35,17 @@ import { getSessionUser, requireUser, withPermission } from '@/lib/auth'
   the check fails open when the network is unavailable.
 - Rate limits (`rate-limit.ts`): login 5/min per IP and per account with exponential backoff,
   register 3/h/IP, forgot-password 3/h/email (identical response either way), TOTP 6/5 min.
+- **Nothing here stores an address.** The rate-limit buckets above are Redis counters keyed on
+  `ipKey` — a daily-rotating HMAC with a TTL of minutes — and that is the only use an address
+  has. No table holds an IP, a country or a city, hashed or otherwise (docs/02 "Privacy"), and
+  there is no sign-in history: `sessions` is the record of who is signed in, with device and
+  last-seen but no place. `TRUSTED_PROXY=none` stops the forwarding headers being read at all.
 - OAuth (`oauth.ts`): arctic, authorization code + PKCE, state in a signed cookie. An identity
   whose email already has a password account is parked in a signed cookie and linked only
   after that account signs in with its password (`flows.ts` → `completePendingLink`).
 - Emails go through `@/lib/email` — console locally, Resend when `RESEND_API_KEY` is set.
-- Turnstile (`turnstile.ts`) verifies tokens only when `TURNSTILE_SECRET_KEY` is set.
+- Turnstile (`turnstile.ts`) verifies tokens only when `TURNSTILE_SECRET_KEY` is set, and does
+  not send Cloudflare the visitor's address: `remoteip` is optional and is deliberately omitted.
 
 ## Account deletion — worker hand-off (P5 / integration)
 
@@ -54,7 +60,7 @@ const purgedUserIds = await purgeDueDeletions() // pass a `now` to override the 
 ```
 
 For each user whose `deletion_requested_at <= now - 14d` and `deleted_at IS NULL` it runs one
-transaction: comments are anonymised (kept, `ip_hash` cleared, author shown as "Deleted user"
+transaction: comments are anonymised (kept, author shown as "Deleted user"
 because the user row becomes a PII-free tombstone — `comments.user_id` is NOT NULL so the FK is
 kept), email → `deleted-<id>@deleted.invalid`, username / password / avatar / banner / bio /
 TOTP secret wiped, `oauth_accounts` and `push_subscriptions` deleted, `deleted_at` set, then

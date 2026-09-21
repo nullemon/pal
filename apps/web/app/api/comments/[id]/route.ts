@@ -12,7 +12,7 @@ import { messages } from '@palscans/core/messages'
 import { auditLog, commentEdits, comments, db, linkAllowlist, wordFilters } from '@palscans/db'
 import { eq, isNull } from 'drizzle-orm'
 import { rejectResponse } from '@/lib/comments/errors'
-import { forbidden, ipHashFor, notFound, ok, parseJson, requireUser } from '@/lib/comments/http'
+import { forbidden, notFound, ok, parseJson, requireUser } from '@/lib/comments/http'
 import {
   accountGate,
   applyWordFilters,
@@ -138,7 +138,6 @@ export const PATCH = requireUser<Params>(async (request, ctx, user) => {
       targetId: row.id,
       before: row.body,
       after: filtered.body,
-      ipHash: await ipHashFor(request),
     })
 
   const viewer = await viewerFor(db, user)
@@ -147,7 +146,7 @@ export const PATCH = requireUser<Params>(async (request, ctx, user) => {
 })
 
 /** DELETE /api/comments/:id — author or comment.moderate. Soft delete; stub stays if it has replies. */
-export const DELETE = requireUser<Params>(async (request, ctx, user) => {
+export const DELETE = requireUser<Params>(async (_request, ctx, user) => {
   const id = idParamSchema.safeParse((await ctx.params).id)
   if (!id.success) return notFound()
   const row = await getCommentRow(db, id.data)
@@ -164,7 +163,6 @@ export const DELETE = requireUser<Params>(async (request, ctx, user) => {
       targetId: row.id,
       before: { status: row.status, userId: row.userId },
       after: { deleted: true },
-      ipHash: await ipHashFor(request),
     })
   return ok({ id: row.id, stub: row.replyCount > 0 })
 })

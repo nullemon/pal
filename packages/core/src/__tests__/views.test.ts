@@ -20,48 +20,52 @@ const hit = (over: Partial<ViewHit> = {}): ViewHit => ({
   seriesId: 1,
   chapterId: 0,
   bucket: '2026-09-04',
-  viewerKey: viewerKey({ bucket: '2026-09-04', ip: '1.2.3.4', userAgent: 'Firefox' }, SECRET),
+  viewerKey: viewerKey({ bucket: '2026-09-04', visitorId: 'v-abc' }, SECRET),
   ...over,
 })
 
 describe('viewer key', () => {
   it('is stable for the same viewer and day, and 16 bytes', () => {
-    const a = viewerKey({ bucket: '2026-09-04', ip: '1.2.3.4', userAgent: 'Firefox' }, SECRET)
-    const b = viewerKey({ bucket: '2026-09-04', ip: '1.2.3.4', userAgent: 'Firefox' }, SECRET)
+    const a = viewerKey({ bucket: '2026-09-04', visitorId: 'v-abc' }, SECRET)
+    const b = viewerKey({ bucket: '2026-09-04', visitorId: 'v-abc' }, SECRET)
     expect(a.length).toBe(16)
     expect(viewerKeyHex(a)).toBe(viewerKeyHex(b))
   })
 
   it('rotates with the day, so a key is only linkable inside one bucket', () => {
-    const mon = viewerKey({ bucket: '2026-09-04', ip: '1.2.3.4', userAgent: 'FF' }, SECRET)
-    const tue = viewerKey({ bucket: '2026-09-05', ip: '1.2.3.4', userAgent: 'FF' }, SECRET)
+    const mon = viewerKey({ bucket: '2026-09-04', visitorId: 'v-abc' }, SECRET)
+    const tue = viewerKey({ bucket: '2026-09-05', visitorId: 'v-abc' }, SECRET)
     expect(viewerKeyHex(mon)).not.toBe(viewerKeyHex(tue))
   })
 
-  it('separates viewers by address, user agent, account and site secret', () => {
-    const base = { bucket: '2026-09-04', ip: '1.2.3.4', userAgent: 'FF' }
+  it('separates viewers by visitor id, account and site secret', () => {
+    const base = { bucket: '2026-09-04', visitorId: 'v-abc' }
     const keys = new Set(
       [
         viewerKey(base, SECRET),
-        viewerKey({ ...base, ip: '1.2.3.5' }, SECRET),
-        viewerKey({ ...base, userAgent: 'Chrome' }, SECRET),
+        viewerKey({ ...base, visitorId: 'v-def' }, SECRET),
         viewerKey({ ...base, userId: 7 }, SECRET),
         viewerKey(base, 'another-secret'),
       ].map(viewerKeyHex),
     )
-    expect(keys.size).toBe(5)
+    expect(keys.size).toBe(4)
   })
 
   it('keys a signed-in reader by account, so phone and laptop are one viewer', () => {
-    const phone = viewerKey(
-      { bucket: '2026-09-04', userId: 7, ip: '1.1.1.1', userAgent: 'iOS' },
-      SECRET,
-    )
-    const laptop = viewerKey(
-      { bucket: '2026-09-04', userId: 7, ip: '9.9.9.9', userAgent: 'Mac' },
-      SECRET,
-    )
+    const phone = viewerKey({ bucket: '2026-09-04', userId: 7, visitorId: 'v-phone' }, SECRET)
+    const laptop = viewerKey({ bucket: '2026-09-04', userId: 7, visitorId: 'v-laptop' }, SECRET)
     expect(viewerKeyHex(phone)).toBe(viewerKeyHex(laptop))
+  })
+
+  it('takes no address, so no stored key can be swept back to one', () => {
+    // The old key was HMAC(secret, day | ip + user agent). IPv4 is 2^32 wide, so anyone
+    // holding the secret could hash the whole space against one day and read every row back
+    // as an address. There is no equivalent sweep for a 128-bit random cookie.
+    const input: Record<string, unknown> = { bucket: '2026-09-04', visitorId: 'v-abc' }
+    expect(Object.keys(input)).not.toContain('ip')
+    expect(viewerKeyHex(viewerKey({ bucket: '2026-09-04', visitorId: null }, SECRET))).not.toBe(
+      viewerKeyHex(viewerKey({ bucket: '2026-09-04', visitorId: 'v-abc' }, SECRET)),
+    )
   })
 })
 

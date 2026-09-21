@@ -39,7 +39,6 @@ export const PUT = withPermission('settings.write', async (request, _ctx, user) 
     targetType: 'settings',
     before: { layouts: beforeLayouts, ads: (beforeAds as { reader?: unknown }).reader ?? null },
     after: { layouts, ads: ads },
-    request,
   })
   return ok(parsed.data)
 })

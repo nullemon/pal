@@ -2,7 +2,7 @@ import { getDb, mergeGenres } from '@palscans/db'
 import { revalidateTag } from 'next/cache'
 import { genreMergeSchema } from '@/components/admin/schemas-genres'
 import { purgeCatalog } from '@/components/admin/server/cache'
-import { clientIp, fail, hashIp, ok, parseJson, withPermission } from '@/lib/auth'
+import { fail, ok, parseJson, withPermission } from '@/lib/auth'
 
 /**
  * `POST /api/admin/genres/merge { winnerId, loserId }` — fold one genre into another.
@@ -26,7 +26,6 @@ export const POST = withPermission('series.delete', async (request, _ctx, user) 
     winnerId,
     loserId,
     actorId: user.id,
-    ipHash: hashIp(clientIp(request)),
   })
   if (!result.ok) return fail(409, 'merge_refused', result.refusals.map((r) => r.message).join(' '))
   // /genres, the browse filters and every series page that showed the loser's chip change at

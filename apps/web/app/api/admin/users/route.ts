@@ -76,7 +76,6 @@ export const POST = withPermission('user.update', async (request, _ctx, actor) =
       hasPassword: !!body.password,
       entitlements: body.entitlements,
     },
-    request,
   })
   return ok({ id: created.id })
 })

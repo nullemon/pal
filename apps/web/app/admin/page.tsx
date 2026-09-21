@@ -16,7 +16,6 @@ import {
   When,
 } from '@/components/admin/ui'
 import { withPermission } from '@/lib/auth'
-import { failedLoginStats } from '@/lib/auth/login-events'
 
 function Sparkline({ values }: { values: number[] }) {
   const max = Math.max(1, ...values)
@@ -44,7 +43,7 @@ export default async function AdminDashboardPage() {
   // docs/16: the layout is not an auth boundary — every page guards itself.
   await withPermission('admin.access', { returnTo: '/admin' })
   // docs/17 §C: failed sign-ins in the last hour, flagged when they jump.
-  const [d, logins] = await Promise.all([loadDashboard(), failedLoginStats()])
+  const d = await loadDashboard()
   const m = adminMessages.admin.dashboard
   const now = new Date()
   const delta =
@@ -92,26 +91,6 @@ export default async function AdminDashboardPage() {
           value={d.failedJobs}
           tone={d.failedJobs > 0 ? 'danger' : undefined}
           href="/admin/jobs"
-        />
-        <StatTile
-          label={m.failedLogins}
-          value={logins.lastHour}
-          tone={logins.spike ? 'danger' : undefined}
-          hint={fmt(m.failedLoginsHint, { day: logins.lastDay })}
-          delta={
-            logins.spike ? (
-              <span className="text-danger">
-                {fmt(m.failedLoginsSpike, {
-                  n: logins.previousHour
-                    ? Math.round((logins.lastHour / logins.previousHour) * 10) / 10
-                    : logins.lastHour,
-                })}
-              </span>
-            ) : (
-              fmt(m.failedLoginsCalm, { prev: logins.previousHour })
-            )
-          }
-          href="/admin/access"
         />
       </div>
       <div className="grid gap-3.5 xl:grid-cols-[1fr_420px]">

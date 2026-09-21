@@ -90,7 +90,6 @@ export const POST = withPermission('chapter.create', async (request, _ctx, user)
     targetType: 'chapter',
     targetId: chapterId,
     after: { pages: keys.length, jobId, after: processing.after },
-    request,
   })
   return ok({ chapterId, jobId, pages: keys.length })
 })

@@ -39,7 +39,6 @@ export const PUT = withPermission('settings.write', async (request, _ctx, user) 
       ? { key: before.key, enabled: before.enabled, percentage: before.percentage }
       : null,
     after: parsed.data,
-    request,
   })
   return ok(parsed.data)
 })
@@ -59,7 +58,6 @@ export const DELETE = withPermission('settings.write', async (request, _ctx, use
     action: 'settings.flag.delete',
     targetType: 'feature_flag',
     before: row ?? null,
-    request,
   })
   return ok({ key: parsed.data.key })
 })

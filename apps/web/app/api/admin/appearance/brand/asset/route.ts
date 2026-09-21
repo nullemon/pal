@@ -140,7 +140,6 @@ export const PATCH = withPermission('settings.write', async (request, _ctx, user
     targetId: id,
     before: { [slot]: before[slot] },
     after: { [slot]: asset },
-    request,
   })
   return ok({ slot, asset: { ...asset, url: storageUrl(publicKey) } })
 })
@@ -182,7 +181,6 @@ export const DELETE = withPermission('settings.write', async (request, _ctx, use
     targetId: id,
     before: { [slot]: gone },
     after: { [slot]: null, object_kept: kept },
-    request,
   })
   return ok({ slot, asset: null })
 })

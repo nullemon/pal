@@ -4,7 +4,6 @@ import { parseHibpRange } from './hibp'
 import { MAX_JSON_BYTES, parseJson, readBody } from './http'
 import { accountKey, clientIp, createMemoryRateLimiter, ipKey } from './rate-limit'
 import { safeReturnPath, withReturn } from './return-to'
-import { hashIp, ipHashSalt } from './session'
 import { signValue, verifyValue } from './signed'
 
 const headers = (h: Record<string, string>) => new Request('http://x/', { headers: h })
@@ -40,7 +39,7 @@ describe('clientIp', () => {
   })
 })
 
-describe('ip keys and hashes', () => {
+describe('rate-limit keys', () => {
   const ip = '203.0.113.9'
   it('ipKey never contains the address and rotates daily', () => {
     const a = ipKey(ip, new Date('2026-09-02T10:00:00Z'), 's')
@@ -68,17 +67,6 @@ describe('ip keys and hashes', () => {
     // the same account spelled differently shares one bucket
     expect(accountKey(' reader@example.org ', new Date('2026-09-02T10:00:00Z'), 's')).toBe(a)
     expect(accountKey('other@example.org', new Date('2026-09-02T10:00:00Z'), 's')).not.toBe(a)
-  })
-  it('hashIp is keyed by the secret and a weekly salt', () => {
-    const week1 = new Date('2026-09-02T10:00:00Z')
-    const week2 = new Date('2026-09-12T10:00:00Z')
-    expect(ipHashSalt(week1)).not.toBe(ipHashSalt(week2))
-    const h1 = hashIp(ip, week1, 's') as Uint8Array
-    expect(h1).toHaveLength(32)
-    expect(Buffer.from(h1)).toEqual(Buffer.from(hashIp(ip, week1, 's') as Uint8Array))
-    expect(Buffer.from(h1)).not.toEqual(Buffer.from(hashIp(ip, week2, 's') as Uint8Array))
-    expect(Buffer.from(h1)).not.toEqual(Buffer.from(hashIp(ip, week1, 'other') as Uint8Array))
-    expect(hashIp(null)).toBeNull()
   })
 })
 

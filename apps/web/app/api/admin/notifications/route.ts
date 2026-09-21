@@ -31,7 +31,6 @@ export const PUT = withPermission('settings.write', async (request, _ctx, user) 
     // Webhook URLs are credentials; the audit row keeps the shape, never the secret.
     before: redact(before),
     after: redact(parsed.data),
-    request,
   })
   return ok(parsed.data)
 })

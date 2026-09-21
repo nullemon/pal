@@ -28,21 +28,30 @@ describe('the origin cannot be told who the client is', () => {
   })
 
   it('deletes every CF-* header the app reads from those peers', () => {
-    // `cf-connecting-ip` is the client address (lib/auth/rate-limit.ts) and `cf-ipcountry` /
-    // `cf-ipcity` are the geo columns on login_events (lib/auth/login-events.ts). Forging the
-    // last two only poisons an audit trail, which is still worth not allowing.
+    // `cf-connecting-ip` is the client address (lib/auth/rate-limit.ts); the rest cannot be
+    // allowed to be dictated by whoever dialled the origin directly.
     for (const header of ['CF-Connecting-IP', 'CF-IPCountry', 'CF-IPCity', 'True-Client-IP'])
       expect(live, header).toContain(`header_up -${header}`)
   })
 
-  it('keeps them for peers that really are Cloudflare', () => {
-    // The `@direct` branch strips; the unmatched fallback must not, or `TRUSTED_PROXY=
-    // cloudflare` would never see a client address in production at all.
+  it('keeps the client address for peers that really are Cloudflare', () => {
+    // The `@direct` branch strips everything; the unmatched fallback must still pass
+    // `CF-Connecting-IP` through, or `TRUSTED_PROXY=cloudflare` would never see a client
+    // address in production and every per-IP rate limit would silently stop working.
     const direct = live.indexOf('handle @direct')
     const fallback = live.indexOf('handle {', direct)
     expect(direct, 'the @direct handle block').toBeGreaterThan(-1)
     expect(fallback, 'a fallback handle for Cloudflare peers').toBeGreaterThan(direct)
-    expect(live.slice(fallback)).not.toMatch(/header_up\s+-CF-/)
+    expect(live.slice(fallback)).not.toContain('header_up -CF-Connecting-IP')
+  })
+
+  it('drops the geo headers on every path, not just the forged one', () => {
+    // Nothing reads them any more — no country or city is stored anywhere (migration 9038).
+    // Dropping them at the edge means a later change cannot quietly start reading one again
+    // without someone first coming to this file and deleting these lines.
+    const fallback = live.slice(live.indexOf('handle {', live.indexOf('handle @direct')))
+    expect(fallback).toContain('header_up -CF-IPCountry')
+    expect(fallback).toContain('header_up -CF-IPCity')
   })
 
   it('lists Cloudflare ranges with the command that refreshes them', () => {

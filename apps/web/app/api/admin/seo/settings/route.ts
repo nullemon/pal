@@ -32,7 +32,6 @@ export const PUT = withPermission('settings.write', async (request, _ctx, user) 
     targetType: 'seo_settings',
     before: { key, value: before },
     after: { key, value },
-    request,
   })
   revalidateTag('seo', 'max')
   revalidateTag('settings', 'max')

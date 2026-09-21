@@ -149,8 +149,8 @@ ALTER TABLE comments
   ADD COLUMN automod_rules text[]  NOT NULL DEFAULT '{}',
   ADD COLUMN has_link      boolean NOT NULL DEFAULT false,
   ADD COLUMN image_id      bigint,                      -- community_images.id
-  ADD COLUMN ip_hash       bytea,
   ADD COLUMN locked        boolean NOT NULL DEFAULT false;
+-- `ip_hash` was here too and was dropped again by migration 9038; see docs/02 "Privacy".
 CREATE INDEX ON comments (status, created_at DESC) WHERE status IN ('pending','shadow');
 
 CREATE TABLE comment_edits (

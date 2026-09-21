@@ -25,7 +25,6 @@ export const PUT = withPermission('settings.write', async (request, _ctx, user) 
     targetType: 'settings',
     before: { config: { ...doc.config, dsn: doc.config.dsn === '' ? '' : '(set)' } },
     after: { config: { ...config, dsn: config.dsn === '' ? '' : '(set)' } },
-    request,
   })
   return ok(maskImportDoc(next))
 })

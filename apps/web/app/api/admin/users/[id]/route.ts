@@ -166,7 +166,6 @@ export const POST = withPermission<{ id: string }>('user.read', async (request, 
     targetId: target.id,
     before,
     after,
-    request,
   })
   return ok({ id: target.id, action: body.action, after })
 })

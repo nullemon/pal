@@ -20,7 +20,7 @@ migrated off), not Strapi, not any off-the-shelf manga CMS. The footer credits
 | Carousels | Embla Carousel | `embla-hero__container`, `embla-trending__slide`, `embla-announcements` |
 | Cross-island state | nanostores (inferred) | source comment referencing `stores/novelBeta.ts` |
 | API | A separate Go HTTP service on `api.asurascans.com` | see below |
-| Edge / CDN | Cloudflare | Web Analytics beacon, Cloudflare Fonts (`/cf-fonts/...`), `CF-IPCountry`-driven SSR |
+| Edge / CDN | Cloudflare | Web Analytics beacon, Cloudflare Fonts (`/cf-fonts/...`), `CF-IPCountry`-driven SSR — **not adopted**: this site strips the geo headers at the edge and stores no country or city (docs/02 "Privacy") |
 | Images | Content-addressed CDN, pre-generated widths | `cdn.asurascans.com/asura-images/...<hash6>.webp` and `-400.webp` |
 
 ## Why the backend is Go

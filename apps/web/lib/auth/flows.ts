@@ -6,7 +6,6 @@ import { siteCopy } from '../copy/settings'
 import { getMailer, verifyEmailMail } from '../email'
 import { getEnv } from '../env'
 import { OAUTH_LINK_COOKIE, readPendingLink, shortCookie } from './oauth'
-import { clientIp } from './rate-limit'
 import { rotateSession, type SessionContext, setSessionCookie } from './session'
 import { signValue, verifyValue } from './signed'
 import { issueToken } from './tokens'
@@ -14,7 +13,6 @@ import { issueToken } from './tokens'
 /** Shared steps of every sign-in path (password, TOTP, OAuth, reset). */
 export const requestContext = (request: Request): SessionContext => ({
   userAgent: request.headers.get('user-agent'),
-  ip: clientIp(request),
 })
 
 export type LoginMethod = 'password' | 'google' | 'discord' | 'reset'

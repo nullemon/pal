@@ -61,14 +61,13 @@ export const scopeDraftRoute = <S extends AppearanceScope>(
       targetType: 'appearance',
       targetId: id,
       after: adapter.summary(doc),
-      request,
     })
     return ok({ id, settings: doc })
   })
 
 /** `DELETE` — throw the draft away; the screen falls back to what is live. */
 export const scopeDiscardRoute = (scope: AppearanceScope) =>
-  withPermission('settings.write', async (request, _ctx, user) => {
+  withPermission('settings.write', async (_request, _ctx, user) => {
     const id = await discardDraft(scope)
     if (id === null) return fail(404, 'no_draft')
     await audit({
@@ -76,7 +75,6 @@ export const scopeDiscardRoute = (scope: AppearanceScope) =>
       action: `${scopeMessages[scope].action}.draft_discarded`,
       targetType: 'appearance',
       targetId: id,
-      request,
     })
     return ok({ id })
   })
@@ -147,7 +145,6 @@ export const scopePublishRoute = <S extends AppearanceScope>(
       targetId: result.id,
       before: adapter.summary(result.previous),
       after: { ...adapter.summary(result.doc), from: versionId ?? null },
-      request,
     })
     return ok({ id: result.id, settings: result.doc })
   })

@@ -45,14 +45,14 @@ The point: **any premium feature can be made free for everyone**, without code.
 - Registration: email-domain allow/block list, require-verification toggle, minimum account
   age before commenting (exists in comment settings — surface it here too), Turnstile on/off,
   invite codes (generate, list, revoke, single- or multi-use, expiry) when mode is `invite`.
-- **Login history** — the operator asked for "where users logged in from". New
-  `login_events` table: user, at, method (password · google · discord · totp), outcome
-  (success · bad_password · locked · totp_failed), user agent, parsed device/browser/OS,
-  country and city from `CF-IPCountry`/`CF-IPCity` when present (never a raw IP — hash as
-  today), and the session id it created. Surfaced in:
-  - `Admin → Users → detail`: a Login history table plus active sessions with revoke.
-  - `/me/security`: the same history for the reader, with "this is you" on the current row.
-  - A dashboard tile for failed-login spikes.
+- ~~**Login history**~~ — **built, then removed.** The `login_events` table recorded every
+  sign-in attempt with the country and city from `CF-IPCountry`/`CF-IPCity`, shown in
+  `Admin → Users → detail`, on `/me/security`, and as a failed-login spike tile on the
+  dashboard. Migration 9038 dropped all of it at the operator's instruction: "where users
+  logged in from" is also *where staff logged in from*, and any account holding `user.read`
+  could read another admin's city off that screen. What survives is the active-session list
+  with revoke (device and last-seen, no place), which covers the "someone else is in my
+  account" case the history was mostly used for. See docs/02 "Privacy".
 - Bulk user actions from the list: role change, ban, comment-ban, force logout, export.
 - `Admin → Users → new`: create an account manually (role, verified, entitlements).
 

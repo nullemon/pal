@@ -6,7 +6,7 @@ import { publishChapters } from '@/components/admin/server/chapters'
 import { ok, withPermission } from '@/lib/auth'
 
 /** POST /api/admin/jobs/run-scheduler — publish every due scheduled chapter now (the worker does this every 30 s). */
-export const POST = withPermission('chapter.publish', async (request, _ctx, user) => {
+export const POST = withPermission('chapter.publish', async (_request, _ctx, user) => {
   const db = await getDb()
   const due = await db
     .select({ id: chapters.id })
@@ -27,7 +27,6 @@ export const POST = withPermission('chapter.publish', async (request, _ctx, user
     targetType: 'chapter',
     targetId: published[0] ?? null,
     after: { published },
-    request,
   })
   return ok({ published })
 })

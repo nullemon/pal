@@ -1,37 +1,19 @@
 import { can, formatChapterNumber } from '@palscans/core'
 import { adminMessages } from '@palscans/core/messages/admin'
 import { notFound } from 'next/navigation'
-import { z } from 'zod'
 import { UserActions } from '@/components/admin/client/UserActions'
-import {
-  idParam,
-  pageSchema,
-  parseSearch,
-  type SearchParams,
-} from '@/components/admin/server/params'
+import { idParam } from '@/components/admin/server/params'
 import { loadUserDetail } from '@/components/admin/server/users'
 import { PageHeader, Panel, PanelHeader, Pill, When } from '@/components/admin/ui'
 import { withPermission } from '@/lib/auth'
 import { describeDevice } from '@/lib/auth/device'
-import { listLoginEvents } from '@/lib/auth/login-events'
-import { LoginHistory } from './LoginHistory'
 
-export default async function UserDetailPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ id: string }>
-  searchParams: Promise<SearchParams>
-}) {
+export default async function UserDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const id = idParam.safeParse((await params).id)
   if (!id.success) notFound()
   const actor = await withPermission('user.read', { returnTo: `/admin/users/${id.data}` })
   const d = await loadUserDetail(id.data)
   if (!d) notFound()
-  // docs/17 §C: the sign-in history sits under the sessions list, paginated on its own key.
-  const { lp } = parseSearch(z.object({ lp: pageSchema }), await searchParams)
-  const history = await listLoginEvents(id.data, lp)
-  const liveSessionIds = new Set(d.sessions.map((s) => s.id))
   const m = adminMessages.admin.users
   const u = d.user
   return (
@@ -88,13 +70,6 @@ export default async function UserDetailPage({
               update: can(actor, 'user.update'),
             }}
             self={u.id === actor.id}
-          />
-          <LoginHistory
-            rows={history.rows}
-            page={lp}
-            pages={history.pages}
-            liveSessionIds={liveSessionIds}
-            hrefFor={(n) => `/admin/users/${u.id}?lp=${n}`}
           />
         </div>
         <div className="flex flex-col gap-3.5">

@@ -62,7 +62,6 @@ export const PATCH = withPermission<{ id: string }>('series.update', async (requ
     targetId: id.data,
     before: result.before,
     after: { ...result.after, redirectedFrom: result.redirectedFrom },
-    request,
   })
   return ok({ ...result.after, redirectedFrom: result.redirectedFrom })
 })
@@ -74,7 +73,7 @@ export const PATCH = withPermission<{ id: string }>('series.update', async (requ
  */
 export const DELETE = withPermission<{ id: string }>(
   'series.delete',
-  async (request, ctx, user) => {
+  async (_request, ctx, user) => {
     const id = idParam.safeParse((await ctx.params).id)
     if (!id.success) return notFound()
     const db = await getDb()
@@ -89,7 +88,6 @@ export const DELETE = withPermission<{ id: string }>(
       targetId: id.data,
       before: { ...row, deletedAt: null },
       after: row,
-      request,
     })
     return ok(row)
   },
@@ -114,7 +112,6 @@ export const POST = withPermission<{ id: string }>('series.delete', async (reque
     targetType: 'genre',
     targetId: id.data,
     after: row,
-    request,
   })
   return ok(row)
 })

@@ -47,7 +47,10 @@ CREATE TABLE sessions (
   user_id       bigint NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   secret_hash   bytea NOT NULL,
   user_agent    text,
-  ip_hash       bytea,                               -- hashed, for abuse detection, not logging
+  -- No ip_hash. It was here, and migration 9038 dropped it: an HMAC of an IPv4 address is
+  -- reversible by anyone holding the app secret (2^32 is a few minutes of hashing), so the
+  -- column was a location record for every session rather than the abuse handle it looked
+  -- like. Nothing on this site stores an address, a country or a city — see "Privacy" below.
   expires_at    timestamptz NOT NULL,
   revoked_at    timestamptz,
   created_at    timestamptz NOT NULL DEFAULT now()
@@ -418,12 +421,31 @@ CREATE TABLE audit_log (
   target_id  bigint,
   before     jsonb,
   after      jsonb,
-  ip_hash    bytea,
+  -- No ip_hash (migration 9038). The audit log records what a member of staff did, never
+  -- where they were; with more than one admin the latter is staff locating each other.
   created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX ON audit_log (target_type, target_id, created_at DESC);
 CREATE INDEX ON audit_log (actor_id, created_at DESC);
 ```
+
+## Privacy: what is never stored
+
+The site records no client address, no country and no city — not in plain text, and not
+hashed. There is no column anywhere to put one in, which is the only version of the rule that
+survives a later change: a write has to add a column first, and adding one means coming here.
+
+Two consequences worth stating, because they look like gaps otherwise:
+
+- **Anonymous readers are identified by a cookie, not an address.** `view_events.viewer_key`,
+  `series_request_votes.voter_key` and `reports.reporter_key` are HMACs of the random
+  first-party id in `apps/web/lib/visitor.ts`, each under its own scope so the three cannot be
+  joined to one another. Clearing cookies clears the identity, which is the point.
+- **Addresses are still read, briefly, for rate limiting.** `clientIp()` feeds Redis counters
+  with TTLs measured in seconds under a daily-rotating HMAC (`ipKey`), and nothing else. They
+  are never written to Postgres, never rendered in any screen and never leave the server.
+  `TRUSTED_PROXY=none` stops the app reading the forwarding headers at all, at the cost of
+  per-IP brute-force and spam protection.
 
 ## Content compliance
 

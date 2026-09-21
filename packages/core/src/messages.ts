@@ -911,18 +911,6 @@ export const messages = {
       connectedHint: 'Sign in with these providers as well as your password.',
       connect: 'Connect',
       notConnected: 'Not connected',
-      loginHistory: 'Sign-in history',
-      loginHistoryHint:
-        'The last sign-in attempts on your account. Anything you do not recognise means you should change your password.',
-      colWhen: 'When',
-      colDevice: 'Device',
-      colWhere: 'Where',
-      colMethod: 'Method',
-      colOutcome: 'Result',
-      noHistory: 'No sign-ins recorded yet.',
-      unknownPlace: 'Unknown',
-      olderHistory: 'Older',
-      newerHistory: 'Newer',
     },
     billing: {
       title: 'Billing',
@@ -1054,23 +1042,6 @@ export const messages = {
      */
     footer:
       'You are receiving this because this address was used to create or manage an account on {site}.',
-  },
-  // P5 · admin panel + upload pipeline — appended
-  /** Shared by Admin → Users → detail and /me/security (docs/17 §C login history). */
-  loginEvents: {
-    methods: {
-      password: 'Password',
-      google: 'Google',
-      discord: 'Discord',
-      totp: 'Two-factor',
-    },
-    outcomes: {
-      success: 'Signed in',
-      bad_password: 'Wrong password',
-      locked: 'Too many attempts',
-      totp_failed: 'Wrong 2FA code',
-      banned: 'Suspended',
-    },
   },
   // P6 · SEO, feeds, legal pages, announcements, 404 — appended
   seo: {

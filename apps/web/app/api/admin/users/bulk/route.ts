@@ -98,7 +98,6 @@ export const POST = withPermission('user.read', async (request, _ctx, actor) => 
             ? { commentBannedUntil: target.commentBannedUntil?.toISOString() ?? null }
             : null,
       after: { ...action, bulk: true },
-      request,
     })
   }
   await audit({
@@ -106,7 +105,6 @@ export const POST = withPermission('user.read', async (request, _ctx, actor) => 
     action: 'user.bulk',
     targetType: 'user',
     after: { action: action.kind, requested: ids.length, updated: allowed.length, skipped },
-    request,
   })
   return ok({ updated: allowed.length, skipped, ids: targetIds })
 })

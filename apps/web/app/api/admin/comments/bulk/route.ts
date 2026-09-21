@@ -28,7 +28,6 @@ export const POST = withPermission('comment.moderate', async (request, _ctx, use
     targetType: 'comment',
     targetId: ids[0] ?? null,
     after: { ids },
-    request,
   })
   return ok({ ids })
 })

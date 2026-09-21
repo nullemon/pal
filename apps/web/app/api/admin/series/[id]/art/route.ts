@@ -99,7 +99,6 @@ export const PATCH = withPermission<{ id: string }>('series.update', async (requ
     targetId: id.data,
     before: { [column]: before[column] },
     after: { pending: key, bytes: check.bytes, jobId },
-    request,
   })
   return ok({ key, url: null, pending: true, jobId })
 })

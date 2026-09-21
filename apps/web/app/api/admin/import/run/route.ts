@@ -21,7 +21,7 @@ import { fail, ok, parseJson, withPermission } from '@/lib/auth'
 export const GET = withPermission('settings.write', async () => ok(await latestRunView()))
 
 /** POST — create and enqueue a run for the stored source configuration. */
-export const POST = withPermission('settings.write', async (request, _ctx, user) => {
+export const POST = withPermission('settings.write', async (_request, _ctx, user) => {
   const doc = await readImportDoc()
   if (!importSourceReady(doc.config))
     return fail(400, 'validation', adminMessages.admin.import.runUnavailable)
@@ -40,7 +40,6 @@ export const POST = withPermission('settings.write', async (request, _ctx, user)
       targetType: 'import_run',
       targetId: view.id,
       after: { source: view.source, mode: doc.config.mode },
-      request,
     })
     return ok(view)
   } catch (err) {
@@ -67,7 +66,6 @@ export const PATCH = withPermission('settings.write', async (request, _ctx, user
     targetType: 'import_run',
     targetId: view.id,
     after: { status: view.status, phase: view.phase },
-    request,
   })
   return ok(view)
 })

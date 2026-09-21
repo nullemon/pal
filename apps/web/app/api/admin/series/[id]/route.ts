@@ -150,7 +150,6 @@ export const PUT = withPermission<{ id: string }>('series.update', async (reques
     targetId: id.data,
     before: snapshot(before, AUDITED),
     after: snapshot(after, AUDITED),
-    request,
   })
   purgeCatalog()
   return ok({ id: id.data, slug: doc.slug })
@@ -177,7 +176,6 @@ export const DELETE = withPermission<{ id: string }>(
       targetId: id.data,
       before: { deletedAt: before.deletedAt },
       after: { deletedAt: restore ? null : new Date().toISOString(), title: before.title },
-      request,
     })
     purgeCatalog()
     return ok({ id: id.data, restored: restore })

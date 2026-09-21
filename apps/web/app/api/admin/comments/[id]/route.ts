@@ -168,7 +168,6 @@ export const POST = withPermission<{ id: string }>(
       targetId,
       before,
       after,
-      request,
     })
     return ok({ id: c.id, action: body.action, ...after })
   },

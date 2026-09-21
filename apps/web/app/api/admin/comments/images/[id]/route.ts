@@ -42,7 +42,6 @@ export const POST = withPermission<{ id: string }>(
       targetId: id.data,
       before: { status: before.status, isCollection: before.isCollection },
       after: set,
-      request,
     })
     return ok(after)
   },

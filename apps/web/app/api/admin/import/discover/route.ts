@@ -14,7 +14,7 @@ import { ok, withPermission } from '@/lib/auth'
  * (docs/17 §E). Writes nothing to the legacy site and nothing to the catalogue; the report
  * itself is stored on the settings row so the screen reloads into it.
  */
-export const POST = withPermission('settings.write', async (request, _ctx, user) => {
+export const POST = withPermission('settings.write', async (_request, _ctx, user) => {
   const doc = await readImportDoc()
   const { source, fallback } = resolveSource(doc.config)
   const report = await discover(source)
@@ -28,7 +28,6 @@ export const POST = withPermission('settings.write', async (request, _ctx, user)
     action: 'import.discover',
     targetType: 'settings',
     after: { source: report.source, counts: report.counts, chapterStorage: report.chapterStorage },
-    request,
   })
   return ok({ ...maskImportDoc(next), fallback })
 })

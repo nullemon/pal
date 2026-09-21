@@ -3,18 +3,11 @@ import { chapters, getDb, reports, series } from '@palscans/db'
 import { and, desc, eq, gt, isNull, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { CHAPTER_REPORT_REASONS, MAX_NOTE } from '@/components/reader/report'
-import {
-  csrfFailed,
-  fail,
-  hashIp,
-  notFound,
-  ok,
-  parseJson,
-  rateLimited,
-  sameOrigin,
-} from '@/lib/auth'
+import { csrfFailed, fail, notFound, ok, parseJson, rateLimited, sameOrigin } from '@/lib/auth'
 import { clientIp, getRateLimiter, ipKey } from '@/lib/auth/rate-limit'
 import { getSessionUser } from '@/lib/auth/session'
+import { getEnv } from '@/lib/env'
+import { ensureVisitorId, visitorKeyFor } from '@/lib/visitor'
 
 /**
  * POST /api/reports/chapter — "this chapter is broken".
@@ -91,17 +84,19 @@ export async function POST(request: Request): Promise<Response> {
   if (!chapter) return notFound()
 
   const note = parsed.data.note?.trim() || null
-  const ipHash = hashIp(ip)
   const number = Number(chapter.number)
 
   // Five readers reporting the same broken chapter is signal worth five rows; one reader
-  // tapping Report five times is one. `ip_hash` (migration 9023) is what tells them apart
-  // for an anonymous reporter.
+  // tapping Report five times is one. `reporter_key` (migration 9038) is what tells them
+  // apart for an anonymous reporter — an HMAC of their visitor cookie, not of their address.
+  const reporterKey = user
+    ? null
+    : Buffer.from(visitorKeyFor('rp:v1', await ensureVisitorId(), getEnv().SESSION_SECRET))
   const since = new Date(Date.now() - DEDUPE_WINDOW_MS)
   const mine = user
     ? eq(reports.reporterId, user.id)
-    : ipHash
-      ? sql`${reports.ipHash} = ${Buffer.from(ipHash)}`
+    : reporterKey
+      ? sql`${reports.reporterKey} = ${reporterKey}`
       : null
   if (mine) {
     const [duplicate] = await db
@@ -130,7 +125,7 @@ export async function POST(request: Request): Promise<Response> {
       reporterId: user?.id ?? null,
       reason: parsed.data.reason,
       detail: note,
-      ipHash,
+      reporterKey: reporterKey ? new Uint8Array(reporterKey) : null,
       // Everything a moderator needs to act without opening the reader themselves.
       payload: {
         series_id: chapter.seriesId,

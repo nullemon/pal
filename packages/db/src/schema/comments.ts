@@ -47,7 +47,6 @@ export const comments = pgTable(
     automodRules: text('automod_rules').array().notNull().default(sql`'{}'::text[]`),
     hasLink: boolean('has_link').notNull().default(false),
     imageId: bigint('image_id', { mode: 'number' }), // community_images.id
-    ipHash: bytea('ip_hash'),
     locked: boolean('locked').notNull().default(false),
     // denormalised, reconciled nightly (docs/14 §9)
     reactionCounts: jsonb('reaction_counts')
@@ -190,12 +189,15 @@ export const reports = pgTable(
     detail: text('detail'),
     payload: jsonb('payload').$type<Record<string, unknown>>(), // e.g. { page_idx } for broken_chapter
     /**
-     * The reporter's address, hashed with the weekly salt exactly like `comments.ip_hash`.
-     * The only handle an anonymous report has: it dedupes a reader tapping "Report" five
-     * times on the same broken chapter, and shows moderators a repeat abuser, without ever
-     * storing an address (migration 9023).
+     * The only handle an anonymous report has: `HMAC(secret, 'rp:v1|' || visitor id)`, where
+     * the visitor id is the random cookie from `apps/web/lib/visitor.ts`. It dedupes a reader
+     * tapping "Report" five times on the same broken chapter, and shows moderators a repeat
+     * abuser, without the site knowing anything about where that reader is.
+     *
+     * This replaced an `ip_hash` (migration 9038), which was an HMAC of the address and so
+     * was a location record for every anonymous reporter to anyone holding the app secret.
      */
-    ipHash: bytea('ip_hash'),
+    reporterKey: bytea('reporter_key'),
     status: text('status').notNull().default('open'), // open|triaged|actioned|rejected
     handledBy: ref('handled_by').references(() => users.id),
     handledAt: timestamptz('handled_at'),

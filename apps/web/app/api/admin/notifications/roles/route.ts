@@ -12,7 +12,7 @@ import { readNotificationSettings } from '@/lib/notifications'
  * The worker runs the same pass on a schedule; this is the "did my mapping work?" button.
  * Without `DISCORD_BOT_TOKEN` + `DISCORD_GUILD_ID` it answers 503 rather than pretending.
  */
-export const POST = withPermission('settings.write', async (request, _ctx, user) => {
+export const POST = withPermission('settings.write', async (_request, _ctx, user) => {
   const status = await discordRoleSyncStatus()
   if (!status.configured)
     return fail(
@@ -28,7 +28,6 @@ export const POST = withPermission('settings.write', async (request, _ctx, user)
     action: 'notifications.role_sync',
     targetType: 'settings',
     after: summary,
-    request,
   })
   return ok({
     ...summary,

@@ -46,7 +46,6 @@ export const POST = withPermission<{ id: string }>('chapter.repair', async (requ
     targetType: 'chapter',
     targetId: id.data,
     after: { failedOnly, attempt, jobId },
-    request,
   })
   return ok({ jobId, attempt })
 })

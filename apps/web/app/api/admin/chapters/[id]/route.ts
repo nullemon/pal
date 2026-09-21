@@ -67,7 +67,6 @@ export const PATCH = withPermission<{ id: string }>(
       targetId: id.data,
       before: snapshot(before, KEYS),
       after: snapshot(after, KEYS),
-      request,
     })
     purgeCatalog()
     return ok(after ? snapshot(after, KEYS) : null)
@@ -76,7 +75,7 @@ export const PATCH = withPermission<{ id: string }>(
 
 export const DELETE = withPermission<{ id: string }>(
   'chapter.delete',
-  async (request, ctx, user) => {
+  async (_request, ctx, user) => {
     const id = idParam.safeParse((await ctx.params).id)
     if (!id.success) return notFound()
     const db = await getDb()
@@ -98,7 +97,6 @@ export const DELETE = withPermission<{ id: string }>(
       targetId: id.data,
       before: { deletedAt: before.deletedAt },
       after: { deletedAt: now.toISOString() },
-      request,
     })
     purgeCatalog()
     return ok({ id: id.data })

@@ -11,7 +11,7 @@ export const GET = withPermission('settings.write', async () => {
   return ok({ builds: await sitemapBuildViews(db), indexNow: await indexNowLog(db) })
 })
 
-export const POST = withPermission('settings.write', async (request, _ctx, user) => {
+export const POST = withPermission('settings.write', async (_request, _ctx, user) => {
   const db = await getDb()
   const result = await buildSitemaps({ kind: 'full', db, storage: await getStorage() })
   await audit({
@@ -20,7 +20,6 @@ export const POST = withPermission('settings.write', async (request, _ctx, user)
     targetType: 'sitemap_builds',
     targetId: result.id,
     after: { urlCount: result.urlCount, files: result.files, error: result.error },
-    request,
   })
   return ok({
     result: {

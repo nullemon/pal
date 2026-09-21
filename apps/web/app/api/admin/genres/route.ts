@@ -61,7 +61,6 @@ export const POST = withPermission('series.update', async (request, _ctx, user) 
     targetType: 'genre',
     targetId: row.id,
     after: row,
-    request,
   })
   return ok(row)
 })
@@ -80,7 +79,6 @@ export const PATCH = withPermission('series.update', async (request, _ctx, user)
     action: 'genre.reorder',
     targetType: 'genre',
     after: { kind: parsed.data.kind, order: parsed.data.ids, moved },
-    request,
   })
   return ok({ kind: parsed.data.kind, moved })
 })

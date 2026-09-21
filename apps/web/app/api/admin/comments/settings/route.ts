@@ -40,7 +40,6 @@ export const PUT = withPermission('settings.write', async (request, _ctx, user) 
     targetType: 'settings',
     before,
     after: parsed.data,
-    request,
   })
   return ok(parsed.data)
 })

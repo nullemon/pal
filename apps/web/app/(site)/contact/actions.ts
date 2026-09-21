@@ -1,8 +1,6 @@
 'use server'
 
 import { messages } from '@palscans/core/messages'
-import { headers } from 'next/headers'
-import { clientIp } from '@/lib/auth'
 import { verifyTurnstile } from '@/lib/auth/turnstile'
 import {
   contactSchema,
@@ -34,12 +32,7 @@ export async function submitContact(_prev: FormState, data: FormData): Promise<F
   if (await formRateLimited('contact'))
     return { status: 'error', message: messages.errors.rateLimited }
   const token = data.get('turnstile')
-  if (
-    !(await verifyTurnstile(
-      typeof token === 'string' ? token : undefined,
-      clientIp(await headers()),
-    ))
-  )
+  if (!(await verifyTurnstile(typeof token === 'string' ? token : undefined)))
     return { status: 'error', message: messages.legal.contact.challengeFailed }
   const v = parsed.data
   try {

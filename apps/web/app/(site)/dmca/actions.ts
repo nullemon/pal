@@ -1,8 +1,6 @@
 'use server'
 
 import { fmt, messages } from '@palscans/core/messages'
-import { headers } from 'next/headers'
-import { clientIp } from '@/lib/auth'
 import { verifyTurnstile } from '@/lib/auth/turnstile'
 import {
   createReport,
@@ -37,8 +35,7 @@ export async function submitDmca(_prev: FormState, data: FormData): Promise<Form
   if (await formRateLimited('dmca'))
     return { status: 'error', message: messages.errors.rateLimited }
   const token = data.get('turnstile')
-  const ip = clientIp(await headers())
-  if (!(await verifyTurnstile(typeof token === 'string' ? token : undefined, ip)))
+  if (!(await verifyTurnstile(typeof token === 'string' ? token : undefined)))
     return { status: 'error', message: messages.takedowns.challengeFailed }
   const v = parsed.data
   try {

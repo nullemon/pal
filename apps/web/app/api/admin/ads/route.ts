@@ -28,7 +28,6 @@ export const PUT = withPermission('settings.write', async (request, _ctx, user) 
     targetType: 'settings',
     before: { slots: before.slots ?? null, ads_txt: before.ads_txt ?? null },
     after: { slots: parsed.data.slots, ads_txt: parsed.data.ads_txt },
-    request,
   })
   return ok(parsed.data)
 })

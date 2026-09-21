@@ -62,7 +62,68 @@ const fakeRedis = () => {
   return { client: client as unknown as RedisLike, store }
 }
 
-const viewer = { ip: '203.0.113.7', userAgent: UA }
+const viewer = { ip: '203.0.113.7', visitorId: 'visitor-one', userAgent: UA }
+
+describe('what a counted view records about the reader', () => {
+  it('stores a key that the address cannot change', async () => {
+    // The guarantee the operator asked for: nothing derived from an address reaches the
+    // database. Two views identical but for the address must be the same stored viewer —
+    // which is also what makes them one view rather than two.
+    const { recorder, written } = build()
+    expect(
+      await recorder.record({
+        seriesId: 1,
+        chapterId: 5,
+        visitorId: 'v1',
+        ip: '203.0.113.7',
+        userAgent: UA,
+      }),
+    ).toBe('recorded')
+    expect(
+      await recorder.record({
+        seriesId: 1,
+        chapterId: 5,
+        visitorId: 'v1',
+        ip: '198.51.100.4',
+        userAgent: UA,
+      }),
+    ).toBe('duplicate')
+    await recorder.flush()
+    expect(written.flat()).toHaveLength(1)
+  })
+
+  it('stores a key that the user agent cannot change either', async () => {
+    // The user agent is read for the bot filter and then dropped. It used to be half the
+    // viewer key, which made the same reader on two browsers two viewers.
+    const { recorder } = build()
+    expect(
+      await recorder.record({ seriesId: 1, chapterId: 5, visitorId: 'v1', userAgent: UA }),
+    ).toBe('recorded')
+    expect(
+      await recorder.record({ seriesId: 1, chapterId: 5, visitorId: 'v1', userAgent: 'Firefox/1' }),
+    ).toBe('duplicate')
+  })
+
+  it('writes nothing but series, chapter, day and that key', async () => {
+    // A row with a fifth field is a row that could hold a place. `view_events` has four
+    // columns and this is the shape that fills them.
+    const { recorder, written } = build()
+    await recorder.record({
+      seriesId: 1,
+      chapterId: 5,
+      visitorId: 'v1',
+      ip: '203.0.113.7',
+      userAgent: UA,
+    })
+    await recorder.flush()
+    expect(Object.keys(written[0]?.[0] ?? {}).sort()).toEqual([
+      'bucket',
+      'chapterId',
+      'seriesId',
+      'viewerKey',
+    ])
+  })
+})
 
 describe('the dedupe rule', () => {
   it('counts one reader refreshing ten times as one view', async () => {
@@ -162,8 +223,17 @@ describe('bots and floods', () => {
     const { recorder } = build()
     for (let i = 0; i < VIEW_RATE_LIMIT + 2; i++)
       await recorder.record({ seriesId: 1, chapterId: i + 1, ...viewer })
+    // A different address *and* a different browser: the budget is keyed on the address, the
+    // stored viewer key on the visitor cookie, so a second reader has to differ in both to
+    // be counted rather than deduped.
     expect(
-      await recorder.record({ seriesId: 1, chapterId: 1, ip: '198.51.100.4', userAgent: UA }),
+      await recorder.record({
+        seriesId: 1,
+        chapterId: 1,
+        ip: '198.51.100.4',
+        visitorId: 'visitor-two',
+        userAgent: UA,
+      }),
     ).toBe('recorded')
   })
 })
@@ -176,6 +246,7 @@ describe('the write path', () => {
         seriesId: 1,
         chapterId: i + 1,
         ip: `10.0.0.${i % 200}`,
+        visitorId: `visitor-${i % 200}`,
         userAgent: UA,
       })
     expect(written).toHaveLength(0) // nothing has touched the database yet

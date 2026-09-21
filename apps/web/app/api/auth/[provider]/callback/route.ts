@@ -3,7 +3,6 @@ import { and, eq } from 'drizzle-orm'
 import { cookies } from 'next/headers'
 import { getSessionId, getSessionUser } from '@/lib/auth'
 import { setMfaChallenge, signIn } from '@/lib/auth/flows'
-import { recordLoginEvent } from '@/lib/auth/login-events'
 import {
   completeOAuth,
   isOAuthProvider,
@@ -75,15 +74,8 @@ export async function GET(
     .limit(1)
   const currentId = await getSessionId()
   if (linkedRow && !linkedRow.deletedAt) {
-    if (await activeUserBan(linkedRow.userId)) {
-      await recordLoginEvent({
-        request,
-        userId: linkedRow.userId,
-        method: provider,
-        outcome: 'banned',
-      })
+    if (await activeUserBan(linkedRow.userId))
       return loginWith(url, { error: 'banned', provider, return: returnTo })
-    }
     // A provider proves one factor. An account with TOTP enrolled must still present it —
     // the password route branches here, and without the same branch a linked Google or
     // Discord account was a one-factor door into the panel for staff, while
@@ -92,18 +84,10 @@ export async function GET(
     // an unreadable sealed secret (migration 9036) must fail the second step rather than
     // skip it.
     if (linkedRow.totpEnabledAt) {
-      // No login event here, matching the password route: the sign-in has not happened yet,
-      // and the TOTP step records the outcome either way.
       await setMfaChallenge(linkedRow.userId, returnTo)
       return loginWith(url, { mfa: '1', return: returnTo })
     }
     await signIn(linkedRow.userId, linkedRow.email, request, provider, currentId)
-    await recordLoginEvent({
-      request,
-      userId: linkedRow.userId,
-      method: provider,
-      outcome: 'success',
-    })
     return afterSignIn(url, returnTo, !!linkedRow.username, null)
   }
 
@@ -122,10 +106,8 @@ export async function GET(
     .limit(1)
 
   if (existing && !existing.deletedAt) {
-    if (await activeUserBan(existing.id)) {
-      await recordLoginEvent({ request, userId: existing.id, method: provider, outcome: 'banned' })
+    if (await activeUserBan(existing.id))
       return loginWith(url, { error: 'banned', provider, return: returnTo })
-    }
     const current = await getSessionUser()
     if (current && current.id === existing.id) {
       // Initiated from the security page by the authenticated owner: link now.
@@ -156,6 +138,5 @@ export async function GET(
   if (!created) return loginWith(url, { error: 'oauth_failed', provider, return: returnTo })
   await db.insert(oauthAccounts).values({ userId: created.id, provider, providerUid: identity.uid })
   await signIn(created.id, identity.email, request, provider, currentId)
-  await recordLoginEvent({ request, userId: created.id, method: provider, outcome: 'success' })
   return afterSignIn(url, returnTo, false, null)
 }

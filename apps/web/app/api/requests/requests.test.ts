@@ -10,6 +10,7 @@ import {
 import { type RequestActor, voterKeyFor } from '@/components/requests/server/identity'
 import { boardHref } from '@/components/requests/shared'
 import { createMemoryRateLimiter } from '@/lib/auth/rate-limit'
+import { visitorKeyFor } from '@/lib/visitor'
 
 /**
  * The defences on the request board's public write path, and the identity they are keyed to.
@@ -23,9 +24,8 @@ import { createMemoryRateLimiter } from '@/lib/auth/rate-limit'
 const actor = (over: Partial<RequestActor> = {}): RequestActor => ({
   userId: null,
   voterKey: null,
-  source: 'address',
+  source: 'visitor',
   limitKey: null,
-  ip: null,
   ...over,
 })
 
@@ -33,27 +33,36 @@ describe('the anonymous voter key', () => {
   const secret = 'test-secret-value-that-is-long-enough'
 
   it('is stable for the same identity — no daily rotation, or a vote a day is free', () => {
-    const monday = voterKeyFor('a:203.0.113.7', secret)
-    const tuesday = voterKeyFor('a:203.0.113.7', secret)
+    const monday = voterKeyFor('c:9f2a1b', secret)
+    const tuesday = voterKeyFor('c:9f2a1b', secret)
     expect(Buffer.from(tuesday).toString('hex')).toBe(Buffer.from(monday).toString('hex'))
     expect(monday).toHaveLength(16)
   })
 
-  it('separates accounts, addresses and ballots from one another', () => {
+  it('separates accounts from visitor cookies, and both from one another', () => {
     const hex = (v: Uint8Array) => Buffer.from(v).toString('hex')
     const keys = [
       voterKeyFor('u:41', secret),
-      voterKeyFor('a:41', secret),
       voterKeyFor('c:41', secret),
-      voterKeyFor('a:203.0.113.8', secret),
+      voterKeyFor('c:9f2a1b', secret),
     ].map(hex)
-    expect(new Set(keys).size).toBe(4)
+    expect(new Set(keys).size).toBe(3)
   })
 
-  it('is keyed by the app secret, so the raw address is not recoverable from the table', () => {
-    const a = voterKeyFor('a:203.0.113.7', secret)
-    const b = voterKeyFor('a:203.0.113.7', 'a-different-secret-entirely-here')
+  it('is keyed by the app secret, so the cookie is not recoverable from the table', () => {
+    const a = voterKeyFor('c:9f2a1b', secret)
+    const b = voterKeyFor('c:9f2a1b', 'a-different-secret-entirely-here')
     expect(Buffer.from(a).toString('hex')).not.toBe(Buffer.from(b).toString('hex'))
+  })
+
+  it('is derived from the cookie under a scope, never from an address', () => {
+    // The scope is what keeps one reader's votes from being joinable to their views.
+    expect(Buffer.from(voterKeyFor('c:9f2a1b', secret)).toString('hex')).toBe(
+      Buffer.from(visitorKeyFor('rq:v1', 'c:9f2a1b', secret)).toString('hex'),
+    )
+    expect(Buffer.from(visitorKeyFor('pv:v1', 'c:9f2a1b', secret)).toString('hex')).not.toBe(
+      Buffer.from(visitorKeyFor('rq:v1', 'c:9f2a1b', secret)).toString('hex'),
+    )
   })
 })
 

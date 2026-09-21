@@ -43,9 +43,14 @@ export const turnstileConfigured = async (): Promise<boolean> => {
   return !!siteKey && !!secretKey
 }
 
+/**
+ * `remoteip` is deliberately not sent. Cloudflare's siteverify accepts the visitor's address
+ * as an optional extra signal; it is optional, the edge already sees the address anyway when
+ * the site is behind Cloudflare, and this site does not hand a visitor's address to anything
+ * it does not have to.
+ */
 export const verifyTurnstile = async (
   token: string | undefined,
-  ip: string | null,
   fetchImpl: typeof fetch = fetch,
 ): Promise<boolean> => {
   const { secretKey: secret } = await turnstileKeys()
@@ -62,7 +67,7 @@ export const verifyTurnstile = async (
     const res = await fetchImpl('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ secret, response: token, remoteip: ip ?? undefined }),
+      body: JSON.stringify({ secret, response: token }),
     })
     const json = (await res.json()) as { success?: boolean }
     return json.success === true

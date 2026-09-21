@@ -11,6 +11,7 @@ import { ensureViewPartitions, getDb, recordViewEvents } from '@palscans/db'
 import { clientIp, ipKey } from '@/lib/auth/rate-limit'
 import { getRedis, type RedisLike } from '@/lib/auth/redis'
 import { getEnv } from '@/lib/env'
+import { ensureVisitorId } from '@/lib/visitor'
 
 /**
  * Recording a view (docs/02 "Views and ranking"). Nothing here runs during a page render:
@@ -49,8 +50,12 @@ export interface ViewRequest {
   seriesId: number
   chapterId?: number
   userId?: number | null
-  ip?: string | null
+  /** The anonymous visitor id (`lib/visitor.ts`) — what an unsigned-in view is counted by. */
+  visitorId?: string | null
+  /** Read for the bot filter only; never stored and never part of the viewer key. */
   userAgent?: string | null
+  /** Ephemeral rate-limit bucket only: a Redis counter with a 60-second TTL, never a row. */
+  ip?: string | null
   now?: Date
 }
 
@@ -142,15 +147,21 @@ export class ViewRecorder {
       chapterId: input.chapterId ?? SERIES_PAGE_CHAPTER_ID,
       bucket,
       viewerKey: viewerKey(
-        { bucket, userId: input.userId, ip: input.ip, userAgent: input.userAgent },
+        { bucket, userId: input.userId, visitorId: input.visitorId },
         this.secret,
       ),
     }
     const redis = await this.redis().catch(() => null)
     const t = now.getTime()
 
-    // 2. budget, per viewer identity rather than per raw address, so the key rotates daily
-    const budgetKey = `pv:rate:${input.userId ?? ''}:${ipKey(input.ip ?? null, now, this.secret) ?? 'anon'}`
+    // 2. budget. Keyed on the address where one is available, because this is the only
+    // filter a script cannot sidestep by dropping its cookie — and it is a counter in Redis
+    // with a 60-second TTL under a daily-rotating HMAC, not a row in any table. A deployment
+    // that sets `TRUSTED_PROXY=none` never sees an address at all and falls back to the
+    // visitor id, which is weaker and still bounded by the primary key on `view_events`.
+    const budgetKey = `pv:rate:${input.userId ?? ''}:${
+      ipKey(input.ip ?? null, now, this.secret) ?? input.visitorId ?? 'anon'
+    }`
     const used = redis
       ? await this.incr(redis, budgetKey, VIEW_RATE_WINDOW_SEC * 1000)
       : this.local.hit(budgetKey, VIEW_RATE_WINDOW_SEC * 1000, t)
@@ -223,9 +234,13 @@ export const recorder = (): ViewRecorder => {
   return shared
 }
 
-/** Resolve the viewer identity of a request the way the rate limiter does. */
-export const viewerFor = (request: Request, userId: number | null) => ({
+/**
+ * The viewer identity of a beaconed view: the account when there is one, the visitor cookie
+ * otherwise (minted here when the browser has none, so a reader's first view still counts).
+ */
+export const viewerFor = async (request: Request, userId: number | null) => ({
   userId,
+  visitorId: userId ? null : await ensureVisitorId(),
   ip: clientIp(request),
   userAgent: request.headers.get('user-agent'),
 })

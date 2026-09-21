@@ -70,7 +70,6 @@ export const POST = withPermission<{ id: string }>('report.handle', async (reque
     targetId: id.data,
     before: snapshot(before),
     after: { action: next, actionedAt: actionedAt?.toISOString() ?? null, note: note ?? null },
-    request,
   })
   return ok({ id: id.data, action: next, actionedAt: actionedAt?.toISOString() ?? null })
 })

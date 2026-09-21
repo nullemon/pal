@@ -341,7 +341,6 @@ export interface GenreMergeInput {
   winnerId: number
   loserId: number
   actorId: number
-  ipHash?: Uint8Array | null
 }
 
 export type GenreMergeResult =
@@ -476,13 +475,6 @@ export const previewGenreMerge = async (
 }
 
 /**
- * A `bytea` parameter as hex text. `db.execute()` carries no type hints, so a `Uint8Array`
- * is left to the driver's guess; `decode(…, 'hex')` states the type in the SQL instead.
- */
-const hex = (bytes: Uint8Array | null | undefined) =>
-  bytes ? sql`decode(${Buffer.from(bytes).toString('hex')}, 'hex')` : sql`null`
-
-/**
  * Fold `loserId` into `winnerId` in one transaction, or refuse and change nothing.
  *
  * The order matters. Rows that can move are repointed first, then whatever is left of the
@@ -536,7 +528,7 @@ export const mergeGenres = async (db: Db, input: GenreMergeInput): Promise<Genre
 
     const [after] = await executeRows<{ id: number }>(
       t,
-      sql`insert into audit_log (actor_id, action, target_type, target_id, before, after, ip_hash)
+      sql`insert into audit_log (actor_id, action, target_type, target_id, before, after)
           values (${input.actorId}, 'genre.merge', 'genre', ${w},
                   ${JSON.stringify({ winner: preview.winner, loser: preview.loser })}::jsonb,
                   ${JSON.stringify({
@@ -549,8 +541,7 @@ export const mergeGenres = async (db: Db, input: GenreMergeInput): Promise<Genre
                     move: preview.move,
                     merge: preview.merge,
                     warnings: preview.warnings.map((x) => x.code),
-                  })}::jsonb,
-                  ${hex(input.ipHash)})
+                  })}::jsonb)
           returning id`,
     )
     return { ok: true, preview, auditId: Number(after?.id ?? 0) }

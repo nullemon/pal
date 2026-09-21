@@ -47,7 +47,6 @@ export const PUT = withPermission('settings.write', async (request, _ctx, user) 
       targetType: 'settings',
       // Ids only. Never a value, masked or otherwise.
       after: { changed },
-      request,
     })
 
   return ok(view)
@@ -77,7 +76,6 @@ export const POST = withPermission('settings.write', async (request, _ctx, user)
     action: 'settings.integrations.test',
     targetType: 'settings',
     after: { group: report.group, ok: report.ok },
-    request,
   })
   return ok(report)
 })

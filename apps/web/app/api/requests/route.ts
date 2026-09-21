@@ -5,7 +5,7 @@ import { loadBoard, toRequestItem } from '@/components/requests/server/data'
 import { submitLimit } from '@/components/requests/server/guards'
 import { readActor, writeActor } from '@/components/requests/server/identity'
 import { isRequestFilter, isRequestSort } from '@/components/requests/shared'
-import { clientIp, fail, ok, parseJson, rateLimited, sameOrigin } from '@/lib/auth'
+import { fail, ok, parseJson, rateLimited, sameOrigin } from '@/lib/auth'
 import { turnstileEnabled, verifyTurnstile } from '@/lib/auth/turnstile'
 
 /**
@@ -55,7 +55,7 @@ export async function POST(request: Request) {
   if (!limit.ok) return rateLimited(limit.retryAfterSec)
 
   if (!actor.userId && (await turnstileEnabled())) {
-    const passed = await verifyTurnstile(body.turnstile, clientIp(request))
+    const passed = await verifyTurnstile(body.turnstile)
     if (!passed) return fail(403, 'challenge_failed', messages.requests.challengeFailed)
   }
 

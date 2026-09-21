@@ -63,7 +63,6 @@ export const POST = withPermission('settings.write', async (request, _ctx, user)
       action: 'notifications.test',
       targetType: 'settings',
       after: { channel: 'push', sent: res.sent },
-      request,
     })
     return ok({ ...res, message: messages.notify.push.testSent.replace('{n}', String(res.sent)) })
   }
@@ -100,7 +99,6 @@ export const POST = withPermission('settings.write', async (request, _ctx, user)
       action: 'notifications.test',
       targetType: 'settings',
       after: { channel: 'email', ok: sent.ok },
-      request,
     })
     if (!sent.ok)
       return fail(
@@ -128,7 +126,6 @@ export const POST = withPermission('settings.write', async (request, _ctx, user)
     action: 'notifications.test',
     targetType: 'settings',
     after: { channel: 'discord', webhook: hook.name, ok: res.ok },
-    request,
   })
   if (!res.ok)
     return fail(

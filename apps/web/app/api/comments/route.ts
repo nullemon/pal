@@ -1,9 +1,8 @@
 import { messages } from '@palscans/core/messages'
 import { db } from '@palscans/db'
-import { clientIp } from '@/lib/auth'
 import { turnstileEnabled, verifyTurnstile } from '@/lib/auth/turnstile'
 import { rejectResponse } from '@/lib/comments/errors'
-import { fail, ipHashFor, ok, parseJson, parseQuery, requireUser } from '@/lib/comments/http'
+import { fail, ok, parseJson, parseQuery, requireUser } from '@/lib/comments/http'
 import { enqueueCommentNotification } from '@/lib/comments/notify'
 import { submitComment } from '@/lib/comments/pipeline'
 import { getCommentView, listComments, viewerFor } from '@/lib/comments/queries'
@@ -57,12 +56,11 @@ export const POST = requireUser(async (request, _ctx, user) => {
     body: parsed.data.body,
     imageId: parsed.data.image_id ?? null,
     isSpoiler: parsed.data.is_spoiler ?? false,
-    ipHash: await ipHashFor(request),
     limiter: getRateLimiter(),
     challenge: {
       enabled: await turnstileEnabled(),
       token: parsed.data.turnstile,
-      verify: (token) => verifyTurnstile(token, clientIp(request)),
+      verify: (token) => verifyTurnstile(token),
     },
   })
   if (!outcome.ok) {

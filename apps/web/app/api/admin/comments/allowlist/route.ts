@@ -20,7 +20,6 @@ export const POST = withPermission('settings.write', async (request, _ctx, user)
     action: 'settings.allowlist.add',
     targetType: 'link_allowlist',
     after: parsed.data,
-    request,
   })
   return ok(parsed.data)
 })
@@ -38,7 +37,6 @@ export const DELETE = withPermission('settings.write', async (request, _ctx, use
     action: 'settings.allowlist.remove',
     targetType: 'link_allowlist',
     before: parsed.data,
-    request,
   })
   return ok(parsed.data)
 })

@@ -25,26 +25,33 @@ export const VIEWER_KEY_BYTES = 16
 export interface ViewerKeyInput {
   /** The day the view belongs to (`YYYY-MM-DD`, UTC) — rotates the key daily. */
   bucket: string
-  /** Signed-in reader, if any. Takes precedence over the address. */
+  /** Signed-in reader, if any. Takes precedence over the visitor id. */
   userId?: number | null
-  /** Client address, already resolved through the trusted-proxy rules. */
-  ip?: string | null
-  userAgent?: string | null
+  /**
+   * The anonymous visitor id (apps/web/lib/visitor.ts): a random number the browser carries
+   * in a first-party cookie. Never an address — see below.
+   */
+  visitorId?: string | null
 }
 
 /**
- * `viewer_key` = HMAC(secret, day | identity) truncated to 16 bytes (docs/02:
- * "hash(user_id | ip+ua salt) for dedupe"). The day is inside the HMAC, so a key is only
- * ever linkable within one UTC day and the raw address never reaches the database.
+ * `viewer_key` = HMAC(secret, day | identity) truncated to 16 bytes. The day is inside the
+ * HMAC, so a key is only ever linkable within one UTC day.
  *
  * A signed-in reader is keyed by account, so the same person on phone and laptop counts
- * once. Everyone else is keyed by address + user agent.
+ * once. Everyone else is keyed by their visitor id.
+ *
+ * The identity used to be the client address plus the user agent, which looked private —
+ * the address was hashed, never stored — and was not: IPv4 is 2^32 wide, so anyone holding
+ * the app secret can hash the whole space against one day's salt and read every stored key
+ * back as a plain address. A 128-bit random cookie has no such space to sweep, and unlike an
+ * address it is something the reader can throw away.
  */
 export const viewerKey = (input: ViewerKeyInput, secret: string): Uint8Array => {
   const identity =
     input.userId != null && input.userId > 0
       ? `u:${input.userId}`
-      : `a:${input.ip ?? 'unknown'}|${(input.userAgent ?? '').slice(0, 200)}`
+      : `c:${input.visitorId ?? 'unknown'}`
   const digest = createHmac('sha256', secret).update(`${input.bucket}|${identity}`).digest()
   return new Uint8Array(digest.subarray(0, VIEWER_KEY_BYTES))
 }

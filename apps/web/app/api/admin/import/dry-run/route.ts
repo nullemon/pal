@@ -14,7 +14,7 @@ import { ok, withPermission } from '@/lib/auth'
  * POST /api/admin/import/dry-run — map everything and count what an import would write,
  * including the list of chapter names the parser refused (docs/09). Writes nothing.
  */
-export const POST = withPermission('settings.write', async (request, _ctx, user) => {
+export const POST = withPermission('settings.write', async (_request, _ctx, user) => {
   const doc = await readImportDoc()
   const { source, fallback } = resolveSource(doc.config)
   const report = await dryRun(source)
@@ -33,7 +33,6 @@ export const POST = withPermission('settings.write', async (request, _ctx, user)
     action: 'import.dryRun',
     targetType: 'settings',
     after: { source: report.discovery.source, totals: report.totals },
-    request,
   })
   return ok({ ...maskImportDoc(next), fallback })
 })

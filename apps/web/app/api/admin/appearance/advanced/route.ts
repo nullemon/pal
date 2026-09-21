@@ -121,7 +121,6 @@ export const PUT = withPermission('appearance.advanced', async (request, _ctx, u
     targetId: publishedId,
     before,
     after: next,
-    request,
   })
 
   return ok({

@@ -150,7 +150,7 @@ describe('verifyTurnstile against a real siteverify server', () => {
   // --- outcome 1: a valid token is allowed through --------------------------
   it('lets a valid token through, and sends Cloudflare the request it expects', async () => {
     state.secret = SECRET
-    const ok = await verifyTurnstile(GOOD_TOKEN, '203.0.113.7', forwardTo(base))
+    const ok = await verifyTurnstile(GOOD_TOKEN, forwardTo(base))
 
     expect(ok).toBe(true)
     // The production code must be talking to Cloudflare, not somewhere else.
@@ -159,36 +159,31 @@ describe('verifyTurnstile against a real siteverify server', () => {
     expect(seen).toHaveLength(1)
     expect(seen[0]?.method).toBe('POST')
     expect(seen[0]?.contentType).toBe('application/json')
-    expect(seen[0]?.body).toEqual({
-      secret: SECRET,
-      response: GOOD_TOKEN,
-      remoteip: '203.0.113.7',
-    })
+    expect(seen[0]?.body).toEqual({ secret: SECRET, response: GOOD_TOKEN })
   })
 
-  it('omits remoteip rather than sending null when the IP is unknown', async () => {
-    state.secret = SECRET
-    expect(await verifyTurnstile(GOOD_TOKEN, null, forwardTo(base))).toBe(true)
-    expect(seen[0]?.body).toEqual({ secret: SECRET, response: GOOD_TOKEN })
+  it('never sends the visitor address to Cloudflare, even though siteverify accepts one', () => {
+    // `remoteip` is optional, and this site does not hand a reader's address to anything it
+    // does not have to. The route handlers have no address to pass any more either.
     expect('remoteip' in (seen[0]?.body ?? {})).toBe(false)
   })
 
   // --- outcome 2: an invalid token is refused -------------------------------
   it('refuses a token siteverify rejects', async () => {
     state.secret = SECRET
-    expect(await verifyTurnstile(BAD_TOKEN, '203.0.113.7', forwardTo(base))).toBe(false)
+    expect(await verifyTurnstile(BAD_TOKEN, forwardTo(base))).toBe(false)
     expect(seen[0]?.body.response).toBe(BAD_TOKEN)
   })
 
   it('refuses when the secret itself is wrong, rather than passing the request', async () => {
     state.secret = 'not-the-configured-secret'
-    expect(await verifyTurnstile(GOOD_TOKEN, null, forwardTo(base))).toBe(false)
+    expect(await verifyTurnstile(GOOD_TOKEN, forwardTo(base))).toBe(false)
   })
 
   it('refuses a missing token without asking siteverify at all', async () => {
     state.secret = SECRET
-    expect(await verifyTurnstile(undefined, '203.0.113.7', forwardTo(base))).toBe(false)
-    expect(await verifyTurnstile('', '203.0.113.7', forwardTo(base))).toBe(false)
+    expect(await verifyTurnstile(undefined, forwardTo(base))).toBe(false)
+    expect(await verifyTurnstile('', forwardTo(base))).toBe(false)
     expect(seen).toHaveLength(0)
   })
 
@@ -196,11 +191,7 @@ describe('verifyTurnstile against a real siteverify server', () => {
   it('FAILS CLOSED when siteverify cannot be reached', async () => {
     state.secret = SECRET
     // Nothing is listening on this port, so the fetch rejects with ECONNREFUSED.
-    const refused = await verifyTurnstile(
-      GOOD_TOKEN,
-      '203.0.113.7',
-      forwardTo(`http://127.0.0.1:${deadPort}`),
-    )
+    const refused = await verifyTurnstile(GOOD_TOKEN, forwardTo(`http://127.0.0.1:${deadPort}`))
     // A Cloudflare outage therefore blocks signups; it does not wave bots through.
     expect(refused).toBe(false)
     expect(seen).toHaveLength(0)
@@ -216,7 +207,7 @@ describe('verifyTurnstile against a real siteverify server', () => {
     const port = (garbage.address() as AddressInfo).port
     try {
       const base502 = `http://127.0.0.1:${port}`
-      expect(await verifyTurnstile(GOOD_TOKEN, null, forwardTo(base502))).toBe(false)
+      expect(await verifyTurnstile(GOOD_TOKEN, forwardTo(base502))).toBe(false)
     } finally {
       await new Promise<void>((resolve) => garbage.close(() => resolve()))
     }
@@ -225,14 +216,14 @@ describe('verifyTurnstile against a real siteverify server', () => {
   // --- the branches that decide whether to verify at all --------------------
   it('passes everything when no secret is configured, so local dev needs no Cloudflare', async () => {
     state.secret = ''
-    expect(await verifyTurnstile(undefined, null, forwardTo(base))).toBe(true)
+    expect(await verifyTurnstile(undefined, forwardTo(base))).toBe(true)
     expect(seen).toHaveLength(0)
   })
 
   it('fails closed when the stored secret is present but will not decrypt', async () => {
     state.secret = ''
     state.unreadable = true
-    expect(await verifyTurnstile(GOOD_TOKEN, null, forwardTo(base))).toBe(false)
+    expect(await verifyTurnstile(GOOD_TOKEN, forwardTo(base))).toBe(false)
     expect(seen).toHaveLength(0)
   })
 
@@ -253,13 +244,13 @@ describe('verifyTurnstile against a real siteverify server', () => {
       return real(input, init)
     }) as typeof fetch
     try {
-      expect(await verifyTurnstile(GOOD_TOKEN, '198.51.100.9')).toBe(true)
+      expect(await verifyTurnstile(GOOD_TOKEN)).toBe(true)
     } finally {
       globalThis.fetch = real
     }
     expect(spy).toHaveBeenCalledOnce()
     expect(requestedUrl).toBe(SITEVERIFY_URL)
-    expect(seen[0]?.body.remoteip).toBe('198.51.100.9')
+    expect(seen[0]?.body.remoteip).toBeUndefined()
   })
 })
 
@@ -304,11 +295,7 @@ describe('the registration gate with Turnstile enforced', () => {
     )
     expect(gate.ok).toBe(true)
     expect(requestedUrl).toBe(SITEVERIFY_URL)
-    expect(seen[0]?.body).toEqual({
-      secret: SECRET,
-      response: GOOD_TOKEN,
-      remoteip: '203.0.113.7',
-    })
+    expect(seen[0]?.body).toEqual({ secret: SECRET, response: GOOD_TOKEN })
   })
 
   it('turns away a registration whose token siteverify rejects', async () => {

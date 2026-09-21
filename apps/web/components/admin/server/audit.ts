@@ -1,9 +1,13 @@
 import { auditLog, getDb } from '@palscans/db'
-import { clientIp, hashIp } from '@/lib/auth'
 
 /**
  * Every mutating admin action writes an `audit_log` row (docs/16 conventions, docs/04
  * "Audit log"): actor, action, target and a before/after snapshot the viewer diffs.
+ *
+ * What it does *not* record is where the actor was. The row used to carry an `ip_hash`;
+ * migration 9038 dropped the column, because an HMAC of an IPv4 address is reversible by
+ * anyone holding the app secret and the whole 2^32 space, which made it a location record
+ * for every member of staff rather than the abuse handle it was meant to be.
  */
 export interface AuditInput {
   actorId: number
@@ -12,7 +16,6 @@ export interface AuditInput {
   targetId?: number | null
   before?: unknown
   after?: unknown
-  request?: Request
 }
 
 export const audit = async (input: AuditInput): Promise<void> => {
@@ -24,7 +27,6 @@ export const audit = async (input: AuditInput): Promise<void> => {
     targetId: input.targetId ?? null,
     before: input.before ?? null,
     after: input.after ?? null,
-    ipHash: input.request ? hashIp(clientIp(input.request)) : null,
   })
 }
 

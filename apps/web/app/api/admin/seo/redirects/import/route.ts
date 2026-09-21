@@ -27,7 +27,6 @@ export const POST = withPermission('settings.write', async (request, _ctx, user)
     action: 'seo.redirect.import',
     targetType: 'redirects',
     after: { imported, errors: errors.length },
-    request,
   })
   revalidateTag('redirects', 'max')
   return ok({ imported, errors, redirects: await listRedirects(db) })

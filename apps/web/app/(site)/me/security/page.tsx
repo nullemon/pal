@@ -6,7 +6,6 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { getSessionId, listSessions } from '@/lib/auth'
 import { describeDevice } from '@/lib/auth/device'
-import { listLoginEvents } from '@/lib/auth/login-events'
 import { OAUTH_PROVIDERS, type OAuthProvider, providerConfigured } from '@/lib/auth/oauth'
 import { PageTitle, Section } from '../_components/Section'
 import {
@@ -16,7 +15,6 @@ import {
   TotpPanel,
 } from '../_components/SecurityForms'
 import { requireAccount } from '../_lib'
-import { LoginHistoryTable } from './LoginHistoryTable'
 
 export const metadata: Metadata = { title: messages.me.security.title }
 
@@ -34,11 +32,7 @@ export default async function SecurityPage({
   const user = await requireAccount('/me/security')
   const params = await searchParams
   const totpRequired = params.totp === 'required'
-  // docs/17 §C: the reader's own sign-in history, paginated on `?lp=`.
-  const rawPage = typeof params.lp === 'string' ? Number.parseInt(params.lp, 10) : 1
-  const historyPage = Number.isFinite(rawPage) ? Math.min(Math.max(rawPage, 1), 500) : 1
   const sessionId = await getSessionId()
-  const history = await listLoginEvents(user.id, historyPage)
   const db = await getDb()
   const [[row], sessions, linked] = await Promise.all([
     db
@@ -92,19 +86,6 @@ export default async function SecurityPage({
           description={messages.me.security.sessionsHint}
         >
           <SessionsList sessions={rows} />
-        </Section>
-
-        <Section
-          id="login-history"
-          title={messages.me.security.loginHistory}
-          description={messages.me.security.loginHistoryHint}
-        >
-          <LoginHistoryTable
-            rows={history.rows}
-            currentSessionId={sessionId}
-            page={historyPage}
-            pages={history.pages}
-          />
         </Section>
 
         <Section

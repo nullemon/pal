@@ -1,4 +1,4 @@
-import { type SQL, sql } from 'drizzle-orm'
+import { sql } from 'drizzle-orm'
 import { type Db, executeRows } from '../client.js'
 import type { SeriesType } from '../schema/enums.js'
 
@@ -100,7 +100,6 @@ export interface MergeInput {
   winnerId: number
   loserId: number
   actorId: number
-  ipHash?: Uint8Array | null
 }
 
 export type MergeResult =
@@ -108,14 +107,6 @@ export type MergeResult =
   | { ok: false; refusals: MergeRefusal[] }
 
 export const seriesPathFor = (slug: string): string => `/series/${slug}`
-
-/**
- * A `bytea` parameter as hex text. Drizzle sends `db.execute()` through postgres-js's
- * `unsafe()`, which carries no type hints, so a `Uint8Array` is left to the driver's guess;
- * `decode(…, 'hex')` states the type in the SQL instead of relying on it.
- */
-const hex = (bytes: Uint8Array | null | undefined): SQL =>
-  bytes ? sql`decode(${Buffer.from(bytes).toString('hex')}, 'hex')` : sql`null`
 
 /** `solo-leveling-2` on series 91 → `merged-91-solo-leveling-2`, capped to the column's use. */
 export const tombstoneSlugFor = (loserId: number, slug: string): string =>
@@ -630,7 +621,7 @@ export const mergeSeries = async (db: Db, input: MergeInput): Promise<MergeResul
 
     const [after] = await executeRows<{ id: number }>(
       t,
-      sql`insert into audit_log (actor_id, action, target_type, target_id, before, after, ip_hash)
+      sql`insert into audit_log (actor_id, action, target_type, target_id, before, after)
           values (${input.actorId}, 'series.merge', 'series', ${w},
                   ${JSON.stringify({
                     loser: preview.loser,
@@ -651,8 +642,7 @@ export const mergeSeries = async (db: Db, input: MergeInput): Promise<MergeResul
                       winnerChapterId: o.winnerChapterId,
                     })),
                     warnings: preview.warnings.map((x) => x.code),
-                  })}::jsonb,
-                  ${hex(input.ipHash)})
+                  })}::jsonb)
           returning id`,
     )
     return { ok: true, preview, auditId: Number(after?.id ?? 0) }

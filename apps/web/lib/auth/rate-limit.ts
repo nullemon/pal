@@ -182,11 +182,16 @@ const proxyFromEnv = (): TrustedProxy => {
 
 /**
  * The client address as seen by the trusted proxy — the only helper that reads the
- * forwarding headers (rate-limit keys, session / comment / audit `ip_hash`). Proxies append
- * the address they saw to `X-Forwarded-For`, so the client-supplied hops come first and the
- * trustworthy one is the last (or `hops` from the end behind more than one trusted proxy);
- * the first hop is whatever the client typed. With no proxy configured the headers are not
- * consulted at all and the address is unknown (route handlers never see the socket).
+ * forwarding headers, and rate-limit buckets are the only thing it feeds. Nothing persists an
+ * address: no table has a column for one, hashed or otherwise (docs/02 "Privacy"), so what
+ * this returns lives in a Redis counter with a TTL of seconds and nowhere else.
+ *
+ * Proxies append the address they saw to `X-Forwarded-For`, so the client-supplied hops come
+ * first and the trustworthy one is the last (or `hops` from the end behind more than one
+ * trusted proxy); the first hop is whatever the client typed. With no proxy configured the
+ * headers are not consulted at all and the address is unknown (route handlers never see the
+ * socket) — which is what `TRUSTED_PROXY=none` is for: it costs per-IP rate limiting and
+ * leaves the app unable to read an address even if it wanted to.
  */
 export const clientIp = (
   request: Request | Headers,

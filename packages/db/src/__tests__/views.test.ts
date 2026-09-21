@@ -48,7 +48,7 @@ const ids: { alpha: number; beta: number; gamma: number; c1: number; c2: number 
 }
 
 const key = (who: string, bucket = TODAY): Uint8Array =>
-  viewerKey({ bucket, ip: who, userAgent: 'Firefox' }, SECRET)
+  viewerKey({ bucket, visitorId: who }, SECRET)
 
 const hit = (seriesId: number, chapterId: number, who: string, bucket = TODAY): ViewHit => ({
   seriesId,

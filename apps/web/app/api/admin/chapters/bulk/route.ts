@@ -95,7 +95,6 @@ export const POST = withPermission('chapter.update', async (request, _ctx, user)
       ...('publishedAt' in body ? { publishedAt: body.publishedAt } : {}),
       ...('earlyAccessUntil' in body ? { earlyAccessUntil: body.earlyAccessUntil } : {}),
     },
-    request,
   })
   purgeCatalog()
   return ok({ affected, runId })

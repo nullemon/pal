@@ -39,7 +39,6 @@ export const PUT = withPermission('settings.write', async (request, _ctx, user) 
       targetType: 'plan',
       before: snapshot(before),
       after: row,
-      request,
     })
   }
   purgeSettings()

@@ -173,7 +173,6 @@ export const POST = withPermission('chapter.create', async (request, _ctx, user)
         replaced: c.replaced,
       })),
     },
-    request,
   })
   return ok({ chapters: out, expiresAt: new Date(Date.now() + 900_000).toISOString() })
 })

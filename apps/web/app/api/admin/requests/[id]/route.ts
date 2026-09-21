@@ -83,7 +83,6 @@ export const POST = withPermission<{ id: string }>('report.handle', async (reque
       targetId: id.data,
       before: snapshot({ ...before }, ['title', 'status', 'voteCount']),
       after: { mergedInto: body.targetId, votesMoved: merged.moved },
-      request,
     })
     return ok({
       merged: true,
@@ -137,7 +136,6 @@ export const POST = withPermission<{ id: string }>('report.handle', async (reque
       declineReason: updated.declineReason,
       notified,
     },
-    request,
   })
   return ok({ request: toRequestItem(updated, false), notified })
 })

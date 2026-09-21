@@ -28,7 +28,6 @@ export const POST = withPermission('settings.write', async (request, _ctx, user)
     targetType: 'theme_preset',
     targetId: row?.id ?? null,
     after: { name: parsed.data.name },
-    request,
   })
   return ok({ ...row, doc })
 })

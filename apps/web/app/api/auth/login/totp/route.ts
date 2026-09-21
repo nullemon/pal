@@ -10,7 +10,6 @@ import {
   sameOrigin,
 } from '@/lib/auth'
 import { clearMfaChallenge, readMfaChallenge, signIn } from '@/lib/auth/flows'
-import { recordLoginEvent } from '@/lib/auth/login-events'
 import { loginTotpSchema } from '@/lib/auth/schemas'
 import { consumeTotp } from '@/lib/auth/totp'
 import { activeUserBan, findUserById } from '@/lib/auth/users'
@@ -31,17 +30,11 @@ export async function POST(request: Request): Promise<Response> {
     return fail(401, 'mfa_expired', messages.errors.unauthorized)
   // Spends the code's step, so the same six digits cannot be presented twice inside the
   // ±1-step drift window.
-  if (!(await consumeTotp(user.id, user, parsed.data.code, user.email))) {
-    await recordLoginEvent({ request, userId: user.id, method: 'totp', outcome: 'totp_failed' })
+  if (!(await consumeTotp(user.id, user, parsed.data.code, user.email)))
     return fail(401, 'totp_invalid', messages.authPage.totpInvalid)
-  }
   await clearMfaChallenge()
-  if (await activeUserBan(user.id)) {
-    await recordLoginEvent({ request, userId: user.id, method: 'totp', outcome: 'banned' })
-    return fail(403, 'banned', messages.auth.banned)
-  }
+  if (await activeUserBan(user.id)) return fail(403, 'banned', messages.auth.banned)
   const { linked } = await signIn(user.id, user.email, request, 'password', await getSessionId())
-  await recordLoginEvent({ request, userId: user.id, method: 'totp', outcome: 'success' })
   const returnTo = challenge.returnTo
   return ok({
     return: user.username ? returnTo : `/onboarding?return=${encodeURIComponent(returnTo)}`,

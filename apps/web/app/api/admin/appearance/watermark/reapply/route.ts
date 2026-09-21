@@ -41,7 +41,6 @@ export const POST = withPermission('chapter.repair', async (request, _ctx, user)
       action: 'watermark.reapply.start',
       targetType: 'settings',
       after: { runId: run.id, scope: run.scope?.length ?? 'all', mark: run.label || '(none)' },
-      request,
     })
     const { fingerprint } = await currentWatermark()
     return ok({ run, counts: await watermarkCounts(fingerprint) })
@@ -64,7 +63,6 @@ export const PATCH = withPermission('chapter.repair', async (request, _ctx, user
     action: 'watermark.reapply.cancel',
     targetType: 'settings',
     after: { runId: run.id, status: run.status },
-    request,
   })
   const { fingerprint } = await currentWatermark()
   return ok({ run, counts: await watermarkCounts(fingerprint) })

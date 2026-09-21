@@ -70,7 +70,6 @@ export const PUT = withPermission('settings.write', async (request, _ctx, user) 
     targetType: 'settings',
     before: asMap('before'),
     after: asMap('after'),
-    request,
   })
 
   return ok({ overrides: next, changes })

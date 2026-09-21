@@ -49,7 +49,6 @@ export const PUT = withPermission<{ id: string }>('settings.write', async (reque
     targetId: id.data,
     before: snapshot(before, AUDITED),
     after: snapshot(after, AUDITED),
-    request,
   })
   purgeSettings()
   return ok({ id: id.data, slug: doc.slug, version: Number(after?.version ?? before.version) })

@@ -32,7 +32,6 @@ export const POST = withPermission('settings.write', async (request, _ctx, user)
     targetType: 'redirects',
     targetId: row?.id ?? null,
     after: { from, to, status },
-    request,
   })
   revalidateTag('redirects', 'max')
   return ok({ redirect: row })
@@ -56,7 +55,6 @@ export const DELETE = withPermission('settings.write', async (request, _ctx, use
     targetType: 'redirects',
     targetId: row.id,
     before: { from: row.fromPath, to: row.toPath, status: row.status, hits: Number(row.hits) },
-    request,
   })
   revalidateTag('redirects', 'max')
   return ok({ id: row.id })

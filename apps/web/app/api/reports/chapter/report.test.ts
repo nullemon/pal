@@ -18,6 +18,7 @@ interface QueryState {
   inserted: Array<Record<string, unknown>>
   ip: string | null
   now: number
+  visitor: string
 }
 
 const state = vi.hoisted(
@@ -28,8 +29,17 @@ const state = vi.hoisted(
     inserted: [],
     ip: '203.0.113.7',
     now: 1_800_000_000_000,
+    visitor: 'visitor-one',
   }),
 )
+
+// The visitor id normally comes out of the cookie jar, which only exists inside a request
+// scope. The handler is called directly here, so the id is supplied instead — `state.visitor`
+// is what distinguishes two anonymous reporters from one reporter tapping Report twice.
+vi.mock('@/lib/visitor', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/visitor')>()
+  return { ...actual, ensureVisitorId: async () => state.visitor }
+})
 
 vi.mock('@/lib/auth/session', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/auth/session')>()
@@ -148,8 +158,10 @@ describe('what a signed-out reader can file', () => {
       signed_in: false,
       href: '/series/frost-monarch/chapter-301',
     })
-    // The address itself is never stored, only its rotating HMAC (docs/14 §6).
-    expect(row?.ipHash).toBeInstanceOf(Uint8Array)
+    // Nothing about where the reporter is: the only handle stored is an HMAC of the random
+    // cookie their own browser carries (migration 9038).
+    expect(row?.reporterKey).toBeInstanceOf(Uint8Array)
+    expect(row).not.toHaveProperty('ipHash')
   })
 
   it('accepts a report with no note and no page at all', async () => {

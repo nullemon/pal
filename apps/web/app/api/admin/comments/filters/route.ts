@@ -26,7 +26,6 @@ export const POST = withPermission('settings.write', async (request, _ctx, user)
     targetType: 'word_filter',
     targetId: row?.id ?? null,
     after: parsed.data,
-    request,
   })
   return ok(row)
 })

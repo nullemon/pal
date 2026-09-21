@@ -1,4 +1,4 @@
-import { createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto'
+import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto'
 import type { EntitlementRow, SessionUser } from '@palscans/core'
 import { entitlements, getDb, sessions, users } from '@palscans/db'
 import { and, eq, gt, isNull, or } from 'drizzle-orm'
@@ -47,31 +47,6 @@ export function parseSessionCookie(raw: string | undefined): ParsedSessionCookie
 /** The stored hash of a session secret: sha256 over the cookie's secret string. */
 export function hashSessionSecret(secret: string): Uint8Array {
   return new Uint8Array(createHash('sha256').update(secret, 'utf8').digest())
-}
-
-const WEEK_MS = 7 * 24 * 3600 * 1000
-
-/** The rotating salt for persisted IP hashes: the UTC week the row was written in. */
-export const ipHashSalt = (at: Date = new Date()): string =>
-  `w${Math.floor(at.getTime() / WEEK_MS)}`
-
-/**
- * Client IPs are persisted hashed (sessions, comments, audit log — abuse detection, never
- * logging): HMAC with the app secret over a weekly salt and the address, so a database dump
- * plus the secret only lets an attacker sweep one week's worth of rows at a time, and rows
- * from different weeks never share a hash. Comparisons are meaningful within a week.
- */
-export function hashIp(
-  ip: string | null | undefined,
-  at: Date = new Date(),
-  secret: string = getEnv().SESSION_SECRET,
-): Uint8Array | null {
-  if (!ip) return null
-  return new Uint8Array(
-    createHmac('sha256', secret)
-      .update(`${ipHashSalt(at)}:${ip}`, 'utf8')
-      .digest(),
-  )
 }
 
 const toHex = (bytes: Uint8Array) => Buffer.from(bytes).toString('hex')
@@ -247,9 +222,13 @@ export const getSessionId = cache(
   async (): Promise<string | null> => (await getResolvedSession())?.sessionId ?? null,
 )
 
+/**
+ * What a session row records about the request that created it. The user agent and nothing
+ * else: there was an `ip` here, hashed into `sessions.ip_hash`, and migration 9038 dropped
+ * both. "Where you last signed in from" is a location record for staff as much as readers.
+ */
 export interface SessionContext {
   userAgent?: string | null
-  ip?: string | null
 }
 
 export interface CreatedSession {
@@ -272,7 +251,6 @@ export const createSession = async (
     userId,
     secretHash: hashSessionSecret(secret),
     userAgent: ctx.userAgent?.slice(0, 512) ?? null,
-    ipHash: hashIp(ctx.ip),
     expiresAt,
     lastSeenAt: new Date(),
   })

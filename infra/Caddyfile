@@ -93,7 +93,19 @@ palscans.org, www.palscans.org {
 	}
 
 	handle {
-		reverse_proxy web:3000
+		reverse_proxy web:3000 {
+			# The geo headers are dropped on *every* path, not just the forged one. The app
+			# does not read them any more — nothing stores a country or a city (migration
+			# 9038) — and a header that never arrives cannot be picked up again by a later
+			# change without someone first coming here and deleting these two lines.
+			#
+			# CF-Connecting-IP is deliberately still forwarded here: per-IP rate limiting
+			# needs an address to count against. It becomes a Redis counter with a TTL of a
+			# minute or two, never a row in any table. Set `TRUSTED_PROXY=none` to stop the
+			# app reading it at all — see docs/18.
+			header_up -CF-IPCountry
+			header_up -CF-IPCity
+		}
 	}
 }
 

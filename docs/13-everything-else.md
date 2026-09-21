@@ -118,7 +118,7 @@ whether it ships in v1 or later. Items already covered in another doc point ther
 | Feature | Spec | When |
 |---|---|---|
 | Terms, Privacy, DMCA, Cookie, Content policy pages | Rich-text pages editable in admin; versioned; the DMCA page carries the agent details and the notice form from `07-auth-and-monetization.md` | v1 |
-| Cookie consent | Only shown where required (EU/UK by `CF-IPCountry`); necessary cookies only until accepted; ad tags wait for consent | v1 |
+| Cookie consent | Shown to everyone rather than only where required: deciding by `CF-IPCountry` means reading the visitor's country, and the site reads no geo headers at all (docs/02 "Privacy"). Necessary cookies only until accepted; ad tags wait for consent | v1 |
 | GDPR requests | Export and deletion above; a `/privacy/request` form that lands in the reports queue | v1 |
 | Age verification | The age gate above; nothing stronger unless a jurisdiction requires it | v1 |
 

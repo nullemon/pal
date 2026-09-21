@@ -2,7 +2,7 @@ import { getDb, mergeSeries } from '@palscans/db'
 import { revalidateTag } from 'next/cache'
 import { z } from 'zod'
 import { purgeCatalog } from '@/components/admin/server/cache'
-import { clientIp, fail, hashIp, ok, parseJson, withPermission } from '@/lib/auth'
+import { fail, ok, parseJson, withPermission } from '@/lib/auth'
 
 /**
  * `POST /api/admin/series/merge { winnerId, loserId }` — fold one series into another
@@ -33,7 +33,6 @@ export const POST = withPermission('series.delete', async (request, _ctx, user) 
     winnerId,
     loserId,
     actorId: user.id,
-    ipHash: hashIp(clientIp(request)),
   })
   if (!result.ok) return fail(409, 'merge_refused', result.refusals.map((r) => r.message).join(' '))
   // Series pages, browse and search all change at once; `redirects` is the proxy snapshot's

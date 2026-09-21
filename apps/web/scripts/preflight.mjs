@@ -486,9 +486,10 @@ const checkOriginLockdown = async () => {
       'origin lockdown',
       'infra/Caddyfile is not here, so nothing could be checked',
       'You are running behind something other than the shipped Caddy config. Whatever it ' +
-        'is must delete CF-Connecting-IP, CF-IPCountry, CF-IPCity and True-Client-IP from ' +
-        "any request whose peer is not a Cloudflare edge address, or the app's client IP is " +
-        'whatever the caller typed.',
+        'is must delete CF-Connecting-IP and True-Client-IP from any request whose peer is ' +
+        "not a Cloudflare edge address, or the app's client IP is whatever the caller " +
+        'typed. CF-IPCountry and CF-IPCity should be dropped on every path: nothing reads ' +
+        'them, and the site stores no country or city.',
     )
 
   const caddyfile = readFileSync(CADDYFILE, 'utf8')

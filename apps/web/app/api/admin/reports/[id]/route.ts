@@ -30,7 +30,6 @@ export const POST = withPermission<{ id: string }>('report.handle', async (reque
     targetId: id.data,
     before,
     after: { status },
-    request,
   })
   return ok({ id: id.data, status })
 })

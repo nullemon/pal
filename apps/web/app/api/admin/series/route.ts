@@ -30,7 +30,6 @@ export const POST = withPermission('series.create', async (request, _ctx, user) 
     targetType: 'series',
     targetId: row.id,
     after: { title: parsed.data.title, slug, type: parsed.data.type },
-    request,
   })
   return ok(row)
 })

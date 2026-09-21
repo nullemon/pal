@@ -1,15 +1,6 @@
 import { messages } from '@palscans/core/messages'
 import type { z } from 'zod'
-import {
-  clientIp,
-  csrfFailed,
-  fail,
-  hashIp,
-  type RouteParams,
-  readBody,
-  sameOrigin,
-  unauthorized,
-} from '@/lib/auth'
+import { csrfFailed, fail, type RouteParams, readBody, sameOrigin, unauthorized } from '@/lib/auth'
 import { type AppUser, getAppUser } from './viewer'
 
 /**
@@ -104,7 +95,3 @@ export const requireUser =
     if (!user) return unauthorized()
     return handler(request, ctx, user)
   }
-
-/** Client IP (from the trusted proxy hop) hashed with the weekly salt — never stored raw (docs/14 §6). */
-export const ipHashFor = async (request: Request): Promise<Uint8Array | null> =>
-  hashIp(clientIp(request))

@@ -55,7 +55,6 @@ export const PUT = withPermission<{ id: string }>(
       targetId: id.data,
       before: snapshot(before, AUDITED),
       after: snapshot(after, AUDITED),
-      request,
     })
     purgeCatalog()
     return ok({ id: id.data, slug: doc.slug })
@@ -92,7 +91,6 @@ export const DELETE = withPermission<{ id: string }>(
       targetId: id.data,
       before: { state: before.state },
       after: { state, title: before.title },
-      request,
     })
     purgeCatalog()
     return ok({ id: id.data, state, restored: restore })

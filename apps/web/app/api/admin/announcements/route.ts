@@ -40,7 +40,6 @@ export const POST = withPermission('announcement.write', async (request, _ctx, u
     targetId: row.id,
     // The stored date, not the (often empty) one on the wire.
     after: { ...Object.fromEntries(AUDITED.map((k) => [k, doc[k]])), publishedAt },
-    request,
   })
   purgeCatalog()
   return ok(row)

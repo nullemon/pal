@@ -58,7 +58,6 @@ export const GET = withPermission('settings.write', async (request, _ctx, user) 
       action: 'appearance.preview',
       targetType: 'appearance',
       after: { scopes },
-      request,
     })
   }
   // 303 so the browser follows with GET regardless of how it got here.

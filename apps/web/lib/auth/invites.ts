@@ -343,7 +343,7 @@ export const checkRegistrationAccess = async (
     }
   if (access.turnstile) {
     const { verifyTurnstile } = await import('./turnstile')
-    if (!(await verifyTurnstile(input.turnstileToken, input.ip)))
+    if (!(await verifyTurnstile(input.turnstileToken)))
       return { ok: false, status: 400, error: 'turnstile', message: messages.errors.validation }
   }
   if (mode !== 'invite') return { ok: true, access, mode, invite: null }

@@ -40,7 +40,7 @@ const hit = (bucket: string, who: string, chapter = chapterId): ViewHit => ({
   seriesId,
   chapterId: chapter,
   bucket,
-  viewerKey: viewerKey({ bucket, ip: who, userAgent: 'Firefox' }, SECRET),
+  viewerKey: viewerKey({ bucket, visitorId: who }, SECRET),
 })
 
 const viewCount = async (): Promise<number> => {

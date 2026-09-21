@@ -34,7 +34,6 @@ export const PUT = withPermission('settings.write', async (request, _ctx, user) 
     targetType: 'settings',
     before,
     after: value,
-    request,
   })
   return ok(parsed.data)
 })

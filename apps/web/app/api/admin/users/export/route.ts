@@ -104,7 +104,6 @@ export const GET = withPermission('user.read', async (request, _ctx, actor) => {
     action: 'user.export',
     targetType: 'user',
     after: { rows: rows.length, query: q ?? null, selection: ids.length || null },
-    request,
   })
 
   const stamp = new Date().toISOString().slice(0, 10)

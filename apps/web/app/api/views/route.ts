@@ -31,7 +31,7 @@ export async function POST(request: Request) {
   const outcome = await recorder().record({
     seriesId: parsed.data.seriesId,
     chapterId: parsed.data.chapterId,
-    ...viewerFor(request, user?.id ?? null),
+    ...(await viewerFor(request, user?.id ?? null)),
   })
   return ok({ outcome }, { status: 202 })
 }

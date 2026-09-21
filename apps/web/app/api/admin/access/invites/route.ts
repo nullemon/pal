@@ -30,7 +30,6 @@ export const POST = withPermission('settings.write', async (request, _ctx, user)
     targetType: 'invite_code',
     targetId: row.id,
     after: { code: row.code, maxUses: row.maxUses, expiresAt: parsed.data.expiresAt },
-    request,
   })
   return ok({ invite: serialise(row) })
 })

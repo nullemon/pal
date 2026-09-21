@@ -1,7 +1,7 @@
 import { sql } from 'drizzle-orm'
 import { bigint, index, jsonb, pgTable, text } from 'drizzle-orm/pg-core'
 import { createdAt, deletedAt, identity, ref, timestamptz } from './_shared.js'
-import { bytea, citext } from './custom-types.js'
+import { citext } from './custom-types.js'
 import { pubState } from './enums.js'
 import { users } from './identity.js'
 
@@ -53,7 +53,6 @@ export const auditLog = pgTable(
     targetId: bigint('target_id', { mode: 'number' }),
     before: jsonb('before').$type<unknown>(),
     after: jsonb('after').$type<unknown>(),
-    ipHash: bytea('ip_hash'),
     createdAt: createdAt(),
   },
   (t) => [

@@ -1,5 +1,5 @@
 import { messages } from '@palscans/core/messages'
-import { comments, getDb, oauthAccounts, pushSubscriptions, slugHistory, users } from '@palscans/db'
+import { getDb, oauthAccounts, pushSubscriptions, slugHistory, users } from '@palscans/db'
 import { and, eq, gt, isNotNull, isNull, lte } from 'drizzle-orm'
 import { RESERVED_USERNAMES } from './schemas'
 import { revokeAllSessions } from './session'
@@ -102,7 +102,7 @@ export const deletionPurgeAt = (requestedAt: Date | null): Date | null =>
  * called by the worker's scheduled job (see README). For each due user, in one transaction:
  * - comments are anonymised, not removed — `comments.user_id` is NOT NULL, so the rows keep
  *   pointing at the user, which becomes a PII-free tombstone (`username` null, display name
- *   "Deleted user", no bio/avatar/banner); the per-comment `ip_hash` is cleared
+ *   "Deleted user", no bio/avatar/banner)
  * - email (NOT NULL, unique) is replaced by `deleted-<id>@deleted.invalid`; username,
  *   password_hash, avatar_key, banner_key, both totp secret columns, bio and display name
  *   are wiped
@@ -140,7 +140,6 @@ export const purgeDueDeletions = async (now: Date = new Date()): Promise<number[
         )
         .for('update')
       if (!row) return
-      await tx.update(comments).set({ ipHash: null }).where(eq(comments.userId, id))
       await tx.delete(oauthAccounts).where(eq(oauthAccounts.userId, id))
       await tx.delete(pushSubscriptions).where(eq(pushSubscriptions.userId, id))
       await tx

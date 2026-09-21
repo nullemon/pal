@@ -77,7 +77,6 @@ export const sessions = pgTable(
       .references(() => users.id, { onDelete: 'cascade' }),
     secretHash: bytea('secret_hash').notNull(),
     userAgent: text('user_agent'),
-    ipHash: bytea('ip_hash'),
     expiresAt: timestamptz('expires_at').notNull(),
     revokedAt: timestamptz('revoked_at'),
     lastSeenAt: timestamptz('last_seen_at'), // P4 (migration 9004): security page "last seen"
@@ -101,36 +100,6 @@ export const authTokens = pgTable('auth_tokens', {
   consumedAt: timestamptz('consumed_at'),
   createdAt: createdAt(),
 })
-
-/**
- * docs/17 §C — every authentication attempt, successful or not. `user_id` is null when the
- * address typed does not belong to an account, so a spike of unknown-email attempts is still
- * visible. The address itself is never stored: only its HMAC (`hashIp`, weekly salt), the
- * user agent and what it parses to, and the country/city Cloudflare put on the request.
- */
-export const loginEvents = pgTable(
-  'login_events',
-  {
-    id: identity(),
-    userId: ref('user_id').references(() => users.id, { onDelete: 'set null' }),
-    at: timestamptz('at').notNull().defaultNow(),
-    method: text('method').notNull(), // password | google | discord | totp
-    outcome: text('outcome').notNull(), // success | bad_password | locked | totp_failed | banned
-    userAgent: text('user_agent'),
-    device: text('device'), // Desktop | Mobile | Tablet | Bot | Unknown
-    browser: text('browser'),
-    os: text('os'),
-    country: text('country'), // CF-IPCountry, when the edge sent one
-    city: text('city'), // CF-IPCity
-    ipHash: bytea('ip_hash'),
-    sessionId: uuid('session_id').references(() => sessions.id, { onDelete: 'set null' }),
-  },
-  (t) => [
-    index('login_events_user_idx').on(t.userId, t.at.desc()),
-    index('login_events_at_idx').on(t.at.desc()),
-    index('login_events_outcome_idx').on(t.outcome, t.at.desc()),
-  ],
-)
 
 /**
  * docs/17 §C — invite codes, used by the register route when `settings.site.registration`

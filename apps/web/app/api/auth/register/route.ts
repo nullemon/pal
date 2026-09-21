@@ -16,7 +16,6 @@ import {
 import { sendVerification, signIn } from '@/lib/auth/flows'
 import { checkBreachedPassword } from '@/lib/auth/hibp'
 import { checkRegistrationAccess, redeemInvite } from '@/lib/auth/invites'
-import { recordLoginEvent } from '@/lib/auth/login-events'
 import { hashPassword } from '@/lib/auth/password'
 import { registerSchema } from '@/lib/auth/schemas'
 import { usernameAvailability } from '@/lib/auth/users'
@@ -101,7 +100,6 @@ export async function POST(request: Request): Promise<Response> {
 
   const sent = canVerifyByEmail ? await sendVerification(created.id, email) : { ok: false as const }
   await signIn(created.id, email, request, 'password')
-  await recordLoginEvent({ request, userId: created.id, method: 'password', outcome: 'success' })
   const returnTo = safeReturnPath(parsed.data.return)
   // `require_verification` (docs/17 §C): the account exists and is signed in — so the resend
   // button works — but registration ends on the verification screen instead of the site.

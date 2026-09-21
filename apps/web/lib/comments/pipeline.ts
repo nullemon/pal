@@ -273,7 +273,6 @@ export interface SubmitInput {
   body: CommentBody
   imageId: number | null
   isSpoiler: boolean
-  ipHash: Uint8Array | null
   limiter: RateLimiter
   challenge?: CommentChallenge
   now?: Date
@@ -526,7 +525,6 @@ export const submitComment = async (input: SubmitInput): Promise<SubmitOutcome> 
           : result.rules,
       hasLink: result.hasLink,
       imageId,
-      ipHash: input.ipHash,
       createdAt: now,
     })
     .returning({ id: comments.id })

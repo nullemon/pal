@@ -17,7 +17,7 @@ export const GET = withPermission('settings.write', async () => ok(await readLas
  * POST — enqueue one now. Identical to the scheduled job apart from `trigger`, so a manual
  * run lands under its own timestamped key and cannot overwrite the night's dump.
  */
-export const POST = withPermission('settings.write', async (request, _ctx, user) => {
+export const POST = withPermission('settings.write', async (_request, _ctx, user) => {
   let jobId: string
   let kind: string
   try {
@@ -32,7 +32,6 @@ export const POST = withPermission('settings.write', async (request, _ctx, user)
     action: 'backup.run',
     targetType: 'settings',
     after: { jobId, trigger: 'manual' },
-    request,
   })
   return ok({ jobId, queue: kind }, { status: 202 })
 })

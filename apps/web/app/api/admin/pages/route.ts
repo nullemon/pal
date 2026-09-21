@@ -34,7 +34,6 @@ export const POST = withPermission('settings.write', async (request, _ctx, user)
     targetType: 'page',
     targetId: row.id,
     after: { slug: doc.slug, title: doc.title, state: doc.state, version: 1 },
-    request,
   })
   purgeSettings()
   return ok(row)
