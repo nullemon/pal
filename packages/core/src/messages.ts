@@ -475,7 +475,8 @@ export const messages = {
     errorHome: 'Go to the home page',
     errorRef: 'Reference {id}',
     mailUnavailable: 'Email is not configured on this server. Try again later.',
-    totpRequired: 'Two-factor authentication is required for admin accounts.',
+    totpRequired:
+      'Two-factor authentication is required before the admin panel will open. Set it up here and you are in.',
   },
   time: {
     justNow: 'just now',

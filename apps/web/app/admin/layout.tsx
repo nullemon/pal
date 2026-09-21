@@ -21,7 +21,10 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   const user = await withPermission('admin.access', { returnTo: '/admin' })
   if (user.role === 'admin') {
     const row = await findUserById(user.id)
-    if (!row?.totpEnabledAt) redirect('/me/security?totp=required')
+    // `#totp` matters. The page explains the redirect inside the two-factor section, which
+    // is well below the fold — landing at the top of a long settings page with no visible
+    // reason reads as the panel refusing you rather than asking you for one more step.
+    if (!row?.totpEnabledAt) redirect('/me/security?totp=required#totp')
   }
   return <AdminShell user={user}>{children}</AdminShell>
 }
