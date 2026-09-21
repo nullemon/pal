@@ -1,7 +1,7 @@
 'use client'
 
 import { messages } from '@palscans/core/messages'
-import { LogIn } from 'lucide-react'
+import { LogIn, Shield } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 
@@ -28,7 +28,7 @@ interface Summary {
   signedIn: boolean
   username: string | null
   initial: string
-  staff: boolean
+  panel: boolean
 }
 
 const base =
@@ -65,13 +65,33 @@ export function AccountButton() {
 
   const name = me.username ?? messages.account.profile
   return (
-    <Link
-      href="/me/settings"
-      aria-label={name}
-      title={name}
-      className={`${base} border-brand/40 text-fg`}
-    >
-      {me.initial}
-    </Link>
+    <>
+      {/*
+        The way into the panel. Nobody who can open it had a link to it anywhere in the site chrome — the
+        only way in was knowing the URL, and the panel 404s rather than saying "not allowed",
+        so not knowing it looked exactly like the panel not existing.
+
+        `md:` and up on purpose: the header only just fits at `sm`, and a staff-only extra
+        button there would put it back over the edge on the phones that fix was for.
+      */}
+      {me.panel ? (
+        <Link
+          href="/admin"
+          aria-label={messages.nav.adminPanel}
+          title={messages.nav.adminPanel}
+          className={`${base} hidden border-brand/40 text-fg md:inline-flex`}
+        >
+          <Shield size={17} aria-hidden="true" />
+        </Link>
+      ) : null}
+      <Link
+        href="/me/settings"
+        aria-label={name}
+        title={name}
+        className={`${base} border-brand/40 text-fg`}
+      >
+        {me.initial}
+      </Link>
+    </>
   )
 }

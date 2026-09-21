@@ -22,6 +22,8 @@ export const messages = {
     searchHint: '⌘K',
     notifications: 'Notifications',
     premium: 'Premium',
+    /** Staff only, but it lives here: the site header must not import the admin catalogue. */
+    adminPanel: 'Admin panel',
     account: 'Account',
     signIn: 'Sign in',
     signOut: 'Sign out',
