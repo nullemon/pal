@@ -42,7 +42,9 @@ export async function loadSeriesView(
   const withAds = gate.showsAds(user, now)
   const place = (id: 'series_top' | 'series_sidebar') => {
     const slot = adSlot(ads, id)
-    return { show: withAds && slot.enabled, placeholder: slot.tag === null, tag: slot.tag }
+    // No placeholder for an untagged slot: `AdSlot` then renders nothing rather than a
+    // grey box. The ads screen passes its own `placeholder` to preview placements.
+    return { show: withAds && slot.enabled, placeholder: false, tag: slot.tag }
   }
   return {
     layout: selected.series,

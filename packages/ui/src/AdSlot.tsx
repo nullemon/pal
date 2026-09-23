@@ -57,6 +57,15 @@ export function AdSlot({
 }: AdSlotProps) {
   if (noAds) return null
   const filled = Boolean(tag)
+  /**
+   * An unconfigured slot takes no space at all. Reserving the box before a network exists
+   * was meant to stop a layout shift on the day one is signed up, but every site starts
+   * with no tags — so a brand-new deployment rendered empty grey rectangles in the middle
+   * of its series pages, which reads as a broken site rather than a pending one. The box
+   * comes back the moment `Admin → Business → Ads` has a tag for the slot, and the preview
+   * on that screen still forces `placeholder` on to show where placements will land.
+   */
+  if (!filled && !placeholder) return null
   // The label is for empty placements; once a tag is in, the network owns the box.
   const showLabel = placeholder && !filled
   return (

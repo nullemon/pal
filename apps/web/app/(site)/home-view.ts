@@ -75,7 +75,9 @@ export async function loadHomeView(
 
   const place = (id: 'home_top' | 'home_sidebar' | 'home_infeed') => {
     const slot = adSlot(ads, id)
-    return { show: withAds && slot.enabled, placeholder: slot.tag === null, tag: slot.tag }
+    // No placeholder for an untagged slot: `AdSlot` then renders nothing rather than a
+    // grey box. The ads screen passes its own `placeholder` to preview placements.
+    return { show: withAds && slot.enabled, placeholder: false, tag: slot.tag }
   }
 
   return {

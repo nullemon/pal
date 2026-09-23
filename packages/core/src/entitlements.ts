@@ -76,8 +76,12 @@ export interface EntitlementOverrides {
   features: Record<Feature, FeatureMode>
 }
 
-/** The shipped default: long enough to be worth paying for, short enough not to annoy. */
-export const DEFAULT_EARLY_ACCESS_MINUTES = 10
+/**
+ * The shipped default is off. Early access is a monetisation decision, so it is opt-in:
+ * an operator who has never opened Admin → Premium should not find that every chapter they
+ * publish goes Premium-only for ten minutes first, with a countdown their readers can see.
+ */
+export const DEFAULT_EARLY_ACCESS_MINUTES = 0
 /** A day. Beyond this it stops reading as "early" and starts reading as a paywall. */
 export const MAX_EARLY_ACCESS_MINUTES = 1440
 

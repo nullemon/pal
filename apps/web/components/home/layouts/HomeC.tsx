@@ -262,7 +262,10 @@ export function HomeC({
   const items = feed.items
   const sponsoredAt = Math.min(4, items.length)
   return (
-    <div className="container-page flex flex-col gap-8 pb-10">
+    <div className={`container-page flex flex-col gap-8 pb-10 ${hero ? '' : 'pt-4'}`}>
+      {/* The hero supplies this page's top spacing, and renders nothing on a catalogue
+          too small to fill it — so a new site had its first section flush against the
+          header. Pad only when it is absent; a populated home page is unchanged. */}
       <h1 className="sr-only">{messages.site.tagline}</h1>
       {hero ? <HeroBand slide={hero} eyebrow={copy('layouts.featured')} /> : null}
 

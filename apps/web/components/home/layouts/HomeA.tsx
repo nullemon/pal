@@ -33,7 +33,10 @@ export function HomeA({
   formatting,
 }: HomeViewProps) {
   return (
-    <div className="flex flex-col gap-4 pb-6">
+    <div className={`flex flex-col gap-4 pb-6 ${slides.length === 0 ? 'pt-4' : ''}`}>
+      {/* The hero supplies this page's top spacing, and renders nothing on a catalogue
+          too small to fill it — so a new site had its first section flush against the
+          header. Pad only when it is absent; a populated home page is unchanged. */}
       <h1 className="sr-only">{messages.site.tagline}</h1>
       <Hero slides={slides} />
 

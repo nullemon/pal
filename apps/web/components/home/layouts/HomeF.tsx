@@ -289,7 +289,10 @@ export function HomeF({
   const weekly = popular?.weekly ?? []
 
   return (
-    <div className="flex flex-col gap-8 pb-10">
+    <div className={`flex flex-col gap-8 pb-10 ${hero ? '' : 'pt-4'}`}>
+      {/* The hero supplies this page's top spacing, and renders nothing on a catalogue
+          too small to fill it — so a new site had its first section flush against the
+          header. Pad only when it is absent; a populated home page is unchanged. */}
       {hero ? (
         <Hero slide={hero} others={slides.slice(1, 6)} eyebrow={copy('layouts.featured')} />
       ) : (

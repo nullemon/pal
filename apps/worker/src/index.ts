@@ -64,7 +64,30 @@ const main = async () => {
   // operator typed into the admin panel, before anything asks for a bucket. With nothing
   // stored (or no database) every one of them falls back to the environment.
   const credentials = installWorkerConfig(db)
-  const storage = await getStorage()
+  /**
+   * Storage is resolved **per job**, never captured.
+   *
+   * `getStorage()` rebuilds its client only when the resolved settings actually change
+   * (packages/core/src/storage/index.ts), so in the common case this is a TTL-cached
+   * credential read and a string compare — and it is the whole reason an operator can
+   * repoint the bucket in the admin panel without a redeploy.
+   *
+   * Holding one instance for the life of the process defeated that: a worker that started
+   * before storage was configured kept the `fs` driver, looked for every page on its own
+   * disk, and reported "missing object" for keys that were sitting in the bucket. Nothing in
+   * the log said the settings had moved on, so the only symptom was a chapter that would not
+   * process. Hence also the driver-change line below — the next time it happens, it says so.
+   */
+  let lastDriver = ''
+  const storageNow = async () => {
+    const resolved = await getStorage()
+    if (resolved.driver !== lastDriver) {
+      if (lastDriver) log.info('storage changed', { from: lastDriver, to: resolved.driver })
+      lastDriver = resolved.driver
+    }
+    return resolved
+  }
+  const bootStorage = await storageNow()
   const queue = await getQueue()
   // Everything this process starts and does not await, so `shutdown` can wait for it.
   const tasks = createBackgroundTasks()
@@ -74,19 +97,19 @@ const main = async () => {
    * — and it collapses a release's worth of them into one build and one IndexNow submission.
    */
   const sitemaps = createSitemapCoalescer(queue)
-  const deps = {
+  const depsNow = async () => ({
     db,
-    storage,
+    storage: await storageNow(),
     pageConcurrency: PAGE_CONCURRENCY,
     onPublished: ({ seriesId }: { seriesId: number }) => sitemaps.note([seriesId]),
-  }
+  })
   const inflight = new Set<number>()
 
   const run = async (chapterId: number) => {
     if (inflight.has(chapterId)) return
     inflight.add(chapterId)
     try {
-      await processChapter(chapterId, deps)
+      await processChapter(chapterId, await depsNow())
     } finally {
       inflight.delete(chapterId)
     }
@@ -114,7 +137,7 @@ const main = async () => {
     if (artInflight.has(id)) return
     artInflight.add(id)
     try {
-      await processSeriesArt(seriesId, kind, deps)
+      await processSeriesArt(seriesId, kind, await depsNow())
     } finally {
       artInflight.delete(id)
     }
@@ -141,7 +164,7 @@ const main = async () => {
     try {
       await runImport(job.data.runId, {
         db,
-        storage,
+        storage: await storageNow(),
         queue,
         source,
         batchSize: config.batchSize,
@@ -167,7 +190,7 @@ const main = async () => {
     try {
       await runWatermarkReapply(runId, {
         db,
-        storage,
+        storage: await storageNow(),
         // Half the pipeline's width, floor 1: a background sweep must leave room for the
         // upload somebody is watching.
         pageConcurrency: Math.max(1, Math.floor(PAGE_CONCURRENCY / 2)),
@@ -216,7 +239,10 @@ const main = async () => {
    */
   queue.process('sitemap.build', async (job) => {
     if (job.data.kind === 'full') lastSitemap = Date.now()
-    await runSitemapBuild({ db, storage }, { kind: job.data.kind, seriesIds: job.data.seriesIds })
+    await runSitemapBuild(
+      { db, storage: await storageNow() },
+      { kind: job.data.kind, seriesIds: job.data.seriesIds },
+    )
   })
 
   /**
@@ -252,13 +278,13 @@ const main = async () => {
   const heartbeat = createHeartbeat({
     staleMs: heartbeatStaleMs(SCHEDULER_MS),
     queue: queue.kind,
-    storage: storage.driver,
+    storage: bootStorage.driver,
     onError: (err) => log.warn('heartbeat write failed', { error: String(err) }),
   })
 
   log.info('started', {
     queue: queue.kind,
-    storage: storage.driver,
+    storage: bootStorage.driver,
     concurrency: CONCURRENCY,
     heartbeat: heartbeat.file,
   })

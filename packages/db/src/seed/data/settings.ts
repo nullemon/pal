@@ -7,10 +7,13 @@ export const LAYOUTS = { home: 'A', series: 'B', reader: { default_mode: 'strip'
 export const ADS = {
   reader: { skyscrapers: true, sky_size: '160x600', mobile_interval: 4, end_slot: true },
   slots: {
-    home_top: { enabled: true, tag: null },
+    // Two slots carry an inert tag so the e2e still exercises a *filled* slot — its size and
+    // the "one element per slot" rule. The rest stay untagged, which is now the state that
+    // renders nothing at all (packages/ui/src/AdSlot.tsx), so both halves are covered.
+    home_top: { enabled: true, tag: '<div data-seed-ad="home_top"></div>' },
     home_sidebar: { enabled: true, tag: null },
     home_infeed: { enabled: true, tag: null },
-    series_top: { enabled: true, tag: null },
+    series_top: { enabled: true, tag: '<div data-seed-ad="series_top"></div>' },
     series_sidebar: { enabled: true, tag: null },
     reader_end: { enabled: true, tag: null },
     mobile_anchor: { enabled: true, tag: null },

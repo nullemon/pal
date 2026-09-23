@@ -111,14 +111,16 @@ describe('the early-access window at publish', () => {
     expect((await read(id)).earlyAccessUntil).toBe(null)
   })
 
-  it('falls back to the shipped window when the setting has never been written', async () => {
+  it('publishes free to everyone when the setting has never been written', async () => {
+    // The shipped default is 0 — early access is opt-in. An operator who has never opened
+    // the Premium screen should not discover that every chapter they publish goes
+    // Premium-only for a while first; that is a monetisation decision, not a default.
+    expect(DEFAULT_EARLY_ACCESS_MINUTES).toBe(0)
     const now = new Date('2026-09-04T15:00:00Z')
     await setSetting('entitlements', {})
     const id = await addChapter(104, at(-1, now))
     expect((await publishDue(db, now)).map((c) => c.id)).toContain(id)
-    expect((await read(id)).earlyAccessUntil?.toISOString()).toBe(
-      at(DEFAULT_EARLY_ACCESS_MINUTES, now).toISOString(),
-    )
+    expect((await read(id)).earlyAccessUntil).toBeNull()
   })
 
   it('leaves a chapter that is not due yet alone', async () => {
