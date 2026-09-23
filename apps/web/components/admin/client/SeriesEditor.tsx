@@ -60,6 +60,8 @@ const TABS: EditorTab[] = [
   'chapters',
 ]
 
+import { type LookupPatch, MetadataLookup } from './MetadataLookup'
+
 export function SeriesEditor(props: Props) {
   const m = adminMessages.admin.series
   const f = m.fields
@@ -71,6 +73,7 @@ export function SeriesEditor(props: Props) {
   const [slugTouched, setSlugTouched] = useState(props.doc.slug !== slugify(props.doc.title))
   const [linked, setLinked] = useState(props.linked)
   const [deleted, setDeleted] = useState(props.deleted)
+  const [lookupOpen, setLookupOpen] = useState(false)
   const dirty = useMemo(() => JSON.stringify(doc) !== JSON.stringify(saved), [doc, saved])
   useDraft(`admin.series.${props.id}`, doc, dirty)
 
@@ -120,6 +123,28 @@ export function SeriesEditor(props: Props) {
       {props.perms.update ? (
         <SaveBar dirty={dirty} saving={saving} onSave={save} onDiscard={() => setDoc(saved)} />
       ) : null}
+      {lookupOpen ? (
+        <MetadataLookup
+          seriesId={props.id}
+          currentTitle={doc.title}
+          genres={props.genres}
+          onClose={() => setLookupOpen(false)}
+          onApply={(found: LookupPatch) =>
+            patch({
+              title: found.title,
+              type: found.type as SeriesDoc['type'],
+              status: found.status as SeriesDoc['status'],
+              synopsis: found.synopsis,
+              releasedYear: found.releasedYear,
+              // Only overwrite the age rating when the source actually asserted one.
+              ...(found.ageRating ? { ageRating: found.ageRating as SeriesDoc['ageRating'] } : {}),
+              titles: found.titles,
+              people: found.people as SeriesDoc['people'],
+              genreIds: found.genreIds,
+            })
+          }
+        />
+      ) : null}
       <div className="flex flex-wrap items-center gap-1 border-b border-line">
         {TABS.map((t) => (
           <button
@@ -160,15 +185,31 @@ export function SeriesEditor(props: Props) {
         <Panel>
           <div className="grid gap-4 md:grid-cols-2">
             <Field label={f.title} htmlFor="s-title">
-              <input
-                id="s-title"
-                className={inputClass}
-                value={doc.title}
-                onChange={(e) => {
-                  const title = e.target.value
-                  patch(slugTouched ? { title } : { title, slug: slugify(title) })
-                }}
-              />
+              <div className="flex gap-2">
+                <input
+                  id="s-title"
+                  className={inputClass}
+                  value={doc.title}
+                  onChange={(e) => {
+                    const title = e.target.value
+                    patch(slugTouched ? { title } : { title, slug: slugify(title) })
+                  }}
+                />
+                {/*
+                  Fills the rest of this form from AniList. Deliberately next to the title,
+                  because the title is what it searches on and what the operator has just
+                  typed. It never touches the slug: the slug is the series' public URL, and a
+                  lookup after a series is live must not quietly move it.
+                */}
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setLookupOpen(true)}
+                  title={adminMessages.seriesLookup.dialogTitle}
+                >
+                  {adminMessages.seriesLookup.lookup}
+                </Button>
+              </div>
             </Field>
             <Field label={f.slug} htmlFor="s-slug" hint={f.slugAuto}>
               <input

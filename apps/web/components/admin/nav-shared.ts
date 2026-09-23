@@ -64,6 +64,14 @@ export const adminNav: readonly AdminNavGroup[] = [
     label: m.content,
     items: [
       { label: m.series, href: '/admin/series', icon: 'library', permission: 'series.read' },
+      // Fill a series from a public catalogue. `series.create`, unlike the rest of this
+      // group: the screen makes rows rather than editing ones that already exist.
+      {
+        label: adminMessages.seriesLookup.navLabel,
+        href: '/admin/series/lookup',
+        icon: 'search',
+        permission: 'series.create',
+      },
       // The taxonomy behind /genres and the browse filters (migration 9028). Listing and
       // renaming are `series.read` / `series.update` — the same gate as editing the series
       // that carry them; the merge behind it is `series.delete`, like the series merge.
