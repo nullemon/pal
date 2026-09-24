@@ -69,16 +69,16 @@ export const webhooks = pgTable('webhooks', {
 })
 
 /*
- * `api_keys` was dropped in migration 9017. There is no API for a key to open: every
- * machine-to-machine caller in the repo — the worker's `/api/internal/revalidate` and
- * `/api/internal/maintenance` calls, and the Discord bot's `/api/push/discord/redeem` —
- * authenticates with the single `INTERNAL_API_SECRET` bearer from the environment, and
- * nothing ever hashed, matched, scoped or revoked a row here.
+ * `api_keys` lives in `./system.ts`. It was dropped in migration 9017 and brought back in
+ * 9040, and the condition 9017 set for its return was met: the table returned in the same
+ * change as the middleware that checks it (`apps/web/lib/auth/api-keys.ts` and the bearer
+ * branch in `withPermission`), plus the screen that issues and revokes — Admin → System →
+ * Remote.
  *
- * A table shaped like key auth, with no verification, no scope enforcement and no issue or
- * rotation UI, is an invitation to write half of an auth path against it. When a public or
- * partner API is actually built, the table comes back in the same change as the middleware
- * that checks it.
+ * The `INTERNAL_API_SECRET` bearer is unchanged and still what the worker's
+ * `/api/internal/*` calls and the Discord bot's redeem endpoint use. A key and that secret
+ * never meet: `parseApiKey` only recognises `pal_`-prefixed tokens, so anything else falls
+ * straight through to the path it always took.
  */
 
 /**

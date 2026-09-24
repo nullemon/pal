@@ -294,6 +294,14 @@ export const adminNav: readonly AdminNavGroup[] = [
         permission: 'settings.write',
       },
       { label: m.auditLog, href: '/admin/audit', icon: 'scroll', permission: 'audit.read' },
+      // API keys for machine callers (lib/auth/api-keys.ts). Last in System on purpose: it is
+      // the screen that hands out an account's permissions to something that is not a person.
+      {
+        label: adminMessages.remote.navLabel,
+        href: '/admin/system/remote',
+        icon: 'key',
+        permission: 'settings.write',
+      },
     ],
   },
 ]

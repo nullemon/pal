@@ -1,7 +1,7 @@
 import { sql } from 'drizzle-orm'
-import { bigint, index, jsonb, pgTable, text } from 'drizzle-orm/pg-core'
+import { bigint, index, pgTable, text, unique, jsonb } from 'drizzle-orm/pg-core'
 import { createdAt, deletedAt, identity, ref, timestamptz } from './_shared.js'
-import { citext } from './custom-types.js'
+import { bytea, citext } from './custom-types.js'
 import { pubState } from './enums.js'
 import { users } from './identity.js'
 
@@ -98,3 +98,46 @@ export const featureFlags = pgTable('feature_flags', {
   updatedAt: timestamptz('updated_at').notNull().defaultNow(),
   deletedAt: deletedAt(),
 })
+
+/**
+ * Machine callers (Admin → System → Remote).
+ *
+ * **A key authenticates as a user.** `userId` is the account it acts as, so `can()` from
+ * @palscans/core stays the only thing that decides what a request may do, and the audit log
+ * already records the actor without knowing a key was involved. Issuing a key that may add
+ * series but not touch accounts means pointing it at an uploader, not inventing a second set
+ * of scopes that would have to be kept in step with the permission matrix forever.
+ *
+ * Only the hash is kept, exactly like `sessions.secret_hash`. The plaintext exists once, in
+ * the response that created it; after that there is nothing to leak from this table.
+ * `prefix` is the non-secret half — it makes verification one indexed read instead of a scan
+ * over every row, and gives the panel something to show so an operator can tell two keys
+ * apart before revoking one.
+ */
+export const apiKeys = pgTable(
+  'api_keys',
+  {
+    id: identity(),
+    name: text('name').notNull(),
+    /** The public half, `pal_<prefix>`. Unique: it is the lookup key. */
+    prefix: text('prefix').notNull(),
+    /** sha256 of the secret half; compared in constant time. */
+    secretHash: bytea('secret_hash').notNull(),
+    /** The account this key acts as. Removing the account removes its keys. */
+    userId: ref('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    createdBy: ref('created_by').references(() => users.id, { onDelete: 'set null' }),
+    lastUsedAt: timestamptz('last_used_at'),
+    expiresAt: timestamptz('expires_at'),
+    /** Revoked, never deleted — a key named in the audit log stays nameable. */
+    revokedAt: timestamptz('revoked_at'),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    unique('api_keys_prefix_unique').on(t.prefix),
+    index('api_keys_live_idx')
+      .on(t.createdAt.desc())
+      .where(sql`${t.revokedAt} IS NULL`),
+  ],
+)

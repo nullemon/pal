@@ -3,6 +3,7 @@ import { messages } from '@palscans/core/messages'
 import { redirect } from 'next/navigation'
 import type { z } from 'zod'
 import { getEnv } from '../env'
+import { bearerToken, parseApiKey, userForApiKey } from './api-keys'
 import { getSessionUser } from './session'
 import { STAFF_PATH_DEFAULT } from './staff-path'
 
@@ -234,11 +235,29 @@ export function withPermission<P extends Record<string, string> = Record<string,
   if (typeof arg === 'function') {
     const handler = arg
     return async (request: Request, ctx: RouteParams<P>): Promise<Response> => {
-      if (options.csrf !== false && !sameOrigin(request)) return csrfFailed()
-      const user = await getSessionUser()
+      /**
+       * A machine caller may present an API key instead of the session cookie
+       * (`lib/auth/api-keys.ts`, Admin → System → Remote). Only a token that *parses* as one
+       * of ours is treated as an attempt — anything else falls through to the cookie, so the
+       * `INTERNAL_API_SECRET` bearer the worker uses on its own routes is untouched.
+       *
+       * The same-origin check is skipped for key callers and only for them. CSRF exists
+       * because a browser attaches cookies to cross-site requests on its own; a key is typed
+       * into a config file and never sent ambiently, so there is nothing to forge. Applying
+       * it anyway would simply make the API unusable from anything but a browser tab.
+       *
+       * TOTP is skipped for the same reason: it is a property of a person signing in. The
+       * key's own account still has to hold the permission — `can()` below is unchanged.
+       */
+      const token = bearerToken(request)
+      const presented = parseApiKey(token) !== null
+      const keyUser = presented ? await userForApiKey(token) : null
+      if (presented && !keyUser) return unauthorized()
+      if (!keyUser && options.csrf !== false && !sameOrigin(request)) return csrfFailed()
+      const user = keyUser ?? (await getSessionUser())
       if (!user) return unauthorized()
       if (!can(user, permission)) return forbidden()
-      if (await adminTotpMissing(user)) return totpRequired()
+      if (!keyUser && (await adminTotpMissing(user))) return totpRequired()
       return handler(request, ctx, user)
     }
   }

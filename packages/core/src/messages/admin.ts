@@ -2734,4 +2734,44 @@ export const adminMessages = {
     coverQueued: 'Cover downloaded and queued for processing.',
     coverFailed: 'Could not fetch the cover; upload one by hand.',
   },
+  /** Admin → System → Remote: API keys for machine callers. */
+  remote: {
+    navLabel: 'Remote',
+    title: 'Remote access',
+    subtitle:
+      'API keys, so a script or an assistant can add series and chapters without the panel.',
+    /** The whole permission model, in one line, where someone is about to issue a key. */
+    actsAsNote:
+      'A key acts as an account and can do exactly what that account can. To limit a key, point it at a limited account.',
+    createTitle: 'New key',
+    nameLabel: 'What is it for',
+    namePlaceholder: 'Bulk series import',
+    actsAsLabel: 'Acts as',
+    expiryLabel: 'Expires after',
+    expiryNever: 'Never',
+    expiryDays: '{n} days',
+    create: 'Create key',
+    creating: 'Creating…',
+    createdTitle: 'Key created',
+    /** Shown once. The plaintext is not stored and cannot be recovered. */
+    copyNow:
+      'Copy it now — this is the only time it is shown. Nothing stores it, so a lost key has to be replaced.',
+    copy: 'Copy',
+    copied: 'Copied',
+    done: 'Done',
+    colName: 'Name',
+    colActsAs: 'Acts as',
+    colKey: 'Key',
+    colLastUsed: 'Last used',
+    colExpires: 'Expires',
+    colCreated: 'Created',
+    never: 'Never used',
+    revoke: 'Revoke',
+    revoked: 'Revoked',
+    revokeConfirm: 'Revoke this key? Anything using it stops working immediately.',
+    empty: 'No keys yet.',
+    howTitle: 'How to use it',
+    howBody:
+      'Send it as a bearer token. Every admin endpoint accepts it in place of signing in.',
+  },
 } as const
