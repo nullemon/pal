@@ -1,8 +1,8 @@
 'use client'
 
-import { slugify } from '@palscans/core'
 import { adminMessages } from '@palscans/core/messages/admin'
 import type { SeriesMetadata } from '@palscans/core/metadata'
+import { slugify } from '@palscans/core/slug'
 import { Button, useToast } from '@palscans/ui'
 import { useEffect, useRef, useState } from 'react'
 import { inputClass, Panel, Pill } from '@/components/admin/ui'

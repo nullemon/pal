@@ -2771,7 +2771,6 @@ export const adminMessages = {
     revokeConfirm: 'Revoke this key? Anything using it stops working immediately.',
     empty: 'No keys yet.',
     howTitle: 'How to use it',
-    howBody:
-      'Send it as a bearer token. Every admin endpoint accepts it in place of signing in.',
+    howBody: 'Send it as a bearer token. Every admin endpoint accepts it in place of signing in.',
   },
 } as const

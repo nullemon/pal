@@ -82,6 +82,10 @@
       "types": "./dist/pagination.d.ts",
       "default": "./dist/pagination.js"
     },
+    "./slug": {
+      "types": "./dist/slug.d.ts",
+      "default": "./dist/slug.js"
+    },
     "./metadata": {
       "types": "./dist/metadata/anilist.d.ts",
       "default": "./dist/metadata/anilist.js"

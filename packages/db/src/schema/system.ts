@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm'
-import { bigint, index, pgTable, text, unique, jsonb } from 'drizzle-orm/pg-core'
+import { bigint, index, jsonb, pgTable, text, unique } from 'drizzle-orm/pg-core'
 import { createdAt, deletedAt, identity, ref, timestamptz } from './_shared.js'
 import { bytea, citext } from './custom-types.js'
 import { pubState } from './enums.js'
@@ -136,8 +136,6 @@ export const apiKeys = pgTable(
   },
   (t) => [
     unique('api_keys_prefix_unique').on(t.prefix),
-    index('api_keys_live_idx')
-      .on(t.createdAt.desc())
-      .where(sql`${t.revokedAt} IS NULL`),
+    index('api_keys_live_idx').on(t.createdAt.desc()).where(sql`${t.revokedAt} IS NULL`),
   ],
 )
