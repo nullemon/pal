@@ -1,4 +1,4 @@
-import { DEFAULT_SEO_TEMPLATES, renderSeo } from '@palscans/core'
+import { DEFAULT_SEO_TEMPLATES, DEFAULT_SEPARATOR, renderSeo } from '@palscans/core'
 import { fmt, messages } from '@palscans/core/messages'
 import { getDb, getSeoSetting } from '@palscans/db'
 import type { Metadata } from 'next'
@@ -16,10 +16,17 @@ const indexingSchema = z.object({
   site: z.boolean().catch(true),
   chapters: z.boolean().catch(true),
 })
-const identitySchema = z.object({ site_name: z.string().min(1).catch('PALScans') })
+const identitySchema = z.object({
+  site_name: z.string().min(1).catch('PALScans'),
+  // Parsed here too: the chapter title template uses `{sep}`, and an unparsed separator
+  // renders as nothing rather than failing loudly.
+  separator: z.enum(['-', '·', '—', '|']).catch(DEFAULT_SEPARATOR),
+})
 
 interface ChapterSeo {
   siteName: string
+  /** The operator's separator. Parsed here because the chapter template uses `{sep}`. */
+  separator: string
   template: { title?: string; description?: string }
   indexChapters: boolean
 }
@@ -39,6 +46,7 @@ export const cachedChapterSeo = unstable_cache(
     const env = getEnv()
     return {
       siteName: id.success ? id.data.site_name : env.SITE_NAME,
+      separator: id.success ? id.data.separator : DEFAULT_SEPARATOR,
       template: t.success ? (t.data.chapter ?? {}) : {},
       indexChapters: i.success ? i.data.site && i.data.chapters : true,
     }
@@ -71,6 +79,7 @@ export async function chapterMetadata(input: ChapterMetaInput): Promise<Metadata
     'chapter',
     {
       site: seo.siteName,
+      sep: seo.separator,
       title: series.title,
       type: messages.series.type[series.type],
       chapter: number,

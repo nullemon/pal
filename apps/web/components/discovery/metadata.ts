@@ -27,7 +27,11 @@ export async function pageMetadata(
   const env = getEnv()
   const seo = await cachedSeo()
   const site = seo.identity.site_name
-  const rendered = renderSeo(page, { site, ...vars }, { [page]: seo.templates[page] ?? {} })
+  const rendered = renderSeo(
+    page,
+    { site, sep: seo.identity.separator, ...vars },
+    { [page]: seo.templates[page] ?? {} },
+  )
   const title = opts.override?.title?.trim() || rendered.title
   const description =
     opts.override?.description?.trim() || rendered.description || seo.identity.default_description

@@ -77,6 +77,9 @@ describe('renderTemplate', () => {
       'title',
       'type',
       'chapter_count',
+      // Agrees with the count, so a one-chapter series does not read "1 chapters".
+      // Derived by `renderSeo` when a caller omits it — see seo-separator.test.ts.
+      'chapter_label',
       'latest_chapter',
       'synopsis',
     ])

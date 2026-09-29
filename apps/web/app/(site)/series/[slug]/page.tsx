@@ -8,6 +8,7 @@ import { getEnv } from '@/lib/env'
 import { seriesLayout } from '@/lib/layouts/series'
 import { OG_HEIGHT, OG_WIDTH } from '@/lib/seo/og-card'
 import { ogSeriesBySlug, seriesOgUrl } from '@/lib/seo/og-data'
+import { cachedSeoSettings } from '@/lib/seo/settings'
 import { chapterRows, getSeries } from './data'
 import { loadSeriesView } from './view'
 
@@ -38,17 +39,26 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const env = getEnv()
   const chapters = await chapterRows(series.id, null, new Date())
   const latest = chapters[0]
-  const seo = renderSeo('series', {
-    site: env.SITE_NAME,
-    title: series.title,
-    type: messages.series.type[series.type],
-    chapter_count: series.chapterCount,
-    latest_chapter: latest ? fmt(messages.series.chapterShort, { n: latest.number }) : '',
-    genres: series.genres.map((g) => g.name).join(', '),
-    author: series.people.find((p) => p.credit === 'author')?.name ?? '',
-    year: series.releasedYear ?? '',
-    synopsis: series.synopsis ?? '',
-  })
+  // The settings were not loaded here at all, so this page rendered the compiled defaults
+  // with `env.SITE_NAME` and no separator: an operator's edits under Admin -> SEO applied to
+  // every templated page except the one that matters most.
+  const seoSettings = await cachedSeoSettings()
+  const seo = renderSeo(
+    'series',
+    {
+      site: seoSettings.identity.site_name || env.SITE_NAME,
+      sep: seoSettings.identity.separator,
+      title: series.title,
+      type: messages.series.type[series.type],
+      chapter_count: series.chapterCount,
+      latest_chapter: latest ? fmt(messages.series.chapterShort, { n: latest.number }) : '',
+      genres: series.genres.map((g) => g.name).join(', '),
+      author: series.people.find((p) => p.credit === 'author')?.name ?? '',
+      year: series.releasedYear ?? '',
+      synopsis: series.synopsis ?? '',
+    },
+    { series: seoSettings.templates.series },
+  )
   const title = series.seoTitle ?? seo.title
   const description = series.seoDescription ?? seo.description
   const canonical = series.canonicalUrl ?? `${env.SITE_URL}/series/${series.slug}`

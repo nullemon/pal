@@ -1,4 +1,6 @@
-'use client'
+import { DEFAULT_SEO_TEMPLATES, TEMPLATE_VARIABLES } from '@palscans/core'
+
+;('use client')
 
 import { fmt } from '@palscans/core/messages'
 import { adminMessages } from '@palscans/core/messages/admin'
@@ -18,36 +20,19 @@ import type { SeoTemplates } from '@/lib/seo/settings'
 
 const m = adminMessages.adminSeo.templates
 const PAGES = Object.keys(m.pages) as (keyof SeoTemplates)[]
-const VARS =
-  '{site} {title} {type} {chapter} {chapter_count} {latest_chapter} {genres} {author} {year} {synopsis:N} {genre} {count} {intro:N} {excerpt:N} {next_prev_hint}'
+// Built from the exported list rather than retyped, so a variable added to the renderer can
+// never be one an operator has no way to discover. `{sep}` and `{chapter_label}` were both
+// missing from the hand-written version this replaces.
+const LENGTH_VARS = new Set<string>(['synopsis', 'intro', 'excerpt'])
+const VARS = TEMPLATE_VARIABLES.map((v) => (LENGTH_VARS.has(v) ? `{${v}:N}` : `{${v}}`)).join(' ')
 const TITLE_MAX = 60
 const DESC_MAX = 160
 
-const DEFAULTS: SeoTemplates = {
-  home: {
-    title: '{site} — Read Manhwa, Manga and Manhua Online',
-    description:
-      'Read the latest manhwa, manga and manhua chapters on {site}, updated daily. Free, fast, mobile-friendly.',
-  },
-  series: {
-    title: '{title} — Read Online Free · {site}',
-    description:
-      'Read {title} {type} online. {chapter_count} chapters, latest {latest_chapter}. {synopsis:160}',
-  },
-  chapter: {
-    title: '{title} Chapter {chapter} · {site}',
-    description: 'Read {title} Chapter {chapter} online free at {site}. {next_prev_hint}',
-  },
-  genre: {
-    title: '{genre} Manhwa & Manga — Read Online · {site}',
-    description: 'Browse {count} {genre} series on {site}. {intro:160}',
-  },
-  rankings: {
-    title: 'Top Manhwa & Manga This Week · {site}',
-    description: 'The most-read manhwa, manga and manhua on {site} this week, month and all time.',
-  },
-  announcement: { title: '{title} · {site}', description: '{excerpt:160}' },
-}
+// The placeholders shown under each field are the defaults the site actually renders. This
+// was a second, hand-maintained copy, and it had drifted: it hardcoded `·` and `—` where the
+// real templates use `{sep}`, so the screen advertised a separator the operator could not
+// change and hid the variable that changes it.
+const DEFAULTS: SeoTemplates = DEFAULT_SEO_TEMPLATES
 
 function Count({ n, max }: { n: number; max: number }) {
   return (

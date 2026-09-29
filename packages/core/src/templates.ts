@@ -13,6 +13,18 @@ export interface SeoTemplate {
   description: string
 }
 
+/**
+ * The separator used when a caller does not supply one.
+ *
+ * `sep` is a *setting*, not a fact about the page, so every call site has to remember to
+ * thread it through from the SEO settings — and a forgotten one renders as the empty string,
+ * which `renderTemplate` then collapses along with its surrounding spaces. The failure is
+ * silent and looks like nothing at all: `{title} {sep} Read Online Free {sep} {site}` becomes
+ * "One Punch Man Read Online Free PALScans". `renderSeo` therefore fills it in rather than
+ * trusting callers, and an explicit separator still wins.
+ */
+export const DEFAULT_SEPARATOR = '-'
+
 export const DEFAULT_SEO_TEMPLATES: Record<SeoPageType, SeoTemplate> = {
   home: {
     title: '{site} {sep} Read Manhwa, Manga and Manhua Online',
@@ -22,7 +34,7 @@ export const DEFAULT_SEO_TEMPLATES: Record<SeoPageType, SeoTemplate> = {
   series: {
     title: '{title} {sep} Read Online Free {sep} {site}',
     description:
-      'Read {title} {type} online. {chapter_count} chapters, latest {latest_chapter}. {synopsis:160}',
+      'Read {title} {type} online. {chapter_count} {chapter_label}, latest {latest_chapter}. {synopsis:160}',
   },
   chapter: {
     title: '{title} Chapter {chapter} {sep} {site}',
@@ -49,6 +61,8 @@ export const TEMPLATE_VARIABLES = [
   'type',
   'chapter',
   'chapter_count',
+  /** 'chapter' or 'chapters', agreeing with `chapter_count` — see `chapterLabel`. */
+  'chapter_label',
   'latest_chapter',
   'genres',
   'author',
@@ -93,6 +107,36 @@ export const renderTemplate = (template: string, vars: TemplateVars): string =>
     .replace(/\s+([.,;:!?])/g, '$1')
     .trim()
 
+/**
+ * The noun that agrees with a chapter count: one chapter, two chapters.
+ *
+ * Supplied as `{chapter_label}` so a template reads `{chapter_count} {chapter_label}` and a
+ * series with a single chapter no longer advertises "1 chapters" in every search result.
+ */
+export const chapterCountLabel = (count: number): string => (count === 1 ? 'chapter' : 'chapters')
+
+/**
+ * Fill the variables that can be derived, so no call site has to remember them.
+ *
+ * A missing variable renders as the empty string and `renderTemplate` then collapses the
+ * spaces around it, which is how `{title} {sep} Read Online Free {sep} {site}` reached Google
+ * as "One Punch Man Read Online Free PALScans" — silently, with the types satisfied and the
+ * template correct. `chapter_label` fails the same way, turning "301 chapters, latest" into
+ * "301, latest". Anything explicitly supplied still wins.
+ *
+ * Both `renderSeo` and the Next metadata builder pass through here. They rendered templates by
+ * two different routes, and the one that did not default was the one serving every series page.
+ */
+export const seoVars = (vars: TemplateVars): TemplateVars => {
+  const count = Number(vars.chapter_count)
+  return {
+    ...vars,
+    sep: vars.sep ?? DEFAULT_SEPARATOR,
+    chapter_label:
+      vars.chapter_label ?? (Number.isFinite(count) ? chapterCountLabel(count) : undefined),
+  }
+}
+
 export const renderSeo = (
   page: SeoPageType,
   vars: TemplateVars,
@@ -100,9 +144,10 @@ export const renderSeo = (
 ): SeoTemplate => {
   const base = DEFAULT_SEO_TEMPLATES[page]
   const t = { ...base, ...(overrides?.[page] ?? {}) }
+  const v = seoVars(vars)
   return {
-    title: renderTemplate(t.title, vars),
-    description: renderTemplate(t.description, vars),
+    title: renderTemplate(t.title, v),
+    description: renderTemplate(t.description, v),
   }
 }
 

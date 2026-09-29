@@ -1,4 +1,10 @@
-import { renderTemplate, type SeoPageType, type TemplateVars, truncateWords } from '@palscans/core'
+import {
+  renderTemplate,
+  type SeoPageType,
+  seoVars,
+  type TemplateVars,
+  truncateWords,
+} from '@palscans/core'
 import type { Metadata } from 'next'
 import { brandSocialImage } from '../chrome/load'
 import { getEnv } from '../env'
@@ -91,7 +97,9 @@ export function metadataFor(
   const sep = settings.identity.separator
   // {sep} is a variable so the operator's separator choice drives every template
   // (docs/12 §2); previously it only reached the override-title path below.
-  const vars: TemplateVars = { site, sep, ...(ctx.vars ?? {}) }
+  // Through `seoVars` so this path derives the same variables `renderSeo` does. These were
+  // two separate routes to the same templates, and only one of them defaulted.
+  const vars: TemplateVars = seoVars({ site, sep, ...(ctx.vars ?? {}) })
 
   let title = ''
   let description = ''
