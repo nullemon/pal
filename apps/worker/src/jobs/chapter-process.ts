@@ -1,3 +1,4 @@
+import { flattenPages } from '@palscans/core/chapters'
 import { MAX_ORIGINAL_BYTES, type Storage } from '@palscans/core/storage'
 import {
   normalizeWatermark,
@@ -224,21 +225,22 @@ export const processChapter = async (
   }
 
   // every source succeeded — rebuild the rows in display order (docs/03 "state machine is the guard")
-  const rows: Array<typeof chapterPages.$inferInsert> = []
-  for (const source of [...doc.sources].sort((a, b) => a.idx - b.idx)) {
-    for (const r of doc.results?.[String(source.idx)] ?? []) {
-      rows.push({
-        chapterId,
-        idx: rows.length,
-        key: r.key,
-        width: r.width,
-        height: r.height,
-        bytes: r.bytes,
-        blurHash: r.blurHash,
-        variants: r.variants,
-      })
-    }
-  }
+  //
+  // The flatten lives in @palscans/core/chapters because the page editor reads it too. Two
+  // copies of this loop would be two answers to "what is page 7", and they would agree until
+  // the first time an operator reordered or deleted something — which is precisely when the
+  // panel and the reader must not disagree. It is also what applies `doc.dropped`, so a page
+  // an operator deleted is not restored by this run.
+  const rows: Array<typeof chapterPages.$inferInsert> = flattenPages(doc).map(({ page, idx }) => ({
+    chapterId,
+    idx,
+    key: page.key,
+    width: page.width,
+    height: page.height,
+    bytes: page.bytes,
+    blurHash: page.blurHash,
+    variants: page.variants,
+  }))
   const at = now()
   const target = doc.after?.publishedAt ? new Date(doc.after.publishedAt) : row.publishedAt
   const nextState = target

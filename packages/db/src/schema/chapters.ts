@@ -43,6 +43,16 @@ export interface ChapterProcessing {
   progress: { done: number; total: number }
   /** Per-page error messages keyed by source idx; empty when the last run succeeded. */
   errors: Record<string, string>
+  /**
+   * Pages an operator deleted, as `sourceIdx:segment` (@palscans/core/chapters).
+   *
+   * The only field here that records a human decision rather than a machine result, and the
+   * reason it exists: every other field is rebuilt from the uploaded originals by a
+   * reprocessing run, so a deletion expressed by editing `results` is silently undone the
+   * next time `watermark.reapply` or a retry regenerates that source. `flattenPages` applies
+   * this on every build of `chapter_pages`, so a deleted page stays deleted.
+   */
+  dropped?: string[]
   attempt: number
   /** `failed` = re-run only the sources listed in `errors` (docs/03 "retry failed pages only"). */
   mode?: 'all' | 'failed'

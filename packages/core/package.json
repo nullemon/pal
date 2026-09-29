@@ -86,6 +86,10 @@
       "types": "./dist/slug.d.ts",
       "default": "./dist/slug.js"
     },
+    "./chapters": {
+      "types": "./dist/chapters/pages.d.ts",
+      "default": "./dist/chapters/pages.js"
+    },
     "./metadata": {
       "types": "./dist/metadata/anilist.d.ts",
       "default": "./dist/metadata/anilist.js"
