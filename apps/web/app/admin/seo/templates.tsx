@@ -1,9 +1,8 @@
-import { DEFAULT_SEO_TEMPLATES, TEMPLATE_VARIABLES } from '@palscans/core'
-
-;('use client')
+'use client'
 
 import { fmt } from '@palscans/core/messages'
 import { adminMessages } from '@palscans/core/messages/admin'
+import { DEFAULT_SEO_TEMPLATES, TEMPLATE_VARIABLES } from '@palscans/core/templates'
 import { Button, cn } from '@palscans/ui'
 import { useEffect, useId, useState } from 'react'
 import { postJson } from '@/components/admin/client/api'

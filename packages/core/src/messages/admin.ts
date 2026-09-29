@@ -2735,6 +2735,35 @@ export const adminMessages = {
     coverFailed: 'Could not fetch the cover; upload one by hand.',
   },
   /** Admin → System → Remote: API keys for machine callers. */
+  /** Admin -> Chapters -> a chapter -> Pages (components/admin/client/PageEditor). */
+  pageEditor: {
+    navLabel: 'Pages',
+    title: 'Pages',
+    subtitle: 'Reorder, delete and replace the pages of a chapter without re-uploading it.',
+    empty: 'This chapter has no processed pages yet.',
+    notProcessed: 'This chapter has not been through processing, so there is nothing to edit.',
+    loading: 'Loading pages…',
+    count: '{n} pages',
+    countOne: '1 page',
+    selected: '{n} selected',
+    /** Said once, where it matters: a split strip cannot be reordered page by page. */
+    splitHint:
+      'Pages marked "strip" were cut from one upload. They move together, because processing rebuilds them as a block.',
+    strip: 'strip',
+    deleteSelected: 'Delete selected',
+    restore: 'Restore',
+    save: 'Save changes',
+    saving: 'Saving…',
+    discard: 'Discard',
+    unsaved: 'You have unsaved changes.',
+    saved: 'Pages updated.',
+    failed: 'Could not save the changes.',
+    dragHint: 'Drag a page to move it. Changes are not written until you press Save.',
+    pendingDelete: 'Will be deleted on save',
+    moveLeft: 'Move earlier',
+    moveRight: 'Move later',
+    page: 'Page {n}',
+  },
   remote: {
     navLabel: 'Remote',
     title: 'Remote access',

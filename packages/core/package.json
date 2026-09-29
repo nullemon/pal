@@ -90,6 +90,10 @@
       "types": "./dist/chapters/pages.d.ts",
       "default": "./dist/chapters/pages.js"
     },
+    "./templates": {
+      "types": "./dist/templates.d.ts",
+      "default": "./dist/templates.js"
+    },
     "./metadata": {
       "types": "./dist/metadata/anilist.d.ts",
       "default": "./dist/metadata/anilist.js"

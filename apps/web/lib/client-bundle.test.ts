@@ -71,6 +71,24 @@ const valueImportsOf = (source: string, spec: string): string[] => {
   return found
 }
 
+/**
+ * What this does NOT check, deliberately.
+ *
+ * A file has no directive of its own and still ends up in the client bundle when a client
+ * component imports it — which is how `app/admin/seo/templates.tsx` broke a build after this
+ * test was written: the barrel import was added to a file that `SeoAdmin.tsx` pulls in.
+ *
+ * The obvious fix, walking imports from every client component, was tried and reverted. It
+ * reported 28 files the build accepts, because a source-level import is not a bundle-level
+ * one: a `'use server'` module becomes an RPC stub rather than being bundled, and Turbopack
+ * tree-shakes a barrel import whose used exports are all pure. Modelling that faithfully
+ * means re-implementing the bundler's boundary rules, and a check that cries wolf 28 times
+ * is one nobody runs.
+ *
+ * So this stays narrow and true, and `next build` — which resolves the real graph — is what
+ * catches the transitive case. Run it before pushing; typecheck and unit tests cannot see
+ * this class of failure at all.
+ */
 describe('client components and server-only barrels', () => {
   const clientFiles = SCANNED.flatMap((dir) => sourceFiles(path.join(repoRoot, dir)))
     .filter((file) => isClientComponent(readFileSync(file, 'utf8')))

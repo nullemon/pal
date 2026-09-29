@@ -172,7 +172,15 @@ export default async function AdminChaptersPage({
                 <WatermarkPill state={r.watermark} />
               </Td>
               <Td align="right">
-                <Num>{r.pageCount}</Num>
+                {/* The page count is the way in to the page editor: the number is what an
+                    operator is looking at when they notice it is wrong. */}
+                <a
+                  href={`/admin/chapters/${r.id}/pages`}
+                  className="hover:text-brand-hover"
+                  title={adminMessages.pageEditor.title}
+                >
+                  <Num>{r.pageCount}</Num>
+                </a>
               </Td>
               <Td>
                 {r.isPremium ? (
