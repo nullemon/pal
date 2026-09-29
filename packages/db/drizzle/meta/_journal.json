@@ -211,6 +211,13 @@
       "when": 1788380044000,
       "tag": "9040_api_keys",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1788380048000,
+      "tag": "9042_social",
+      "breakpoints": true
     }
   ]
 }
