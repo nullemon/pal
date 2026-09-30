@@ -201,3 +201,94 @@ export const deletePages = <S extends SourceLike, P>(
     [...survivors].sort((a, b) => a.idx - b.idx),
   )
 }
+
+/* ------------------------------------------------------- replacing and inserting */
+
+/**
+ * The result of an edit that adds an upload: the new plan, and which source index the worker
+ * has to encode.
+ */
+export interface SourceEdit<S extends SourceLike, P> {
+  plan: PagePlan<S, P>
+  /** The source needing a run. Put it in `errors` — see `markForReprocess` below. */
+  sourceIdx: number
+}
+
+/**
+ * Mark a processing document so the next run encodes *only* the given sources.
+ *
+ * The worker's "retry failed only" path is the right one to reuse here — re-encoding one
+ * replaced page instead of a 200-page chapter — but its condition is not the obvious one:
+ *
+ * ```
+ * const failedOnly = doc.mode === 'failed' && Object.keys(doc.errors).length > 0 && !markMoved
+ * ```
+ *
+ * A non-empty `errors` is load-bearing. Setting `mode` and clearing the source's results is
+ * not enough: with `errors` empty the run falls through to processing everything, which
+ * throws away every other page's encode and takes minutes instead of seconds — and does it
+ * silently, because the output is correct either way.
+ */
+export const markForReprocess = <S extends SourceLike, P>(
+  plan: PagePlan<S, P>,
+  sourceIdxs: readonly number[],
+  reason = 'replaced',
+): PagePlan<S, P> => {
+  const results = { ...(plan.results ?? {}) }
+  const errors = { ...(plan.errors ?? {}) }
+  for (const idx of sourceIdxs) {
+    delete results[String(idx)]
+    errors[String(idx)] = reason
+  }
+  return { ...plan, results, errors }
+}
+
+/**
+ * Swap the upload behind the page at `position` for a new one.
+ *
+ * The whole source is replaced, not one segment: a long strip's segments come from one
+ * original, so there is no way to substitute the middle of one. The source keeps its index,
+ * so the chapter's order is untouched and every other page keeps the encode it already has.
+ */
+export const replaceSourceAt = <S extends SourceLike, P>(
+  plan: PagePlan<S, P>,
+  position: number,
+  replacement: Omit<S, 'idx'>,
+): SourceEdit<S, P> => {
+  const flat = flattenPages(plan)
+  const target = flat[position]
+  if (!target) throw new Error('replaceSourceAt: position out of range')
+  const idx = target.source.idx
+  const sources = plan.sources.map((s) => (s.idx === idx ? ({ ...replacement, idx } as S) : s))
+  // Deletions recorded against the old upload's segments cannot mean anything for a different
+  // image, and left behind they would blank out pages of it.
+  const dropped = (plan.dropped ?? []).filter((k) => !k.startsWith(`${idx}:`))
+  return { plan: markForReprocess({ ...plan, sources, dropped }, [idx]), sourceIdx: idx }
+}
+
+/**
+ * Add an upload before the page at `position`, or at the end when `position` is the page
+ * count. Sources after it shift up, and their results travel with them.
+ */
+export const insertSourceAt = <S extends SourceLike, P>(
+  plan: PagePlan<S, P>,
+  position: number,
+  source: Omit<S, 'idx'>,
+): SourceEdit<S, P> => {
+  const flat = flattenPages(plan)
+  if (position < 0 || position > flat.length) throw new Error('insertSourceAt: out of range')
+  const ordered = [...plan.sources].sort((a, b) => a.idx - b.idx)
+  // Insert before the source owning that page, or after everything when appending.
+  const at =
+    position === flat.length
+      ? ordered.length
+      : ordered.findIndex((s) => s.idx === flat[position]?.source.idx)
+  // A free index, so `renumber` can carry results across without the new source colliding
+  // with an existing key on the way.
+  const free = Math.max(-1, ...plan.sources.map((s) => s.idx)) + 1
+  const staged = [...ordered]
+  staged.splice(at < 0 ? ordered.length : at, 0, { ...source, idx: free } as S)
+  const next = renumber({ ...plan, sources: staged }, staged)
+  const sourceIdx = staged.findIndex((s) => s.idx === free)
+  return { plan: next, sourceIdx }
+}

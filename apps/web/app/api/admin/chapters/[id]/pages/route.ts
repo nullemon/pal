@@ -3,9 +3,17 @@ import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { audit } from '@/components/admin/server/audit'
 import { purgeCatalog } from '@/components/admin/server/cache'
-import { applyPageEdits, editorPages, savePageEdits } from '@/components/admin/server/chapter-pages'
+import {
+  addPageSource,
+  applyPageEdits,
+  editorPages,
+  savePageEdits,
+} from '@/components/admin/server/chapter-pages'
 import { idParam } from '@/components/admin/server/params'
 import { fail, notFound, ok, parseJson, withPermission } from '@/lib/auth'
+import { getStorage, MAX_ORIGINAL_BYTES, verifyUploadedObject } from '@/lib/storage'
+
+const SOURCE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/gif'])
 
 /**
  * The pages of one chapter: read them, reorder them, delete them.
@@ -101,3 +109,76 @@ export const PATCH = withPermission<{ id: string }>(
     return ok({ pages: await editorPages(saved.doc), sources: saved.doc.sources.length })
   },
 )
+
+const addSchema = z.object({
+  op: z.enum(['replace', 'insert']),
+  position: z.number().int().min(0).max(5000),
+  key: z.string().min(1).max(512),
+})
+
+/**
+ * POST /api/admin/chapters/:id/pages — replace the page at `position`, or insert before it.
+ *
+ * The object is verified against the store before the document is touched. The browser PUT
+ * it straight to storage, so this is the only place an oversized or non-image file is caught
+ * before the worker tries to decode it — the same check `/api/upload/commit` makes, for the
+ * same reason.
+ */
+export const POST = withPermission<{ id: string }>('chapter.repair', async (request, ctx, user) => {
+  const id = idParam.safeParse((await ctx.params).id)
+  if (!id.success) return notFound()
+  const parsed = await parseJson(request, addSchema)
+  if (!parsed.ok) return parsed.response
+
+  const db = await getDb()
+  const [row] = await db
+    .select({ processing: chapters.processing, seriesId: chapters.seriesId, state: chapters.state })
+    .from(chapters)
+    .where(eq(chapters.id, id.data))
+    .limit(1)
+  if (!row) return notFound()
+  if (!row.processing) return fail(409, 'validation')
+  // A run already in flight would be overwritten by the document written below, losing the
+  // results it has produced so far.
+  if (row.state === 'processing') return fail(409, 'already_processing')
+
+  const prefix = `uploads/${row.seriesId}/${id.data}/`
+  if (!parsed.data.key.startsWith(prefix)) return fail(400, 'validation')
+
+  const storage = await getStorage()
+  const check = await verifyUploadedObject(storage, parsed.data.key, {
+    maxBytes: MAX_ORIGINAL_BYTES,
+    types: SOURCE_TYPES,
+  })
+  if (!check.ok) return fail(check.code === 'missing' ? 400 : 415, check.code)
+
+  let added: Awaited<ReturnType<typeof addPageSource>>
+  try {
+    added = await addPageSource(
+      id.data,
+      {
+        op: parsed.data.op,
+        position: parsed.data.position,
+        key: parsed.data.key,
+        bytes: check.bytes,
+      },
+      db,
+    )
+  } catch {
+    return fail(400, 'validation')
+  }
+  if (!added) return notFound()
+
+  await audit({
+    actorId: user.id,
+    action: `chapter.page.${parsed.data.op}`,
+    targetType: 'chapter',
+    targetId: id.data,
+    after: { position: parsed.data.position, key: parsed.data.key },
+  })
+  await purgeCatalog()
+
+  // `processing`, not the new pages: the replacement has to be encoded before it can be
+  // shown, so the grid polls rather than rendering a thumbnail that does not exist yet.
+  return ok({ processing: true, sourceIdx: added.sourceIdx })
+})

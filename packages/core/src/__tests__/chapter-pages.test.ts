@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest'
 import {
   deletePages,
   flattenPages,
+  insertSourceAt,
   movePage,
   type PagePlan,
   pageRefKey,
   reorderSources,
+  replaceSourceAt,
 } from '../chapters/pages.js'
 
 /**
@@ -180,5 +182,80 @@ describe('edits compose', () => {
     p = deletePages(p, [2]) // drop b's first segment
     expect(order(p)).toEqual(['c0', 'a0', 'b1', 'b2'])
     expect(order(reprocess(p))).toEqual(['c0', 'a0', 'b1', 'b2'])
+  })
+})
+
+describe('replaceSourceAt', () => {
+  it('swaps the upload and keeps its place', () => {
+    const { plan: out } = replaceSourceAt(plan(), 0, { key: 'a2' })
+    expect(out.sources.map((s) => s.key)).toEqual(['a2', 'b', 'c'])
+  })
+
+  it('clears only that source’s results, keeping every other page’s encode', () => {
+    const { plan: out, sourceIdx } = replaceSourceAt(plan(), 0, { key: 'a2' })
+    expect(out.results?.[String(sourceIdx)]).toBeUndefined()
+    expect(out.results?.['1']).toEqual(['b0', 'b1', 'b2'])
+    expect(out.results?.['2']).toEqual(['c0'])
+  })
+
+  it('marks it in errors, without which the whole chapter is re-encoded', () => {
+    // The worker's failed-only path needs a non-empty `errors`; see markForReprocess.
+    const { plan: out, sourceIdx } = replaceSourceAt(plan(), 0, { key: 'a2' })
+    expect(out.errors?.[String(sourceIdx)]).toBeDefined()
+    expect(Object.keys(out.errors ?? {}).length).toBeGreaterThan(0)
+  })
+
+  it('replaces a whole split strip from any of its segments', () => {
+    const { plan: out } = replaceSourceAt(plan(), 2, { key: 'b2' })
+    expect(out.sources.map((s) => s.key)).toEqual(['a', 'b2', 'c'])
+    expect(out.results?.['1']).toBeUndefined()
+  })
+
+  it('forgets deletions recorded against the upload it replaced', () => {
+    // Those refs named segments of a different image; kept, they would blank out pages of
+    // the new one at whatever indices happened to match.
+    const staged = deletePages(plan(), [2])
+    expect(staged.dropped).toContain(pageRefKey(1, 1))
+    const { plan: out } = replaceSourceAt(staged, 1, { key: 'b2' })
+    expect(out.dropped ?? []).not.toContain(pageRefKey(1, 1))
+  })
+
+  it('rejects a position that does not exist', () => {
+    expect(() => replaceSourceAt(plan(), 9, { key: 'x' })).toThrow(/out of range/)
+  })
+})
+
+describe('insertSourceAt', () => {
+  it('inserts before the given page', () => {
+    const { plan: out } = insertSourceAt(plan(), 0, { key: 'z' })
+    expect(out.sources.map((s) => s.key)).toEqual(['z', 'a', 'b', 'c'])
+  })
+
+  it('appends when the position is the page count', () => {
+    const { plan: out } = insertSourceAt(plan(), 5, { key: 'z' })
+    expect(out.sources.map((s) => s.key)).toEqual(['a', 'b', 'c', 'z'])
+  })
+
+  it('inserts before the whole strip when aimed at one of its segments', () => {
+    const { plan: out } = insertSourceAt(plan(), 2, { key: 'z' })
+    expect(out.sources.map((s) => s.key)).toEqual(['a', 'z', 'b', 'c'])
+  })
+
+  it('carries existing results across the renumbering', () => {
+    // Everything shifts up by one; each source's pages have to shift with it.
+    const { plan: out } = insertSourceAt(plan(), 0, { key: 'z' })
+    expect(order(out)).toEqual(['a0', 'b0', 'b1', 'b2', 'c0'])
+    expect(out.results?.['1']).toEqual(['a0'])
+    expect(out.results?.['2']).toEqual(['b0', 'b1', 'b2'])
+  })
+
+  it('names the new source, and only it, for reprocessing', () => {
+    const { plan: out, sourceIdx } = insertSourceAt(plan(), 0, { key: 'z' })
+    expect(sourceIdx).toBe(0)
+    expect(out.errors?.[String(sourceIdx)]).toBeUndefined()
+  })
+
+  it('rejects an out-of-range position', () => {
+    expect(() => insertSourceAt(plan(), 9, { key: 'z' })).toThrow(/out of range/)
   })
 })

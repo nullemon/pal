@@ -3,6 +3,7 @@
 import { fmt } from '@palscans/core/messages'
 import { adminMessages } from '@palscans/core/messages/admin'
 import { Button, useToast } from '@palscans/ui'
+import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import { Hint, Panel, PanelHeader, Pill } from '@/components/admin/ui'
 
@@ -41,13 +42,22 @@ interface Props {
   editable: boolean
 }
 
+/** SHA-256 of the file, hex — the key is content-addressed, so this names the object. */
+const digest = async (file: File): Promise<string> => {
+  const buffer = await file.arrayBuffer()
+  const hash = await crypto.subtle.digest('SHA-256', buffer)
+  return [...new Uint8Array(hash)].map((b) => b.toString(16).padStart(2, '0')).join('')
+}
+
 export function PageEditor({ chapterId, initial, editable }: Props) {
   const { toast } = useToast()
+  const router = useRouter()
   const [server, setServer] = useState<EditorPage[]>(initial)
   const [pages, setPages] = useState<EditorPage[]>(initial)
   const [doomed, setDoomed] = useState<Set<string>>(new Set())
   const [dragging, setDragging] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [busy, setBusy] = useState<string | null>(null)
 
   useEffect(() => {
     setServer(initial)
@@ -111,6 +121,58 @@ export function PageEditor({ chapterId, initial, editable }: Props) {
     }
   }, [chapterId, pages, doomed, toast])
 
+  /**
+   * Upload one file and put it in place, then reload.
+   *
+   * Deliberately not staged like the reorder and delete above: this one cannot be, because
+   * the image has to be encoded by the worker before there is a thumbnail to show. Batching
+   * it with the Save button would mean a Save that sometimes takes a second and sometimes
+   * queues a job, which is a worse thing to explain than two different controls.
+   */
+  const addFile = useCallback(
+    async (op: 'replace' | 'insert', position: number, file: File) => {
+      if (dirty) {
+        toast({ title: m.unsaved, tone: 'danger' })
+        return
+      }
+      setBusy(m.uploading)
+      try {
+        const sha256 = await digest(file)
+        const intent = await fetch(`/api/admin/chapters/${chapterId}/pages/upload`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ sha256, type: file.type, bytes: file.size }),
+        })
+        if (!intent.ok) throw new Error('intent')
+        const signed = (await intent.json()) as {
+          key: string
+          url: string
+          method: string
+          headers?: Record<string, string>
+        }
+        const put = await fetch(signed.url, {
+          method: signed.method,
+          headers: signed.headers,
+          body: file,
+        })
+        if (!put.ok) throw new Error('put')
+        const commit = await fetch(`/api/admin/chapters/${chapterId}/pages`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ op, position, key: signed.key }),
+        })
+        if (!commit.ok) throw new Error(String(commit.status))
+        toast({ title: m.queued, tone: 'ok' })
+        router.refresh()
+      } catch {
+        toast({ title: m.uploadFailed, tone: 'danger' })
+      } finally {
+        setBusy(null)
+      }
+    },
+    [chapterId, dirty, toast, router],
+  )
+
   if (!editable)
     return (
       <Panel>
@@ -144,6 +206,12 @@ export function PageEditor({ chapterId, initial, editable }: Props) {
 
       <Hint>{pages.length === 1 ? m.countOne : fmt(m.count, { n: pages.length })}</Hint>
       <Hint>{m.dragHint}</Hint>
+      <Hint>{m.dropToReplace}</Hint>
+      {busy ? (
+        <p className="mt-2 text-sm text-fg-muted" role="status">
+          {busy}
+        </p>
+      ) : null}
       {pages.some((p) => p.split) ? <Hint>{m.splitHint}</Hint> : null}
       {dirty ? (
         <p className="mt-2 text-sm text-warn" role="status">
@@ -166,6 +234,13 @@ export function PageEditor({ chapterId, initial, editable }: Props) {
                 onDragOver={(event) => event.preventDefault()}
                 onDrop={(event) => {
                   event.preventDefault()
+                  // A file from the desktop replaces this page; a page from the grid moves.
+                  const file = event.dataTransfer.files?.[0]
+                  if (file) {
+                    void addFile('replace', index, file)
+                    setDragging(null)
+                    return
+                  }
                   const from = pages.findIndex((p) => p.id === dragging)
                   if (from >= 0) move(from, index)
                   setDragging(null)
@@ -208,6 +283,23 @@ export function PageEditor({ chapterId, initial, editable }: Props) {
                   >
                     →
                   </button>
+                  <label
+                    className="cursor-pointer rounded px-1.5 py-0.5 text-xs hover:bg-surface-3"
+                    title={m.insertBefore}
+                  >
+                    +
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="sr-only"
+                      disabled={saving || !!busy}
+                      onChange={(event) => {
+                        const file = event.target.files?.[0]
+                        if (file) void addFile('insert', index, file)
+                        event.target.value = ''
+                      }}
+                    />
+                  </label>
                   <button
                     type="button"
                     className="ml-auto rounded px-1.5 py-0.5 text-xs hover:bg-surface-3"
@@ -223,6 +315,23 @@ export function PageEditor({ chapterId, initial, editable }: Props) {
           })}
         </ul>
       )}
+
+      {pages.length > 0 ? (
+        <label className="mt-4 inline-flex cursor-pointer items-center gap-2 text-sm text-fg-muted hover:text-fg">
+          + {m.insertAtEnd}
+          <input
+            type="file"
+            accept="image/*"
+            className="sr-only"
+            disabled={saving || !!busy}
+            onChange={(event) => {
+              const file = event.target.files?.[0]
+              if (file) void addFile('insert', pages.length, file)
+              event.target.value = ''
+            }}
+          />
+        </label>
+      ) : null}
     </Panel>
   )
 }

@@ -2,9 +2,12 @@ import 'server-only'
 import {
   deletePages,
   flattenPages,
+  insertSourceAt,
+  markForReprocess,
   type PagePlan,
   pageRefKey,
   reorderSources,
+  replaceSourceAt,
 } from '@palscans/core/chapters'
 import {
   type ChapterProcessing,
@@ -16,6 +19,7 @@ import {
   type ProcessedPage,
 } from '@palscans/db'
 import { eq } from 'drizzle-orm'
+import { enqueueProcess } from '@/components/admin/server/chapters'
 import { signedStorageUrl } from '@/lib/storage/upload'
 
 /**
@@ -202,4 +206,60 @@ export const savePageEdits = async (
   })
 
   return { doc, count: rows.length }
+}
+
+/**
+ * Put a newly uploaded file in place of a page, or between two of them, and queue the one
+ * source that needs encoding.
+ *
+ * Unlike a reorder or a delete this is not instant: the new image has to be re-encoded into
+ * its variants and watermarked before it can be served, so the chapter goes to `processing`
+ * and the caller is told to expect that.
+ */
+export const addPageSource = async (
+  chapterId: number,
+  input: { op: 'replace' | 'insert'; position: number; key: string; bytes: number },
+  db?: Db,
+): Promise<{ doc: ChapterProcessing; sourceIdx: number } | null> => {
+  const database = db ?? (await getDb())
+  const [row] = await database
+    .select({ processing: chapters.processing })
+    .from(chapters)
+    .where(eq(chapters.id, chapterId))
+    .limit(1)
+  if (!row?.processing) return null
+
+  const source = {
+    key: input.key,
+    bytes: input.bytes,
+    // The key is content-addressed, so the digest is recoverable from it and does not need
+    // to be trusted from the client a second time.
+    sha256: input.key.split('-').pop()?.split('.')[0] ?? '',
+  }
+  const edit =
+    input.op === 'replace'
+      ? replaceSourceAt(planOf(row.processing), input.position, source)
+      : insertSourceAt(planOf(row.processing), input.position, source)
+
+  // An insert has no stale results to clear, but still has to be named in `errors`, or the
+  // run falls through to re-encoding the whole chapter. See markForReprocess.
+  const plan = markForReprocess(edit.plan, [edit.sourceIdx], input.op)
+  const doc: ChapterProcessing = {
+    ...row.processing,
+    sources: plan.sources,
+    results: plan.results,
+    errors: plan.errors ?? {},
+    dropped: plan.dropped,
+    mode: 'failed',
+    attempt: (row.processing.attempt ?? 0) + 1,
+    progress: { done: 0, total: plan.sources.length },
+    finishedAt: null,
+  }
+
+  await database
+    .update(chapters)
+    .set({ processing: doc, state: 'processing', updatedAt: new Date() })
+    .where(eq(chapters.id, chapterId))
+  await enqueueProcess(chapterId, doc.attempt)
+  return { doc, sourceIdx: edit.sourceIdx }
 }
