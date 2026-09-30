@@ -81,6 +81,14 @@ export const adminNav: readonly AdminNavGroup[] = [
         icon: 'tags',
         permission: 'series.read',
       },
+      // Authors and artists. Every import creates a row per credit, so this is where the
+      // duplicates that produces get folded back together.
+      {
+        label: adminMessages.peopleAdmin.navLabel,
+        href: '/admin/people',
+        icon: 'users',
+        permission: 'series.read',
+      },
       // The scanlation groups whose work is hosted, and the credit on their chapters. Listing
       // is `series.read` so an uploader can credit a chapter; creating a group is
       // `series.update`, enforced on the API rather than by hiding the item.

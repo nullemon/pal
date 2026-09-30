@@ -2737,6 +2737,34 @@ export const adminMessages = {
   /** Admin → System → Remote: API keys for machine callers. */
   /** Admin -> Chapters -> a chapter -> Pages (components/admin/client/PageEditor). */
   /** Admin -> Content -> Groups (components/admin/server/groups.ts). */
+  /** Admin -> Content -> People (components/admin/server/people.ts). */
+  peopleAdmin: {
+    navLabel: 'People',
+    title: 'Authors and artists',
+    subtitle: 'Rename a misspelling, and fold duplicates into one.',
+    searchLabel: 'Search',
+    searchPlaceholder: 'Name…',
+    nameLabel: 'Name',
+    seriesCount: '{n} series',
+    seriesOne: '1 series',
+    empty: 'Nobody matches that.',
+    rename: 'Rename',
+    save: 'Save',
+    cancel: 'Cancel',
+    renamed: 'Renamed.',
+    failed: 'That did not work.',
+    duplicates: 'Possible duplicates',
+    /** Stated where the button is, because a merge cannot be undone. */
+    duplicatesHint:
+      'Names that differ only by case, spacing or word order. These are suggestions — check before merging, because a merge cannot be undone.',
+    noDuplicates: 'No likely duplicates.',
+    mergeInto: 'Merge {loser} into {winner}',
+    merge: 'Merge',
+    confirmMerge:
+      'Merge {loser} into {winner}? Every series credited to {loser} moves, and {loser} is deleted. This cannot be undone.',
+    merged: 'Merged. {n} credits moved.',
+    keep: 'Keep',
+  },
   groupsAdmin: {
     navLabel: 'Groups',
     title: 'Scanlation groups',
