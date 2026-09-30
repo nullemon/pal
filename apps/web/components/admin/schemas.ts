@@ -133,6 +133,16 @@ export const bulkActionSchema = z.discriminatedUnion('action', [
     ids: z.array(z.number().int()).min(1).max(500),
     earlyAccessUntil: z.string().datetime({ offset: true }).nullable(),
   }),
+  /**
+   * Credit these chapters to a set of scanlation groups, replacing whatever they carried.
+   * `chapter.update` rather than `series.update`: crediting the work is the uploader's job,
+   * while creating a group in the catalogue is not — see the groups route.
+   */
+  z.object({
+    action: z.literal('set_groups'),
+    ids: z.array(z.number().int()).min(1).max(500),
+    groupIds: z.array(z.number().int().positive()).max(10),
+  }),
   z.object({ action: z.literal('delete'), ids: z.array(z.number().int()).min(1).max(500) }),
   z.object({ action: z.literal('restore'), ids: z.array(z.number().int()).min(1).max(500) }),
   /**

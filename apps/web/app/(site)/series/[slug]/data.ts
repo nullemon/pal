@@ -13,6 +13,7 @@ import {
 } from '@palscans/db'
 import { and, eq } from 'drizzle-orm'
 import { cache } from 'react'
+import { groupsForChapters } from '@/components/admin/server/groups'
 import type { AppUser } from '@/lib/comments/viewer'
 
 /** One series lookup per request, shared by `generateMetadata` and the page. */
@@ -30,6 +31,8 @@ export interface ChapterRowData {
   lock: ChapterLockKind
   canRead: boolean
   pageCount: number
+  /** Scanlation groups credited on this chapter; empty when none are. */
+  groups: Array<{ slug: string; name: string }>
 }
 
 export interface ViewerSeriesState {
@@ -97,6 +100,9 @@ export const chapterRows = async (
   overrides: EntitlementOverrides | null = null,
 ): Promise<ChapterRowData[]> => {
   const rows = await chapterList(db, seriesId, 'desc')
+  // One extra query for the whole list rather than one per row: the credit is rendered on
+  // every chapter, and a per-row lookup on a series with 1,200 chapters is 1,200 queries.
+  const credits = await groupsForChapters(rows.map((c) => c.id))
   return rows.map((c) => {
     const access = {
       state: c.state,
@@ -113,6 +119,10 @@ export const chapterRows = async (
       lock: lock === 'early_access' || lock === 'premium' ? lock : 'none',
       canRead: canReadChapter(user, access, { overrides, now }),
       pageCount: c.pageCount,
+      groups: (credits.get(c.id) ?? []).map((g: { slug: string; name: string }) => ({
+        slug: g.slug,
+        name: g.name,
+      })),
     }
   })
 }

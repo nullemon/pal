@@ -314,6 +314,14 @@ export function ChapterTable({
                           {messages.series.earlyAccessBadge}
                         </span>
                       ) : null}
+                      {/* The scanlation credit. Shown next to the title rather than in its own
+                          column because most chapters have one group and a column of mostly
+                          identical values costs width the title needs on a phone. */}
+                      {c.groups.length > 0 ? (
+                        <span className="hidden shrink-0 truncate text-[12px] text-fg-subtle sm:inline">
+                          {c.groups.map((g) => g.name).join(', ')}
+                        </span>
+                      ) : null}
                     </span>
                     {c.publishedAt ? (
                       <RelativeTime

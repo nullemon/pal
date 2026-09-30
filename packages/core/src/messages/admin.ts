@@ -2736,6 +2736,34 @@ export const adminMessages = {
   },
   /** Admin → System → Remote: API keys for machine callers. */
   /** Admin -> Chapters -> a chapter -> Pages (components/admin/client/PageEditor). */
+  /** Admin -> Content -> Groups (components/admin/server/groups.ts). */
+  groupsAdmin: {
+    navLabel: 'Groups',
+    title: 'Scanlation groups',
+    subtitle: 'The groups whose work you host, and the credit shown on their chapters.',
+    empty: 'No groups yet.',
+    nameLabel: 'Name',
+    namePlaceholder: 'Group name',
+    descriptionLabel: 'Description',
+    create: 'Add group',
+    save: 'Save',
+    cancel: 'Cancel',
+    edit: 'Edit',
+    remove: 'Remove',
+    confirmRemove: 'Remove this group? Chapters keep their credit if you add it back.',
+    chapters: '{n} chapters',
+    chaptersOne: '1 chapter',
+    created: 'Group added.',
+    updated: 'Group updated.',
+    removed: 'Group removed.',
+    failed: 'That did not work.',
+    /** Said where an operator is deciding whether this matters. */
+    why: 'Crediting the group is the convention scanlations are shared under, and some groups require it.',
+    assign: 'Credit to group',
+    assignHint: 'Select chapters, then choose the groups that scanlated them.',
+    assigned: 'Credit updated.',
+    none: 'No credit',
+  },
   pageEditor: {
     navLabel: 'Pages',
     title: 'Pages',

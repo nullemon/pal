@@ -4,6 +4,7 @@ import { bulkActionSchema } from '@/components/admin/schemas'
 import { audit } from '@/components/admin/server/audit'
 import { purgeCatalog } from '@/components/admin/server/cache'
 import { publishChapters, scheduleChapters } from '@/components/admin/server/chapters'
+import { setChapterGroups } from '@/components/admin/server/groups'
 import { startWatermarkRun, WatermarkRunBusyError } from '@/components/admin/server/watermark'
 import { fail, ok, parseJson, withPermission } from '@/lib/auth'
 
@@ -55,6 +56,12 @@ export const POST = withPermission('chapter.update', async (request, _ctx, user)
           updatedAt: now,
         })
         .where(inArray(chapters.id, body.ids))
+      affected = body.ids
+      break
+    // Replaces the credits rather than adding to them: the picker sends the whole answer, and
+    // merging would make removing a wrong credit impossible from the only screen that sets one.
+    case 'set_groups':
+      await setChapterGroups(body.ids, body.groupIds, db)
       affected = body.ids
       break
     case 'delete':

@@ -81,6 +81,15 @@ export const adminNav: readonly AdminNavGroup[] = [
         icon: 'tags',
         permission: 'series.read',
       },
+      // The scanlation groups whose work is hosted, and the credit on their chapters. Listing
+      // is `series.read` so an uploader can credit a chapter; creating a group is
+      // `series.update`, enforced on the API rather than by hiding the item.
+      {
+        label: adminMessages.groupsAdmin.navLabel,
+        href: '/admin/groups',
+        icon: 'users',
+        permission: 'series.read',
+      },
       // Duplicate detection (docs/09 legacy import): pairs that look like one work under two
       // rows. Listing is `series.read`; the merge behind it is `series.delete`.
       {
