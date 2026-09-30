@@ -1,8 +1,10 @@
 import { adminMessages } from '@palscans/core/messages/admin'
+import { permissionsFor } from '@palscans/core/permissions'
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import type { ReactNode } from 'react'
 import { AdminShell } from '@/components/admin/AdminShell'
+import { CommandPalette } from '@/components/admin/client/CommandPalette'
 import { withPermission } from '@/lib/auth'
 import { readAccessSetting } from '@/lib/auth/invites'
 import { findUserById } from '@/lib/auth/users'
@@ -27,5 +29,13 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     // reason reads as the panel refusing you rather than asking you for one more step.
     if (!row?.totpEnabledAt) redirect('/me/security?totp=required#totp')
   }
-  return <AdminShell user={user}>{children}</AdminShell>
+  // Already resolved onto the user by `withPermission`, overrides included; falling back to
+  // the compiled bundle matches how `can()` reads it.
+  const permissions = [...(user.permissions ?? permissionsFor(user.role))]
+  return (
+    <AdminShell user={user}>
+      <CommandPalette permissions={permissions} />
+      {children}
+    </AdminShell>
+  )
 }

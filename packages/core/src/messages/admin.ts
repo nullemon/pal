@@ -2738,6 +2738,19 @@ export const adminMessages = {
   /** Admin -> Chapters -> a chapter -> Pages (components/admin/client/PageEditor). */
   /** Admin -> Content -> Groups (components/admin/server/groups.ts). */
   /** Admin -> Content -> People (components/admin/server/people.ts). */
+  /** The ⌘K palette (components/admin/client/CommandPalette). */
+  palette: {
+    open: 'Search',
+    placeholder: 'Search series, chapters, users, screens…',
+    hint: 'Press ⌘K, or Ctrl+K',
+    empty: 'Nothing matches.',
+    screens: 'Screens',
+    series: 'Series',
+    chapters: 'Chapters',
+    users: 'Users',
+    searching: 'Searching…',
+    close: 'Close',
+  },
   peopleAdmin: {
     navLabel: 'People',
     title: 'Authors and artists',
