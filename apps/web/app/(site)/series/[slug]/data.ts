@@ -1,4 +1,5 @@
 import { canReadChapter, chapterLock, type EntitlementOverrides } from '@palscans/core'
+import { DEFAULT_CHAPTER_LANGUAGE } from '@palscans/core/languages'
 import {
   bookmarks,
   chapterList,
@@ -9,6 +10,7 @@ import {
   readingProgress,
   recommendedSeries,
   seriesBySlug,
+  seriesLanguages,
   seriesRank,
 } from '@palscans/db'
 import { and, eq } from 'drizzle-orm'
@@ -98,8 +100,10 @@ export const chapterRows = async (
   now: Date,
   /** `settings.entitlements` overrides (docs/17 §B) — a free feature unlocks the row. */
   overrides: EntitlementOverrides | null = null,
+  /** Which translation to list. One language at a time: 1,1,2,2,3 is not a chapter list. */
+  language: string = DEFAULT_CHAPTER_LANGUAGE,
 ): Promise<ChapterRowData[]> => {
-  const rows = await chapterList(db, seriesId, 'desc')
+  const rows = await chapterList(db, seriesId, 'desc', { language })
   // One extra query for the whole list rather than one per row: the credit is rendered on
   // every chapter, and a per-row lookup on a series with 1,200 chapters is 1,200 queries.
   const credits = await groupsForChapters(rows.map((c) => c.id))
@@ -129,3 +133,6 @@ export const chapterRows = async (
 
 export const loadRank = (seriesId: number) => seriesRank(db, seriesId)
 export const loadRecommended = (seriesId: number) => recommendedSeries(db, seriesId, 6)
+
+/** Which translations this series actually has, most chapters first (migration 9044). */
+export const loadSeriesLanguages = (seriesId: number) => seriesLanguages(db, seriesId)

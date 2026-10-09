@@ -308,6 +308,7 @@ export const adminMessages = {
         'Drop folders or CBZ archives. Chapter numbers are parsed from names — check them before uploading.',
       series: 'Series',
       pickSeries: 'Pick a series…',
+      language: 'Language',
       dropzone: 'Drop chapter folders or CBZ/ZIP files here',
       dropzoneHint:
         'One folder or archive per chapter. Images are natural-sorted; nothing leaves your browser until you click Upload.',

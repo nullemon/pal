@@ -86,6 +86,11 @@ export const chapters = pgTable(
     volume: smallint('volume'),
     title: text('title'),
     state: chapterState('state').notNull().default('draft'),
+    /**
+     * BCP-47-ish language tag (migration 9044). `en` for everything uploaded before it, and
+     * the default for everything after, so a single-language site never has to think about it.
+     */
+    language: text('language').notNull().default('en'),
     isPremium: boolean('is_premium').notNull().default(false),
     earlyAccessUntil: timestamptz('early_access_until'), // premium-only window before it goes free
     publishedAt: timestamptz('published_at'),
@@ -99,7 +104,14 @@ export const chapters = pgTable(
     deletedAt: deletedAt(),
   },
   (t) => [
-    unique('chapters_series_id_number_unique').on(t.seriesId, t.number),
+    // One chapter N *per language*: the old `(series_id, number)` constraint made a German
+    // chapter 1 beside the English one impossible, which is the whole feature.
+    unique('chapters_series_number_language_unique').on(t.seriesId, t.number, t.language),
+    // The reader's shape: this series, this language, by number — the chapter list and both
+    // neighbour lookups.
+    index('chapters_series_language_number_idx')
+      .on(t.seriesId, t.language, t.number.desc())
+      .where(sql`${t.deletedAt} IS NULL`),
     index('chapters_series_number_idx')
       .on(t.seriesId, t.number.desc())
       .where(sql`${t.deletedAt} IS NULL`),

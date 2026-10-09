@@ -91,7 +91,10 @@ export const writeChapter = async (
       .insert(chapters)
       .values({ seriesId, number, state: 'draft', ...base })
       .onConflictDoUpdate({
-        target: [chapters.seriesId, chapters.number],
+        // Must name every column of the unique index or Postgres rejects the conflict
+        // target outright — which, when migration 9044 added `language` to it, silently
+        // turned every legacy import into zero imported chapters.
+        target: [chapters.seriesId, chapters.number, chapters.language],
         set: base,
       })
       .returning({ id: chapters.id })

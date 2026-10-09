@@ -67,6 +67,8 @@ export function SeriesA({
   now,
   sort,
   chapters,
+  language,
+  languages,
   rank,
   recommended,
   state,
@@ -297,6 +299,8 @@ export function SeriesA({
                 read filter never fit the 320px rail beside it. */}
             <section aria-labelledby="chapters-title" className="min-w-0">
               <ChapterTable
+                language={language}
+                languages={languages}
                 seriesSlug={series.slug}
                 chapters={chapters}
                 readIds={state.readIds}

@@ -1,3 +1,4 @@
+import { normaliseLanguage } from '@palscans/core/languages'
 import { fmt, messages } from '@palscans/core/messages'
 import { adminMessages } from '@palscans/core/messages/admin'
 import { chapters, getDb, series } from '@palscans/db'
@@ -61,6 +62,9 @@ export const POST = withPermission('chapter.create', async (request, _ctx, user)
   const parsed = await parseJson(request, uploadIntentSchema)
   if (!parsed.ok) return parsed.response
   const { seriesId } = parsed.data
+  // Normalised rather than trusted: this arrives from a dropdown, an API client or a hand
+  // -written request, and an unrecognised tag becomes English instead of failing the upload.
+  const language = normaliseLanguage(parsed.data.language)
   const db = await getDb()
   const [s] = await db
     .select({ id: series.id })
@@ -85,6 +89,9 @@ export const POST = withPermission('chapter.create', async (request, _ctx, user)
             and(
               eq(chapters.seriesId, seriesId),
               eq(chapters.number, ch.number),
+              // Without this a German chapter 1 matches the English one and the operator is
+              // offered "replace its pages" for a chapter in another language.
+              eq(chapters.language, language),
               isNull(chapters.deletedAt),
             ),
           )
@@ -122,6 +129,7 @@ export const POST = withPermission('chapter.create', async (request, _ctx, user)
               seriesId,
               number: ch.number,
               title: ch.title ?? null,
+              language,
               state: 'draft',
               uploadedBy: user.id,
             })

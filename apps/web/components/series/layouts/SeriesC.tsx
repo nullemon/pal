@@ -50,6 +50,8 @@ export function SeriesC({
   now,
   sort,
   chapters,
+  language,
+  languages,
   rank,
   recommended,
   state,
@@ -246,6 +248,8 @@ export function SeriesC({
                 </span>
               </div>
               <ChapterTable
+                language={language}
+                languages={languages}
                 seriesSlug={series.slug}
                 chapters={chapters}
                 readIds={state.readIds}

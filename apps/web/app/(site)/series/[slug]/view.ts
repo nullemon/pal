@@ -1,3 +1,4 @@
+import { normaliseLanguage, resolveReaderLanguage } from '@palscans/core/languages'
 import { fmt, messages } from '@palscans/core/messages'
 import { z } from 'zod'
 import { cachedAds, cachedLayoutsSetting } from '@/components/discovery/cached'
@@ -9,7 +10,14 @@ import { getAppUser } from '@/lib/comments/viewer'
 import { siteFormatting } from '@/lib/copy/settings'
 import { entitlementGate } from '@/lib/entitlements'
 import { getEnv } from '@/lib/env'
-import { chapterRows, getSeries, loadRank, loadRecommended, viewerSeriesState } from './data'
+import {
+  chapterRows,
+  getSeries,
+  loadRank,
+  loadRecommended,
+  loadSeriesLanguages,
+  viewerSeriesState,
+} from './data'
 
 const searchSchema = z.object({ sort: z.enum(COMMENT_SORTS).catch('best') })
 
@@ -30,8 +38,15 @@ export async function loadSeriesView(
   const now = new Date()
   const user = await getAppUser()
   const gate = await entitlementGate()
+  // Which translations exist, then which one to show: the reader's `?lang=`, else English,
+  // else whatever this series has most of — so a series with no English still lists something.
+  const languages = await loadSeriesLanguages(series.id)
+  const language = resolveReaderLanguage(
+    languages.map((l: { language: string }) => l.language),
+    normaliseLanguage(typeof searchParams.lang === 'string' ? searchParams.lang : undefined),
+  )
   const [chapters, rank, recommended, state, selected, ads, formatting] = await Promise.all([
-    chapterRows(series.id, user, now, gate.overrides),
+    chapterRows(series.id, user, now, gate.overrides, language),
     loadRank(series.id),
     loadRecommended(series.id),
     viewerSeriesState(user, series.id),
@@ -53,6 +68,8 @@ export async function loadSeriesView(
     now,
     sort,
     chapters,
+    language,
+    languages,
     rank,
     recommended,
     state,

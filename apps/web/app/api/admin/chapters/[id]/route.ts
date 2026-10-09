@@ -1,3 +1,4 @@
+import { normaliseLanguage } from '@palscans/core/languages'
 import { chapters, getDb } from '@palscans/db'
 import { eq } from 'drizzle-orm'
 import { chapterPatchSchema } from '@/components/admin/schemas'
@@ -43,6 +44,7 @@ export const PATCH = withPermission<{ id: string }>(
         ...(body.number !== undefined ? { number: body.number } : {}),
         ...(body.title !== undefined ? { title: body.title } : {}),
         ...(body.volume !== undefined ? { volume: body.volume } : {}),
+        ...(body.language !== undefined ? { language: normaliseLanguage(body.language) } : {}),
         ...(body.isPremium !== undefined ? { isPremium: body.isPremium } : {}),
         ...(body.earlyAccessUntil !== undefined
           ? { earlyAccessUntil: body.earlyAccessUntil ? new Date(body.earlyAccessUntil) : null }

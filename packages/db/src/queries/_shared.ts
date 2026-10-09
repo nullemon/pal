@@ -48,6 +48,7 @@ export const chapterRowColumns = {
   publishedAt: chapters.publishedAt,
   pageCount: chapters.pageCount,
   viewCount: chapters.viewCount,
+  language: chapters.language,
 } as const
 
 export const clampPage = (page: number | undefined, pageSize: number | undefined, max = 100) => ({

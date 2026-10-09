@@ -111,6 +111,8 @@ export function SeriesE({
   now,
   sort,
   chapters,
+  language,
+  languages,
   rank,
   recommended,
   state,
@@ -318,6 +320,8 @@ export function SeriesE({
             }
           >
             <ChapterTable
+              language={language}
+              languages={languages}
               seriesSlug={series.slug}
               chapters={chapters}
               readIds={state.readIds}

@@ -5,6 +5,7 @@ import {
   type EntitlementArg,
   type SessionUser,
 } from '@palscans/core'
+import { DEFAULT_CHAPTER_LANGUAGE } from '@palscans/core/languages'
 import {
   type ChapterPageRow,
   type ChapterWithPages,
@@ -115,14 +116,19 @@ const loadBundle = async (
   seriesId: number,
   number: number,
   includeUnpublished: boolean,
+  language: string,
 ): Promise<ChapterBundle | null> => {
   const db = await getDb()
-  const c = await chapterWithPages(db, seriesId, number, { includeUnpublished })
+  const c = await chapterWithPages(db, seriesId, number, { includeUnpublished, language })
   return c ? toBundle(c) : null
 }
 
+// `language` is an argument, not part of the key prefix: unstable_cache keys on the argument
+// list, so German and English chapter 12 are separate entries rather than one overwriting the
+// other — which would serve whichever was read most recently to everybody.
 const cachedBundle = unstable_cache(
-  (seriesId: number, number: number) => loadBundle(seriesId, number, false),
+  (seriesId: number, number: number, language: string) =>
+    loadBundle(seriesId, number, false, language),
   ['reader', 'chapter'],
   { revalidate: CHAPTER_REVALIDATE, tags: ['catalog'] },
 )
@@ -137,9 +143,13 @@ export const readerChapter = cache(
     seriesId: number,
     number: number,
     includeUnpublished: boolean,
+    language: string = DEFAULT_CHAPTER_LANGUAGE,
   ): Promise<ChapterBundle | null> => {
-    if (includeUnpublished) return loadBundle(seriesId, number, true)
-    return (await cachedBundle(seriesId, number)) ?? loadBundle(seriesId, number, false)
+    if (includeUnpublished) return loadBundle(seriesId, number, true, language)
+    return (
+      (await cachedBundle(seriesId, number, language)) ??
+      loadBundle(seriesId, number, false, language)
+    )
   },
 )
 
@@ -168,9 +178,15 @@ export interface ChapterListEntry {
 
 /** Every published chapter of the series, ascending, for the chapter select. */
 export const readerChapterList = cache(
-  async (seriesId: number, now: Date): Promise<ChapterListEntry[]> => {
+  async (
+    seriesId: number,
+    now: Date,
+    language: string = DEFAULT_CHAPTER_LANGUAGE,
+  ): Promise<ChapterListEntry[]> => {
     const db = await getDb()
-    const rows = await chapterList(db, seriesId, 'asc')
+    // The chapter select beside the reader lists this language only; a mixed list numbered
+    // 1,1,2,2,3 is not something a reader can navigate.
+    const rows = await chapterList(db, seriesId, 'asc', { language })
     return rows.map((r) => ({
       id: r.id,
       number: Number(r.number),

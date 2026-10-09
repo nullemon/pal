@@ -17,10 +17,17 @@ import type { ReaderSiteSettings } from './settings'
 export const chapterLabel = (n: number) =>
   fmt(messages.readerUi.chapterTitle, { n: formatChapterNumber(n) })
 
-export const toLink = (slug: string, c: ChapterListEntry, locked: boolean): ChapterLink => ({
+export const toLink = (
+  slug: string,
+  c: ChapterListEntry,
+  locked: boolean,
+  language?: string,
+): ChapterLink => ({
   number: c.number,
   label: chapterLabel(c.number),
-  href: chapterHref(slug, c.number),
+  // Carrying the language here is what keeps a German reader in German: every chapter link
+  // on the page — prev, next and the whole select — is built from this one function.
+  href: chapterHref(slug, c.number, language),
   locked,
 })
 
@@ -53,6 +60,8 @@ export interface ReaderSeriesRow {
 }
 
 export interface BuildReaderDataArgs {
+  /** The translation being read; every link built below stays in it. */
+  language?: string
   user: SessionUser | null
   series: ReaderSeriesRow
   bundle: ChapterBundle
@@ -83,7 +92,9 @@ export interface BuiltReaderData {
  */
 export const buildReaderData = async (args: BuildReaderDataArgs): Promise<BuiltReaderData> => {
   const { user, series, bundle, list, gate, site, now } = args
-  const links = list.map((c) => toLink(series.slug, c, lockedForViewer(gate, user, now, c.lock)))
+  const links = list.map((c) =>
+    toLink(series.slug, c, lockedForViewer(gate, user, now, c.lock), args.language),
+  )
   const byNumber = new Map(links.map((l) => [l.number, l]))
   const prev = bundle.prev ? (byNumber.get(bundle.prev.number) ?? null) : null
   const next = bundle.next ? (byNumber.get(bundle.next.number) ?? null) : null

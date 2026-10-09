@@ -1,4 +1,5 @@
-import { and, asc, desc, eq, gt, lt } from 'drizzle-orm'
+import { DEFAULT_CHAPTER_LANGUAGE } from '@palscans/core/languages'
+import { and, asc, count, desc, eq, gt, lt } from 'drizzle-orm'
 import type { Db } from '../client.js'
 import { chapterPages, chapters, series } from '../schema/index.js'
 import { chapterRowColumns, publishedChapters, publishedSeries } from './_shared.js'
@@ -10,6 +11,8 @@ export interface ChapterListOptions {
   includeUnpublished?: boolean
   limit?: number
   offset?: number
+  /** Restrict to one translation. Absent means every language. */
+  language?: string
 }
 
 export type ChapterListRow = {
@@ -24,6 +27,7 @@ export type ChapterListRow = {
   publishedAt: Date | null
   pageCount: number
   viewCount: number
+  language: string
 }
 
 /** The chapter list on a series page (docs/06). Newest first by default. */
@@ -33,9 +37,12 @@ export const chapterList = (
   sort: ChapterSort = 'desc',
   opts: ChapterListOptions = {},
 ): Promise<ChapterListRow[]> => {
+  // Absent means every language — the admin lists and the legacy callers. The reader always
+  // passes one, because mixing translations into one numbered list is unreadable.
+  const lang = opts.language ? eq(chapters.language, opts.language) : undefined
   const where = opts.includeUnpublished
-    ? eq(chapters.seriesId, seriesId)
-    : and(eq(chapters.seriesId, seriesId), publishedChapters())
+    ? and(eq(chapters.seriesId, seriesId), lang)
+    : and(eq(chapters.seriesId, seriesId), publishedChapters(), lang)
   const q = db
     .select(chapterRowColumns)
     .from(chapters)
@@ -65,6 +72,11 @@ export interface ChapterWithPages {
 
 export interface ChapterWithPagesOptions {
   includeUnpublished?: boolean
+  /**
+   * Which translation to read. Defaults to English, so every URL that existed before
+   * migration 9044 resolves to exactly the chapter it always did.
+   */
+  language?: string
 }
 
 /**
@@ -80,18 +92,30 @@ export const chapterWithPages = async (
 ): Promise<ChapterWithPages | null> => {
   const stateFilter = opts.includeUnpublished ? undefined : publishedChapters()
   const seriesFilter = opts.includeUnpublished ? undefined : publishedSeries()
+  // `(series, number)` stopped identifying one chapter when translations arrived; the language
+  // is what makes the lookup single-valued again.
+  const language = opts.language ?? DEFAULT_CHAPTER_LANGUAGE
   const [row] = await db
     .select({ chapter: chapters, series: series })
     .from(chapters)
     .innerJoin(series, eq(series.id, chapters.seriesId))
     .where(
-      and(eq(chapters.seriesId, seriesId), eq(chapters.number, number), stateFilter, seriesFilter),
+      and(
+        eq(chapters.seriesId, seriesId),
+        eq(chapters.number, number),
+        eq(chapters.language, language),
+        stateFilter,
+        seriesFilter,
+      ),
     )
     .limit(1)
   if (!row) return null
 
+  // The language belongs here as much as in the lookup above: without it, Next from a German
+  // chapter 12 lands on whichever chapter 13 exists — usually the English one — and the reader
+  // is silently moved into another language mid-series.
   const neighbourFilter = (cmp: ReturnType<typeof gt>) =>
-    and(eq(chapters.seriesId, seriesId), cmp, stateFilter)
+    and(eq(chapters.seriesId, seriesId), eq(chapters.language, language), cmp, stateFilter)
 
   const [pages, [prev], [next]] = await Promise.all([
     db
@@ -145,3 +169,29 @@ export const latestChapters = (db: Db, limit = 50) =>
     .where(and(publishedChapters(), publishedSeries()))
     .orderBy(desc(chapters.publishedAt), desc(chapters.id))
     .limit(limit)
+
+/**
+ * Which languages a series actually has published chapters in, most chapters first.
+ *
+ * Drives the reader's language switcher, so it lists only translations that exist — a series
+ * with two German chapters offers German, one with none does not, and nobody is sent to an
+ * empty list. Ordering by count puts the main translation first, which is the one most readers
+ * of that series want.
+ */
+export const seriesLanguages = async (
+  db: Db,
+  seriesId: number,
+  opts: { includeUnpublished?: boolean } = {},
+): Promise<Array<{ language: string; chapters: number }>> => {
+  const rows = await db
+    .select({ language: chapters.language, chapters: count(chapters.id) })
+    .from(chapters)
+    .where(
+      opts.includeUnpublished
+        ? eq(chapters.seriesId, seriesId)
+        : and(eq(chapters.seriesId, seriesId), publishedChapters()),
+    )
+    .groupBy(chapters.language)
+    .orderBy(desc(count(chapters.id)), chapters.language)
+  return rows
+}

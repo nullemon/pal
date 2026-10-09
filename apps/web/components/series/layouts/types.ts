@@ -27,6 +27,9 @@ export interface SeriesViewProps {
   /** Comment sort from `?sort=`. */
   sort: CommentSort
   chapters: ChapterRowData[]
+  /** The translation being shown, and every translation this series has (migration 9044). */
+  language: string
+  languages: Array<{ language: string; chapters: number }>
   rank: number | null
   recommended: RecommendedItems
   state: ViewerSeriesState

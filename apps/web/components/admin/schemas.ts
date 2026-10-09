@@ -116,6 +116,7 @@ export const chapterPatchSchema = z
     earlyAccessUntil: z.string().datetime({ offset: true }).nullable(),
     publishedAt: z.string().datetime({ offset: true }).nullable(),
     state: z.enum(['draft', 'ready', 'scheduled', 'published']),
+    language: z.string().max(16),
   })
   .partial()
 
@@ -172,6 +173,12 @@ export const uploadFileSchema = z.object({
 
 export const uploadIntentSchema = z.object({
   seriesId: z.number().int().positive(),
+  /**
+   * The language of everything in this batch (migration 9044). One per upload rather than one
+   * per chapter: a batch is one translator's output, and asking per chapter would be twenty
+   * identical dropdowns. Absent means English, so every existing client keeps working.
+   */
+  language: z.string().max(16).optional(),
   chapters: z
     .array(
       z.object({

@@ -6,6 +6,7 @@ import type {
   PlannedChapter,
   RejectReason,
 } from '@palscans/core/import'
+import { CHAPTER_LANGUAGES, DEFAULT_CHAPTER_LANGUAGE } from '@palscans/core/languages'
 import { fmt, messages } from '@palscans/core/messages'
 import { adminMessages } from '@palscans/core/messages/admin'
 import { Button, cn, useToast } from '@palscans/ui'
@@ -127,6 +128,9 @@ export function Uploader({
   const b = adminMessages.bulkImport
   const { toast } = useToast()
   const [series, setSeries] = useState(preset)
+  // One language for the batch, not one per chapter: an upload is one translator's output,
+  // and a dropdown repeated twenty times is twenty chances to get it wrong.
+  const [language, setLanguage] = useState(DEFAULT_CHAPTER_LANGUAGE)
   const [existing, setExisting] = useState<Existing>([])
   const [chapters, setChapters] = useState<UChapter[]>([])
   const [rejected, setRejected] = useState<Rejection[]>([])
@@ -145,10 +149,16 @@ export function Uploader({
 
   useEffect(() => {
     if (!series) return
-    void api<Existing>(`/api/admin/series/${series.id}/numbers`).then((r) => {
+    // Scoped to the chosen language: without it, uploading German chapter 1 is flagged as a
+    // clash with the English chapter 1 and the operator is asked whether to replace it. The
+    // server already scopes its own check, so this is about not asking a question that has
+    // no right answer.
+    void api<Existing>(
+      `/api/admin/series/${series.id}/numbers?lang=${encodeURIComponent(language)}`,
+    ).then((r) => {
       if (r.ok) setExisting(r.data)
     })
-  }, [series])
+  }, [series, language])
 
   /** Measure and hash the accepted images; the plan already decided order and role. */
   const buildPages = useCallback(
@@ -404,6 +414,7 @@ export function Uploader({
           }>
         }>('/api/upload/intent', {
           seriesId: series.id,
+          language,
           chapters: group.map((c) => ({
             number: Number.parseFloat(c.number),
             title: c.title || null,
@@ -604,6 +615,26 @@ export function Uploader({
               onPick={(s) => setSeries({ id: s.id, title: s.title, slug: s.slug })}
             />
           )}
+          {/* Beside the series rather than per chapter: one upload is one translator's work.
+              Changing it re-checks which numbers are taken, because that answer is per
+              language. */}
+          <div className="mt-3 flex items-center gap-2">
+            <label className="text-[13px] text-fg-muted" htmlFor="upload-language">
+              {m.language}
+            </label>
+            <select
+              id="upload-language"
+              className={`${selectClass} w-56`}
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
+            >
+              {CHAPTER_LANGUAGES.map((l) => (
+                <option key={l.code} value={l.code}>
+                  {l.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </Panel>
 
         {/* biome-ignore lint/a11y/noStaticElementInteractions: drop target; the buttons inside are the keyboard path */}

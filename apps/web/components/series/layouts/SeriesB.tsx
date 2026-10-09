@@ -27,6 +27,8 @@ export function SeriesB({
   now,
   sort,
   chapters,
+  language,
+  languages,
   rank,
   recommended,
   state,
@@ -193,6 +195,8 @@ export function SeriesB({
 
               <div className="order-9 lg:mt-[26px]">
                 <ChapterTable
+                  language={language}
+                  languages={languages}
                   seriesSlug={series.slug}
                   chapters={chapters}
                   readIds={state.readIds}

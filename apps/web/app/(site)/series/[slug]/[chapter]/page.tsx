@@ -1,4 +1,5 @@
 import { can } from '@palscans/core'
+import { normaliseLanguage } from '@palscans/core/languages'
 import { fmt, messages } from '@palscans/core/messages'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
@@ -31,6 +32,8 @@ import { entitlementGate } from '@/lib/entitlements'
 
 interface PageProps {
   params: Promise<{ slug: string; chapter: string }>
+  /** `?lang=` picks the translation; absent is English, as every URL was before 9044. */
+  searchParams: Promise<{ lang?: string }>
 }
 
 /**
@@ -38,21 +41,22 @@ interface PageProps {
  * `chapter-[n]`, so the folder is `[chapter]` and anything that is not `chapter-<number>`
  * is a 404 here.
  */
-const load = async (params: PageProps['params']) => {
+const load = async (params: PageProps['params'], searchParams: PageProps['searchParams']) => {
   const { slug, chapter } = await params
   const number = parseChapterSegment(chapter)
   if (number === null) return null
+  const language = normaliseLanguage((await searchParams).lang)
   const user = await getSessionUser()
   const staff = can(user, 'chapter.read')
   const series = await readerSeries(slug, staff)
   if (!series) return null
-  const bundle = await readerChapter(series.id, number, staff)
+  const bundle = await readerChapter(series.id, number, staff, language)
   if (!bundle) return null
-  return { user, staff, series, bundle }
+  return { user, staff, series, bundle, language }
 }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const ctx = await load(params)
+export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
+  const ctx = await load(params, searchParams)
   if (!ctx) return { title: messages.errors.notFound }
   const now = new Date()
   const gate = await entitlementGate()
@@ -68,26 +72,28 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   })
 }
 
-export default async function ChapterPage({ params }: PageProps) {
-  const ctx = await load(params)
+export default async function ChapterPage({ params, searchParams }: PageProps) {
+  const ctx = await load(params, searchParams)
   if (!ctx) notFound()
-  const { user, series, bundle } = ctx
+  const { user, series, bundle, language } = ctx
   const now = new Date()
   const [gate, list, site] = await Promise.all([
     entitlementGate(),
-    readerChapterList(series.id, now),
+    readerChapterList(series.id, now, language),
     cachedReaderSiteSettings(),
   ])
   const readable = viewerCanRead(user, bundle.chapter, { overrides: gate.overrides, now })
   const lock = lockOf(bundle.chapter, now)
 
   if (!readable) {
-    const links = list.map((c) => toLink(series.slug, c, lockedForViewer(gate, user, now, c.lock)))
+    const links = list.map((c) =>
+      toLink(series.slug, c, lockedForViewer(gate, user, now, c.lock), language),
+    )
     const byNumber = new Map(links.map((l) => [l.number, l]))
     const prev = bundle.prev ? (byNumber.get(bundle.prev.number) ?? null) : null
     const next = bundle.next ? (byNumber.get(bundle.next.number) ?? null) : null
     const label = chapterLabel(bundle.chapter.number)
-    const returnTo = encodeURIComponent(chapterHref(series.slug, bundle.chapter.number))
+    const returnTo = encodeURIComponent(chapterHref(series.slug, bundle.chapter.number, language))
     const coverUrl = series.coverKey ? storageUrl(series.coverKey) : null
     return (
       <>
@@ -128,6 +134,7 @@ export default async function ChapterPage({ params }: PageProps) {
     site,
     now,
     pages,
+    language,
   })
   const relLinks = (
     <>

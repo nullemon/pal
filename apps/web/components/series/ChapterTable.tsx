@@ -1,6 +1,7 @@
 'use client'
 
 import { type ChapterLabelStyle, formatChapterLabel } from '@palscans/core/formatting'
+import { chapterLanguage, DEFAULT_CHAPTER_LANGUAGE } from '@palscans/core/languages'
 import { fmt, messages } from '@palscans/core/messages'
 import { cn, RelativeTime, useFormatting } from '@palscans/ui'
 import { Check, Lock, Search } from 'lucide-react'
@@ -11,6 +12,9 @@ import { countdownSeconds } from '@/lib/countdown'
 export interface ChapterTableProps {
   seriesSlug: string
   chapters: ChapterRowData[]
+  /** The translation shown, and the ones available (migration 9044). */
+  language?: string
+  languages?: Array<{ language: string; chapters: number }>
   readIds: number[]
   continueId: number | null
   /** Server time, ISO — the first render uses it so countdowns match between server and client. */
@@ -43,6 +47,8 @@ const FINE_TICK_WITHIN_MS = 3_600_000
  */
 export function ChapterTable({
   seriesSlug,
+  language = DEFAULT_CHAPTER_LANGUAGE,
+  languages = [],
   chapters,
   readIds,
   continueId,
@@ -153,6 +159,33 @@ export function ChapterTable({
         <h2 id="chapters-title" className="m-0 font-display text-xl font-bold tracking-[-0.01em]">
           {messages.series.chapters}
         </h2>
+        {/* Only rendered when this series actually has more than one translation, so a
+            single-language catalogue shows nothing new at all. Plain links rather than a
+            select: they are crawlable, and each language's chapter list is a page worth
+            indexing on its own. */}
+        {languages.length > 1 ? (
+          <nav className="flex flex-wrap items-center gap-1" aria-label={messages.series.chapters}>
+            {languages.map((l) => {
+              const active = l.language === language
+              const href =
+                l.language === DEFAULT_CHAPTER_LANGUAGE
+                  ? `/series/${seriesSlug}`
+                  : `/series/${seriesSlug}?lang=${l.language}`
+              return (
+                <a
+                  key={l.language}
+                  href={href}
+                  aria-current={active ? 'true' : undefined}
+                  className={`rounded-full px-2.5 py-1 text-[12px] font-semibold ${
+                    active ? 'bg-brand text-brand-ink' : 'bg-surface-2 text-fg-muted hover:text-fg'
+                  }`}
+                >
+                  {chapterLanguage(l.language).native}
+                </a>
+              )
+            })}
+          </nav>
+        ) : null}
         <span className="text-[13px] font-medium text-fg-muted">
           {fmt(messages.seriesDetail.chapterSummary, {
             n: chapters.length.toLocaleString('en'),
@@ -271,7 +304,9 @@ export function ChapterTable({
               return (
                 <a
                   key={c.id}
-                  href={`/series/${seriesSlug}/chapter-${Number.parseFloat(c.number.toFixed(3))}`}
+                  href={`/series/${seriesSlug}/chapter-${Number.parseFloat(c.number.toFixed(3))}${
+                    language === DEFAULT_CHAPTER_LANGUAGE ? '' : `?lang=${language}`
+                  }`}
                   aria-current={c.id === continueId ? 'true' : undefined}
                   className={cn(
                     'flex h-14 items-center px-4 text-sm text-fg transition-colors hover:bg-brand/8 md:h-10',

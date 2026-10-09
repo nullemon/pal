@@ -218,6 +218,13 @@
       "when": 1788380048000,
       "tag": "9042_social",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1788380052000,
+      "tag": "9044_chapter_language",
+      "breakpoints": true
     }
   ]
 }

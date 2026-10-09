@@ -94,6 +94,10 @@
       "types": "./dist/templates.d.ts",
       "default": "./dist/templates.js"
     },
+    "./languages": {
+      "types": "./dist/languages.d.ts",
+      "default": "./dist/languages.js"
+    },
     "./metadata": {
       "types": "./dist/metadata/anilist.d.ts",
       "default": "./dist/metadata/anilist.js"

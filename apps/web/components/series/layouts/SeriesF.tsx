@@ -44,6 +44,8 @@ export function SeriesF({
   now,
   sort,
   chapters,
+  language,
+  languages,
   rank,
   recommended,
   state,
@@ -299,6 +301,8 @@ export function SeriesF({
             </div>
             <div className="px-4 py-3">
               <ChapterTable
+                language={language}
+                languages={languages}
                 seriesSlug={series.slug}
                 chapters={chapters}
                 readIds={state.readIds}
