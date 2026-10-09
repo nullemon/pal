@@ -639,6 +639,7 @@ export const messages = {
   },
   // P3 · reader — appended
   readerUi: {
+    language: 'Language',
     title: 'Reader',
     backToSeries: 'Back to {title}',
     modeSingle: 'Single page',

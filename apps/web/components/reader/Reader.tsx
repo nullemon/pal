@@ -82,6 +82,12 @@ export function Reader({ data, comments }: ReaderProps) {
   )
   const [scrollPct, setScrollPct] = useState(0)
   const [chrome, setChrome] = useState(true)
+  /**
+   * The third state. `chrome` only ever chose between the full bar and the floating pill, so
+   * there was no way to clear the page: the pill sits over the artwork and the reader is
+   * stuck with it. `navHidden` removes both, and the hint in the corner brings them back.
+   */
+  const [navHidden, setNavHidden] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
@@ -301,7 +307,12 @@ export function Reader({ data, comments }: ReaderProps) {
           return
         case 'h':
         case 'H':
-          setChrome((v) => !v)
+          // bar -> pill -> hidden -> bar
+          if (navHidden) {
+            setNavHidden(false)
+            setChrome(true)
+          } else if (chrome) setChrome(false)
+          else setNavHidden(true)
           return
         case '?':
           setShortcutsOpen(true)
@@ -328,6 +339,9 @@ export function Reader({ data, comments }: ReaderProps) {
   // Strip: hide the chrome on scroll-down, bring it back on scroll-up.
   const onStripScroll = useCallback((s: { pct: number; delta: number; top: number }) => {
     setScrollPct(s.pct)
+    // Dismissed stays dismissed: scrolling up is not a request to bring it back, and
+    // overriding that makes the hide button look broken.
+    if (navHidden) return
     if (s.delta > 12 && s.top > 80) setChrome(false)
     else if (s.delta < -12) setChrome(true)
   }, [])
@@ -462,12 +476,15 @@ export function Reader({ data, comments }: ReaderProps) {
         </footer>
       ) : (
         <BottomBar
-          visible={chrome}
+          visible={chrome && !navHidden}
           prev={data.prev}
           next={data.next}
           chapters={data.chapters}
           currentChapter={data.chapter.number}
           height={bottomH}
+          languages={data.languages}
+          language={data.language}
+          onHide={() => setNavHidden(true)}
         />
       )}
 
@@ -495,13 +512,22 @@ export function Reader({ data, comments }: ReaderProps) {
       ) : null}
 
       <FloatingPill
-        visible={!chrome}
+        visible={!chrome && !navHidden}
+        languages={data.languages}
+        language={data.language}
+        onHide={() => setNavHidden(true)}
         prev={data.prev}
         next={data.next}
         chapters={data.chapters}
         currentChapter={data.chapter.number}
       />
-      <ChromeHint visible={!chrome} />
+      <ChromeHint
+        visible={!chrome || navHidden}
+        onShow={() => {
+          setNavHidden(false)
+          setChrome(true)
+        }}
+      />
       <Skyscrapers ads={data.ads} />
 
       <SettingsSheet

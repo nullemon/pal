@@ -95,6 +95,13 @@ export interface ReaderData {
   prev: ChapterLink | null
   next: ChapterLink | null
   chapters: ChapterLink[]
+  /**
+   * The translation being read and the ones this series has (migration 9044). Empty or a
+   * single entry means the reader shows no language control at all, which is every series
+   * on a single-language site.
+   */
+  language: string
+  languages: Array<{ code: string; native: string; href: string }>
   defaults: {
     mode: 'strip' | 'paged'
     background: ReaderBackground

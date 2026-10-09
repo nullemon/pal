@@ -239,6 +239,50 @@ export function TopBar(p: TopBarProps) {
 
 /* ---------------------------------------------------------------- bottom bar */
 
+export interface ReaderLanguage {
+  code: string
+  native: string
+  href: string
+}
+
+/**
+ * Switch translation without leaving the page.
+ *
+ * Rendered only when the series genuinely has more than one, so a single-language
+ * catalogue sees nothing new. Each link goes to the *same chapter number* in that language
+ * where it exists — switching on chapter 40 opens chapter 40, not chapter 1 — and to the
+ * series page where it does not, which is honest rather than a dead link.
+ */
+export function LanguagePicker({
+  languages,
+  current,
+  compact,
+}: {
+  languages: ReaderLanguage[]
+  current: string
+  compact?: boolean
+}) {
+  if (languages.length < 2) return null
+  return (
+    <div className="flex items-center gap-1" aria-label={messages.readerUi.language}>
+      {languages.map((l) => (
+        <a
+          key={l.code}
+          href={l.href}
+          aria-current={l.code === current ? 'true' : undefined}
+          className={`rounded-full px-2 font-semibold ${compact ? 'h-7 text-[11px] leading-7' : 'h-8 text-[12px] leading-8'} ${
+            l.code === current
+              ? 'bg-brand text-brand-ink'
+              : 'bg-surface-2 text-fg-muted hover:text-fg'
+          }`}
+        >
+          {l.native}
+        </a>
+      ))}
+    </div>
+  )
+}
+
 export interface BottomBarProps {
   visible: boolean
   prev: ChapterLink | null
@@ -246,6 +290,10 @@ export interface BottomBarProps {
   chapters: ChapterLink[]
   currentChapter: number
   height: number
+  languages?: ReaderLanguage[]
+  language?: string
+  /** Dismiss the bar entirely — the third state, for readers with no keyboard. */
+  onHide?: () => void
 }
 
 export function BottomBar(p: BottomBarProps) {
@@ -264,6 +312,22 @@ export function BottomBar(p: BottomBarProps) {
         className="min-w-0 flex-1 md:w-[220px] md:flex-none"
       />
       <ChapterNavLink link={p.next} dir="next" />
+      {p.languages && p.language ? (
+        <div className="hidden md:flex">
+          <LanguagePicker languages={p.languages} current={p.language} />
+        </div>
+      ) : null}
+      {p.onHide ? (
+        <button
+          type="button"
+          onClick={p.onHide}
+          aria-label={messages.readerUi.hideControls}
+          title={messages.readerUi.hideControls}
+          className="ml-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-fg-muted hover:bg-surface-2 hover:text-fg"
+        >
+          ✕
+        </button>
+      ) : null}
     </nav>
   )
 }
@@ -316,6 +380,10 @@ export function FloatingPill(p: {
   next: ChapterLink | null
   chapters: ChapterLink[]
   currentChapter: number
+  languages?: ReaderLanguage[]
+  language?: string
+  /** Dismiss it. The pill sits over the page, so there has to be a way to get rid of it. */
+  onHide?: () => void
 }) {
   return (
     <nav
@@ -335,6 +403,25 @@ export function FloatingPill(p: {
       />
       <span aria-hidden="true" className="block h-6 w-px bg-white/[.08]" />
       <ChapterNavLink link={p.next} dir="next" pill />
+      {p.languages && p.language && p.languages.length > 1 ? (
+        <>
+          <span aria-hidden="true" className="hidden h-6 w-px bg-white/[.08] md:block" />
+          <div className="hidden md:flex">
+            <LanguagePicker languages={p.languages} current={p.language} compact />
+          </div>
+        </>
+      ) : null}
+      {p.onHide ? (
+        <button
+          type="button"
+          onClick={p.onHide}
+          aria-label={messages.readerUi.hideControls}
+          title={messages.readerUi.hideControls}
+          className="ml-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-fg-muted hover:bg-surface-2 hover:text-fg"
+        >
+          ✕
+        </button>
+      ) : null}
     </nav>
   )
 }
@@ -380,11 +467,16 @@ export function Kbd({ children }: { children: React.ReactNode }) {
   )
 }
 
-export function ChromeHint({ visible }: { visible: boolean }) {
+export function ChromeHint({ visible, onShow }: { visible: boolean; onShow?: () => void }) {
   return (
-    <div
+    // A button, and visible on phones too. It used to be a desktop-only label naming a key,
+    // which left anyone on a touch screen with no way to bring the controls back at all.
+    <button
+      type="button"
+      onClick={onShow}
       aria-hidden={!visible}
-      className={`absolute right-5 top-[15px] z-30 hidden items-center gap-1.5 text-xs font-medium text-fg-muted transition-opacity duration-200 md:flex ${
+      aria-label={messages.readerUi.showControls}
+      className={`absolute right-5 top-[15px] z-30 flex items-center gap-1.5 rounded-full bg-bg/80 px-2 py-1 text-xs font-medium text-fg-muted backdrop-blur-[12px] transition-opacity duration-200 hover:text-fg ${
         visible ? 'opacity-85' : 'pointer-events-none opacity-0'
       }`}
     >
@@ -392,6 +484,6 @@ export function ChromeHint({ visible }: { visible: boolean }) {
         H
       </kbd>
       <span>· {messages.readerUi.showControls}</span>
-    </div>
+    </button>
   )
 }

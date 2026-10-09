@@ -1,5 +1,6 @@
 import type { SessionUser } from '@palscans/core'
 import { type ChapterLock, can } from '@palscans/core'
+import { chapterLanguage, DEFAULT_CHAPTER_LANGUAGE } from '@palscans/core/languages'
 import { fmt, messages } from '@palscans/core/messages'
 import type { EntitlementGate } from '@/lib/entitlements'
 import { chapterHref, formatChapterNumber, seriesHref } from '../params'
@@ -62,6 +63,8 @@ export interface ReaderSeriesRow {
 export interface BuildReaderDataArgs {
   /** The translation being read; every link built below stays in it. */
   language?: string
+  /** Every translation of this series, and whether it has the number being read. */
+  languages?: Array<{ language: string; chapters: number; hasThisNumber: boolean }>
   user: SessionUser | null
   series: ReaderSeriesRow
   bundle: ChapterBundle
@@ -92,6 +95,7 @@ export interface BuiltReaderData {
  */
 export const buildReaderData = async (args: BuildReaderDataArgs): Promise<BuiltReaderData> => {
   const { user, series, bundle, list, gate, site, now } = args
+  const language = args.language ?? DEFAULT_CHAPTER_LANGUAGE
   const links = list.map((c) =>
     toLink(series.slug, c, lockedForViewer(gate, user, now, c.lock), args.language),
   )
@@ -133,6 +137,24 @@ export const buildReaderData = async (args: BuildReaderDataArgs): Promise<BuiltR
     prev,
     next,
     chapters: links,
+    language,
+    // Each entry links to the *same chapter number* in that language when it exists, so
+    // switching language keeps your place instead of dumping you at chapter 1. When that
+    // number has no translation, the series page is the honest destination.
+    languages: (args.languages ?? [])
+      .filter((l) => l.chapters > 0)
+      .map((l) => ({
+        code: l.language,
+        native: chapterLanguage(l.language).native,
+        href:
+          l.language === language
+            ? here
+            : l.hasThisNumber
+              ? chapterHref(series.slug, bundle.chapter.number, l.language)
+              : `/series/${series.slug}${
+                  l.language === DEFAULT_CHAPTER_LANGUAGE ? '' : `?lang=${l.language}`
+                }`,
+      })),
     defaults: { mode: site.layout.default_mode, background: site.layout.background },
     ads: {
       enabled: !noAds,

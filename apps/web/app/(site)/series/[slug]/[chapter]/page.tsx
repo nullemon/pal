@@ -13,6 +13,7 @@ import {
   lockOf,
   readerChapter,
   readerChapterList,
+  readerLanguages,
   readerSeries,
   storageUrl,
   toReaderPages,
@@ -77,9 +78,10 @@ export default async function ChapterPage({ params, searchParams }: PageProps) {
   if (!ctx) notFound()
   const { user, series, bundle, language } = ctx
   const now = new Date()
-  const [gate, list, site] = await Promise.all([
+  const [gate, list, languages, site] = await Promise.all([
     entitlementGate(),
     readerChapterList(series.id, now, language),
+    readerLanguages(series.id, bundle.chapter.number),
     cachedReaderSiteSettings(),
   ])
   const readable = viewerCanRead(user, bundle.chapter, { overrides: gate.overrides, now })
@@ -135,6 +137,7 @@ export default async function ChapterPage({ params, searchParams }: PageProps) {
     now,
     pages,
     language,
+    languages,
   })
   const relLinks = (
     <>

@@ -15,7 +15,9 @@ import {
   getDb,
   readingProgress,
   series,
+  seriesLanguages,
 } from '@palscans/db'
+
 import { and, eq, isNull } from 'drizzle-orm'
 import { unstable_cache } from 'next/cache'
 import { cache } from 'react'
@@ -282,3 +284,35 @@ export const toReaderPages = async (
     }),
   )
 }
+
+/**
+ * The translations of this series, and whether each one has the chapter number being read.
+ *
+ * `hasThisNumber` is what lets the switcher keep the reader's place: switching to German on
+ * chapter 40 should open German chapter 40, not German chapter 1 and not a 404. When that
+ * number has no translation the caller sends them to the series page instead, which is the
+ * honest answer rather than a dead link.
+ */
+export const readerLanguages = cache(
+  async (
+    seriesId: number,
+    number: number,
+  ): Promise<Array<{ language: string; chapters: number; hasThisNumber: boolean }>> => {
+    const db = await getDb()
+    const langs = await seriesLanguages(db, seriesId)
+    if (langs.length < 2) return []
+    const rows = await db
+      .select({ language: chapters.language })
+      .from(chapters)
+      .where(
+        and(
+          eq(chapters.seriesId, seriesId),
+          eq(chapters.number, number),
+          eq(chapters.state, 'published'),
+          isNull(chapters.deletedAt),
+        ),
+      )
+    const here = new Set(rows.map((r) => r.language))
+    return langs.map((l) => ({ ...l, hasThisNumber: here.has(l.language) }))
+  },
+)
