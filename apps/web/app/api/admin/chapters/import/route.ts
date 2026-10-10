@@ -27,24 +27,59 @@ import { fail, notFound, ok, parseJson, withPermission } from '@/lib/auth'
 export const POST = withPermission('chapter.create', async (request, _ctx, user) => {
   const parsed = await parseJson(request, galleryImportSchema)
   if (!parsed.ok) return parsed.response
-  const { url, seriesId, number, after } = parsed.data
+  const { url, after } = parsed.data
   // Rejected before any network call: the host allowlist lives in the parser, and a link on
   // another host must never reach `resolveGallery`.
   const galleryId = parseImgchestId(url)
   if (!galleryId) return fail(400, 'bad_url', adminMessages.admin.galleryImport.badUrl)
 
-  const language = normaliseLanguage(parsed.data.language)
+  if (after && (after.mode === 'publish' || after.mode === 'schedule')) {
+    if (!can(user, 'chapter.publish')) return fail(403, 'forbidden', messages.errors.forbidden)
+  }
+
   const db = await getDb()
+
+  /**
+   * Resolve the target before touching the network.
+   *
+   * `chapterId` is the page editor's route in: the chapter exists, so there is nothing to
+   * create and nothing to decide about numbering — only whether this person may throw its
+   * current pages away. That is `chapter.repair`, checked here rather than left to the
+   * permission wrapper, which only guards `chapter.create`.
+   */
+  let target: { chapterId: number; seriesId: number; language: string; replaced: boolean } | null =
+    null
+  if (parsed.data.chapterId !== undefined) {
+    if (!can(user, 'chapter.repair')) return fail(403, 'forbidden', messages.errors.forbidden)
+    const [row] = await db
+      .select({
+        id: chapters.id,
+        seriesId: chapters.seriesId,
+        state: chapters.state,
+        language: chapters.language,
+        pageCount: chapters.pageCount,
+      })
+      .from(chapters)
+      .where(and(eq(chapters.id, parsed.data.chapterId), isNull(chapters.deletedAt)))
+      .limit(1)
+    if (!row) return notFound()
+    if (row.state === 'processing') return fail(409, 'already_processing')
+    target = {
+      chapterId: row.id,
+      seriesId: row.seriesId,
+      language: row.language,
+      replaced: row.pageCount > 0,
+    }
+  }
+
+  const seriesId = target?.seriesId ?? (parsed.data.seriesId as number)
+  const language = target?.language ?? normaliseLanguage(parsed.data.language)
   const [s] = await db
     .select({ id: series.id })
     .from(series)
     .where(and(eq(series.id, seriesId), isNull(series.deletedAt)))
     .limit(1)
   if (!s) return notFound()
-
-  if (after && (after.mode === 'publish' || after.mode === 'schedule')) {
-    if (!can(user, 'chapter.publish')) return fail(403, 'forbidden', messages.errors.forbidden)
-  }
 
   let pages: number
   let galleryTitle: string | null
@@ -58,21 +93,26 @@ export const POST = withPermission('chapter.create', async (request, _ctx, user)
     throw error
   }
 
-  const slot = await resolveChapterSlot(db, {
-    seriesId,
-    number,
-    language,
-    title: parsed.data.title ?? null,
-    replace: parsed.data.replace,
-    canRepair: can(user, 'chapter.repair'),
-    userId: user.id,
-  })
-  if (!slot.ok) {
+  const slot =
+    target ??
+    (await resolveChapterSlot(db, {
+      seriesId,
+      number: parsed.data.number as number,
+      language,
+      title: parsed.data.title ?? null,
+      replace: parsed.data.replace,
+      canRepair: can(user, 'chapter.repair'),
+      userId: user.id,
+    }))
+  if ('ok' in slot && !slot.ok) {
     if (slot.code === 'chapter_exists')
       return fail(
         409,
         'chapter_exists',
-        fmt(adminMessages.bulkImport.conflict.title, { n: String(number), pages: slot.pages }),
+        fmt(adminMessages.bulkImport.conflict.title, {
+          n: String(parsed.data.number),
+          pages: slot.pages,
+        }),
       )
     if (slot.code === 'forbidden') return fail(403, 'forbidden', messages.errors.forbidden)
     if (slot.code === 'already_processing') return fail(409, 'already_processing')
@@ -134,7 +174,7 @@ export const POST = withPermission('chapter.create', async (request, _ctx, user)
       provider: 'imgchest',
       galleryId,
       pages,
-      number,
+      number: parsed.data.number ?? null,
       language,
       replaced: slot.replaced,
       jobId,

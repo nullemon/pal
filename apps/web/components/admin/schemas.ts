@@ -222,22 +222,38 @@ export const galleryPreviewSchema = z.object({
   url: z.string().min(1).max(500),
 })
 
-export const galleryImportSchema = z.object({
-  url: z.string().min(1).max(500),
-  seriesId: z.number().int().positive(),
-  number: z.number().min(0).max(99_999),
-  title: nullableText(200).optional(),
-  language: z.string().max(16).optional(),
-  /** As in the upload intent: absent means refuse an existing chapter rather than replace it. */
-  replace: z.boolean().optional(),
-  after: z
-    .object({
-      mode: z.enum(['ready', 'publish', 'schedule']),
-      publishedAt: z.string().datetime({ offset: true }).nullable().optional(),
-      isPremium: z.boolean().optional(),
-    })
-    .optional(),
-})
+/**
+ * Two ways in, because there are two places an operator starts from.
+ *
+ * `chapterId` names a chapter that already exists — the page editor, where the question is
+ * "refill *this* chapter from a link" and the series, number and language are already
+ * settled. `seriesId` + `number` is the other direction: the upload and series screens,
+ * where the chapter may not exist yet. One endpoint rather than two because everything after
+ * the target is resolved is identical, and two endpoints would have drifted on the
+ * permission checks.
+ */
+export const galleryImportSchema = z
+  .object({
+    url: z.string().min(1).max(500),
+    /** An existing chapter to rebuild. Implies replace, and needs `chapter.repair`. */
+    chapterId: z.number().int().positive().optional(),
+    seriesId: z.number().int().positive().optional(),
+    number: z.number().min(0).max(99_999).optional(),
+    title: nullableText(200).optional(),
+    language: z.string().max(16).optional(),
+    /** As in the upload intent: absent means refuse an existing chapter rather than replace it. */
+    replace: z.boolean().optional(),
+    after: z
+      .object({
+        mode: z.enum(['ready', 'publish', 'schedule']),
+        publishedAt: z.string().datetime({ offset: true }).nullable().optional(),
+        isPremium: z.boolean().optional(),
+      })
+      .optional(),
+  })
+  .refine((d) => d.chapterId !== undefined || (d.seriesId !== undefined && d.number !== undefined), {
+    message: 'either chapterId, or seriesId and number',
+  })
 export type GalleryImport = z.infer<typeof galleryImportSchema>
 
 export const MAX_PAGES_PER_CHAPTER = 400

@@ -1,7 +1,9 @@
 import { adminMessages } from '@palscans/core/messages/admin'
+import { can } from '@palscans/core/permissions'
 import { chapters, getDb, series } from '@palscans/db'
 import { eq } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
+import { GalleryImport } from '@/components/admin/client/GalleryImport'
 import { PageEditor } from '@/components/admin/client/PageEditor'
 import { editorPages } from '@/components/admin/server/chapter-pages'
 import { PageHeader } from '@/components/admin/ui'
@@ -19,7 +21,9 @@ export default async function ChapterPagesPage({
   const { id } = await params
   const chapterId = Number(id)
   if (!Number.isInteger(chapterId) || chapterId <= 0) notFound()
-  await withPermission('chapter.repair', { returnTo: `/admin/chapters/${chapterId}/pages` })
+  const user = await withPermission('chapter.repair', {
+    returnTo: `/admin/chapters/${chapterId}/pages`,
+  })
 
   const db = await getDb()
   const [row] = await db
@@ -27,6 +31,7 @@ export default async function ChapterPagesPage({
       processing: chapters.processing,
       number: chapters.number,
       title: chapters.title,
+      pageCount: chapters.pageCount,
       seriesTitle: series.title,
     })
     .from(chapters)
@@ -43,7 +48,25 @@ export default async function ChapterPagesPage({
         title={`${row.seriesTitle} · ${row.number}${row.title ? ` — ${row.title}` : ''}`}
         subtitle={m.subtitle}
       />
-      <PageEditor chapterId={chapterId} initial={pages} editable={!!row.processing} />
+      <div className="flex flex-col gap-4">
+        <PageEditor chapterId={chapterId} initial={pages} editable={!!row.processing} />
+        {/*
+          The other half of "edit this chapter's pages": throw them all away and pull a fresh
+          set from a gallery link. It is here rather than only on the upload screen because
+          this is the screen somebody is already on when they discover the pages are wrong,
+          and re-deriving the series, number and language by hand to use the create path is
+          exactly the friction that makes people give up and leave it broken.
+        */}
+        <GalleryImport
+          canPublish={can(user, 'chapter.publish')}
+          canRepair
+          target={{
+            chapterId,
+            label: `${row.seriesTitle} · ${row.number}`,
+            hasPages: row.pageCount > 0,
+          }}
+        />
+      </div>
     </>
   )
 }

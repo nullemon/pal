@@ -272,6 +272,89 @@ describe('a chapter number that already exists', () => {
   })
 })
 
+describe('targeting an existing chapter by id', () => {
+  /**
+   * The page editor's route in. Series, number and language come from the chapter itself, so
+   * nothing in the request can place it somewhere else — which is the point: the alternative
+   * was re-deriving all three by hand into the create path and hoping they matched.
+   */
+  const make = async (
+    over: { pageCount?: number; state?: 'published' | 'processing'; language?: string } = {},
+  ) => {
+    const [row] = await db
+      .insert(chapters)
+      .values({
+        seriesId: ids.series,
+        number: 12,
+        state: over.state ?? 'published',
+        pageCount: over.pageCount ?? 20,
+        language: over.language ?? 'en',
+      })
+      .returning({ id: chapters.id })
+    return row?.id as number
+  }
+
+  it('rebuilds that chapter without being told the series or number', async () => {
+    const id = await make()
+    const response = await post({ url: 'https://imgchest.com/p/na7kjb9bq48', chapterId: id })
+    expect(response.status).toBe(200)
+    expect(state.enqueued).toEqual([id])
+    const [row] = await rows()
+    expect(row?.id).toBe(id)
+    expect(row?.state).toBe('processing')
+    expect(row?.processing?.fetch?.url).toBe('https://imgchest.com/p/na7kjb9bq48')
+  })
+
+  it('creates no second chapter', async () => {
+    const id = await make()
+    await post({ url: 'https://imgchest.com/p/na7kjb9bq48', chapterId: id })
+    expect(await rows()).toHaveLength(1)
+  })
+
+  it('keeps the chapter language rather than resetting it to English', async () => {
+    // The request carries no language in this mode, and defaulting would silently move a
+    // German chapter into the English list.
+    const id = await make({ language: 'de' })
+    await post({ url: 'https://imgchest.com/p/na7kjb9bq48', chapterId: id })
+    expect((await rows())[0]?.language).toBe('de')
+  })
+
+  it('will not touch a chapter the worker is already processing', async () => {
+    const id = await make({ state: 'processing' })
+    expect((await post({ url: 'https://imgchest.com/p/na7kjb9bq48', chapterId: id })).status).toBe(
+      409,
+    )
+    expect(state.enqueued).toEqual([])
+  })
+
+  it('needs chapter.repair, because it destroys the pages that are there', async () => {
+    const id = await make()
+    state.user = user('user')
+    expect((await post({ url: 'https://imgchest.com/p/na7kjb9bq48', chapterId: id })).status).toBe(
+      403,
+    )
+    expect(state.enqueued).toEqual([])
+  })
+
+  it('404s for a chapter that does not exist', async () => {
+    expect(
+      (await post({ url: 'https://imgchest.com/p/na7kjb9bq48', chapterId: 999_999 })).status,
+    ).toBe(404)
+  })
+
+  it('still refuses an off-host link in this mode', async () => {
+    const id = await make()
+    expect((await post({ url: 'https://evil.example/p/na7kjb9bq48', chapterId: id })).status).toBe(
+      400,
+    )
+    expect(state.enqueued).toEqual([])
+  })
+
+  it('refuses a request that names neither a chapter nor a series and number', async () => {
+    expect((await post({ url: 'https://imgchest.com/p/na7kjb9bq48' })).status).toBe(400)
+  })
+})
+
 describe('permissions', () => {
   it('lets an uploader replace pages, because that role carries chapter.repair', async () => {
     // Deliberate, not an oversight: an uploader has to be able to fix their own botched

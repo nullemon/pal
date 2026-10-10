@@ -11,6 +11,7 @@ import { Field, Hint, inputClass, Panel, PanelHeader, selectClass, textareaClass
 import { api, del, patchJson, postJson, putJson } from './api'
 import { type ChapterRowData, ChaptersTable } from './ChaptersTable'
 import { SaveBar, Toggle, useDraft } from './controls'
+import { GalleryImport } from './GalleryImport'
 import { sha256Hex, uploadWithRetry } from './upload-lib'
 import { slugify } from './util'
 
@@ -756,7 +757,22 @@ export function SeriesEditor(props: Props) {
       ) : null}
 
       {tab === 'chapters' ? (
-        <ChaptersTable seriesId={props.id} initial={props.chapters} perms={props.perms} />
+        <div className="flex flex-col gap-4">
+          {/*
+            Importing a chapter from a link belongs here as well as on the upload screen:
+            this is where somebody already looking at a series goes to add to it, and sending
+            them to "Bulk upload" to add one chapter is the kind of detour that makes a panel
+            feel unfinished. The series is pre-filled because it is already known.
+          */}
+          {props.perms.create ? (
+            <GalleryImport
+              canPublish={props.perms.publish}
+              canRepair={props.perms.repair}
+              preset={{ id: props.id, title: props.doc.title }}
+            />
+          ) : null}
+          <ChaptersTable seriesId={props.id} initial={props.chapters} perms={props.perms} />
+        </div>
       ) : null}
     </div>
   )

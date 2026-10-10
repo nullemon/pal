@@ -321,6 +321,11 @@ export const adminMessages = {
       queued: 'Queued — {n} pages downloading in the background.',
       replace: 'Replace the pages of the existing chapter',
       hint: 'Downloading happens in the worker, so you can close this page.',
+      refillTitle: 'Replace pages from ImgChest',
+      refillSubtitle: 'Rebuild {chapter} from a gallery link.',
+      refillWarning:
+        'This replaces every page of this chapter. The pages it has now are discarded once the download finishes.',
+      refillStart: 'Replace all pages',
     },
     upload: {
       title: 'Bulk upload',

@@ -35,12 +35,29 @@ interface Picked {
   title: string
 }
 
+/**
+ * An existing chapter to rebuild, for the page editor.
+ *
+ * In that mode the series, number and language are already decided by the chapter itself, so
+ * the pickers are hidden rather than shown pre-filled and ignored — a disabled field an
+ * operator can see but not change is a question they will try to answer.
+ */
+export interface GalleryTarget {
+  chapterId: number
+  /** What is about to be replaced, e.g. "Solo Leveling · 12". */
+  label: string
+  /** Whether this chapter already has pages, which is what makes the warning honest. */
+  hasPages: boolean
+}
+
 export function GalleryImport({
   preset,
+  target,
   canPublish,
   canRepair,
 }: {
-  preset: { id: number; title: string } | null
+  preset?: { id: number; title: string } | null
+  target?: GalleryTarget
   canPublish: boolean
   canRepair: boolean
 }) {
@@ -48,7 +65,7 @@ export function GalleryImport({
   const { toast } = useToast()
   const urlId = useId()
   const [url, setUrl] = useState('')
-  const [series, setSeries] = useState<Picked | null>(preset)
+  const [series, setSeries] = useState<Picked | null>(preset ?? null)
   const [number, setNumber] = useState('')
   const [title, setTitle] = useState('')
   const [language, setLanguage] = useState(DEFAULT_CHAPTER_LANGUAGE)
@@ -74,27 +91,31 @@ export function GalleryImport({
   }, [url, toast])
 
   const start = useCallback(async () => {
-    if (!series || !preview) return
-    const parsed = Number(number)
-    if (!Number.isFinite(parsed)) {
-      toast({ title: adminMessages.admin.upload.chapterNumber, tone: 'danger' })
-      return
-    }
-    setBusy('import')
-    const result = await postJson<{ chapterId: number; pages: number }>(
-      '/api/admin/chapters/import',
-      {
+    if (!preview) return
+    let body: Record<string, unknown>
+    if (target) {
+      body = { url, chapterId: target.chapterId }
+    } else {
+      if (!series) return
+      const parsed = Number(number)
+      if (!Number.isFinite(parsed)) {
+        toast({ title: adminMessages.admin.upload.chapterNumber, tone: 'danger' })
+        return
+      }
+      body = {
         url,
         seriesId: series.id,
         number: parsed,
         title: title.trim() === '' ? null : title.trim(),
         language,
         ...(replace ? { replace: true } : {}),
-        after: {
-          mode: publish ? 'publish' : 'ready',
-          isPremium: premium,
-        },
-      },
+        after: { mode: publish ? 'publish' : 'ready', isPremium: premium },
+      }
+    }
+    setBusy('import')
+    const result = await postJson<{ chapterId: number; pages: number }>(
+      '/api/admin/chapters/import',
+      body,
     )
     setBusy(null)
     if (!result.ok) {
@@ -102,21 +123,45 @@ export function GalleryImport({
       return
     }
     toast({ title: fmt(m.queued, { n: result.data.pages }), tone: 'ok' })
-    // Deliberately kept: the next chapter in a series is almost always the next number, and
-    // retyping the series and language for each one is the tedium this screen is here to fix.
     setUrl('')
     setPreview(null)
+    if (target) return
+    // Deliberately kept for the create path: the next chapter in a series is almost always
+    // the next number, and retyping the series and language for each one is the tedium this
+    // panel exists to remove.
     setTitle('')
     setNumber((n) => {
       const next = Number(n) + 1
       return Number.isFinite(next) ? String(next) : n
     })
-  }, [series, preview, number, url, title, language, replace, publish, premium, toast, m.queued])
+  }, [
+    series,
+    preview,
+    number,
+    url,
+    title,
+    language,
+    replace,
+    publish,
+    premium,
+    target,
+    toast,
+    m.queued,
+  ])
 
   return (
     <Panel>
-      <PanelHeader title={m.title} hint={m.subtitle} />
+      <PanelHeader
+        title={target ? m.refillTitle : m.title}
+        hint={target ? fmt(m.refillSubtitle, { chapter: target.label }) : m.subtitle}
+      />
       <div className="flex flex-col gap-3">
+        {target?.hasPages ? (
+          <p className="flex items-start gap-2 rounded-md border border-warn/40 bg-warn/10 p-2.5 text-[12.5px] leading-[18px] text-fg">
+            <AlertTriangle aria-hidden className="mt-px size-4 shrink-0 text-warn" />
+            {m.refillWarning}
+          </p>
+        ) : null}
         <div className="flex flex-col gap-1.5">
           <label className="text-[13px] font-medium" htmlFor={urlId}>
             {m.url}
@@ -191,89 +236,95 @@ export function GalleryImport({
           </div>
         ) : null}
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="flex flex-col gap-1.5">
-            <span className="text-[13px] font-medium">{adminMessages.admin.upload.series}</span>
-            {series ? (
-              <div className="flex items-center justify-between gap-2 rounded-md border border-line bg-surface-2 px-2.5 py-1.5">
-                <span className="truncate text-[13px]">{series.title}</span>
-                <button
-                  className="text-[12.5px] text-fg-muted hover:text-fg"
-                  onClick={() => setSeries(null)}
-                  type="button"
-                >
-                  {m.change}
-                </button>
-              </div>
-            ) : (
-              <SeriesSearch
-                onPick={(s) => setSeries({ id: s.id, title: s.title })}
-                placeholder={adminMessages.admin.upload.pickSeries}
+        {target ? null : (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[13px] font-medium">{adminMessages.admin.upload.series}</span>
+              {series ? (
+                <div className="flex items-center justify-between gap-2 rounded-md border border-line bg-surface-2 px-2.5 py-1.5">
+                  <span className="truncate text-[13px]">{series.title}</span>
+                  <button
+                    className="text-[12.5px] text-fg-muted hover:text-fg"
+                    onClick={() => setSeries(null)}
+                    type="button"
+                  >
+                    {m.change}
+                  </button>
+                </div>
+              ) : (
+                <SeriesSearch
+                  onPick={(s) => setSeries({ id: s.id, title: s.title })}
+                  placeholder={adminMessages.admin.upload.pickSeries}
+                />
+              )}
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[13px] font-medium">{adminMessages.admin.upload.language}</span>
+              <select
+                className={selectClass}
+                onChange={(e) => setLanguage(e.target.value)}
+                value={language}
+              >
+                {CHAPTER_LANGUAGES.map((l) => (
+                  <option key={l.code} value={l.code}>
+                    {l.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[13px] font-medium">
+                {adminMessages.admin.upload.chapterNumber}
+              </span>
+              <input
+                className={inputClass}
+                inputMode="decimal"
+                onChange={(e) => setNumber(e.target.value)}
+                placeholder="12"
+                value={number}
               />
-            )}
-          </div>
+            </div>
 
-          <div className="flex flex-col gap-1.5">
-            <span className="text-[13px] font-medium">{adminMessages.admin.upload.language}</span>
-            <select
-              className={selectClass}
-              onChange={(e) => setLanguage(e.target.value)}
-              value={language}
-            >
-              {CHAPTER_LANGUAGES.map((l) => (
-                <option key={l.code} value={l.code}>
-                  {l.label}
-                </option>
-              ))}
-            </select>
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[13px] font-medium">
+                {adminMessages.admin.upload.chapterTitle}
+              </span>
+              <input
+                className={inputClass}
+                onChange={(e) => setTitle(e.target.value)}
+                value={title}
+              />
+            </div>
           </div>
+        )}
 
-          <div className="flex flex-col gap-1.5">
-            <span className="text-[13px] font-medium">
-              {adminMessages.admin.upload.chapterNumber}
-            </span>
-            <input
-              className={inputClass}
-              inputMode="decimal"
-              onChange={(e) => setNumber(e.target.value)}
-              placeholder="12"
-              value={number}
-            />
+        {target ? null : (
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+            {canPublish ? (
+              <Toggle
+                checked={publish}
+                label={adminMessages.admin.upload.afterPublish}
+                onChange={setPublish}
+              />
+            ) : null}
+            {canPublish ? (
+              <Toggle
+                checked={premium}
+                label={adminMessages.admin.upload.premium}
+                onChange={setPremium}
+              />
+            ) : null}
+            {canRepair ? (
+              <Toggle checked={replace} label={m.replace} onChange={setReplace} />
+            ) : null}
           </div>
-
-          <div className="flex flex-col gap-1.5">
-            <span className="text-[13px] font-medium">
-              {adminMessages.admin.upload.chapterTitle}
-            </span>
-            <input
-              className={inputClass}
-              onChange={(e) => setTitle(e.target.value)}
-              value={title}
-            />
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-          {canPublish ? (
-            <Toggle
-              checked={publish}
-              label={adminMessages.admin.upload.afterPublish}
-              onChange={setPublish}
-            />
-          ) : null}
-          {canPublish ? (
-            <Toggle
-              checked={premium}
-              label={adminMessages.admin.upload.premium}
-              onChange={setPremium}
-            />
-          ) : null}
-          {canRepair ? <Toggle checked={replace} label={m.replace} onChange={setReplace} /> : null}
-        </div>
+        )}
 
         <div className="flex items-center gap-3">
           <Button
-            disabled={!series || !preview || number.trim() === '' || busy !== null}
+            disabled={!preview || busy !== null || (!target && (!series || number.trim() === ''))}
             onClick={() => void start()}
             type="button"
           >
@@ -281,6 +332,8 @@ export function GalleryImport({
               <>
                 <Loader2 aria-hidden className="size-4 animate-spin" /> {m.importing}
               </>
+            ) : target ? (
+              m.refillStart
             ) : (
               m.start
             )}
