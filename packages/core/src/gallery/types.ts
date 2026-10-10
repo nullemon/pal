@@ -7,7 +7,7 @@
  * answer. Adding imgbox later is a parser and a host allowlist, not a second import path.
  */
 
-export type GalleryProvider = 'imgchest'
+export type GalleryProvider = 'imgchest' | 'imgur' | 'direct'
 
 export interface GalleryImage {
   /** The provider's own id, carried into the audit record so a page is traceable upstream. */

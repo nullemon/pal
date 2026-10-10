@@ -1,3 +1,7 @@
+export * from './address.js'
+export * from './direct.js'
 export * from './fetch.js'
 export * from './imgchest.js'
+export * from './imgur.js'
+export * from './manifest.js'
 export * from './types.js'

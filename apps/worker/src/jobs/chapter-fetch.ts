@@ -58,13 +58,13 @@ const errorMessage = (error: unknown): string => {
  * on its own sends them to the logs for something that is usually a retry.
  */
 const REASONS: Record<string, string> = {
-  bad_url: 'That is not an ImgChest gallery link.',
+  bad_url: 'That is not a gallery link we can read.',
   not_found: 'The gallery does not exist, or is private.',
   empty: 'The gallery has no images in it.',
-  rate_limited: 'ImgChest is rate-limiting us. Try again in a few minutes.',
-  unavailable: 'Could not reach ImgChest. Try again.',
-  unparseable: 'ImgChest answered with something we could not read — this needs a code fix.',
-  bad_image_host: 'The gallery points at images outside ImgChest, so it was refused.',
+  rate_limited: 'The image host is rate-limiting us. Try again in a few minutes.',
+  unavailable: 'Could not reach the image host. Try again.',
+  unparseable: 'The host answered with something we could not read — this needs a code fix.',
+  bad_image_host: 'The gallery points at an address we refuse to fetch from.',
   too_many: 'The gallery has more images than a chapter can hold.',
   too_large: 'One of the images is larger than the pipeline accepts.',
   not_an_image: 'One of the files in the gallery is not an image.',

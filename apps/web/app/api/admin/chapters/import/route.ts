@@ -1,5 +1,11 @@
 import { getEnv } from '@palscans/core/env'
-import { GalleryError, parseImgchestId, resolveGallery } from '@palscans/core/gallery'
+import {
+  GalleryError,
+  identifyGallery,
+  imgchestUrl,
+  imgurAlbumUrl,
+  resolveGallery,
+} from '@palscans/core/gallery'
 import { normaliseLanguage } from '@palscans/core/languages'
 import { fmt, messages } from '@palscans/core/messages'
 import { adminMessages } from '@palscans/core/messages/admin'
@@ -24,14 +30,18 @@ import { fail, notFound, ok, parseJson, withPermission } from '@/lib/auth'
  * is a 400 the operator sees rather than a draft chapter that fails later. That costs one
  * cheap request and is the difference between an error message and a cleanup job.
  */
+/** The canonical gallery URL for a provider and id. Never what was pasted. */
+const canonicalGalleryUrl = (g: { provider: 'imgchest' | 'imgur'; id: string }): string =>
+  g.provider === 'imgur' ? imgurAlbumUrl(g.id) : imgchestUrl(g.id)
+
 export const POST = withPermission('chapter.create', async (request, _ctx, user) => {
   const parsed = await parseJson(request, galleryImportSchema)
   if (!parsed.ok) return parsed.response
   const { url, after } = parsed.data
   // Rejected before any network call: the host allowlist lives in the parser, and a link on
   // another host must never reach `resolveGallery`.
-  const galleryId = parseImgchestId(url)
-  if (!galleryId) return fail(400, 'bad_url', adminMessages.admin.galleryImport.badUrl)
+  const gallery = identifyGallery(url)
+  if (!gallery) return fail(400, 'bad_url', adminMessages.admin.galleryImport.badUrl)
 
   if (after && (after.mode === 'publish' || after.mode === 'schedule')) {
     if (!can(user, 'chapter.publish')) return fail(403, 'forbidden', messages.errors.forbidden)
@@ -137,11 +147,9 @@ export const POST = withPermission('chapter.create', async (request, _ctx, user)
     errors: {},
     attempt,
     mode: 'all',
-    fetch: {
-      url: `https://imgchest.com/p/${galleryId}`,
-      provider: 'imgchest',
-      title: galleryTitle,
-    },
+    // Rebuilt from the parsed id rather than stored as pasted, so the worker never follows
+    // a URL carrying tracking parameters or an unexpected path.
+    fetch: { url: canonicalGalleryUrl(gallery), provider: gallery.provider, title: galleryTitle },
     after: {
       isPremium: after?.isPremium ?? false,
       publishedAt:
@@ -172,7 +180,7 @@ export const POST = withPermission('chapter.create', async (request, _ctx, user)
     targetId: slot.chapterId,
     after: {
       provider: 'imgchest',
-      galleryId,
+      galleryId: gallery.id,
       pages,
       number: parsed.data.number ?? null,
       language,

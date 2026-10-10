@@ -251,9 +251,12 @@ export const galleryImportSchema = z
       })
       .optional(),
   })
-  .refine((d) => d.chapterId !== undefined || (d.seriesId !== undefined && d.number !== undefined), {
-    message: 'either chapterId, or seriesId and number',
-  })
+  .refine(
+    (d) => d.chapterId !== undefined || (d.seriesId !== undefined && d.number !== undefined),
+    {
+      message: 'either chapterId, or seriesId and number',
+    },
+  )
 export type GalleryImport = z.infer<typeof galleryImportSchema>
 
 export const MAX_PAGES_PER_CHAPTER = 400
