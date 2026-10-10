@@ -329,6 +329,7 @@ export const adminMessages = {
       pacing:
         'Chapters are fetched one at a time, a few per minute, so the image host does not rate-limit us.',
       skippedTitle: 'Not imported',
+      pickSeriesFirst: 'Pick a series first.',
     },
     galleryImport: {
       title: 'Import from a link',

@@ -208,7 +208,9 @@ export function ManifestImport({
                 </>
               )}
             </Button>
-            <span className="text-[12.5px] text-fg-muted">{m.subtitle}</span>
+            <span className="text-[12.5px] text-fg-muted">
+              {seriesId ? m.subtitle : m.pickSeriesFirst}
+            </span>
           </div>
         ) : null}
 
@@ -404,7 +406,7 @@ export function ManifestImport({
               fmt(m.start, { n: chosen.size })
             )}
           </Button>
-          <p className="text-[12.5px] text-fg-muted">{m.pacing}</p>
+          <p className="text-[12.5px] text-fg-muted">{seriesId ? m.pacing : m.pickSeriesFirst}</p>
         </div>
       </div>
     </Wrap>
