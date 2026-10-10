@@ -84,6 +84,15 @@ export function Toggle({
 }: {
   checked: boolean
   onChange: (next: boolean) => void
+  /**
+   * The switch's accessible name, which also turns on an "On"/"Off" state word beside it.
+   *
+   * It does **not** render this text — the caller puts the visible name next to the switch
+   * itself (see Uploader's premium row). Passing a name here and expecting to read it on
+   * screen gives a row of switches all labelled "Off", which is how it was first used in the
+   * gallery import panel. Use `ariaLabel` when you have your own visible text, which is
+   * nearly always.
+   */
   label?: string
   /** Accessible name when no visible label is rendered. */
   ariaLabel?: string

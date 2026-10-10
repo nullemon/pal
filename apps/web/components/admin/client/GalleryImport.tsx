@@ -301,23 +301,39 @@ export function GalleryImport({
         )}
 
         {target ? null : (
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+          /*
+           * The visible name goes beside the switch, never into `label`. That prop is the
+           * accessible name only — a Toggle given one renders "On"/"Off" as its text, so
+           * three in a row read "Off Off Off" and the operator has to guess which is which.
+           */
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-[13px]">
             {canPublish ? (
-              <Toggle
-                checked={publish}
-                label={adminMessages.admin.upload.afterPublish}
-                onChange={setPublish}
-              />
+              <span className="inline-flex items-center gap-2.5">
+                {adminMessages.admin.upload.afterPublish}
+                <Toggle
+                  ariaLabel={adminMessages.admin.upload.afterPublish}
+                  checked={publish}
+                  onChange={setPublish}
+                  size="sm"
+                />
+              </span>
             ) : null}
             {canPublish ? (
-              <Toggle
-                checked={premium}
-                label={adminMessages.admin.upload.premium}
-                onChange={setPremium}
-              />
+              <span className="inline-flex items-center gap-2.5">
+                {adminMessages.admin.upload.premium}
+                <Toggle
+                  ariaLabel={adminMessages.admin.upload.premium}
+                  checked={premium}
+                  onChange={setPremium}
+                  size="sm"
+                />
+              </span>
             ) : null}
             {canRepair ? (
-              <Toggle checked={replace} label={m.replace} onChange={setReplace} />
+              <span className="inline-flex items-center gap-2.5">
+                {m.replace}
+                <Toggle ariaLabel={m.replace} checked={replace} onChange={setReplace} size="sm" />
+              </span>
             ) : null}
           </div>
         )}
