@@ -63,7 +63,22 @@ export interface ChapterProcessing {
    * exactly the state Retry needs to recognise in order to resume the download rather than
    * re-run an encode over nothing.
    */
-  fetch?: { url: string; provider: string; title?: string | null }
+  fetch?: {
+    url: string
+    provider: string
+    title?: string | null
+    /**
+     * Where the pages should end up.
+     *
+     * `remote` leaves them on the host and serves them through our proxy — no bucket usage,
+     * no watermark, no encoded variants. `storage` is the original behaviour. A remote import
+     * falls back to `storage` on its own when the host will not answer our server reliably,
+     * and records which it used, so the panel can say what a chapter actually is.
+     */
+    mode?: 'remote' | 'storage'
+  }
+  /** What the finished pages are. Absent means `storage`, which every pre-9046 chapter is. */
+  pageSource?: 'remote' | 'storage'
   attempt: number
   /** `failed` = re-run only the sources listed in `errors` (docs/03 "retry failed pages only"). */
   mode?: 'all' | 'failed'
@@ -154,6 +169,15 @@ export const chapterPages = pgTable(
       .references(() => chapters.id, { onDelete: 'cascade' }),
     idx: smallint('idx').notNull(), // 0-based display order
     key: text('key').notNull(), // content-addressed base object key
+    /**
+     * Set when the page is served from the host it was imported from (migration 9046).
+     *
+     * Its presence is the flag: when it is set, `key` names no object in our bucket and
+     * `variants` is empty, because nothing was encoded. The reader turns it into our own
+     * proxy URL rather than handing the origin to the browser, so entitlement still applies
+     * and the host is never visible in the page source.
+     */
+    remoteUrl: text('remote_url'),
     width: integer('width').notNull(), // intrinsic dimensions: zero layout shift
     height: integer('height').notNull(),
     bytes: integer('bytes').notNull(),

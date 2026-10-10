@@ -8,10 +8,19 @@ import {
 import { IMAGE_EXTENSIONS } from '@palscans/core/images'
 import type { Queue } from '@palscans/core/queue'
 import { MAX_ORIGINAL_BYTES, type Storage } from '@palscans/core/storage'
-import { type ChapterProcessing, type ChapterSource, chapters, type Db } from '@palscans/db'
+import {
+  type ChapterProcessing,
+  type ChapterSource,
+  type chapterPages,
+  chapters,
+  type Db,
+} from '@palscans/db'
 import { eq } from 'drizzle-orm'
+import sharp from 'sharp'
+import { blurHashFor } from '../lib/image.js'
 import { log } from '../lib/log.js'
 import { pool } from '../lib/pool.js'
+import { commitChapterPages } from './chapter-process.js'
 
 /**
  * `chapter.fetch` — turn a pasted gallery link into the chapter's uploaded originals.
@@ -90,8 +99,11 @@ export const fetchChapterGallery = async (
     .select({
       id: chapters.id,
       seriesId: chapters.seriesId,
+      number: chapters.number,
       state: chapters.state,
       processing: chapters.processing,
+      publishedAt: chapters.publishedAt,
+      isPremium: chapters.isPremium,
     })
     .from(chapters)
     .where(eq(chapters.id, chapterId))
@@ -134,6 +146,64 @@ export const fetchChapterGallery = async (
   }
 
   log.info('chapter.fetch start', { chapterId, images: post.images.length, id: post.id })
+
+  /**
+   * Remote or stored?
+   *
+   * Remote is the default for a link import: the pages stay on the host and are served
+   * through our proxy, so the bucket stays empty. It only works while that host will answer
+   * our server repeatedly, because the proxy fetches on every cache miss — which is exactly
+   * what the probe below tests, and the only honest way to decide. A host that serves the
+   * first request and refuses the second would give a chapter that imports cleanly and then
+   * fails for readers a day later, which is the worst possible failure for this feature.
+   */
+  let mode: 'remote' | 'storage' = pending.mode ?? 'remote'
+  const first = post.images[0]
+  /**
+   * The probe's own copy of page one, kept rather than discarded.
+   *
+   * Whichever mode wins needs those bytes anyway, and a host that is rationing us is exactly
+   * the host where a third request for the same image fails. Throwing them away and
+   * re-fetching is how the fallback breaks on the only kind of host it exists for.
+   */
+  let probed: Awaited<ReturnType<typeof downloadGalleryImage>> | undefined
+  if (mode === 'remote' && first) {
+    const fetchFirst = () =>
+      downloadGalleryImage(first.link, {
+        token: deps.token,
+        fetchImpl: deps.fetchImpl,
+        maxBytes: MAX_ORIGINAL_BYTES,
+      })
+    try {
+      probed = await fetchFirst()
+      // Twice, deliberately. One success proves nothing about a host that rate-limits, or
+      // that tolerates a browser's first hit and nothing after it.
+      await fetchFirst()
+    } catch (error) {
+      if (!probed) {
+        // The first request failed, so neither mode can work. Report the real reason. No
+        // interval to clear: the progress flush below has not started yet.
+        await fail(error)
+        return
+      }
+      log.info('chapter.fetch: host will not serve us repeatedly, storing instead', {
+        chapterId,
+        error: errorMessage(error),
+      })
+      mode = 'storage'
+    }
+  }
+
+  /** Page one comes from the probe when it has it; everything else is fetched here. */
+  const imageAt = async (link: string, idx: number) =>
+    idx === 0 && probed
+      ? probed
+      : await downloadGalleryImage(link, {
+          token: deps.token,
+          fetchImpl: deps.fetchImpl,
+          maxBytes: MAX_ORIGINAL_BYTES,
+        })
+
   const working: ChapterProcessing = {
     ...doc,
     errors: {},
@@ -162,13 +232,86 @@ export const fetchChapterGallery = async (
   }, 750)
   flush.unref()
 
+  if (mode === 'remote') {
+    const rows = new Array<typeof chapterPages.$inferInsert | undefined>(post.images.length)
+    try {
+      await pool(post.images, DOWNLOAD_CONCURRENCY, async (image, idx) => {
+        /**
+         * Fetched and thrown away.
+         *
+         * The bytes are needed once — to prove the URL is an image rather than a login page,
+         * and to read the dimensions the reader lays out with — and then deliberately not
+         * stored. Skipping this and trusting the host would mean a chapter whose pages are
+         * the wrong size or not images at all, discovered by a reader.
+         */
+        const { bytes, type } = await imageAt(image.link, idx)
+        const meta = await sharp(bytes).metadata()
+        if (!meta.width || !meta.height)
+          throw new GalleryError('not_an_image', `page ${idx + 1} has no dimensions`)
+        rows[idx] = {
+          chapterId,
+          idx,
+          /**
+           * Not a bucket path, and obviously so.
+           *
+           * `key` is NOT NULL and every consumer reads it, so it keeps a value — but one
+           * that cannot be mistaken for an object. Anything that reaches the store with it
+           * fails loudly instead of quietly looking for `remote:abc` and reporting a missing
+           * object, which is the confusing version of the same bug.
+           */
+          key: `remote:${createHash('sha256').update(image.link).digest('hex').slice(0, 12)}.${IMAGE_EXTENSIONS[type]}`,
+          remoteUrl: image.link,
+          width: meta.width,
+          height: meta.height,
+          bytes: bytes.byteLength,
+          blurHash: await blurHashFor(sharp(bytes)),
+          variants: [],
+        }
+        working.progress.done += 1
+        dirty = true
+      })
+    } catch (error) {
+      clearInterval(flush)
+      await fail(error)
+      return
+    }
+    clearInterval(flush)
+    const complete = rows.filter((r): r is typeof chapterPages.$inferInsert => r !== undefined)
+    if (complete.length !== post.images.length) {
+      await fail(new GalleryError('unavailable', 'some pages could not be read'))
+      return
+    }
+    const finished: ChapterProcessing = {
+      ...working,
+      sources: [],
+      results: {},
+      errors: {},
+      progress: { done: complete.length, total: complete.length },
+      pageSource: 'remote',
+      finishedAt: new Date().toISOString(),
+    }
+    // Kept, unlike the storage path: it is the only record of where these pages come from,
+    // and the panel needs it to say what this chapter actually is.
+    finished.fetch = { ...pending, mode: 'remote' }
+    const state = await commitChapterPages({
+      chapterId,
+      rows: complete,
+      processing: finished,
+      chapter: {
+        seriesId: row.seriesId,
+        number: Number(row.number),
+        publishedAt: row.publishedAt,
+        isPremium: row.isPremium,
+      },
+      db,
+    })
+    log.info('chapter.fetch done (remote)', { chapterId, pages: complete.length, state })
+    return
+  }
+
   try {
     await pool(post.images, DOWNLOAD_CONCURRENCY, async (image, idx) => {
-      const { bytes, type } = await downloadGalleryImage(image.link, {
-        token: deps.token,
-        fetchImpl: deps.fetchImpl,
-        maxBytes: MAX_ORIGINAL_BYTES,
-      })
+      const { bytes, type } = await imageAt(image.link, idx)
       const sha256 = createHash('sha256').update(bytes).digest('hex')
       const key = keyFor(row.seriesId, chapterId, idx, sha256, IMAGE_EXTENSIONS[type])
       await storage.put(key, bytes, { contentType: type })

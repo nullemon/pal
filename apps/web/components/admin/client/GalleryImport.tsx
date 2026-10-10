@@ -72,6 +72,8 @@ export function GalleryImport({
   const [publish, setPublish] = useState(false)
   const [premium, setPremium] = useState(false)
   const [replace, setReplace] = useState(false)
+  /** Off means the pages stay on the host — the default, and why this costs no storage. */
+  const [store, setStore] = useState(false)
   const [preview, setPreview] = useState<Preview | null>(null)
   const [busy, setBusy] = useState<'check' | 'import' | null>(null)
 
@@ -94,7 +96,7 @@ export function GalleryImport({
     if (!preview) return
     let body: Record<string, unknown>
     if (target) {
-      body = { url, chapterId: target.chapterId }
+      body = { url, chapterId: target.chapterId, store: store ? 'storage' : 'remote' }
     } else {
       if (!series) return
       const parsed = Number(number)
@@ -109,6 +111,7 @@ export function GalleryImport({
         title: title.trim() === '' ? null : title.trim(),
         language,
         ...(replace ? { replace: true } : {}),
+        store: store ? 'storage' : 'remote',
         after: { mode: publish ? 'publish' : 'ready', isPremium: premium },
       }
     }
@@ -144,6 +147,7 @@ export function GalleryImport({
     replace,
     publish,
     premium,
+    store,
     target,
     toast,
     m.queued,
@@ -337,6 +341,14 @@ export function GalleryImport({
             ) : null}
           </div>
         )}
+
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-[13px]">
+          <span className="inline-flex items-center gap-2.5">
+            {m.store}
+            <Toggle ariaLabel={m.store} checked={store} onChange={setStore} size="sm" />
+          </span>
+          <span className="text-[12.5px] text-fg-muted">{m.storeHint}</span>
+        </div>
 
         <div className="flex items-center gap-3">
           <Button

@@ -149,7 +149,12 @@ export const POST = withPermission('chapter.create', async (request, _ctx, user)
     mode: 'all',
     // Rebuilt from the parsed id rather than stored as pasted, so the worker never follows
     // a URL carrying tracking parameters or an unexpected path.
-    fetch: { url: canonicalGalleryUrl(gallery), provider: gallery.provider, title: galleryTitle },
+    fetch: {
+      url: canonicalGalleryUrl(gallery),
+      provider: gallery.provider,
+      title: galleryTitle,
+      mode: parsed.data.store ?? 'remote',
+    },
     after: {
       isPremium: after?.isPremium ?? false,
       publishedAt:
@@ -185,6 +190,7 @@ export const POST = withPermission('chapter.create', async (request, _ctx, user)
       number: parsed.data.number ?? null,
       language,
       replaced: slot.replaced,
+      store: parsed.data.store ?? 'remote',
       jobId,
     },
   })

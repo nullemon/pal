@@ -165,7 +165,15 @@ describe('a good link', () => {
       url: 'https://imgchest.com/p/na7kjb9bq48',
       provider: 'imgchest',
       title: 'Gallery title',
+      // Remote unless asked otherwise: a link import that filled the bucket by default
+      // would be the opposite of what importing from a link is for.
+      mode: 'remote',
     })
+  })
+
+  it('stores the pages only when asked', async () => {
+    await post(body({ store: 'storage' }))
+    expect((await rows())[0]?.processing?.fetch?.mode).toBe('storage')
   })
 
   it('seeds the page total so the panel shows 0 / 23, not 0 / 0', async () => {

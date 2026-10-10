@@ -243,6 +243,13 @@ export const galleryImportSchema = z
     language: z.string().max(16).optional(),
     /** As in the upload intent: absent means refuse an existing chapter rather than replace it. */
     replace: z.boolean().optional(),
+    /**
+     * Where the pages end up. `remote` leaves them on the host and serves them through our
+     * proxy — nothing in the bucket. Absent means remote, which is the point of importing
+     * from a link; `storage` is for anything that needs a watermark or must outlive the
+     * gallery.
+     */
+    store: z.enum(['remote', 'storage']).optional(),
     after: z
       .object({
         mode: z.enum(['ready', 'publish', 'schedule']),

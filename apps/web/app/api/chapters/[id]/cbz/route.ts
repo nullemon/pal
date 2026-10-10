@@ -1,4 +1,7 @@
 import { can } from '@palscans/core'
+import { getEnv as coreEnv } from '@palscans/core/env'
+import { downloadGalleryImage } from '@palscans/core/gallery'
+import { MAX_ORIGINAL_BYTES } from '@palscans/core/storage'
 import { getDb, series } from '@palscans/db'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
@@ -92,9 +95,33 @@ export async function GET(request: Request, ctx: RouteParams<{ id: string }>) {
   // format reader apps actually decode. AVIF is smaller but still unsupported in most of
   // them, so it would be a file that will not open.
   const storage = await getStorage()
+  /**
+   * Pages that live on the host they were imported from have no object to read (9046), so
+   * the archive fetches them instead.
+   *
+   * Reading them from the bucket would return nothing and quietly produce a CBZ missing
+   * those pages — a file that opens, looks complete, and is not. The map is keyed by the
+   * synthetic `remote:` key the importer wrote, which is what `keys` carries.
+   */
+  const remote = new Map(
+    bundle.pages.filter((p) => p.remoteUrl).map((p) => [p.key, p.remoteUrl as string]),
+  )
   const entries = chapterArchiveEntries({
     keys: bundle.pages.map((p) => p.key),
-    read: async (key) => (await storage.get(key)) ?? null,
+    read: async (key) => {
+      const url = remote.get(key)
+      if (!url) return (await storage.get(key)) ?? null
+      try {
+        const image = await downloadGalleryImage(url, {
+          token: coreEnv().IMGCHEST_TOKEN,
+          maxBytes: MAX_ORIGINAL_BYTES,
+        })
+        return image.bytes
+      } catch {
+        // One unreachable page must not hand the reader a silently short archive.
+        return null
+      }
+    },
     seriesTitle: owner.title,
     seriesSlug: owner.slug,
     number,

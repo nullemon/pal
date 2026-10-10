@@ -241,16 +241,62 @@ export const processChapter = async (
     blurHash: page.blurHash,
     variants: page.variants,
   }))
-  const at = now()
-  const target = doc.after?.publishedAt ? new Date(doc.after.publishedAt) : row.publishedAt
+  // Record what these pages actually carry, so the panel can say which chapters are on the
+  // current mark without decoding an image, and a later re-apply can skip them.
+  const lean: ChapterProcessing = {
+    ...doc,
+    results: undefined,
+    mode: 'all',
+    watermark: applied,
+    pageSource: 'storage',
+  }
+  const nextState = await commitChapterPages({
+    chapterId,
+    rows,
+    processing: lean,
+    chapter: row,
+    db,
+    onPublished: deps.onPublished,
+    now,
+  })
+  log.info('chapter.process done', { chapterId, pages: rows.length, state: nextState })
+  return 'done'
+}
+
+/**
+ * The pages have landed: write them, move the chapter to its next state, tell everyone.
+ *
+ * Shared by the encode (`chapter.process`) and by a gallery import that left its pages on
+ * the host (`chapter.fetch` in remote mode), because the half that *follows* having pages is
+ * identical for both and is the half with consequences — publishing, the series timestamp,
+ * bookmark notifications, the catalogue revalidation. Two copies would have drifted on which
+ * of those a remote chapter gets, and the first symptom would have been readers not being
+ * told about a release.
+ *
+ * The transaction is the point: pages and `page_count` must move together, or the reader
+ * sees a chapter whose count does not match the rows it can fetch.
+ */
+export const commitChapterPages = async (opts: {
+  chapterId: number
+  rows: Array<typeof chapterPages.$inferInsert>
+  /** The processing document to persist alongside the rows. */
+  processing: ChapterProcessing
+  chapter: { seriesId: number; number: number; publishedAt: Date | null; isPremium: boolean }
+  db: Db
+  onPublished?: (arg: { chapterId: number; seriesId: number }) => void
+  /** Injected by the tests that pin the clock; the scheduler compares against it. */
+  now?: () => Date
+}): Promise<'published' | 'scheduled' | 'ready'> => {
+  const { chapterId, rows, processing, chapter, db } = opts
+  const at = (opts.now ?? (() => new Date()))()
+  const target = processing.after?.publishedAt
+    ? new Date(processing.after.publishedAt)
+    : chapter.publishedAt
   const nextState = target
     ? target.getTime() <= at.getTime()
       ? 'published'
       : 'scheduled'
     : 'ready'
-  // Record what these pages actually carry, so the panel can say which chapters are on the
-  // current mark without decoding an image, and a later re-apply can skip them.
-  const lean: ChapterProcessing = { ...doc, results: undefined, mode: 'all', watermark: applied }
   await db.transaction(async (tx) => {
     await tx.delete(chapterPages).where(eq(chapterPages.chapterId, chapterId))
     if (rows.length) await tx.insert(chapterPages).values(rows)
@@ -260,25 +306,19 @@ export const processChapter = async (
         pageCount: rows.length,
         state: nextState,
         publishedAt: target ?? null,
-        isPremium: doc.after?.isPremium ?? row.isPremium,
-        processing: lean,
+        isPremium: processing.after?.isPremium ?? chapter.isPremium,
+        processing,
         updatedAt: at,
       })
       .where(eq(chapters.id, chapterId))
     if (nextState === 'published') {
-      await tx
-        .update(series)
-        .set({
-          updatedAt: at,
-        })
-        .where(eq(series.id, row.seriesId))
-      await notifyBookmarkers(tx, chapterId, row.seriesId, row.number)
+      await tx.update(series).set({ updatedAt: at }).where(eq(series.id, chapter.seriesId))
+      await notifyBookmarkers(tx, chapterId, chapter.seriesId, chapter.number)
     }
   })
-  log.info('chapter.process done', { chapterId, pages: rows.length, state: nextState })
   if (nextState === 'published') {
     await revalidateWeb(['catalog'])
-    deps.onPublished?.({ chapterId, seriesId: row.seriesId })
+    opts.onPublished?.({ chapterId, seriesId: chapter.seriesId })
   }
-  return 'done'
+  return nextState
 }

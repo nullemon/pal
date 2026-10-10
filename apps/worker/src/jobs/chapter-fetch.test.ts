@@ -5,6 +5,7 @@ import type { Queue } from '@palscans/core/queue'
 import type { Storage } from '@palscans/core/storage'
 import {
   type ChapterProcessing,
+  chapterPages,
   chapters,
   createDb,
   type Db,
@@ -13,6 +14,7 @@ import {
   series,
 } from '@palscans/db'
 import { eq } from 'drizzle-orm'
+import sharp from 'sharp'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { fetchChapterGallery } from './chapter-fetch.js'
 
@@ -58,17 +60,21 @@ const makeQueue = () => {
   return { queue, added }
 }
 
-const PNG = new Uint8Array([
-  0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
-])
-
-/** A distinct body per page, so ordering assertions mean something. */
-const pageBytes = (n: number): Uint8Array => {
-  const out = new Uint8Array(PNG.length + 1)
-  out.set(PNG, 0)
-  out[PNG.length] = n
-  return out
-}
+/**
+ * A real 8x12 PNG per page, not a magic-byte stub.
+ *
+ * Remote mode measures each image with sharp to get the dimensions the reader lays out
+ * with, so the fixture has to be an image something can actually decode. The green channel
+ * carries the page number, which is what makes the ordering assertions mean anything.
+ */
+const pageBytes = async (n: number): Promise<Uint8Array> =>
+  new Uint8Array(
+    await sharp({
+      create: { width: 8, height: 12, channels: 3, background: { r: 10, g: n, b: 20 } },
+    })
+      .png()
+      .toBuffer(),
+  )
 
 const stream = (bytes: Uint8Array) =>
   new ReadableStream<Uint8Array>({
@@ -83,6 +89,8 @@ interface FakeOptions {
   /** Fail the image at this 1-based position with an HTTP status. */
   failAt?: { position: number; status: number }
   galleryStatus?: number
+  /** Serve each image once, then refuse — a host that tolerates a browser but not a proxy. */
+  onlyOnce?: boolean
 }
 
 const fakeFetch = (opts: FakeOptions = {}) => {
@@ -111,7 +119,9 @@ const fakeFetch = (opts: FakeOptions = {}) => {
     if (match) {
       const n = Number(match[1])
       if (opts.failAt?.position === n) return new Response('nope', { status: opts.failAt.status })
-      const response = new Response(stream(pageBytes(n)), { status: 200 })
+      if (opts.onlyOnce && calls.filter((c) => c === url).length > 1)
+        return new Response('slow down', { status: 429 })
+      const response = new Response(stream(await pageBytes(n)), { status: 200 })
       Object.defineProperty(response, 'url', { value: url })
       return response
     }
@@ -126,7 +136,14 @@ const pendingDoc = (over: Partial<ChapterProcessing> = {}): ChapterProcessing =>
   errors: {},
   attempt: 1,
   mode: 'all',
-  fetch: { url: 'https://imgchest.com/p/na7kjb9bq48', provider: 'imgchest', title: 'Ch 1' },
+  fetch: {
+    url: 'https://imgchest.com/p/na7kjb9bq48',
+    provider: 'imgchest',
+    title: 'Ch 1',
+    // These suites are about the download path; remote has its own below, and is the
+    // default for a real import.
+    mode: 'storage' as const,
+  },
   after: { isPremium: false, publishedAt: null },
   startedAt: null,
   finishedAt: null,
@@ -204,8 +221,15 @@ describe('a gallery that downloads cleanly', () => {
     await fetchChapterGallery(id, { db, storage, queue, fetchImpl: impl })
 
     const row = await read(id)
-    const bodies = (row?.processing?.sources ?? []).map(
-      (s) => objects.get(s.key)?.bytes.at(-1) ?? -1,
+    // The page number is the green channel of the fixture, so this reads what was actually
+    // stored at each index rather than trusting the order the array happens to be in.
+    const bodies = await Promise.all(
+      (row?.processing?.sources ?? []).map(async (s) => {
+        const bytes = objects.get(s.key)?.bytes
+        if (!bytes) return -1
+        const { data } = await sharp(bytes).raw().toBuffer({ resolveWithObject: true })
+        return data[1] ?? -1
+      }),
     )
     expect(bodies).toEqual([1, 2, 3, 4, 5])
   })
@@ -338,5 +362,130 @@ describe('redelivery', () => {
       fetchChapterGallery(999_999, { db, storage, queue, fetchImpl: fakeFetch().impl }),
     ).resolves.toBeUndefined()
     expect(added).toHaveLength(0)
+  })
+})
+
+describe('remote mode: pages stay on the host', () => {
+  const remoteDoc = () =>
+    pendingDoc({
+      fetch: { url: 'https://imgchest.com/p/na7kjb9bq48', provider: 'imgchest', mode: 'remote' },
+    })
+
+  it('stores nothing and points the pages at the host', async () => {
+    // The entire point of the mode: the bucket stays empty.
+    const id = await makeChapter(n, remoteDoc())
+    const { storage, objects } = makeStorage()
+    const { queue, added } = makeQueue()
+    await fetchChapterGallery(id, { db, storage, queue, fetchImpl: fakeFetch().impl })
+
+    expect(objects.size).toBe(0)
+    const pages = await db
+      .select()
+      .from(chapterPages)
+      .where(eq(chapterPages.chapterId, id))
+      .orderBy(chapterPages.idx)
+    expect(pages).toHaveLength(3)
+    expect(pages.map((p) => p.remoteUrl)).toEqual([
+      'https://cdn.imgchest.com/files/p1.png',
+      'https://cdn.imgchest.com/files/p2.png',
+      'https://cdn.imgchest.com/files/p3.png',
+    ])
+    // No encode to hand over to — the pages are final the moment they are measured.
+    expect(added).toHaveLength(0)
+  })
+
+  it('measures the real dimensions rather than guessing them', async () => {
+    // The reader lays out from these. Zero would mean every page jumping into place as it
+    // loads, which is the thing intrinsic dimensions exist to prevent.
+    const id = await makeChapter(n, remoteDoc())
+    const { storage } = makeStorage()
+    const { queue } = makeQueue()
+    await fetchChapterGallery(id, { db, storage, queue, fetchImpl: fakeFetch().impl })
+    const pages = await db.select().from(chapterPages).where(eq(chapterPages.chapterId, id))
+    for (const page of pages) {
+      expect(page.width).toBe(8)
+      expect(page.height).toBe(12)
+      expect(page.blurHash).toBeTruthy()
+      expect(page.variants).toEqual([])
+    }
+  })
+
+  it('gives the key a value that cannot be mistaken for a bucket path', async () => {
+    const id = await makeChapter(n, remoteDoc())
+    const { storage } = makeStorage()
+    const { queue } = makeQueue()
+    await fetchChapterGallery(id, { db, storage, queue, fetchImpl: fakeFetch().impl })
+    const pages = await db.select().from(chapterPages).where(eq(chapterPages.chapterId, id))
+    for (const page of pages) expect(page.key.startsWith('remote:')).toBe(true)
+  })
+
+  it('finishes the chapter itself, with the page count and the publish intent applied', async () => {
+    const id = await makeChapter(
+      n,
+      pendingDoc({
+        fetch: { url: 'https://imgchest.com/p/na7kjb9bq48', provider: 'imgchest', mode: 'remote' },
+        after: { isPremium: false, publishedAt: '2020-01-01T00:00:00.000Z' },
+      }),
+    )
+    const { storage } = makeStorage()
+    const { queue } = makeQueue()
+    await fetchChapterGallery(id, { db, storage, queue, fetchImpl: fakeFetch().impl })
+    const [row] = await db
+      .select({ state: chapters.state, pageCount: chapters.pageCount })
+      .from(chapters)
+      .where(eq(chapters.id, id))
+    expect(row?.state).toBe('published')
+    expect(row?.pageCount).toBe(3)
+  })
+
+  it('records that the pages are remote, and keeps where they came from', async () => {
+    const id = await makeChapter(n, remoteDoc())
+    const { storage } = makeStorage()
+    const { queue } = makeQueue()
+    await fetchChapterGallery(id, { db, storage, queue, fetchImpl: fakeFetch().impl })
+    const row = await read(id)
+    expect(row?.processing?.pageSource).toBe('remote')
+    // Unlike the storage path, the marker survives: it is the only record of the origin.
+    expect(row?.processing?.fetch?.url).toBe('https://imgchest.com/p/na7kjb9bq48')
+  })
+
+  it('falls back to storing when the host will not serve us twice', async () => {
+    /**
+     * The probe earning its keep. A host that answers the first request and refuses the
+     * second cannot back a proxy, because the proxy fetches on every cache miss — so the
+     * chapter would import cleanly and break for readers later.
+     */
+    const id = await makeChapter(n, remoteDoc())
+    const { storage, objects } = makeStorage()
+    const { queue, added } = makeQueue()
+    await fetchChapterGallery(id, {
+      db,
+      storage,
+      queue,
+      fetchImpl: fakeFetch({ onlyOnce: true }).impl,
+    })
+
+    expect(objects.size).toBe(3)
+    expect(added).toHaveLength(1)
+    expect(added[0]?.name).toBe('chapter.process')
+    const row = await read(id)
+    expect(row?.processing?.sources).toHaveLength(3)
+    const pages = await db.select().from(chapterPages).where(eq(chapterPages.chapterId, id))
+    expect(pages).toHaveLength(0)
+  })
+
+  it('fails the chapter when a page is not an image, rather than storing a broken one', async () => {
+    const id = await makeChapter(n, remoteDoc())
+    const { storage } = makeStorage()
+    const { queue } = makeQueue()
+    await fetchChapterGallery(id, {
+      db,
+      storage,
+      queue,
+      fetchImpl: fakeFetch({ pages: 3, failAt: { position: 2, status: 500 } }).impl,
+    })
+    expect((await read(id))?.state).toBe('failed')
+    const pages = await db.select().from(chapterPages).where(eq(chapterPages.chapterId, id))
+    expect(pages).toHaveLength(0)
   })
 })

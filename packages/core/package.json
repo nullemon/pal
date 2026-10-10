@@ -10,6 +10,10 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
+    "./access": {
+      "types": "./dist/access.d.ts",
+      "default": "./dist/access.js"
+    },
     "./gallery": {
       "types": "./dist/gallery/index.d.ts",
       "default": "./dist/gallery/index.js"

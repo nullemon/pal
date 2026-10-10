@@ -316,6 +316,9 @@ export const adminMessages = {
       untitled: 'Untitled gallery',
       useTitle: 'Use as chapter title',
       change: 'Change',
+      store: 'Copy the images to our storage',
+      storeHint:
+        'Off: pages stay on the host and are served through us, using no storage. On: they are copied in and watermarked, and survive the gallery being deleted.',
       importing: 'Importing…',
       start: 'Import chapter',
       queued: 'Queued — {n} pages downloading in the background.',

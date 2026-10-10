@@ -225,6 +225,13 @@
       "when": 1788380052000,
       "tag": "9044_chapter_language",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1788380056000,
+      "tag": "9046_remote_pages",
+      "breakpoints": true
     }
   ]
 }

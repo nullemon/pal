@@ -84,7 +84,12 @@ export interface ChapterBundle {
     publishedAt: string | null
     pageCount: number
   }
-  pages: Array<Pick<ChapterPageRow, 'idx' | 'key' | 'width' | 'height' | 'blurHash' | 'variants'>>
+  pages: Array<
+    Pick<
+      ChapterPageRow,
+      'chapterId' | 'idx' | 'key' | 'remoteUrl' | 'width' | 'height' | 'blurHash' | 'variants'
+    >
+  >
   prev: { id: number; number: number } | null
   next: { id: number; number: number } | null
 }
@@ -103,8 +108,11 @@ const toBundle = (c: ChapterWithPages): ChapterBundle => ({
     pageCount: c.chapter.pageCount,
   },
   pages: c.pages.map((p) => ({
+    chapterId: p.chapterId,
     idx: p.idx,
     key: p.key,
+    // Carried so `toReaderPages` can tell a stored page from one left on its host (9046).
+    remoteUrl: p.remoteUrl,
     width: p.width,
     height: p.height,
     blurHash: p.blurHash,
@@ -267,6 +275,24 @@ export const toReaderPages = async (
   const url = lock === 'none' ? async (key: string) => storageUrl(key) : signedStorageUrl
   return Promise.all(
     pages.map(async (p) => {
+      /**
+       * A page imported from a gallery and left there (migration 9046).
+       *
+       * It resolves to our own proxy route, never to the host. Handing the origin to the
+       * browser would publish the gallery in our markup and, worse, make every page of a
+       * locked chapter readable by anyone who viewed source — the proxy is where the
+       * entitlement check lives. There are no variants either: nothing was encoded, so the
+       * single URL is all there is and a srcset would be three copies of it.
+       */
+      if (p.remoteUrl)
+        return {
+          idx: p.idx,
+          width: p.width,
+          height: p.height,
+          blurHash: p.blurHash,
+          url: `/p/${p.chapterId}/${p.idx}`,
+          variants: [],
+        }
       const sized = p.variants
         .filter((v) => typeof v.w === 'number' && v.w > 0)
         .sort((a, b) => a.w - b.w)
