@@ -2750,6 +2750,15 @@ export const adminMessages = {
   },
   /** Admin → Content → Add from AniList: fill a series from a public catalogue. */
   seriesLookup: {
+    addAs: 'Add as',
+    addSelectedAs: 'Add {n} as {state}',
+    states: {
+      draft: 'Drafts',
+      published: 'Published',
+      unlisted: 'Unlisted',
+    },
+    publishedWarning:
+      'Published series appear to readers straight away, before anyone has checked the match or added a chapter.',
     navLabel: 'Add from AniList',
     title: 'Add from AniList',
     subtitle:

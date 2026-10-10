@@ -1,4 +1,5 @@
 import { adminMessages } from '@palscans/core/messages/admin'
+import { can } from '@palscans/core/permissions'
 import { PageHeader } from '@/components/admin/ui'
 import { withPermission } from '@/lib/auth'
 import { LookupScreen } from './LookupScreen'
@@ -10,12 +11,12 @@ import { LookupScreen } from './LookupScreen'
  * existing series has no business filling the catalogue from a third-party source.
  */
 export default async function SeriesLookupPage() {
-  await withPermission('series.create', { returnTo: '/admin/series/lookup' })
+  const user = await withPermission('series.create', { returnTo: '/admin/series/lookup' })
   const m = adminMessages.seriesLookup
   return (
     <>
       <PageHeader title={m.title} subtitle={m.subtitle} />
-      <LookupScreen />
+      <LookupScreen canPublish={can(user, 'series.update')} />
     </>
   )
 }

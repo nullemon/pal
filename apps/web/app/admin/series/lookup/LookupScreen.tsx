@@ -3,10 +3,10 @@
 import { fmt } from '@palscans/core/messages'
 import { adminMessages } from '@palscans/core/messages/admin'
 import type { SeriesMetadata } from '@palscans/core/metadata'
-import { Button, useToast } from '@palscans/ui'
+import { Button, cn, useToast } from '@palscans/ui'
 import Link from 'next/link'
 import { useState } from 'react'
-import { Hint, inputClass, Panel, Pill } from '@/components/admin/ui'
+import { Hint, inputClass, Panel, Pill, selectClass } from '@/components/admin/ui'
 
 /**
  * Search AniList, tick the matches, create them as drafts.
@@ -28,13 +28,21 @@ const m = adminMessages.seriesLookup
 
 const anilistId = (sourceId: string): number => Number(sourceId.split(':')[1] ?? 0)
 
-export function LookupScreen() {
+export function LookupScreen({ canPublish }: { canPublish: boolean }) {
   const { toast } = useToast()
   const [term, setTerm] = useState('')
   const [results, setResults] = useState<SeriesMetadata[] | null>(null)
   const [picked, setPicked] = useState<Set<string>>(new Set())
   const [searching, setSearching] = useState(false)
   const [adding, setAdding] = useState(false)
+  /**
+   * Draft by default, deliberately.
+   *
+   * A wrong AniList match that went straight live is visible to readers before anyone
+   * notices, so the safe state is what happens when nobody chooses — and publishing is an
+   * act rather than an oversight.
+   */
+  const [state, setState] = useState<'draft' | 'published' | 'unlisted'>('draft')
   const [created, setCreated] = useState<Outcome[]>([])
 
   const search = async () => {
@@ -77,7 +85,7 @@ export function LookupScreen() {
       const res = await fetch('/api/admin/metadata/import', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ ids }),
+        body: JSON.stringify({ ids, state }),
       })
       const body = await res.json().catch(() => null)
       if (!res.ok) {
@@ -169,10 +177,27 @@ export function LookupScreen() {
         </Panel>
       ) : (
         <>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button onClick={() => void add()} disabled={adding || picked.size === 0}>
-              {adding ? m.adding : fmt(m.addSelected, { n: picked.size })}
+              {adding
+                ? m.adding
+                : fmt(state === 'draft' ? m.addSelected : m.addSelectedAs, {
+                    n: picked.size,
+                    state: m.states[state],
+                  })}
             </Button>
+            {canPublish ? (
+              <select
+                aria-label={m.addAs}
+                className={cn(selectClass, 'w-auto')}
+                onChange={(e) => setState(e.target.value as 'draft' | 'published' | 'unlisted')}
+                value={state}
+              >
+                <option value="draft">{m.states.draft}</option>
+                <option value="published">{m.states.published}</option>
+                <option value="unlisted">{m.states.unlisted}</option>
+              </select>
+            ) : null}
             {picked.size > 0 ? (
               <button
                 type="button"
@@ -183,6 +208,10 @@ export function LookupScreen() {
               </button>
             ) : null}
           </div>
+          {/* Said once, where the choice is made — not buried in a tooltip nobody opens. */}
+          {state === 'published' ? (
+            <p className="text-[12.5px] text-warn">{m.publishedWarning}</p>
+          ) : null}
           <ul className="flex flex-col gap-2.5">
             {results.map((r) => {
               const on = picked.has(r.sourceId)

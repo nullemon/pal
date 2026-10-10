@@ -22,9 +22,11 @@ import { getStorage } from '@/lib/storage'
  *
  * The rules this file exists to hold:
  *
- * - **Nothing is published.** Every imported series lands as a `draft`. Third-party metadata
- *   is a starting point for the operator, not a decision, and a wrong match that went live
- *   would be visible to readers before anyone noticed.
+ * - **Nothing is published by accident.** An imported series lands as a `draft` unless the
+ *   operator explicitly chose otherwise on the screen, and choosing otherwise needs
+ *   `series.update`. Third-party metadata is a starting point rather than a decision, and a
+ *   wrong match that went live would be visible to readers before anyone noticed — so the
+ *   safe state is the default and the other one is a deliberate act, never a silent one.
  * - **Genres are matched, never created.** AniList has its own taxonomy; letting it invent
  *   genres here would fill this site's genre list with entries nobody chose. Unmatched names
  *   come back in the response so the operator can add the ones they actually want.
@@ -167,6 +169,11 @@ export interface ImportOutcome {
 export const createSeriesFromMetadata = async (
   meta: SeriesMetadata,
   actorId: number,
+  /**
+   * What the new series starts as. Draft unless the operator said otherwise — see the rule
+   * at the top of this file, which this parameter narrows rather than removes.
+   */
+  state: 'draft' | 'published' | 'unlisted' = 'draft',
 ): Promise<ImportOutcome> => {
   const db = await getDb()
   const slug = await uniqueSeriesSlug(meta.title)
@@ -186,8 +193,9 @@ export const createSeriesFromMetadata = async (
         title: meta.title,
         type: meta.type,
         status: meta.status,
-        // Draft, always. See the note at the top of this file.
-        state: 'draft',
+        // Draft unless the caller asked for otherwise, and the caller may only ask with
+        // `series.update`. See the note at the top of this file.
+        state,
         synopsis: meta.synopsis,
         country: meta.country,
         releasedYear: meta.releasedYear,
