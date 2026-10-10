@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto'
 import {
+  directUrlProblem,
   downloadGalleryImage,
   GalleryError,
   type GalleryPost,
@@ -90,6 +91,30 @@ const reasonFor = (error: unknown): string =>
 const keyFor = (seriesId: number, chapterId: number, idx: number, sha: string, ext: string) =>
   `uploads/${seriesId}/${chapterId}/${String(idx).padStart(4, '0')}-${sha.slice(0, 12)}.${ext}`
 
+/**
+ * A chapter whose page URLs were given outright, with no gallery to resolve.
+ *
+ * Re-validated here even though the parser already checked them: these have been sitting in
+ * a database row since the import was queued, and the worker is what actually makes the
+ * request. A guard that only runs at the edge is a guard that stops applying the moment
+ * anything else learns to write that row.
+ */
+const directPost = (links: string[], title: string | null): GalleryPost => {
+  if (links.length === 0) throw new GalleryError('empty')
+  for (const [i, link] of links.entries()) {
+    const problem = directUrlProblem(link)
+    if (problem)
+      throw new GalleryError(problem === 'host' ? 'bad_image_host' : 'bad_url', `page ${i + 1}`)
+  }
+  return {
+    provider: 'direct',
+    id: '',
+    title,
+    nsfw: false,
+    images: links.map((link, i) => ({ id: String(i + 1), link, position: i + 1 })),
+  }
+}
+
 export const fetchChapterGallery = async (
   chapterId: number,
   deps: ChapterFetchDeps,
@@ -139,7 +164,9 @@ export const fetchChapterGallery = async (
 
   let post: GalleryPost
   try {
-    post = await resolveGallery(pending.url, { token: deps.token, fetchImpl: deps.fetchImpl })
+    post = pending.links?.length
+      ? directPost(pending.links, pending.title ?? null)
+      : await resolveGallery(pending.url, { token: deps.token, fetchImpl: deps.fetchImpl })
   } catch (error) {
     await fail(error)
     return

@@ -302,6 +302,34 @@ export const adminMessages = {
       reapplyBusy:
         'A watermark re-apply is already running. Wait for it, or stop it in Appearance → Watermark.',
     },
+    manifestImport: {
+      title: 'Import a whole series',
+      subtitle:
+        'Paste a Cubari-style JSON link — a GitHub file or a gist. Every chapter in it is queued.',
+      url: 'Manifest link',
+      urlPlaceholder: 'https://github.com/user/repo/blob/main/series.json',
+      check: 'Read manifest',
+      checking: 'Reading…',
+      found: '{n} chapters in this manifest',
+      newOnes: '{n} new',
+      existing: '{n} already here',
+      unreadable: '{n} could not be read',
+      group: 'Group',
+      anyGroup: 'First listed',
+      onExisting: 'Chapters that already exist',
+      skipExisting: 'Skip them',
+      replaceExisting: 'Replace their pages',
+      selectAll: 'All',
+      selectNone: 'None',
+      selectNew: 'Only new',
+      start: 'Import {n} chapters',
+      importing: 'Queueing…',
+      queued: '{n} chapters queued. The last one starts in about {mins} minutes.',
+      queuedNone: 'Nothing was queued — every selected chapter already exists.',
+      pacing:
+        'Chapters are fetched one at a time, a few per minute, so the image host does not rate-limit us.',
+      skippedTitle: 'Not imported',
+    },
     galleryImport: {
       title: 'Import from a link',
       subtitle:

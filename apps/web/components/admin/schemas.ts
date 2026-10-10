@@ -266,6 +266,53 @@ export const galleryImportSchema = z
   )
 export type GalleryImport = z.infer<typeof galleryImportSchema>
 
+/**
+ * Importing a whole series from a Cubari-style manifest.
+ *
+ * The preview is a URL and nothing else; everything it needs to show is in the file. The
+ * import carries the operator's answers to what the preview showed them — which series,
+ * which chapters, and what to do about the ones that already exist.
+ */
+export const manifestPreviewSchema = z.object({
+  url: z.string().min(1).max(500),
+  /** Which scanlation group to take when a chapter lists several. */
+  group: z.string().max(120).optional(),
+  /**
+   * Optional, because the operator may still be choosing one.
+   *
+   * Given, every chapter number in the file is checked against this series so the preview's
+   * conflicts are real rather than hypothetical.
+   */
+  seriesId: z.number().int().positive().optional(),
+  language: z.string().max(16).optional(),
+})
+
+export const manifestImportSchema = z.object({
+  url: z.string().min(1).max(500),
+  seriesId: z.number().int().positive(),
+  group: z.string().max(120).optional(),
+  language: z.string().max(16).optional(),
+  store: z.enum(['remote', 'storage']).optional(),
+  /**
+   * The chapter numbers to import, as the preview listed them.
+   *
+   * Explicit rather than "import everything in the file": the operator has just been shown a
+   * list with conflicts marked, and importing something they deselected — or something added
+   * to the manifest between the preview and the import — would be the panel acting on its
+   * own. Absent means every chapter the preview would have offered.
+   */
+  only: z.array(z.number().min(0).max(99_999)).max(1000).optional(),
+  /** What to do with a number that already exists. Skipping is the safe default. */
+  onExisting: z.enum(['skip', 'replace']).default('skip'),
+  after: z
+    .object({
+      mode: z.enum(['ready', 'publish']),
+      isPremium: z.boolean().optional(),
+    })
+    .optional(),
+})
+export type ManifestImport = z.infer<typeof manifestImportSchema>
+
 export const MAX_PAGES_PER_CHAPTER = 400
 /** Mirrors `MAX_ORIGINAL_BYTES` in @palscans/core/storage (this file stays client-safe). */
 export const MAX_FILE_BYTES = 50 * 1024 * 1024

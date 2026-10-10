@@ -76,6 +76,14 @@ export interface ChapterProcessing {
      * and records which it used, so the panel can say what a chapter actually is.
      */
     mode?: 'remote' | 'storage'
+    /**
+     * Page URLs given outright, instead of a gallery to resolve.
+     *
+     * A manifest may list a chapter's images directly rather than pointing at an album, and
+     * a pasted URL list does the same. Carrying them here means the worker has one shape to
+     * handle either way, and `url` stays the human-readable origin for the panel.
+     */
+    links?: string[]
   }
   /** What the finished pages are. Absent means `storage`, which every pre-9046 chapter is. */
   pageSource?: 'remote' | 'storage'

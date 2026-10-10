@@ -269,14 +269,28 @@ export const resolveChapterSlot = async (
   return { ok: true, chapterId: created.id, reused: false, replaced: false }
 }
 
-/** Enqueue the gallery download for a chapter whose `processing.fetch` is set. */
-export const enqueueFetch = async (chapterId: number, attempt: number): Promise<string | null> => {
+/**
+ * Enqueue the gallery download for a chapter whose `processing.fetch` is set.
+ *
+ * `delayMs` is how a manifest import spreads a backfill out. Without it, pasting a
+ * hundred-chapter file opens a hundred near-simultaneous conversations with the image host,
+ * which is the fastest way to get rate-limited by it.
+ */
+export const enqueueFetch = async (
+  chapterId: number,
+  attempt: number,
+  delayMs = 0,
+): Promise<string | null> => {
   try {
     const queue = await getQueue()
     return await queue.add(
       'chapter.fetch',
       { chapterId },
-      { jobId: `chapter.fetch:${chapterId}:${attempt}`, attempts: 2 },
+      {
+        jobId: `chapter.fetch:${chapterId}:${attempt}`,
+        attempts: 2,
+        ...(delayMs > 0 ? { delayMs } : {}),
+      },
     )
   } catch {
     return null
