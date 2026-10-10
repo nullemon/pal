@@ -251,7 +251,6 @@ export function PageEditor({ chapterId, initial, editable }: Props) {
                   dragging === page.id ? 'ring-2 ring-brand' : '',
                 ].join(' ')}
               >
-                {/* biome-ignore lint/performance/noImgElement: a signed, short-lived thumbnail URL */}
                 <img
                   src={page.url}
                   alt={fmt(m.page, { n: index + 1 })}

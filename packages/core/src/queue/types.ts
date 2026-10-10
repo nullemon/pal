@@ -5,6 +5,13 @@
 export interface JobMap {
   'chapter.process': { chapterId: number }
   'chapter.publish': { chapterId: number }
+  /**
+   * Download a pasted image-host gallery into the chapter's originals, then hand over to
+   * `chapter.process` (`@palscans/core/gallery`). Separate from the encode because it is
+   * network-bound and retried on its own: a gallery that 429s should not burn an encode
+   * attempt.
+   */
+  'chapter.fetch': { chapterId: number }
   /** Re-encode an uploaded cover / banner original into the public variants (docs/03). */
   'series.art': { seriesId: number; kind: 'cover' | 'banner'; key: string }
   'sitemap.build': { kind: 'full' | 'incremental'; seriesIds?: number[] }

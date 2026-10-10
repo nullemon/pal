@@ -193,3 +193,92 @@ export const emptyProcessing = (sources: ChapterProcessing['sources']): ChapterP
   startedAt: null,
   finishedAt: null,
 })
+
+/**
+ * "Does chapter N already exist, and may this person overwrite it?"
+ *
+ * One copy of the rule, used by the browser upload (`/api/upload/intent`) and the gallery
+ * import (`/api/admin/chapters/import`). It was extracted rather than duplicated because
+ * every branch here is a decision about destroying somebody's work: replacing the pages of a
+ * published chapter needs an explicit `replace`, needs `chapter.repair`, and must never
+ * happen to a chapter the worker is in the middle of. Two copies of that would have become
+ * two different answers the first time one of them was edited.
+ *
+ * Takes the transaction, not the database, so the caller can abandon a batch and leave no
+ * half-created chapters behind.
+ */
+export type ChapterSlot =
+  | { ok: true; chapterId: number; reused: boolean; replaced: boolean }
+  | { ok: false; code: 'chapter_exists'; pages: number }
+  | { ok: false; code: 'forbidden' }
+  | { ok: false; code: 'already_processing' }
+  | { ok: false; code: 'insert_failed' }
+
+export const resolveChapterSlot = async (
+  tx: Pick<Awaited<ReturnType<typeof getDb>>, 'select' | 'insert'>,
+  opts: {
+    seriesId: number
+    number: number
+    /** Already normalised by the caller (migration 9044). */
+    language: string
+    title?: string | null
+    /** The operator's answer to "it already exists": absent means refuse. */
+    replace?: boolean
+    canRepair: boolean
+    userId: number
+  },
+): Promise<ChapterSlot> => {
+  const [existing] = await tx
+    .select({ id: chapters.id, state: chapters.state, pageCount: chapters.pageCount })
+    .from(chapters)
+    .where(
+      and(
+        eq(chapters.seriesId, opts.seriesId),
+        eq(chapters.number, opts.number),
+        // Without this a German chapter 1 matches the English one and the operator is
+        // offered "replace its pages" for a chapter in another language.
+        eq(chapters.language, opts.language),
+        isNull(chapters.deletedAt),
+      ),
+    )
+    .limit(1)
+  if (existing) {
+    if (existing.pageCount > 0 && opts.replace !== true)
+      return { ok: false, code: 'chapter_exists', pages: existing.pageCount }
+    if (existing.pageCount > 0 && !opts.canRepair) return { ok: false, code: 'forbidden' }
+    if (existing.state === 'processing') return { ok: false, code: 'already_processing' }
+    return {
+      ok: true,
+      chapterId: existing.id,
+      reused: true,
+      replaced: existing.pageCount > 0,
+    }
+  }
+  const [created] = await tx
+    .insert(chapters)
+    .values({
+      seriesId: opts.seriesId,
+      number: opts.number,
+      title: opts.title ?? null,
+      language: opts.language,
+      state: 'draft',
+      uploadedBy: opts.userId,
+    })
+    .returning({ id: chapters.id })
+  if (!created) return { ok: false, code: 'insert_failed' }
+  return { ok: true, chapterId: created.id, reused: false, replaced: false }
+}
+
+/** Enqueue the gallery download for a chapter whose `processing.fetch` is set. */
+export const enqueueFetch = async (chapterId: number, attempt: number): Promise<string | null> => {
+  try {
+    const queue = await getQueue()
+    return await queue.add(
+      'chapter.fetch',
+      { chapterId },
+      { jobId: `chapter.fetch:${chapterId}:${attempt}`, attempts: 2 },
+    )
+  } catch {
+    return null
+  }
+}

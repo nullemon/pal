@@ -264,7 +264,7 @@ export function LanguagePicker({
 }) {
   if (languages.length < 2) return null
   return (
-    <div className="flex items-center gap-1" aria-label={messages.readerUi.language}>
+    <nav aria-label={messages.readerUi.language} className="flex items-center gap-1">
       {languages.map((l) => (
         <a
           key={l.code}
@@ -279,7 +279,7 @@ export function LanguagePicker({
           {l.native}
         </a>
       ))}
-    </div>
+    </nav>
   )
 }
 

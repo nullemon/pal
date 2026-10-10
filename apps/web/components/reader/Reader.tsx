@@ -88,6 +88,19 @@ export function Reader({ data, comments }: ReaderProps) {
    * stuck with it. `navHidden` removes both, and the hint in the corner brings them back.
    */
   const [navHidden, setNavHidden] = useState(false)
+  /**
+   * Live mirrors of the two chrome flags.
+   *
+   * The keyboard listener and the scroll callback are both registered once — on purpose, so
+   * that typing or scrolling does not tear down and re-add a listener every frame — which
+   * means a closure over `chrome` or `navHidden` inside them is frozen at its first-render
+   * value. That is not a lint technicality: it made the H cycle stick after one press and let
+   * the next scroll undo the hide button. Refs are read at the moment of the event instead.
+   */
+  const chromeRef = useRef(chrome)
+  chromeRef.current = chrome
+  const navHiddenRef = useRef(navHidden)
+  navHiddenRef.current = navHidden
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [moreOpen, setMoreOpen] = useState(false)
@@ -307,11 +320,11 @@ export function Reader({ data, comments }: ReaderProps) {
           return
         case 'h':
         case 'H':
-          // bar -> pill -> hidden -> bar
-          if (navHidden) {
+          // bar -> pill -> hidden -> bar, off the refs so the cycle survives repeat presses.
+          if (navHiddenRef.current) {
             setNavHidden(false)
             setChrome(true)
-          } else if (chrome) setChrome(false)
+          } else if (chromeRef.current) setChrome(false)
           else setNavHidden(true)
           return
         case '?':
@@ -339,9 +352,10 @@ export function Reader({ data, comments }: ReaderProps) {
   // Strip: hide the chrome on scroll-down, bring it back on scroll-up.
   const onStripScroll = useCallback((s: { pct: number; delta: number; top: number }) => {
     setScrollPct(s.pct)
-    // Dismissed stays dismissed: scrolling up is not a request to bring it back, and
-    // overriding that makes the hide button look broken.
-    if (navHidden) return
+    // Dismissed stays dismissed: scrolling up is not a request to bring the nav back, and
+    // overriding that makes the hide button look broken. Via the ref, because this callback
+    // is memoised with no dependencies — it runs on every scroll frame.
+    if (navHiddenRef.current) return
     if (s.delta > 12 && s.top > 80) setChrome(false)
     else if (s.delta < -12) setChrome(true)
   }, [])

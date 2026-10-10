@@ -53,6 +53,17 @@ export interface ChapterProcessing {
    * this on every build of `chapter_pages`, so a deleted page stays deleted.
    */
   dropped?: string[]
+  /**
+   * A gallery import that still has to be downloaded (ImgChest, `@palscans/core/gallery`).
+   *
+   * Present between the operator pressing Import and the worker finishing the download, and
+   * it is what distinguishes the two ways a chapter can have no sources yet: a fetch that has
+   * not run, versus an upload that went wrong. `chapter.fetch` clears it once `sources` is
+   * written, so a chapter carrying both is a chapter whose download died midway — which is
+   * exactly the state Retry needs to recognise in order to resume the download rather than
+   * re-run an encode over nothing.
+   */
+  fetch?: { url: string; provider: string; title?: string | null }
   attempt: number
   /** `failed` = re-run only the sources listed in `errors` (docs/03 "retry failed pages only"). */
   mode?: 'all' | 'failed'

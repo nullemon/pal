@@ -3,6 +3,7 @@ import { adminMessages } from '@palscans/core/messages/admin'
 import { getDb, series } from '@palscans/db'
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
+import { GalleryImport } from '@/components/admin/client/GalleryImport'
 import { Uploader } from '@/components/admin/client/Uploader'
 import { parseSearch, type SearchParams } from '@/components/admin/server/params'
 import { PageHeader } from '@/components/admin/ui'
@@ -31,11 +32,18 @@ export default async function UploadPage({
   return (
     <>
       <PageHeader title={m.title} subtitle={m.subtitle} />
-      <Uploader
-        preset={preset}
-        canPublish={can(user, 'chapter.publish')}
-        canRepair={can(user, 'chapter.repair')}
-      />
+      <div className="flex flex-col gap-4">
+        <GalleryImport
+          canPublish={can(user, 'chapter.publish')}
+          canRepair={can(user, 'chapter.repair')}
+          preset={preset ? { id: preset.id, title: preset.title } : null}
+        />
+        <Uploader
+          preset={preset}
+          canPublish={can(user, 'chapter.publish')}
+          canRepair={can(user, 'chapter.repair')}
+        />
+      </div>
     </>
   )
 }

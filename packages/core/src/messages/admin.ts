@@ -302,6 +302,26 @@ export const adminMessages = {
       reapplyBusy:
         'A watermark re-apply is already running. Wait for it, or stop it in Appearance → Watermark.',
     },
+    galleryImport: {
+      title: 'Import from ImgChest',
+      subtitle:
+        'Paste a gallery link. The pages are fetched on the server and go through the normal pipeline.',
+      url: 'Gallery link',
+      urlPlaceholder: 'https://imgchest.com/p/...',
+      badUrl: 'That is not an ImgChest gallery link.',
+      check: 'Check link',
+      checking: 'Checking…',
+      found: '{n} images found',
+      nsfw: 'Marked NSFW on ImgChest',
+      untitled: 'Untitled gallery',
+      useTitle: 'Use as chapter title',
+      change: 'Change',
+      importing: 'Importing…',
+      start: 'Import chapter',
+      queued: 'Queued — {n} pages downloading in the background.',
+      replace: 'Replace the pages of the existing chapter',
+      hint: 'Downloading happens in the worker, so you can close this page.',
+    },
     upload: {
       title: 'Bulk upload',
       subtitle:

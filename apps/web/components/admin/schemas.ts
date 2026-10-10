@@ -211,6 +211,35 @@ export const uploadCommitSchema = z.object({
 })
 export type UploadCommit = z.infer<typeof uploadCommitSchema>
 
+/**
+ * Importing a chapter from an image-host gallery (ImgChest).
+ *
+ * The link is validated here only for length and non-emptiness; whether it is a gallery at
+ * all is `parseImgchestId`'s job in @palscans/core/gallery, which is also the host allowlist.
+ * Doing it twice, in two shapes, is how the two end up disagreeing.
+ */
+export const galleryPreviewSchema = z.object({
+  url: z.string().min(1).max(500),
+})
+
+export const galleryImportSchema = z.object({
+  url: z.string().min(1).max(500),
+  seriesId: z.number().int().positive(),
+  number: z.number().min(0).max(99_999),
+  title: nullableText(200).optional(),
+  language: z.string().max(16).optional(),
+  /** As in the upload intent: absent means refuse an existing chapter rather than replace it. */
+  replace: z.boolean().optional(),
+  after: z
+    .object({
+      mode: z.enum(['ready', 'publish', 'schedule']),
+      publishedAt: z.string().datetime({ offset: true }).nullable().optional(),
+      isPremium: z.boolean().optional(),
+    })
+    .optional(),
+})
+export type GalleryImport = z.infer<typeof galleryImportSchema>
+
 export const MAX_PAGES_PER_CHAPTER = 400
 /** Mirrors `MAX_ORIGINAL_BYTES` in @palscans/core/storage (this file stays client-safe). */
 export const MAX_FILE_BYTES = 50 * 1024 * 1024

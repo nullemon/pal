@@ -23,6 +23,14 @@ export const envSchema = z.object({
   /** "true" / "1" / "yes" → true; "false" / "0" / "no" → false. */
   S3_FORCE_PATH_STYLE: z.stringbool().optional(),
   // apps/worker knobs (mirrored in .env.example)
+  /**
+   * Optional ImgChest personal access token.
+   *
+   * The import does not need one: the gallery page carries the whole post as JSON and is
+   * served to anyone. A token switches the worker to the documented API first, which is
+   * worth having only as insurance against their markup changing.
+   */
+  IMGCHEST_TOKEN: z.string().min(1).optional(),
   WORKER_CONCURRENCY: z.coerce.number().int().positive().default(1),
   WORKER_PAGE_CONCURRENCY: z.coerce.number().int().positive().default(4),
   WORKER_SCHEDULER_MS: z.coerce.number().int().positive().default(30_000),

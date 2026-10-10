@@ -1,5 +1,6 @@
 'use client'
 
+import { messages } from '@palscans/core/messages'
 import { adminMessages } from '@palscans/core/messages/admin'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -120,18 +121,24 @@ export function CommandPalette({ permissions }: { permissions: readonly string[]
   const total = sections.reduce((n, [, hits]) => n + hits.length, 0)
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 p-4 pt-[12vh]"
-      role="presentation"
-      onClick={() => setOpen(false)}
-    >
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: click-through guard for the backdrop */}
+    <div className="fixed inset-0 z-50 flex items-start justify-center p-4 pt-[12vh]">
+      {/*
+        The backdrop is a real button rather than a div with an onClick. It started as the
+        latter and tripped two a11y rules for the right reason: click-to-dismiss was mouse
+        -only, leaving screen-reader users with Escape as the single way out and nothing
+        announcing it. As a labelled button it is reachable, announced, and lint-clean.
+      */}
+      <button
+        aria-label={messages.common.close}
+        className="absolute inset-0 cursor-default bg-black/50"
+        onClick={() => setOpen(false)}
+        type="button"
+      />
       <div
-        className="w-full max-w-xl overflow-hidden rounded-xl border border-line bg-surface-1 shadow-2xl"
+        className="relative w-full max-w-xl overflow-hidden rounded-xl border border-line bg-surface-1 shadow-2xl"
         role="dialog"
         aria-modal="true"
         aria-label={m.open}
-        onClick={(event) => event.stopPropagation()}
       >
         <input
           ref={inputRef}

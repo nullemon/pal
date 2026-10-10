@@ -1,7 +1,8 @@
 import { normaliseLanguage } from '@palscans/core/languages'
 import { fmt, messages } from '@palscans/core/messages'
 import { adminMessages } from '@palscans/core/messages/admin'
-import { chapters, getDb, series } from '@palscans/db'
+import { can } from '@palscans/core/permissions'
+import { getDb, series } from '@palscans/db'
 import { and, eq, isNull } from 'drizzle-orm'
 import {
   MAX_CHAPTER_BYTES,
@@ -9,6 +10,7 @@ import {
   uploadIntentSchema,
 } from '@/components/admin/schemas'
 import { audit } from '@/components/admin/server/audit'
+import { resolveChapterSlot } from '@/components/admin/server/chapters'
 import { fail, notFound, ok, parseJson, withPermission } from '@/lib/auth'
 import { presignUpload } from '@/lib/storage'
 
@@ -72,7 +74,6 @@ export const POST = withPermission('chapter.create', async (request, _ctx, user)
     .where(and(eq(series.id, seriesId), isNull(series.deletedAt)))
     .limit(1)
   if (!s) return notFound()
-  const { can } = await import('@palscans/core')
 
   let resolved: ResolvedChapter[]
   try {
@@ -82,61 +83,34 @@ export const POST = withPermission('chapter.create', async (request, _ctx, user)
         const total = ch.files.reduce((n, f) => n + f.bytes, 0)
         if (total > MAX_CHAPTER_BYTES)
           throw new IntentAbort(fail(413, 'chapter_too_large', messages.errors.validation))
-        const [existing] = await tx
-          .select({ id: chapters.id, state: chapters.state, pageCount: chapters.pageCount })
-          .from(chapters)
-          .where(
-            and(
-              eq(chapters.seriesId, seriesId),
-              eq(chapters.number, ch.number),
-              // Without this a German chapter 1 matches the English one and the operator is
-              // offered "replace its pages" for a chapter in another language.
-              eq(chapters.language, language),
-              isNull(chapters.deletedAt),
-            ),
-          )
-          .limit(1)
-        let chapterId: number
-        let reused = false
-        let replaced = false
-        if (existing) {
-          // A chapter that already has pages is only ever replaced on purpose: the bulk
-          // preview makes the operator choose skip or replace, and `replace` is that answer.
-          // Without it the intent refuses rather than quietly rebuilding a published chapter.
-          if (existing.pageCount > 0 && ch.replace !== true)
+        const slot = await resolveChapterSlot(tx, {
+          seriesId,
+          number: ch.number,
+          language,
+          title: ch.title ?? null,
+          replace: ch.replace,
+          canRepair: can(user, 'chapter.repair'),
+          userId: user.id,
+        })
+        if (!slot.ok) {
+          if (slot.code === 'chapter_exists')
             throw new IntentAbort(
               fail(
                 409,
                 'chapter_exists',
                 fmt(adminMessages.bulkImport.conflict.title, {
                   n: String(ch.number),
-                  pages: existing.pageCount,
+                  pages: slot.pages,
                 }),
               ),
             )
-          // replacing pages on an existing chapter is a repair (docs/04 "Repair")
-          if (existing.pageCount > 0 && !can(user, 'chapter.repair'))
+          if (slot.code === 'forbidden')
             throw new IntentAbort(fail(403, 'forbidden', messages.errors.forbidden))
-          if (existing.state === 'processing')
+          if (slot.code === 'already_processing')
             throw new IntentAbort(fail(409, 'already_processing'))
-          chapterId = existing.id
-          reused = true
-          replaced = existing.pageCount > 0
-        } else {
-          const [created] = await tx
-            .insert(chapters)
-            .values({
-              seriesId,
-              number: ch.number,
-              title: ch.title ?? null,
-              language,
-              state: 'draft',
-              uploadedBy: user.id,
-            })
-            .returning({ id: chapters.id })
-          if (!created) throw new IntentAbort(fail(500, 'insert_failed'))
-          chapterId = created.id
+          throw new IntentAbort(fail(500, 'insert_failed'))
         }
+        const { chapterId, reused, replaced } = slot
         rows.push({ chapterId, number: ch.number, reused, replaced, files: ch.files })
       }
       return rows

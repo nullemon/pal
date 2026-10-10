@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from 'node:crypto'
+import { sniffImage } from '@palscans/core/images'
 import type { SignedPutUrl, Storage } from '@palscans/core/storage'
 import { getStorage } from '@palscans/core/storage'
 import '../config/install'
@@ -148,24 +149,11 @@ export const storageUrl = (key: string): string => {
   return `${cdnUrl.replace(/\/+$/, '')}/${safe}`
 }
 
-/** Magic-byte sniff (docs/03 step 4): the declared type must match the bytes. */
-export const sniffImage = (b: Uint8Array): string | null => {
-  if (b.length < 12) return null
-  if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return 'image/png'
-  if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return 'image/jpeg'
-  if (b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x38) return 'image/gif'
-  if (
-    b[0] === 0x52 &&
-    b[1] === 0x49 &&
-    b[2] === 0x46 &&
-    b[3] === 0x46 &&
-    b[8] === 0x57 &&
-    b[9] === 0x45
-  )
-    return 'image/webp'
-  if (b[4] === 0x66 && b[5] === 0x74 && b[6] === 0x79 && b[7] === 0x70) {
-    const brand = String.fromCharCode(b[8] ?? 0, b[9] ?? 0, b[10] ?? 0, b[11] ?? 0)
-    if (brand.startsWith('avi')) return 'image/avif'
-  }
-  return null
-}
+/**
+ * Magic-byte sniff — the shared one in @palscans/core/images.
+ *
+ * Re-exported rather than moved outright because `verifyUploadedObject` below and the
+ * gallery import in the worker have to agree on what an image is, and a second copy of a
+ * byte-pattern table is a copy that drifts.
+ */
+export { sniffImage }

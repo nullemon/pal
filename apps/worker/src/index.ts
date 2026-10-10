@@ -5,6 +5,7 @@ import { watermarkRunLive } from '@palscans/core/watermark'
 import { chapters, closeDb, getDb, getSetting, series } from '@palscans/db'
 import { and, eq, isNotNull, isNull, lt, sql } from 'drizzle-orm'
 import { BACKUP_SETTING_KEY, type BackupRun, backupEnv, runBackup } from './jobs/backup.js'
+import { fetchChapterGallery } from './jobs/chapter-fetch.js'
 import { processChapter } from './jobs/chapter-process.js'
 import { openSource, readImportConfig } from './jobs/import/resolve.js'
 import { runImport } from './jobs/import-run.js'
@@ -145,6 +146,35 @@ const main = async () => {
   queue.process('series.art', async (job) => {
     await runArt(job.data.seriesId, job.data.kind)
   })
+  /**
+   * `chapter.fetch` (ImgChest import): download a pasted gallery into the chapter's
+   * originals, then hand over to `chapter.process`.
+   *
+   * Guarded the same way as the encode, because the failure is the same: two deliveries of
+   * one job would download the gallery twice and race on the sources array. Width 1 — the
+   * job is network-bound and already runs its own downloads concurrently, so a second
+   * import in parallel buys nothing and competes for the same uplink.
+   */
+  const fetchInflight = new Set<number>()
+  queue.process(
+    'chapter.fetch',
+    async (job) => {
+      const { chapterId } = job.data
+      if (fetchInflight.has(chapterId)) return
+      fetchInflight.add(chapterId)
+      try {
+        await fetchChapterGallery(chapterId, {
+          db,
+          storage: await storageNow(),
+          queue,
+          token: getEnv().IMGCHEST_TOKEN,
+        })
+      } finally {
+        fetchInflight.delete(chapterId)
+      }
+    },
+    1,
+  )
   queue.process('chapter.publish', async (job) => {
     await publishPass()
     log.info('chapter.publish handled by the scheduler pass', { chapterId: job.data.chapterId })
