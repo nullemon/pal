@@ -1,14 +1,16 @@
 'use client'
 
+import { identifyGallery, manifestRawUrl } from '@palscans/core/gallery'
 import { CHAPTER_LANGUAGES, DEFAULT_CHAPTER_LANGUAGE } from '@palscans/core/languages'
 import { fmt, messages } from '@palscans/core/messages'
 import { adminMessages } from '@palscans/core/messages/admin'
 import { Button, useToast } from '@palscans/ui'
 import { AlertTriangle, Link2, Loader2 } from 'lucide-react'
-import { useCallback, useId, useState } from 'react'
+import { useCallback, useId, useMemo, useState } from 'react'
 import { inputClass, Panel, PanelHeader, Pill, selectClass } from '../ui'
 import { api, postJson } from './api'
 import { Toggle } from './controls'
+import { ManifestImport } from './ManifestImport'
 import { SeriesSearch } from './SeriesEditor'
 
 /**
@@ -76,6 +78,20 @@ export function GalleryImport({
   const [store, setStore] = useState(false)
   const [preview, setPreview] = useState<Preview | null>(null)
   const [busy, setBusy] = useState<'check' | 'import' | null>(null)
+
+  /**
+   * What did they just paste?
+   *
+   * One field rather than two panels to choose between. Choosing wrongly is exactly how a
+   * series manifest ends up in the gallery box and gets refused for looking like what it is;
+   * the parsers already know the difference, so the panel asks them instead of the operator.
+   */
+  const kind = useMemo<'manifest' | 'gallery' | null>(() => {
+    const trimmed = url.trim()
+    if (trimmed === '') return null
+    if (manifestRawUrl(trimmed)) return 'manifest'
+    return identifyGallery(trimmed) ? 'gallery' : null
+  }, [url])
 
   const check = useCallback(async () => {
     setBusy('check')
@@ -187,7 +203,7 @@ export function GalleryImport({
               value={url}
             />
             <Button
-              disabled={url.trim() === '' || busy !== null}
+              disabled={url.trim() === '' || busy !== null || kind !== 'gallery'}
               onClick={() => void check()}
               type="button"
               variant="outline"
@@ -205,169 +221,203 @@ export function GalleryImport({
           </div>
         </div>
 
-        {preview ? (
-          <div className="flex flex-col gap-2.5 rounded-md border border-line bg-surface-2 p-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <Pill tone="ok">{fmt(m.found, { n: preview.count })}</Pill>
-              <span className="text-[13px] text-fg-muted">{preview.title ?? m.untitled}</span>
-              {preview.nsfw ? (
-                <Pill tone="warn">
-                  <AlertTriangle aria-hidden className="size-3" /> {m.nsfw}
-                </Pill>
-              ) : null}
-              {preview.title && title.trim() === '' ? (
-                <button
-                  className="text-[12.5px] text-accent underline-offset-2 hover:underline"
-                  onClick={() => setTitle(preview.title ?? '')}
-                  type="button"
-                >
-                  {m.useTitle}
-                </button>
-              ) : null}
-            </div>
-            {/* First few pages only: enough to tell a chapter from the wrong gallery. */}
-            <div className="flex gap-2 overflow-x-auto">
-              {preview.images.slice(0, 6).map((src) => (
-                <img
-                  alt=""
-                  className="h-24 w-auto shrink-0 rounded border border-line bg-surface-1 object-cover"
-                  key={src}
-                  loading="lazy"
-                  src={src}
-                />
-              ))}
-            </div>
-          </div>
+        {url.trim() !== '' && kind === null ? (
+          <p className="text-[12.5px] text-fg-muted">{m.unknownLink}</p>
         ) : null}
 
-        {target ? null : (
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="flex flex-col gap-1.5">
-              <span className="text-[13px] font-medium">{adminMessages.admin.upload.series}</span>
-              {series ? (
-                <div className="flex items-center justify-between gap-2 rounded-md border border-line bg-surface-2 px-2.5 py-1.5">
-                  <span className="truncate text-[13px]">{series.title}</span>
-                  <button
-                    className="text-[12.5px] text-fg-muted hover:text-fg"
-                    onClick={() => setSeries(null)}
-                    type="button"
-                  >
-                    {m.change}
-                  </button>
-                </div>
-              ) : (
-                <SeriesSearch
-                  onPick={(s) => setSeries({ id: s.id, title: s.title })}
-                  placeholder={adminMessages.admin.upload.pickSeries}
-                />
-              )}
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <span className="text-[13px] font-medium">{adminMessages.admin.upload.language}</span>
-              <select
-                className={selectClass}
-                onChange={(e) => setLanguage(e.target.value)}
-                value={language}
-              >
-                {CHAPTER_LANGUAGES.map((l) => (
-                  <option key={l.code} value={l.code}>
-                    {l.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <span className="text-[13px] font-medium">
-                {adminMessages.admin.upload.chapterNumber}
-              </span>
-              <input
-                className={inputClass}
-                inputMode="decimal"
-                onChange={(e) => setNumber(e.target.value)}
-                placeholder="12"
-                value={number}
-              />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <span className="text-[13px] font-medium">
-                {adminMessages.admin.upload.chapterTitle}
-              </span>
-              <input
-                className={inputClass}
-                onChange={(e) => setTitle(e.target.value)}
-                value={title}
-              />
-            </div>
-          </div>
-        )}
-
-        {target ? null : (
+        {kind === 'manifest' && !target ? (
           /*
-           * The visible name goes beside the switch, never into `label`. That prop is the
-           * accessible name only — a Toggle given one renders "On"/"Off" as its text, so
-           * three in a row read "Off Off Off" and the operator has to guess which is which.
+           * A series manifest. The chapter-shaped fields below would all be wrong for it —
+           * there is no single number to type — so the manifest flow takes over in place,
+           * sharing the link field above rather than asking them to find another panel.
            */
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-[13px]">
-            {canPublish ? (
-              <span className="inline-flex items-center gap-2.5">
-                {adminMessages.admin.upload.afterPublish}
-                <Toggle
-                  ariaLabel={adminMessages.admin.upload.afterPublish}
-                  checked={publish}
-                  onChange={setPublish}
-                  size="sm"
-                />
-              </span>
-            ) : null}
-            {canPublish ? (
-              <span className="inline-flex items-center gap-2.5">
-                {adminMessages.admin.upload.premium}
-                <Toggle
-                  ariaLabel={adminMessages.admin.upload.premium}
-                  checked={premium}
-                  onChange={setPremium}
-                  size="sm"
-                />
-              </span>
-            ) : null}
-            {canRepair ? (
-              <span className="inline-flex items-center gap-2.5">
-                {m.replace}
-                <Toggle ariaLabel={m.replace} checked={replace} onChange={setReplace} size="sm" />
-              </span>
-            ) : null}
-          </div>
-        )}
+          <ManifestImport
+            canPublish={canPublish}
+            canRepair={canRepair}
+            preset={preset ?? null}
+            seriesId={undefined}
+            url={url}
+          />
+        ) : null}
 
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-[13px]">
-          <span className="inline-flex items-center gap-2.5">
-            {m.store}
-            <Toggle ariaLabel={m.store} checked={store} onChange={setStore} size="sm" />
-          </span>
-          <span className="text-[12.5px] text-fg-muted">{m.storeHint}</span>
-        </div>
+        {kind === 'manifest' ? null : (
+          <>
+            {preview ? (
+              <div className="flex flex-col gap-2.5 rounded-md border border-line bg-surface-2 p-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Pill tone="ok">{fmt(m.found, { n: preview.count })}</Pill>
+                  <span className="text-[13px] text-fg-muted">{preview.title ?? m.untitled}</span>
+                  {preview.nsfw ? (
+                    <Pill tone="warn">
+                      <AlertTriangle aria-hidden className="size-3" /> {m.nsfw}
+                    </Pill>
+                  ) : null}
+                  {preview.title && title.trim() === '' ? (
+                    <button
+                      className="text-[12.5px] text-accent underline-offset-2 hover:underline"
+                      onClick={() => setTitle(preview.title ?? '')}
+                      type="button"
+                    >
+                      {m.useTitle}
+                    </button>
+                  ) : null}
+                </div>
+                {/* First few pages only: enough to tell a chapter from the wrong gallery. */}
+                <div className="flex gap-2 overflow-x-auto">
+                  {preview.images.slice(0, 6).map((src) => (
+                    <img
+                      alt=""
+                      className="h-24 w-auto shrink-0 rounded border border-line bg-surface-1 object-cover"
+                      key={src}
+                      loading="lazy"
+                      src={src}
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : null}
 
-        <div className="flex items-center gap-3">
-          <Button
-            disabled={!preview || busy !== null || (!target && (!series || number.trim() === ''))}
-            onClick={() => void start()}
-            type="button"
-          >
-            {busy === 'import' ? (
-              <>
-                <Loader2 aria-hidden className="size-4 animate-spin" /> {m.importing}
-              </>
-            ) : target ? (
-              m.refillStart
-            ) : (
-              m.start
+            {target ? null : (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-[13px] font-medium">
+                    {adminMessages.admin.upload.series}
+                  </span>
+                  {series ? (
+                    <div className="flex items-center justify-between gap-2 rounded-md border border-line bg-surface-2 px-2.5 py-1.5">
+                      <span className="truncate text-[13px]">{series.title}</span>
+                      <button
+                        className="text-[12.5px] text-fg-muted hover:text-fg"
+                        onClick={() => setSeries(null)}
+                        type="button"
+                      >
+                        {m.change}
+                      </button>
+                    </div>
+                  ) : (
+                    <SeriesSearch
+                      onPick={(s) => setSeries({ id: s.id, title: s.title })}
+                      placeholder={adminMessages.admin.upload.pickSeries}
+                    />
+                  )}
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-[13px] font-medium">
+                    {adminMessages.admin.upload.language}
+                  </span>
+                  <select
+                    className={selectClass}
+                    onChange={(e) => setLanguage(e.target.value)}
+                    value={language}
+                  >
+                    {CHAPTER_LANGUAGES.map((l) => (
+                      <option key={l.code} value={l.code}>
+                        {l.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-[13px] font-medium">
+                    {adminMessages.admin.upload.chapterNumber}
+                  </span>
+                  <input
+                    className={inputClass}
+                    inputMode="decimal"
+                    onChange={(e) => setNumber(e.target.value)}
+                    placeholder="12"
+                    value={number}
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-[13px] font-medium">
+                    {adminMessages.admin.upload.chapterTitle}
+                  </span>
+                  <input
+                    className={inputClass}
+                    onChange={(e) => setTitle(e.target.value)}
+                    value={title}
+                  />
+                </div>
+              </div>
             )}
-          </Button>
-          <p className="text-[12.5px] text-fg-muted">{m.hint}</p>
-        </div>
+
+            {target ? null : (
+              /*
+               * The visible name goes beside the switch, never into `label`. That prop is the
+               * accessible name only — a Toggle given one renders "On"/"Off" as its text, so
+               * three in a row read "Off Off Off" and the operator has to guess which is which.
+               */
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-[13px]">
+                {canPublish ? (
+                  <span className="inline-flex items-center gap-2.5">
+                    {adminMessages.admin.upload.afterPublish}
+                    <Toggle
+                      ariaLabel={adminMessages.admin.upload.afterPublish}
+                      checked={publish}
+                      onChange={setPublish}
+                      size="sm"
+                    />
+                  </span>
+                ) : null}
+                {canPublish ? (
+                  <span className="inline-flex items-center gap-2.5">
+                    {adminMessages.admin.upload.premium}
+                    <Toggle
+                      ariaLabel={adminMessages.admin.upload.premium}
+                      checked={premium}
+                      onChange={setPremium}
+                      size="sm"
+                    />
+                  </span>
+                ) : null}
+                {canRepair ? (
+                  <span className="inline-flex items-center gap-2.5">
+                    {m.replace}
+                    <Toggle
+                      ariaLabel={m.replace}
+                      checked={replace}
+                      onChange={setReplace}
+                      size="sm"
+                    />
+                  </span>
+                ) : null}
+              </div>
+            )}
+
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-[13px]">
+              <span className="inline-flex items-center gap-2.5">
+                {m.store}
+                <Toggle ariaLabel={m.store} checked={store} onChange={setStore} size="sm" />
+              </span>
+              <span className="text-[12.5px] text-fg-muted">{m.storeHint}</span>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <Button
+                disabled={
+                  !preview || busy !== null || (!target && (!series || number.trim() === ''))
+                }
+                onClick={() => void start()}
+                type="button"
+              >
+                {busy === 'import' ? (
+                  <>
+                    <Loader2 aria-hidden className="size-4 animate-spin" /> {m.importing}
+                  </>
+                ) : target ? (
+                  m.refillStart
+                ) : (
+                  m.start
+                )}
+              </Button>
+              <p className="text-[12.5px] text-fg-muted">{m.hint}</p>
+            </div>
+          </>
+        )}
       </div>
     </Panel>
   )

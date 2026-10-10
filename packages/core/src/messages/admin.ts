@@ -333,10 +333,10 @@ export const adminMessages = {
     galleryImport: {
       title: 'Import from a link',
       subtitle:
-        'Paste an ImgChest or Imgur gallery link. The pages are fetched on the server and go through the normal pipeline.',
+        'One chapter from an ImgChest or Imgur gallery, or a whole series from a Cubari JSON link. Pages are fetched on the server.',
       url: 'Gallery link',
-      urlPlaceholder: 'https://imgchest.com/p/… or https://imgur.com/a/…',
-      badUrl: 'That is not an ImgChest or Imgur gallery link.',
+      urlPlaceholder: 'imgchest.com/p/… · imgur.com/a/… · a GitHub or gist .json',
+      badUrl: 'That is not a gallery or manifest link we recognise.',
       check: 'Check link',
       checking: 'Checking…',
       found: '{n} images found',
@@ -352,6 +352,8 @@ export const adminMessages = {
       queued: 'Queued — {n} pages downloading in the background.',
       replace: 'Replace the pages of the existing chapter',
       hint: 'Downloading happens in the worker, so you can close this page.',
+      unknownLink:
+        'Paste an ImgChest or Imgur gallery for one chapter, or a GitHub/gist JSON link for a whole series.',
       refillTitle: 'Replace pages from a link',
       refillSubtitle: 'Rebuild {chapter} from a gallery link.',
       refillWarning:

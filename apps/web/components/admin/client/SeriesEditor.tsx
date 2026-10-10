@@ -12,7 +12,6 @@ import { api, del, patchJson, postJson, putJson } from './api'
 import { type ChapterRowData, ChaptersTable } from './ChaptersTable'
 import { SaveBar, Toggle, useDraft } from './controls'
 import { GalleryImport } from './GalleryImport'
-import { ManifestImport } from './ManifestImport'
 import { sha256Hex, uploadWithRetry } from './upload-lib'
 import { slugify } from './util'
 
@@ -770,17 +769,6 @@ export function SeriesEditor(props: Props) {
               canPublish={props.perms.publish}
               canRepair={props.perms.repair}
               preset={{ id: props.id, title: props.doc.title }}
-            />
-          ) : null}
-          {/*
-            The series tab, not the upload screen: a manifest is a whole series, so the only
-            place it makes sense to paste one is while looking at the series it belongs to.
-          */}
-          {props.perms.create ? (
-            <ManifestImport
-              canPublish={props.perms.publish}
-              canRepair={props.perms.repair}
-              seriesId={props.id}
             />
           ) : null}
           <ChaptersTable seriesId={props.id} initial={props.chapters} perms={props.perms} />

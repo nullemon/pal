@@ -9,6 +9,7 @@ import { useCallback, useId, useMemo, useState } from 'react'
 import { inputClass, Panel, PanelHeader, Pill, selectClass } from '../ui'
 import { postJson } from './api'
 import { Toggle } from './controls'
+import { SeriesSearch } from './SeriesEditor'
 
 /**
  * Import every chapter of a series from one manifest link.
@@ -41,18 +42,33 @@ interface Preview {
 }
 
 export function ManifestImport({
-  seriesId,
+  seriesId: fixedSeriesId,
+  preset,
+  url: externalUrl,
   canPublish,
   canRepair,
 }: {
-  seriesId: number
+  /** Set on a series' own page, where there is nothing to choose. */
+  seriesId?: number
+  /** Set on the upload screen, where a series may have been preselected but is changeable. */
+  preset?: { id: number; title: string } | null
+  /**
+   * Supplied when the panel above owns the link field.
+   *
+   * One box that works out what was pasted beats two boxes an operator has to choose
+   * between — choosing wrongly is exactly how a manifest ends up in the gallery field.
+   */
+  url?: string
   canPublish: boolean
   canRepair: boolean
 }) {
   const m = adminMessages.admin.manifestImport
   const { toast } = useToast()
   const urlId = useId()
-  const [url, setUrl] = useState('')
+  const [ownUrl, setOwnUrl] = useState('')
+  const url = externalUrl ?? ownUrl
+  const [picked, setPicked] = useState<{ id: number; title: string } | null>(preset ?? null)
+  const seriesId = fixedSeriesId ?? picked?.id ?? null
   const [group, setGroup] = useState('')
   const [language, setLanguage] = useState(DEFAULT_CHAPTER_LANGUAGE)
   const [store, setStore] = useState(false)
@@ -68,6 +84,7 @@ export function ManifestImport({
   }, [preview])
 
   const check = useCallback(async () => {
+    if (!seriesId) return
     setBusy('check')
     setPreview(null)
     const result = await postJson<Preview>('/api/admin/chapters/import/manifest/preview', {
@@ -88,7 +105,7 @@ export function ManifestImport({
   }, [url, seriesId, language, group, toast])
 
   const start = useCallback(async () => {
-    if (!preview || chosen.size === 0) return
+    if (!preview || chosen.size === 0 || !seriesId) return
     setBusy('import')
     const result = await postJson<{ queued: number; lastStartsInSeconds: number }>(
       '/api/admin/chapters/import/manifest',
@@ -130,29 +147,53 @@ export function ManifestImport({
       return next
     })
 
+  const Wrap = externalUrl === undefined ? Panel : 'div'
   return (
-    <Panel>
-      <PanelHeader title={m.title} hint={m.subtitle} />
+    <Wrap>
+      {externalUrl === undefined ? <PanelHeader title={m.title} hint={m.subtitle} /> : null}
       <div className="flex flex-col gap-3">
-        <div className="flex flex-col gap-1.5">
-          <label className="text-[13px] font-medium" htmlFor={urlId}>
-            {m.url}
-          </label>
-          <div className="flex gap-2">
-            <input
-              className={inputClass}
-              id={urlId}
-              inputMode="url"
-              onChange={(e) => {
-                setUrl(e.target.value)
-                setPreview(null)
-              }}
-              placeholder={m.urlPlaceholder}
-              spellCheck={false}
-              value={url}
-            />
+        {externalUrl === undefined ? (
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[13px] font-medium" htmlFor={urlId}>
+              {m.url}
+            </label>
+            <div className="flex gap-2">
+              <input
+                className={inputClass}
+                id={urlId}
+                inputMode="url"
+                onChange={(e) => {
+                  setOwnUrl(e.target.value)
+                  setPreview(null)
+                }}
+                placeholder={m.urlPlaceholder}
+                spellCheck={false}
+                value={url}
+              />
+              <Button
+                disabled={url.trim() === '' || busy !== null || !seriesId}
+                onClick={() => void check()}
+                type="button"
+                variant="outline"
+              >
+                {busy === 'check' ? (
+                  <>
+                    <Loader2 aria-hidden className="size-4 animate-spin" /> {m.checking}
+                  </>
+                ) : (
+                  <>
+                    <FileJson aria-hidden className="size-4" /> {m.check}
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
+        {externalUrl !== undefined ? (
+          <div className="flex items-center gap-2">
             <Button
-              disabled={url.trim() === '' || busy !== null}
+              disabled={url.trim() === '' || busy !== null || !seriesId}
               onClick={() => void check()}
               type="button"
               variant="outline"
@@ -167,8 +208,9 @@ export function ManifestImport({
                 </>
               )}
             </Button>
+            <span className="text-[12.5px] text-fg-muted">{m.subtitle}</span>
           </div>
-        </div>
+        ) : null}
 
         {preview ? (
           <>
@@ -261,6 +303,28 @@ export function ManifestImport({
         ) : null}
 
         <div className="grid gap-3 sm:grid-cols-2">
+          {fixedSeriesId === undefined ? (
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[13px] font-medium">{adminMessages.admin.upload.series}</span>
+              {picked ? (
+                <div className="flex items-center justify-between gap-2 rounded-md border border-line bg-surface-2 px-2.5 py-1.5">
+                  <span className="truncate text-[13px]">{picked.title}</span>
+                  <button
+                    className="text-[12.5px] text-fg-muted hover:text-fg"
+                    onClick={() => setPicked(null)}
+                    type="button"
+                  >
+                    {adminMessages.admin.galleryImport.change}
+                  </button>
+                </div>
+              ) : (
+                <SeriesSearch
+                  onPick={(s) => setPicked({ id: s.id, title: s.title })}
+                  placeholder={adminMessages.admin.upload.pickSeries}
+                />
+              )}
+            </div>
+          ) : null}
           <div className="flex flex-col gap-1.5">
             <span className="text-[13px] font-medium">{adminMessages.admin.upload.language}</span>
             <select
@@ -328,7 +392,7 @@ export function ManifestImport({
 
         <div className="flex flex-wrap items-center gap-3">
           <Button
-            disabled={!preview || chosen.size === 0 || busy !== null}
+            disabled={!preview || chosen.size === 0 || busy !== null || !seriesId}
             onClick={() => void start()}
             type="button"
           >
@@ -343,6 +407,6 @@ export function ManifestImport({
           <p className="text-[12.5px] text-fg-muted">{m.pacing}</p>
         </div>
       </div>
-    </Panel>
+    </Wrap>
   )
 }
