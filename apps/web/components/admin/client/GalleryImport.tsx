@@ -57,11 +57,14 @@ export function GalleryImport({
   target,
   canPublish,
   canRepair,
+  onFollowed,
 }: {
   preset?: { id: number; title: string } | null
   target?: GalleryTarget
   canPublish: boolean
   canRepair: boolean
+  /** Passed through to the manifest flow this panel hands a manifest link to. */
+  onFollowed?: () => void
 }) {
   const m = adminMessages.admin.galleryImport
   const { toast } = useToast()
@@ -234,6 +237,7 @@ export function GalleryImport({
           <ManifestImport
             canPublish={canPublish}
             canRepair={canRepair}
+            onFollowed={onFollowed}
             preset={preset ?? null}
             seriesId={undefined}
             url={url}

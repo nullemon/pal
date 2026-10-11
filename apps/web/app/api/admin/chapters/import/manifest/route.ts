@@ -1,9 +1,8 @@
 import { getEnv } from '@palscans/core/env'
 import {
   GalleryError,
-  imgchestUrl,
-  imgurAlbumUrl,
   type ManifestChapter,
+  manifestChapterUrl,
   resolveManifest,
 } from '@palscans/core/gallery'
 import { normaliseLanguage } from '@palscans/core/languages'
@@ -15,6 +14,7 @@ import { manifestImportSchema } from '@/components/admin/schemas'
 import { audit } from '@/components/admin/server/audit'
 import { enqueueFetch, resolveChapterSlot } from '@/components/admin/server/chapters'
 import { groupIdByName, setChapterGroups } from '@/components/admin/server/groups'
+import { followManifest } from '@/components/admin/server/manifest-sources'
 import { fail, notFound, ok, parseJson, withPermission } from '@/lib/auth'
 
 /**
@@ -33,13 +33,6 @@ import { fail, notFound, ok, parseJson, withPermission } from '@/lib/auth'
 
 /** Seconds between queued chapters. Polite rather than slow: the worker serialises anyway. */
 const STAGGER_SECONDS = 15
-
-const sourceUrl = (chapter: ManifestChapter): string =>
-  chapter.source.kind === 'direct'
-    ? (chapter.source.links[0] ?? '')
-    : chapter.source.provider === 'imgur'
-      ? imgurAlbumUrl(chapter.source.id)
-      : imgchestUrl(chapter.source.id)
 
 export const POST = withPermission('chapter.create', async (request, _ctx, user) => {
   const parsed = await parseJson(request, manifestImportSchema)
@@ -121,7 +114,7 @@ export const POST = withPermission('chapter.create', async (request, _ctx, user)
         attempt,
         mode: 'all',
         fetch: {
-          url: sourceUrl(chapter),
+          url: manifestChapterUrl(chapter),
           provider: chapter.source.kind === 'direct' ? 'direct' : chapter.source.provider,
           title: chapter.title,
           mode: store,
@@ -180,6 +173,28 @@ export const POST = withPermission('chapter.create', async (request, _ctx, user)
     }
   }
 
+  /**
+   * Keep following the file, if they asked.
+   *
+   * After the import rather than before: following a manifest that turned out to be
+   * unreadable, or that the operator abandoned at the preview, would leave the worker
+   * checking a link nobody ever imported from.
+   */
+  let following = false
+  if (parsed.data.sync === true) {
+    const source = await followManifest({
+      seriesId,
+      url,
+      language,
+      store,
+      publishMode: after?.mode === 'publish' ? 'publish' : 'ready',
+      isPremium: after?.isPremium ?? false,
+      groupName: parsed.data.group ?? null,
+      userId: user.id,
+    })
+    following = source !== null
+  }
+
   // After the commit, never inside it: a job that beats its own row loses.
   for (const [i, job] of queued.entries())
     await enqueueFetch(job.chapterId, job.attempt, i * STAGGER_SECONDS * 1000)
@@ -195,12 +210,14 @@ export const POST = withPermission('chapter.create', async (request, _ctx, user)
       store,
       queued: queued.length,
       skipped: skipped.length,
+      following,
       numbers: queued.slice(0, 50).map((q) => q.number),
     },
   })
   return ok({
     queued: queued.length,
     skipped,
+    following,
     /** Roughly when the last chapter starts, so the panel can say more than "queued". */
     lastStartsInSeconds: Math.max(0, queued.length - 1) * STAGGER_SECONDS,
   })

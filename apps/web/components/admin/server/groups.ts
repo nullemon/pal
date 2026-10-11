@@ -1,7 +1,23 @@
 import 'server-only'
-import { slugify, uniqueSlug } from '@palscans/core/slug'
-import { chapterGroups, chapters, type Db, getDb, groups } from '@palscans/db'
+import {
+  chapterGroups,
+  chapters,
+  type Db,
+  getDb,
+  groups,
+  insertGroup,
+  setChapterGroups,
+} from '@palscans/db'
 import { and, count, desc, eq, inArray, isNull } from 'drizzle-orm'
+
+/**
+ * Crediting itself lives in `@palscans/db` and is re-exported here.
+ *
+ * The manifest sync runs in `apps/worker` and credits the group its file names, so the
+ * find-or-create cannot live behind `server-only` code in this app. Re-exporting keeps every
+ * call site in the admin screens pointing at one import.
+ */
+export { groupIdByName, setChapterGroups } from '@palscans/db'
 
 /**
  * Scanlation groups (docs/13).
@@ -49,21 +65,7 @@ export const createGroup = async (
   input: { name: string; description?: string | null; links?: Record<string, string> },
   db?: Db,
 ): Promise<GroupRow | null> => {
-  const database = db ?? (await getDb())
-  const taken = await database.select({ slug: groups.slug }).from(groups)
-  const slug = uniqueSlug(
-    slugify(input.name, { fallback: 'group' }),
-    taken.map((t) => t.slug.toLowerCase()),
-  )
-  const [row] = await database
-    .insert(groups)
-    .values({
-      slug,
-      name: input.name,
-      description: input.description ?? null,
-      links: input.links ?? {},
-    })
-    .returning({ id: groups.id, slug: groups.slug, name: groups.name })
+  const row = await insertGroup(input, db ?? (await getDb()))
   if (!row) return null
   return {
     id: row.id,
@@ -115,38 +117,6 @@ export const deleteGroup = async (id: number, db?: Db): Promise<boolean> => {
     .where(and(eq(groups.id, id), isNull(groups.deletedAt)))
     .returning({ id: groups.id })
   return result.length > 0
-}
-
-/**
- * Set the groups credited on a set of chapters, replacing whatever was there.
- *
- * Replace rather than merge: the caller is a picker showing the current state, so what it
- * sends is the whole answer. Merging would make removing a wrong credit impossible from the
- * only screen that can set one.
- */
-export const setChapterGroups = async (
-  chapterIds: readonly number[],
-  groupIds: readonly number[],
-  db?: Db,
-): Promise<number> => {
-  if (chapterIds.length === 0) return 0
-  const database = db ?? (await getDb())
-  // Unknown or deleted ids are dropped rather than rejected: a stale picker should not fail
-  // the whole assignment, and the response reports what was actually written.
-  const live = groupIds.length
-    ? await database
-        .select({ id: groups.id })
-        .from(groups)
-        .where(and(inArray(groups.id, [...groupIds]), isNull(groups.deletedAt)))
-    : []
-  await database.transaction(async (tx) => {
-    await tx.delete(chapterGroups).where(inArray(chapterGroups.chapterId, [...chapterIds]))
-    if (live.length)
-      await tx
-        .insert(chapterGroups)
-        .values(chapterIds.flatMap((c) => live.map((g) => ({ chapterId: c, groupId: g.id }))))
-  })
-  return live.length
 }
 
 /** The groups credited on each of these chapters, for the picker and the public credit. */
@@ -225,27 +195,4 @@ export const setSeriesGroups = async (
   if (ids.length === 0) return { chapters: 0, groups: 0 }
   const written = await setChapterGroups(ids, groupIds, database)
   return { chapters: ids.length, groups: written }
-}
-
-/**
- * The group of this name, creating it if nobody has yet.
- *
- * For the manifest importer, which is handed a group *name* rather than an id — the file
- * says "Illeterate Scans" and there is no reason to make an operator create that by hand
- * before importing. Matching is case-insensitive on the slug, so "Illeterate Scans" and
- * "illeterate scans" are one group rather than two.
- */
-export const groupIdByName = async (name: string, db?: Db): Promise<number | null> => {
-  const trimmed = name.trim()
-  if (trimmed === '') return null
-  const database = db ?? (await getDb())
-  const wanted = slugify(trimmed, { fallback: 'group' })
-  const [existing] = await database
-    .select({ id: groups.id })
-    .from(groups)
-    .where(and(eq(groups.slug, wanted), isNull(groups.deletedAt)))
-    .limit(1)
-  if (existing) return existing.id
-  const created = await createGroup({ name: trimmed }, database)
-  return created?.id ?? null
 }

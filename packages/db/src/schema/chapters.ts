@@ -210,3 +210,73 @@ export const chapterGroups = pgTable(
     index('chapter_groups_group_id_idx').on(t.groupId),
   ],
 )
+
+/**
+ * A manifest link this series follows (docs/03 "Keeping a manifest in sync").
+ *
+ * The import panel takes a one-off snapshot of a manifest: paste the link, pick the chapters,
+ * done. But a manifest is a living file — the group that maintains it adds chapter 48 the
+ * evening it is released — and a site whose catalogue is a snapshot of the day somebody
+ * happened to paste the link is a site that is permanently behind the source it imports from.
+ *
+ * So the link is kept, and the worker re-reads it on a timer and imports what is new. One row
+ * per (series, url, language): the same file may be followed in two languages, and two
+ * different files may both feed one series.
+ */
+export const manifestSources = pgTable(
+  'manifest_sources',
+  {
+    id: identity(),
+    seriesId: ref('series_id')
+      .notNull()
+      .references(() => series.id, { onDelete: 'cascade' }),
+    url: text('url').notNull(),
+    language: text('language').notNull().default('en'),
+    /** Where new chapters' pages go, exactly as the import panel's own toggle decides it. */
+    store: text('store').$type<'remote' | 'storage'>().notNull().default('remote'),
+    /**
+     * What a chapter discovered by the sync becomes once its pages are in.
+     *
+     * `ready` leaves it for a human to look at; `publish` puts it straight on the site. The
+     * second is the point of the feature for most operators — a release appears without
+     * anybody being awake — but it is a decision to opt into rather than a default, because
+     * it hands a third party's file the ability to publish on this site.
+     */
+    publishMode: text('publish_mode').$type<'ready' | 'publish'>().notNull().default('ready'),
+    isPremium: boolean('is_premium').notNull().default(false),
+    /** Which group's version to take when the file offers several. Null means the first. */
+    groupName: text('group_name'),
+    /** Paused rather than deleted: the history below is worth keeping. */
+    active: boolean('active').notNull().default(true),
+    /**
+     * Digest of the chapter list the last check saw.
+     *
+     * An unchanged manifest is the overwhelmingly common case — most checks of most sources
+     * find nothing — so the digest lets a check stop after the fetch instead of querying the
+     * chapter table for every source on every pass.
+     */
+    fingerprint: text('fingerprint'),
+    lastCheckedAt: timestamptz('last_checked_at'),
+    /** When the file last actually differed, which is what "is this still maintained" means. */
+    lastChangedAt: timestamptz('last_changed_at'),
+    /**
+     * Why the last check failed, kept so the panel can say so.
+     *
+     * A sync that quietly stops working is worse than one that never existed: the operator
+     * believes the site is current. Cleared by the next successful check.
+     */
+    lastError: text('last_error'),
+    /** Chapters this source has imported, all-time. */
+    imported: integer('imported').notNull().default(0),
+    createdBy: ref('created_by').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [
+    // One row per file per language: re-following a link already followed is an edit of the
+    // row that exists, not a second row that imports the same chapters twice.
+    unique('manifest_sources_series_url_lang_unique').on(t.seriesId, t.url, t.language),
+    // The due query: active sources, oldest check first.
+    index('manifest_sources_due_idx').on(t.lastCheckedAt).where(sql`${t.active}`),
+  ],
+)

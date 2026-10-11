@@ -310,6 +310,14 @@ export const manifestImportSchema = z.object({
       isPremium: z.boolean().optional(),
     })
     .optional(),
+  /**
+   * Keep following this manifest after the import.
+   *
+   * A manifest is a living file, so a one-off import leaves the series frozen at the moment
+   * somebody pasted the link. Set here rather than on a separate screen because this is the
+   * moment the operator knows the answer — they have the file in front of them.
+   */
+  sync: z.boolean().optional(),
 })
 export type ManifestImport = z.infer<typeof manifestImportSchema>
 

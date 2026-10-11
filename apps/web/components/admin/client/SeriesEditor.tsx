@@ -12,6 +12,7 @@ import { api, del, patchJson, postJson, putJson } from './api'
 import { type ChapterRowData, ChaptersTable } from './ChaptersTable'
 import { SaveBar, Toggle, useDraft } from './controls'
 import { GalleryImport } from './GalleryImport'
+import { ManifestSources } from './ManifestSources'
 import { SeriesGroups } from './SeriesGroups'
 import { sha256Hex, uploadWithRetry } from './upload-lib'
 import { slugify } from './util'
@@ -76,6 +77,8 @@ export function SeriesEditor(props: Props) {
   const [linked, setLinked] = useState(props.linked)
   const [deleted, setDeleted] = useState(props.deleted)
   const [lookupOpen, setLookupOpen] = useState(false)
+  /** Bumped when an import starts following a manifest, so the sources panel re-reads. */
+  const [followed, setFollowed] = useState(0)
   const dirty = useMemo(() => JSON.stringify(doc) !== JSON.stringify(saved), [doc, saved])
   useDraft(`admin.series.${props.id}`, doc, dirty)
 
@@ -769,9 +772,11 @@ export function SeriesEditor(props: Props) {
             <GalleryImport
               canPublish={props.perms.publish}
               canRepair={props.perms.repair}
+              onFollowed={() => setFollowed((n) => n + 1)}
               preset={{ id: props.id, title: props.doc.title }}
             />
           ) : null}
+          <ManifestSources canEdit={props.perms.create} key={followed} seriesId={props.id} />
           <SeriesGroups canEdit={props.perms.chapterUpdate} seriesId={props.id} />
           <ChaptersTable seriesId={props.id} initial={props.chapters} perms={props.perms} />
         </div>

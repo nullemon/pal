@@ -51,6 +51,12 @@ export interface JobMap {
    * design: two listings and a set difference, not a HEAD per object.
    */
   'object.reconcile': { limit?: number }
+  /**
+   * Re-read the manifests a series follows and import the chapters that appeared since the
+   * last check (docs/03 "Keeping a manifest in sync"). Empty payload = every source that is
+   * due; `sourceId` is one source, which is how the panel's "Check now" button asks.
+   */
+  'manifest.sync': { sourceId?: number }
 }
 export type JobName = keyof JobMap
 

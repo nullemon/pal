@@ -9,6 +9,7 @@ import { fetchChapterGallery } from './jobs/chapter-fetch.js'
 import { processChapter } from './jobs/chapter-process.js'
 import { openSource, readImportConfig } from './jobs/import/resolve.js'
 import { runImport } from './jobs/import-run.js'
+import { dueManifestSources, manifestSyncEnv, syncManifestSource } from './jobs/manifest-sync.js'
 import { registerNotifications } from './jobs/notify-index.js'
 import { mirrorEnv, runObjectMirror, runObjectReconcile } from './jobs/object-mirror.js'
 import { publishDue } from './jobs/publish.js'
@@ -45,6 +46,9 @@ const BACKUP_MS = backupEnv().WORKER_BACKUP_MS
  * worker that restarts twice an hour during a deploy must not take a dump each time.
  */
 let lastBackup = 0
+/** How often the manifest sync pass is enqueued (docs/03 "Keeping a manifest in sync"). */
+const MANIFEST_SYNC_MS = manifestSyncEnv().WORKER_MANIFEST_SYNC_MS
+let lastManifestSync = 0
 /** How often the object mirror's reconcile sweep is enqueued (docs/08 "The mirror"). */
 const MIRROR_MS = mirrorEnv().WORKER_MIRROR_MS
 let lastMirror = 0
@@ -288,6 +292,36 @@ const main = async () => {
     await runObjectReconcile(job.data?.limit)
   })
 
+  /**
+   * `manifest.sync` (docs/03): re-read the manifests series follow and import what is new.
+   *
+   * One source at a time and never two passes at once: each source's check ends in a write to
+   * its own row, and two overlapping passes would both read "nothing imported yet" and queue
+   * the same chapters twice. Width is already 1; the guard is for the producer below firing
+   * while a slow pass is still walking its batch.
+   */
+  let manifestSyncInflight = false
+  queue.process(
+    'manifest.sync',
+    async (job) => {
+      if (manifestSyncInflight) return
+      manifestSyncInflight = true
+      try {
+        const ids = job.data?.sourceId
+          ? [job.data.sourceId]
+          : await dueManifestSources(db, {
+              intervalMs: MANIFEST_SYNC_MS,
+              limit: manifestSyncEnv().WORKER_MANIFEST_SYNC_BATCH,
+            })
+        for (const id of ids)
+          await syncManifestSource(id, { db, queue, token: getEnv().IMGCHEST_TOKEN })
+      } finally {
+        manifestSyncInflight = false
+      }
+    },
+    1,
+  )
+
   for (const name of ['notify.comment', 'email.send', 'webhook.deliver'] as const) {
     queue.process(name, async (job) => {
       log.warn(`no handler for ${name} in apps/worker yet — acknowledged`, { id: job.id })
@@ -343,6 +377,17 @@ const main = async () => {
           'object.reconcile',
           {},
           { jobId: `object.reconcile:${Math.floor(Date.now() / MIRROR_MS)}` },
+        )
+      }
+      // The `manifest.sync` producer, same pattern. The job itself picks which sources are
+      // actually due, so a tick that fires while every source was checked a minute ago costs
+      // one indexed query and nothing else.
+      if (Date.now() - lastManifestSync >= MANIFEST_SYNC_MS) {
+        lastManifestSync = Date.now()
+        await queue.add(
+          'manifest.sync',
+          {},
+          { jobId: `manifest.sync:${Math.floor(Date.now() / MANIFEST_SYNC_MS)}` },
         )
       }
       // The `db.backup` producer, on the same pattern. `lastBackup` moves when the job is

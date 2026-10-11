@@ -232,6 +232,13 @@
       "when": 1788380056000,
       "tag": "9046_remote_pages",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1788380060000,
+      "tag": "9048_manifest_sources",
+      "breakpoints": true
     }
   ]
 }

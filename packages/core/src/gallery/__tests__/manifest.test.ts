@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { manifestRawUrl, parseManifest } from '../manifest.js'
+import {
+  manifestChapterUrl,
+  manifestFingerprint,
+  manifestRawUrl,
+  parseManifest,
+} from '../manifest.js'
 import { GalleryError } from '../types.js'
 
 /**
@@ -210,5 +215,67 @@ describe('manifestRawUrl', () => {
       'not a url',
     ])
       expect(manifestRawUrl(url), url).toBeNull()
+  })
+})
+
+describe('manifestChapterUrl', () => {
+  it('rebuilds the canonical gallery URL rather than echoing the proxy path', () => {
+    const parsed = parseManifest(manifest())
+    expect(parsed.chapters.map(manifestChapterUrl)).toEqual(['https://imgur.com/a/mPTTseC'])
+  })
+
+  it('uses the first image for a chapter listed as direct links', () => {
+    const parsed = parseManifest(
+      manifest({
+        chapters: {
+          '1': chapter({
+            groups: {
+              G: ['https://cdn.example.com/a.png', 'https://cdn.example.com/b.png'],
+            },
+          }),
+        },
+      }),
+    )
+    expect(parsed.chapters.map(manifestChapterUrl)).toEqual(['https://cdn.example.com/a.png'])
+  })
+})
+
+/**
+ * The change detector behind the sync. What it must get right is not "is this file
+ * different" but "is there a chapter here that was not here before, or one now pointing
+ * somewhere else" — a reformat or an edited description must look identical, or every check
+ * of every followed series walks the chapter table for nothing.
+ */
+describe('manifestFingerprint', () => {
+  const fingerprintOf = (over: Record<string, unknown>) =>
+    manifestFingerprint(parseManifest(manifest(over)))
+
+  it('is stable across an edit that changes no chapter source', () => {
+    const before = fingerprintOf({ chapters: { '1': chapter() } })
+    const after = fingerprintOf({
+      description: 'rewritten',
+      chapters: { '1': chapter({ title: 'Renamed', last_updated: '1700000000' }) },
+    })
+    expect(after).toBe(before)
+  })
+
+  it('is stable when the same chapters arrive in another key order', () => {
+    const a = fingerprintOf({ chapters: { '1': chapter(), '2': chapter() } })
+    const b = fingerprintOf({ chapters: { '2': chapter(), '1': chapter() } })
+    expect(b).toBe(a)
+  })
+
+  it('moves when a chapter is added', () => {
+    const before = fingerprintOf({ chapters: { '1': chapter() } })
+    const after = fingerprintOf({ chapters: { '1': chapter(), '2': chapter() } })
+    expect(after).not.toBe(before)
+  })
+
+  it('moves when a chapter is repointed at another gallery', () => {
+    const before = fingerprintOf({ chapters: { '1': chapter() } })
+    const after = fingerprintOf({
+      chapters: { '1': chapter({ groups: { G: '/proxy/api/imgur/chapter/XXXXXXX/' } }) },
+    })
+    expect(after).not.toBe(before)
   })
 })

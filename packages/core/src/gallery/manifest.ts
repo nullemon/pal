@@ -1,6 +1,6 @@
 import { directUrlProblem } from './address.js'
-import { parseImgchestId } from './imgchest.js'
-import { parseImgurId } from './imgur.js'
+import { imgchestUrl, parseImgchestId } from './imgchest.js'
+import { imgurAlbumUrl, parseImgurId } from './imgur.js'
 import { GalleryError, type GalleryProvider } from './types.js'
 
 /**
@@ -256,4 +256,44 @@ export const manifestRawUrl = (input: string): string | null => {
       : null
   }
   return null
+}
+
+/**
+ * The human-readable origin of one manifest chapter, as `chapters.processing.fetch.url`.
+ *
+ * Shared because two importers need the same answer: the admin route behind the panel and
+ * the worker's unattended sync. Two spellings of this would mean a chapter imported by the
+ * sync recorded a different origin from the same chapter imported by hand — and that field
+ * is what the panel shows an operator asking where a chapter came from.
+ */
+export const manifestChapterUrl = (chapter: ManifestChapter): string =>
+  chapter.source.kind === 'direct'
+    ? (chapter.source.links[0] ?? '')
+    : chapter.source.provider === 'imgur'
+      ? imgurAlbumUrl(chapter.source.id)
+      : imgchestUrl(chapter.source.id)
+
+/**
+ * A digest of what a manifest currently offers, for "has this file changed?".
+ *
+ * Over the chapter keys and their sources rather than the raw bytes: a manifest served from
+ * a gist or a CDN picks up incidental differences — a reformat, a description edit, a key
+ * order that JSON does not promise to preserve — and a fingerprint that moves on those would
+ * send the sync to the chapter table on every pass for nothing. What matters is whether
+ * there is a chapter here that was not here before, or a chapter now pointing somewhere else.
+ */
+export const manifestFingerprint = (manifest: Manifest): string => {
+  const parts = manifest.chapters
+    .map((c) =>
+      c.source.kind === 'direct'
+        ? `${c.key}:direct:${c.source.links.length}:${c.source.links[0] ?? ''}`
+        : `${c.key}:${c.source.provider}:${c.source.id}`,
+    )
+    .sort()
+  // djb2 over the joined list: this is a change detector, not a security primitive, and it
+  // has to run in the worker without reaching for node:crypto on every pass.
+  let hash = 5381
+  const joined = parts.join('\n')
+  for (let i = 0; i < joined.length; i++) hash = (hash * 33 + joined.charCodeAt(i)) | 0
+  return `${parts.length}:${(hash >>> 0).toString(36)}`
 }

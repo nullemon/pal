@@ -67,6 +67,67 @@ prefixes. Set it once as an R2 bucket-level rule.
 For CBZ/ZIP, unzip in the browser (`fflate` streams it) rather than server-side — it keeps
 a 400 MB archive off your server entirely and gives instant thumbnails.
 
+## Importing from a link
+
+Besides uploading, a chapter can be imported from somewhere it already is: an ImgChest or
+Imgur gallery, a plain list of image URLs, or a Cubari-style series manifest on GitHub or in
+a gist. The panel has one link field and works out which of those was pasted, because
+choosing between two boxes is exactly how a manifest ends up in the gallery field.
+
+Two destinations for the pages, chosen by one toggle:
+
+- **remote** (default) — the pages stay on the host that already serves them and
+  `chapter_pages.remote_url` records where. Nothing is downloaded, nothing is encoded,
+  nothing is watermarked, and the chapter costs no storage. Free chapters hand the browser
+  the host's own URL; locked ones go through `/p/:chapter/:idx`, so entitlement still
+  applies and the origin is not in the page source.
+- **storage** — the original behaviour: `chapter.fetch` downloads the gallery into
+  `uploads/`, then `chapter.process` encodes and watermarks it like an upload. A remote
+  import falls back to this on its own if the host will not answer our server reliably
+  (`chapter.fetch` probes the first image twice — one success proves nothing about a host
+  that rations).
+
+A manifest import is the same path, one chapter per entry, queued 15 seconds apart. The
+spacing is not about our own load — the worker runs `chapter.fetch` one at a time anyway —
+it is about not opening a hundred near-simultaneous conversations with an image host, which
+is the fastest way to get the site rate-limited. The group each entry names is credited on
+the chapter it produced.
+
+### Keeping a manifest in sync
+
+A manifest is a living file: the group maintaining it adds a chapter the evening it
+releases. An import is a snapshot of it, so a catalogue built only from imports is frozen at
+whenever somebody last pasted the link. Ticking **keep this series in sync** stores the link
+in `manifest_sources`, and `manifest.sync` in the worker re-reads it every
+`WORKER_MANIFEST_SYNC_MS` (15 minutes) and imports what appeared.
+
+```
+scheduler tick → manifest.sync → the due sources (active, least recently checked)
+  → fetch the file
+  → fingerprint unchanged?  stop here (the common case: one GET, no queries)
+  → else: numbers not already in this series + language → insert, queue chapter.fetch
+  → credit the group the file names; record fingerprint, time, and any error
+```
+
+The fingerprint is over chapter keys and their sources, not the raw bytes, so a reformat or
+an edited description is not a change. It is deliberately **not** recorded while the
+per-check cap (25 chapters) has deferred work, or a first check of a 200-chapter manifest
+would import 25 and then declare itself up to date.
+
+Nothing about the sync is destructive, which matters because it runs unattended against a
+file somebody else edits:
+
+- A chapter that disappeared from the manifest stays on the site.
+- A number that already exists is never replaced — including one an operator deleted, which
+  is not an invitation to put it back.
+- New chapters wait as `ready` unless the source is explicitly set to publish, which needs
+  `chapter.publish`: publishing on a timer hands a third party's file the ability to publish
+  here.
+
+A check that fails records why on the source row, and the panel shows it. A sync that
+silently stops working is worse than no sync at all, because the operator believes the site
+is current.
+
 ## Worker: `chapter.process`
 
 Per page, in a bounded concurrency pool (`p-limit`, ~4 on a 4-core box):

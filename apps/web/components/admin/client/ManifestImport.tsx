@@ -47,6 +47,7 @@ export function ManifestImport({
   url: externalUrl,
   canPublish,
   canRepair,
+  onFollowed,
 }: {
   /** Set on a series' own page, where there is nothing to choose. */
   seriesId?: number
@@ -61,6 +62,8 @@ export function ManifestImport({
   url?: string
   canPublish: boolean
   canRepair: boolean
+  /** Told when a manifest starts being followed, so a sources panel beside this can refresh. */
+  onFollowed?: () => void
 }) {
   const m = adminMessages.admin.manifestImport
   const { toast } = useToast()
@@ -74,6 +77,15 @@ export function ManifestImport({
   const [store, setStore] = useState(false)
   const [publish, setPublish] = useState(false)
   const [replace, setReplace] = useState(false)
+  /**
+   * Keep following the file after this import.
+   *
+   * On by default, which is the one default on this panel that is an opinion: a manifest is a
+   * living file, and an operator who imports from one almost always wants the next chapter
+   * too. Turning it off is a click; noticing months later that the series stopped at 47 is
+   * not.
+   */
+  const [sync, setSync] = useState(true)
   const [preview, setPreview] = useState<Preview | null>(null)
   const [chosen, setChosen] = useState<Set<number>>(new Set())
   const [busy, setBusy] = useState<'check' | 'import' | null>(null)
@@ -107,19 +119,21 @@ export function ManifestImport({
   const start = useCallback(async () => {
     if (!preview || chosen.size === 0 || !seriesId) return
     setBusy('import')
-    const result = await postJson<{ queued: number; lastStartsInSeconds: number }>(
-      '/api/admin/chapters/import/manifest',
-      {
-        url,
-        seriesId,
-        language,
-        store: store ? 'storage' : 'remote',
-        onExisting: replace ? 'replace' : 'skip',
-        only: [...chosen],
-        ...(group.trim() === '' ? {} : { group: group.trim() }),
-        after: { mode: publish ? 'publish' : 'ready' },
-      },
-    )
+    const result = await postJson<{
+      queued: number
+      lastStartsInSeconds: number
+      following: boolean
+    }>('/api/admin/chapters/import/manifest', {
+      url,
+      seriesId,
+      language,
+      store: store ? 'storage' : 'remote',
+      onExisting: replace ? 'replace' : 'skip',
+      only: [...chosen],
+      sync,
+      ...(group.trim() === '' ? {} : { group: group.trim() }),
+      after: { mode: publish ? 'publish' : 'ready' },
+    })
     setBusy(null)
     if (!result.ok) {
       toast({ title: result.message || messages.errors.generic, tone: 'danger' })
@@ -133,11 +147,27 @@ export function ManifestImport({
               n: result.data.queued,
               mins: Math.max(1, Math.round(result.data.lastStartsInSeconds / 60)),
             }),
+      description: result.data.following ? m.followingNow : undefined,
       tone: result.data.queued === 0 ? 'neutral' : 'ok',
     })
+    onFollowed?.()
     setPreview(null)
     setChosen(new Set())
-  }, [preview, chosen, url, seriesId, language, store, replace, group, publish, toast, m])
+  }, [
+    preview,
+    chosen,
+    url,
+    seriesId,
+    language,
+    store,
+    replace,
+    group,
+    publish,
+    sync,
+    onFollowed,
+    toast,
+    m,
+  ])
 
   const toggleOne = (number: number) =>
     setChosen((prev) => {
@@ -379,6 +409,10 @@ export function ManifestImport({
               />
             </span>
           ) : null}
+          <span className="inline-flex items-center gap-2.5" title={m.syncHint}>
+            {m.keepInSync}
+            <Toggle ariaLabel={m.keepInSync} checked={sync} onChange={setSync} size="sm" />
+          </span>
           {canRepair ? (
             <span className="inline-flex items-center gap-2.5">
               {m.replaceExisting}
