@@ -7,13 +7,7 @@ import {
   parseImgchestId,
   parseImgchestPage,
 } from './imgchest.js'
-import {
-  IMGUR_PUBLIC_CLIENT_ID,
-  imgurAlbumUrl,
-  isImgurHost,
-  parseImgurAlbum,
-  parseImgurId,
-} from './imgur.js'
+import { IMGUR_PUBLIC_CLIENT_ID, isImgurHost, parseImgurAlbum, parseImgurId } from './imgur.js'
 import { type Manifest, manifestRawUrl, parseManifest } from './manifest.js'
 import { GalleryError, type GalleryPost } from './types.js'
 

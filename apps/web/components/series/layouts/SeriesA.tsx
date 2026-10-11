@@ -210,6 +210,7 @@ export function SeriesA({
               </div>
 
               <Credits
+                groups={series.groups}
                 people={series.people}
                 releasedYear={series.releasedYear}
                 className="max-w-[440px]"

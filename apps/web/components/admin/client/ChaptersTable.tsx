@@ -4,7 +4,7 @@ import { fmt, messages } from '@palscans/core/messages'
 import { adminMessages } from '@palscans/core/messages/admin'
 import type { WatermarkPageState } from '@palscans/core/watermark'
 import { Button, cn, useToast } from '@palscans/ui'
-import { RefreshCw, Stamp } from 'lucide-react'
+import { RefreshCw, Stamp, Users } from 'lucide-react'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import type { BulkAction } from '../schemas'
 import {
@@ -14,11 +14,12 @@ import {
   Num,
   Pill,
   type PillTone,
+  selectClass,
   Table,
   Td,
   Th,
 } from '../ui'
-import { postJson } from './api'
+import { api, postJson } from './api'
 import { Modal } from './controls'
 import type { EditorPerms } from './SeriesEditor'
 import { countdown, formatChapterNumber } from './util'
@@ -67,6 +68,12 @@ export function WatermarkPill({ state }: { state: WatermarkPageState }) {
   )
 }
 
+/** One row of the groups catalogue, as the picker needs it. */
+interface GroupOption {
+  id: number
+  name: string
+}
+
 const toLocalInput = (d: Date) => {
   const pad = (n: number) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
@@ -94,12 +101,20 @@ export function ChaptersTable({
   perms: EditorPerms
 }) {
   const m = adminMessages.admin.chapters
+  const g = adminMessages.groupsAdmin
   const { toast } = useToast()
   const [rows, setRows] = useState(initial)
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [busy, setBusy] = useState(false)
-  const [modal, setModal] = useState<'schedule' | 'early' | null>(null)
+  const [modal, setModal] = useState<'schedule' | 'early' | 'groups' | null>(null)
   const [when, setWhen] = useState(() => toLocalInput(new Date(Date.now() + 86_400_000)))
+  /**
+   * The group picker's options, fetched the first time it is opened rather than with the
+   * page: most visits to a series are not about credits, and the list is the same for every
+   * series, so paying for it up front would be a request per page load for nothing.
+   */
+  const [groupOptions, setGroupOptions] = useState<GroupOption[] | null>(null)
+  const [groupId, setGroupId] = useState('')
   const lastClick = useRef<number | null>(null)
   const visible = useMemo(() => rows.filter((r) => !r.deletedAt), [rows])
   const now = new Date()
@@ -203,6 +218,15 @@ export function ChaptersTable({
 
   const whenIso = () => new Date(when).toISOString()
 
+  const openGroups = useCallback(async () => {
+    setModal('groups')
+    if (groupOptions) return
+    const res = await api<{ groups: GroupOption[] }>('/api/admin/groups')
+    // An empty list is a real answer — no groups have been added yet — and the modal says so,
+    // which is more useful than an endless spinner.
+    setGroupOptions(res.ok ? res.data.groups : [])
+  }, [groupOptions])
+
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
@@ -266,6 +290,10 @@ export function ChaptersTable({
               </Button>
               <Button size="sm" variant="outline" disabled={busy} onClick={() => setModal('early')}>
                 {m.bulk.earlyAccess}
+              </Button>
+              <Button size="sm" variant="outline" disabled={busy} onClick={() => void openGroups()}>
+                <Users size={13} aria-hidden="true" />
+                {g.assign}
               </Button>
             </>
           ) : null}
@@ -533,6 +561,54 @@ export function ChaptersTable({
             everyone: describe(when ? new Date(when).toISOString() : null, now),
           })}
         </p>
+      </Modal>
+
+      {/*
+       * Crediting the selection, for a title that changed hands mid-run — the whole-series
+       * shortcut is the panel above the table. "No credit" is a real choice here and not a
+       * placeholder: it is the only way to take a wrong credit back off.
+       */}
+      <Modal
+        open={modal === 'groups'}
+        title={fmt(g.assignTitle, { n: selected.size })}
+        onClose={() => setModal(null)}
+        footer={
+          <>
+            <Button variant="outline" size="sm" onClick={() => setModal(null)}>
+              {messages.common.cancel}
+            </Button>
+            <Button
+              size="sm"
+              disabled={busy || groupOptions === null}
+              onClick={async () =>
+                (await run({
+                  action: 'set_groups',
+                  ids,
+                  groupIds: groupId === '' ? [] : [Number(groupId)],
+                })) && setModal(null)
+              }
+            >
+              {adminMessages.admin.apply}
+            </Button>
+          </>
+        }
+      >
+        <p className="text-[13px] text-fg-muted">{g.assignPick}</p>
+        <select
+          className={selectClass}
+          onChange={(e) => setGroupId(e.target.value)}
+          value={groupId}
+        >
+          <option value="">{g.none}</option>
+          {(groupOptions ?? []).map((o) => (
+            <option key={o.id} value={o.id}>
+              {o.name}
+            </option>
+          ))}
+        </select>
+        {groupOptions?.length === 0 ? (
+          <p className="text-[12.5px] text-fg-muted">{g.noGroupsYet}</p>
+        ) : null}
       </Modal>
     </div>
   )

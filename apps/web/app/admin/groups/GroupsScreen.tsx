@@ -4,6 +4,7 @@ import { fmt } from '@palscans/core/messages'
 import { adminMessages } from '@palscans/core/messages/admin'
 import { Button, useToast } from '@palscans/ui'
 import { useCallback, useState } from 'react'
+import { del, patchJson, postJson } from '@/components/admin/client/api'
 import {
   EmptyRow,
   Field,
@@ -42,47 +43,45 @@ export function GroupsScreen({ initial, canEdit }: { initial: GroupRow[]; canEdi
   const [draft, setDraft] = useState('')
   const [busy, setBusy] = useState(false)
 
+  /**
+   * Through `postJson`, not a hand-rolled fetch.
+   *
+   * Every admin route answers `{ data: … }`, and reading `body.group` off the raw response
+   * got `undefined` — which was then pushed into the table and rendered, taking the whole
+   * page down with it. The shared helper unwraps the envelope and types the result, so this
+   * cannot drift from the routes again.
+   */
   const create = useCallback(async () => {
     if (!name.trim()) return
     setBusy(true)
-    try {
-      const response = await fetch('/api/admin/groups', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), description: description.trim() || null }),
-      })
-      if (!response.ok) throw new Error()
-      const body = (await response.json()) as { group: GroupRow }
-      setRows((current) => [...current, body.group])
-      setName('')
-      setDescription('')
-      toast({ title: m.created, tone: 'ok' })
-    } catch {
-      toast({ title: m.failed, tone: 'danger' })
-    } finally {
-      setBusy(false)
+    const result = await postJson<{ group: GroupRow }>('/api/admin/groups', {
+      name: name.trim(),
+      description: description.trim() || null,
+    })
+    setBusy(false)
+    if (!result.ok || !result.data.group) {
+      toast({ title: result.ok ? m.failed : result.message || m.failed, tone: 'danger' })
+      return
     }
+    setRows((current) => [...current, result.data.group])
+    setName('')
+    setDescription('')
+    toast({ title: m.created, tone: 'ok' })
   }, [name, description, toast])
 
   const rename = useCallback(
     async (id: number) => {
       if (!draft.trim()) return
       setBusy(true)
-      try {
-        const response = await fetch(`/api/admin/groups/${id}`, {
-          method: 'PATCH',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ name: draft.trim() }),
-        })
-        if (!response.ok) throw new Error()
-        setRows((current) => current.map((r) => (r.id === id ? { ...r, name: draft.trim() } : r)))
-        setEditing(null)
-        toast({ title: m.updated, tone: 'ok' })
-      } catch {
-        toast({ title: m.failed, tone: 'danger' })
-      } finally {
-        setBusy(false)
+      const result = await patchJson(`/api/admin/groups/${id}`, { name: draft.trim() })
+      setBusy(false)
+      if (!result.ok) {
+        toast({ title: result.message || m.failed, tone: 'danger' })
+        return
       }
+      setRows((current) => current.map((r) => (r.id === id ? { ...r, name: draft.trim() } : r)))
+      setEditing(null)
+      toast({ title: m.updated, tone: 'ok' })
     },
     [draft, toast],
   )
@@ -91,16 +90,14 @@ export function GroupsScreen({ initial, canEdit }: { initial: GroupRow[]; canEdi
     async (id: number) => {
       if (!confirm(m.confirmRemove)) return
       setBusy(true)
-      try {
-        const response = await fetch(`/api/admin/groups/${id}`, { method: 'DELETE' })
-        if (!response.ok) throw new Error()
-        setRows((current) => current.filter((r) => r.id !== id))
-        toast({ title: m.removed, tone: 'ok' })
-      } catch {
-        toast({ title: m.failed, tone: 'danger' })
-      } finally {
-        setBusy(false)
+      const result = await del(`/api/admin/groups/${id}`)
+      setBusy(false)
+      if (!result.ok) {
+        toast({ title: result.message || m.failed, tone: 'danger' })
+        return
       }
+      setRows((current) => current.filter((r) => r.id !== id))
+      toast({ title: m.removed, tone: 'ok' })
     },
     [toast],
   )

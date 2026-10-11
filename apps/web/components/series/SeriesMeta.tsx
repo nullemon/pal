@@ -1,5 +1,5 @@
 import { messages } from '@palscans/core/messages'
-import type { SeriesGenreRef, SeriesPersonRef, SeriesTitleRef } from '@palscans/db'
+import type { SeriesGenreRef, SeriesGroupRef, SeriesPersonRef, SeriesTitleRef } from '@palscans/db'
 import { cn } from '@palscans/ui'
 
 export function GenreChips({
@@ -39,10 +39,13 @@ const creditLabel: Record<string, string> = {
 
 export function Credits({
   people,
+  groups,
   releasedYear,
   className,
 }: {
   people: SeriesPersonRef[]
+  /** Scanlation groups credited on this series' chapters (derived, see `seriesBySlug`). */
+  groups?: SeriesGroupRef[]
   releasedYear: number | null
   className?: string
 }) {
@@ -66,6 +69,29 @@ export function Credits({
           </dd>
         </div>
       ))}
+      {groups && groups.length > 0 ? (
+        /*
+         * Crediting the group is the convention scanlations are shared under, and some make
+         * it a condition of hosting — so it sits with the author and artist rather than in a
+         * footnote. Plural because a long series changes hands.
+         */
+        <div className="flex items-center justify-between gap-3 leading-[22px]">
+          <dt className="text-fg-muted">
+            {groups.length === 1 ? messages.series.group : messages.series.groups}
+          </dt>
+          <dd className="m-0 flex min-w-0 flex-wrap justify-end gap-x-2 text-right">
+            {groups.map((g) => (
+              <a
+                className="font-semibold text-fg hover:text-brand-hover"
+                href={`/browse?group=${encodeURIComponent(g.slug)}`}
+                key={g.id}
+              >
+                {g.name}
+              </a>
+            ))}
+          </dd>
+        </div>
+      ) : null}
       {releasedYear ? (
         <div className="flex items-center justify-between gap-3 leading-[22px]">
           <dt className="text-fg-muted">{messages.seriesDetail.released}</dt>

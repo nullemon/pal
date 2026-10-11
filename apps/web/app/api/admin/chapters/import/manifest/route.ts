@@ -14,6 +14,7 @@ import { and, eq, isNull } from 'drizzle-orm'
 import { manifestImportSchema } from '@/components/admin/schemas'
 import { audit } from '@/components/admin/server/audit'
 import { enqueueFetch, resolveChapterSlot } from '@/components/admin/server/chapters'
+import { groupIdByName, setChapterGroups } from '@/components/admin/server/groups'
 import { fail, notFound, ok, parseJson, withPermission } from '@/lib/auth'
 
 /**
@@ -81,7 +82,12 @@ export const POST = withPermission('chapter.create', async (request, _ctx, user)
   }
   if (wanted.length === 0) return fail(400, 'empty', 'Nothing selected to import.')
 
-  const queued: Array<{ chapterId: number; number: number; attempt: number }> = []
+  const queued: Array<{
+    chapterId: number
+    number: number
+    attempt: number
+    group: string | null
+  }> = []
   const skipped: Array<{ number: number; reason: string }> = []
 
   await db.transaction(async (tx) => {
@@ -138,9 +144,41 @@ export const POST = withPermission('chapter.create', async (request, _ctx, user)
           updatedAt: new Date(),
         })
         .where(eq(chapters.id, slot.chapterId))
-      queued.push({ chapterId: slot.chapterId, number: chapter.number, attempt })
+      queued.push({
+        chapterId: slot.chapterId,
+        number: chapter.number,
+        attempt,
+        group: chapter.group,
+      })
     }
   })
+
+  /**
+   * Credit the group the manifest named.
+   *
+   * The file says who scanlated each chapter and the importer was already reading it — to
+   * decide which source to use — and then throwing the name away. Crediting is the
+   * convention this work is shared under and some groups require it, so dropping it on the
+   * floor while importing their chapters is the wrong way round.
+   *
+   * After the transaction, because it creates groups: a new name should not hold a lock on
+   * forty chapter rows, and a failure here must not lose the import.
+   */
+  const byGroup = new Map<string, number[]>()
+  for (const job of queued) {
+    const name = job.group?.trim()
+    if (!name) continue
+    byGroup.set(name, [...(byGroup.get(name) ?? []), job.chapterId])
+  }
+  for (const [name, chapterIds] of byGroup) {
+    try {
+      const groupId = await groupIdByName(name)
+      if (groupId) await setChapterGroups(chapterIds, [groupId])
+    } catch {
+      // A credit that could not be written is worth less than the chapters themselves, and
+      // it can be set from the panel afterwards.
+    }
+  }
 
   // After the commit, never inside it: a job that beats its own row loses.
   for (const [i, job] of queued.entries())

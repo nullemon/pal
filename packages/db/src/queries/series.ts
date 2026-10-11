@@ -3,7 +3,10 @@ import { and, desc, eq, inArray, isNull, ne, not, sql } from 'drizzle-orm'
 import { type Db, executeRows } from '../client.js'
 import {
   bookmarks,
+  chapterGroups,
+  chapters,
   genres,
+  groups,
   people,
   readingProgress,
   series,
@@ -32,9 +35,25 @@ export interface SeriesTitleRef {
   lang: string | null
 }
 
+/** A scanlation group credited on at least one of this series' chapters. */
+export interface SeriesGroupRef {
+  id: number
+  slug: string
+  name: string
+}
+
 export interface SeriesDetail extends SeriesRow {
   genres: SeriesGenreRef[]
   people: SeriesPersonRef[]
+  /**
+   * Derived from the chapters rather than stored on the series.
+   *
+   * A series has no group of its own — chapters do, and a long-running title changes hands.
+   * Deriving means the credit is always whatever the chapters actually say, and "assign this
+   * series to a group" is just setting it on every chapter, with one source of truth rather
+   * than two that disagree the first time one is edited.
+   */
+  groups: SeriesGroupRef[]
   titles: SeriesTitleRef[]
   linked: { id: number; slug: string; title: string; type: SeriesRow['type'] } | null
 }
@@ -56,7 +75,7 @@ export const seriesBySlug = async (
   const [row] = await db.select().from(series).where(where).limit(1)
   if (!row) return null
 
-  const [g, p, t, linked] = await Promise.all([
+  const [g, p, t, linked, gr] = await Promise.all([
     db
       .select({ id: genres.id, slug: genres.slug, name: genres.name, kind: genres.kind })
       .from(seriesGenres)
@@ -84,9 +103,24 @@ export const seriesBySlug = async (
           .limit(1)
           .then((r) => r[0] ?? null)
       : Promise.resolve(null),
+    db
+      .selectDistinct({ id: groups.id, slug: groups.slug, name: groups.name })
+      .from(chapterGroups)
+      .innerJoin(chapters, eq(chapters.id, chapterGroups.chapterId))
+      .innerJoin(groups, eq(groups.id, chapterGroups.groupId))
+      .where(
+        and(
+          eq(chapters.seriesId, row.id),
+          isNull(chapters.deletedAt),
+          // A removed group keeps its join rows so a restore brings the credit back, but its
+          // page is gone, so it must not render as a live link.
+          isNull(groups.deletedAt),
+        ),
+      )
+      .orderBy(groups.name),
   ])
 
-  return { ...row, genres: g, people: p, titles: t, linked }
+  return { ...row, genres: g, people: p, titles: t, linked, groups: gr }
 }
 
 /**

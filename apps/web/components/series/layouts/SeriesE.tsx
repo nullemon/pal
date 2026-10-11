@@ -233,6 +233,7 @@ export function SeriesE({
                 </div>
 
                 <Credits
+                  groups={series.groups}
                   people={series.people}
                   releasedYear={series.releasedYear}
                   className="max-w-[620px]"

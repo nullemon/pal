@@ -127,7 +127,11 @@ export function SeriesC({
                 </span>
               </div>
             </div>
-            <Credits people={series.people} releasedYear={series.releasedYear} />
+            <Credits
+              groups={series.groups}
+              people={series.people}
+              releasedYear={series.releasedYear}
+            />
             <GenreChips genres={series.genres} />
             <AltTitles titles={series.titles} />
           </aside>

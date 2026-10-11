@@ -107,6 +107,7 @@ export function SeriesB({
               </div>
               <GenreChips genres={series.genres} className="order-5 lg:mt-5" />
               <Credits
+                groups={series.groups}
                 people={series.people}
                 releasedYear={series.releasedYear}
                 className="order-6 lg:mt-5"

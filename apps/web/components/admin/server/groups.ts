@@ -1,6 +1,6 @@
 import 'server-only'
 import { slugify, uniqueSlug } from '@palscans/core/slug'
-import { chapterGroups, type Db, getDb, groups } from '@palscans/db'
+import { chapterGroups, chapters, type Db, getDb, groups } from '@palscans/db'
 import { and, count, desc, eq, inArray, isNull } from 'drizzle-orm'
 
 /**
@@ -193,4 +193,59 @@ export const cleanLinks = (input: unknown): Record<string, string> => {
     }
   }
   return out
+}
+
+/**
+ * Credit a group on every chapter of a series.
+ *
+ * The common case by a long way: one group scanlated the whole title, and setting it chapter
+ * by chapter across forty of them is the kind of chore that means nobody does it — so the
+ * credit the work was shared under never appears.
+ *
+ * Language-aware, because a translated run is usually a different group's work. Passing a
+ * language credits only that run; omitting it credits the lot.
+ */
+export const setSeriesGroups = async (
+  seriesId: number,
+  groupIds: readonly number[],
+  opts: { language?: string | null; db?: Db } = {},
+): Promise<{ chapters: number; groups: number }> => {
+  const database = opts.db ?? (await getDb())
+  const rows = await database
+    .select({ id: chapters.id })
+    .from(chapters)
+    .where(
+      and(
+        eq(chapters.seriesId, seriesId),
+        isNull(chapters.deletedAt),
+        ...(opts.language ? [eq(chapters.language, opts.language)] : []),
+      ),
+    )
+  const ids = rows.map((r) => r.id)
+  if (ids.length === 0) return { chapters: 0, groups: 0 }
+  const written = await setChapterGroups(ids, groupIds, database)
+  return { chapters: ids.length, groups: written }
+}
+
+/**
+ * The group of this name, creating it if nobody has yet.
+ *
+ * For the manifest importer, which is handed a group *name* rather than an id — the file
+ * says "Illeterate Scans" and there is no reason to make an operator create that by hand
+ * before importing. Matching is case-insensitive on the slug, so "Illeterate Scans" and
+ * "illeterate scans" are one group rather than two.
+ */
+export const groupIdByName = async (name: string, db?: Db): Promise<number | null> => {
+  const trimmed = name.trim()
+  if (trimmed === '') return null
+  const database = db ?? (await getDb())
+  const wanted = slugify(trimmed, { fallback: 'group' })
+  const [existing] = await database
+    .select({ id: groups.id })
+    .from(groups)
+    .where(and(eq(groups.slug, wanted), isNull(groups.deletedAt)))
+    .limit(1)
+  if (existing) return existing.id
+  const created = await createGroup({ name: trimmed }, database)
+  return created?.id ?? null
 }

@@ -12,6 +12,7 @@ import { api, del, patchJson, postJson, putJson } from './api'
 import { type ChapterRowData, ChaptersTable } from './ChaptersTable'
 import { SaveBar, Toggle, useDraft } from './controls'
 import { GalleryImport } from './GalleryImport'
+import { SeriesGroups } from './SeriesGroups'
 import { sha256Hex, uploadWithRetry } from './upload-lib'
 import { slugify } from './util'
 
@@ -771,6 +772,7 @@ export function SeriesEditor(props: Props) {
               preset={{ id: props.id, title: props.doc.title }}
             />
           ) : null}
+          <SeriesGroups canEdit={props.perms.chapterUpdate} seriesId={props.id} />
           <ChaptersTable seriesId={props.id} initial={props.chapters} perms={props.perms} />
         </div>
       ) : null}

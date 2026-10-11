@@ -2873,9 +2873,21 @@ export const adminMessages = {
     /** Said where an operator is deciding whether this matters. */
     why: 'Crediting the group is the convention scanlations are shared under, and some groups require it.',
     assign: 'Credit to group',
+    assignTitle: 'Credit {n} chapters',
+    /** On the Groups screen, where crediting is *not* done — it says where it is. */
     assignHint: 'Select chapters, then choose the groups that scanlated them.',
+    /** In the chapter bulk bar's picker, where it is. */
+    assignPick: 'The group that scanlated the selected chapters. Replaces any credit they carry.',
     assigned: 'Credit updated.',
     none: 'No credit',
+    seriesTitle: 'Credit a group for this series',
+    seriesHint:
+      'Applies to every chapter, which is usually what you want — one group did the whole title. Shows on the series page.',
+    group: 'Group',
+    everyLanguage: 'Every language',
+    applyToSeries: 'Apply to all chapters',
+    appliedToSeries: 'Credited on {n} chapters.',
+    noGroupsYet: 'No groups yet — add one on the Groups screen first.',
   },
   pageEditor: {
     navLabel: 'Pages',
