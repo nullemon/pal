@@ -278,11 +278,19 @@ export const toReaderPages = async (
       /**
        * A page imported from a gallery and left there (migration 9046).
        *
-       * It resolves to our own proxy route, never to the host. Handing the origin to the
-       * browser would publish the gallery in our markup and, worse, make every page of a
-       * locked chapter readable by anyone who viewed source — the proxy is where the
-       * entitlement check lives. There are no variants either: nothing was encoded, so the
-       * single URL is all there is and a srcset would be three copies of it.
+       * A free chapter is served straight from the host. The proxy hop is real cost — reader
+       * to our edge, to a one-core box, to the host, and back — and on a cache miss it is
+       * slower than the origin it is hiding. For a page anyone may read, hiding it buys
+       * nothing worth that.
+       *
+       * A locked chapter still goes through `/p/`, because that is where the entitlement
+       * check lives. Handing out `cdn.imgchest.com/...` for a premium page would make it
+       * readable by anyone who viewed source, and the paywall decorative. The lock is read
+       * per request, so a chapter that later becomes premium moves behind the proxy on its
+       * own — nothing to migrate.
+       *
+       * No variants either way: nothing was encoded, so the single URL is all there is and a
+       * srcset would be three copies of it.
        */
       if (p.remoteUrl)
         return {
@@ -290,7 +298,7 @@ export const toReaderPages = async (
           width: p.width,
           height: p.height,
           blurHash: p.blurHash,
-          url: `/p/${p.chapterId}/${p.idx}`,
+          url: lock === 'none' ? p.remoteUrl : `/p/${p.chapterId}/${p.idx}`,
           variants: [],
         }
       const sized = p.variants

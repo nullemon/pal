@@ -52,6 +52,8 @@ const MARK_TONE: Record<WatermarkPageState, PillTone> = {
   current: 'ok',
   stale: 'warn',
   unknown: 'neutral',
+  // Not a fault: there is simply nothing of ours to mark.
+  remote: 'brand',
   unmarkable: 'danger',
   unprocessed: 'neutral',
 }

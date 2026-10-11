@@ -437,6 +437,15 @@ export const WATERMARK_PAGE_STATES = [
   'current',
   'stale',
   'unknown',
+  /**
+   * Pages served from the host they were imported from (migration 9046).
+   *
+   * Distinct from `unmarkable`, which means the originals are *gone* and reads as a fault.
+   * A remote chapter never had originals and never will — there is nothing wrong with it and
+   * nothing to fix, so saying "No originals" in red was telling an operator their catalogue
+   * was damaged when it was working exactly as asked.
+   */
+  'remote',
   'unmarkable',
   'unprocessed',
 ] as const

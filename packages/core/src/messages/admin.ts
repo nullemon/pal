@@ -285,6 +285,7 @@ export const adminMessages = {
         current: 'Current',
         stale: 'Old mark',
         unknown: 'Not recorded',
+        remote: 'Remote',
         unmarkable: 'No originals',
         unprocessed: 'No pages',
       },
@@ -292,6 +293,8 @@ export const adminMessages = {
         current: 'Pages carry the watermark configured now.',
         stale: 'Pages were built with a different watermark, or none.',
         unknown: 'Built before the site recorded which mark it used.',
+        remote:
+          'Pages are served from the host they were imported from, so there is nothing of ours to mark.',
         unmarkable: 'The uploaded originals are gone — only a fresh upload can re-mark this.',
         unprocessed: 'Nothing processed yet.',
       },

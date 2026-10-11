@@ -28,6 +28,8 @@ export type { WatermarkCounts }
 
 /** A chapter still has originals to composite from. Without them nothing can re-mark it. */
 const HAS_SOURCES: SQL = sql`(${chapters.processing} is not null and jsonb_array_length(coalesce(${chapters.processing} -> 'sources', '[]'::jsonb)) > 0)`
+/** Pages that live on another host, so there is nothing of ours to mark (migration 9046). */
+const REMOTE: SQL = sql`(${chapters.processing} ->> 'pageSource' = 'remote')`
 /** What the pipeline recorded burning into this chapter's pages; null before it recorded it. */
 const RECORDED: SQL = sql`(${chapters.processing} ->> 'watermark')`
 
@@ -64,7 +66,7 @@ export const watermarkCounts = async (fingerprint: string): Promise<WatermarkCou
     tally(sql`${HAS_SOURCES} and ${RECORDED} = ${fingerprint}`),
     tally(sql`${HAS_SOURCES} and ${RECORDED} is not null and ${RECORDED} <> ${fingerprint}`),
     tally(sql`${HAS_SOURCES} and ${RECORDED} is null`),
-    tally(sql`not ${HAS_SOURCES}`),
+    tally(sql`not ${REMOTE} and not ${HAS_SOURCES}`),
   ])
   return { processed, current, stale, unknown, unmarkable, affected: stale + unknown }
 }
@@ -166,6 +168,9 @@ export const cancelWatermarkRun = async (userId: number | null): Promise<Waterma
 export const watermarkStateSql = (fingerprint: string): SQL<WatermarkPageState> =>
   sql<WatermarkPageState>`case
     when ${chapters.pageCount} <= 0 then 'unprocessed'
+    -- Checked before unmarkable: a remote chapter also has no sources, but for a reason
+    -- that is not a problem, and the two must not read the same.
+    when ${REMOTE} then 'remote'
     when not ${HAS_SOURCES} then 'unmarkable'
     when ${RECORDED} is null then 'unknown'
     when ${RECORDED} = ${fingerprint} then 'current'
@@ -175,9 +180,11 @@ export const watermarkStateSql = (fingerprint: string): SQL<WatermarkPageState> 
 /** The filter behind Chapters → Mark, so an operator never has to run SQL to find the gap. */
 export const watermarkStateFilter = (
   fingerprint: string,
-  state: 'current' | 'stale' | 'unknown' | 'unmarkable',
+  state: 'current' | 'stale' | 'unknown' | 'remote' | 'unmarkable',
 ): SQL => {
-  if (state === 'unmarkable') return sql`(${chapters.pageCount} > 0 and not ${HAS_SOURCES})`
+  if (state === 'remote') return sql`(${chapters.pageCount} > 0 and ${REMOTE})`
+  if (state === 'unmarkable')
+    return sql`(${chapters.pageCount} > 0 and not ${REMOTE} and not ${HAS_SOURCES})`
   if (state === 'unknown')
     return sql`(${chapters.pageCount} > 0 and ${HAS_SOURCES} and ${RECORDED} is null)`
   if (state === 'current')

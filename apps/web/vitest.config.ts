@@ -15,7 +15,10 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
-    include: ['lib/**/*.test.ts', 'app/**/*.test.ts'],
+    // `components/**` was absent, so a test placed there was silently never run — it
+    // reported green by not existing. Included now so the reader and admin islands can be
+    // tested where they live.
+    include: ['lib/**/*.test.ts', 'app/**/*.test.ts', 'components/**/*.test.ts'],
     /**
      * Six suites build a throwaway database in `beforeAll` — `createDb('pglite://memory')`
      * then the whole migration set — which is a second or two idle and well past Vitest's 10s
