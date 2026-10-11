@@ -281,6 +281,9 @@ export const adminMessages = {
       pageErrors: '{n} pages failed',
       noChapters: 'No chapters yet. Upload the first one.',
       colMark: 'Mark',
+      editPages: 'Pages',
+      editPagesHint:
+        'Reorder, delete, replace or add page images. Only for chapters stored on our side — imported pages live on the host.',
       mark: {
         current: 'Current',
         stale: 'Old mark',

@@ -4,7 +4,7 @@ import { fmt, messages } from '@palscans/core/messages'
 import { adminMessages } from '@palscans/core/messages/admin'
 import type { WatermarkPageState } from '@palscans/core/watermark'
 import { Button, cn, useToast } from '@palscans/ui'
-import { RefreshCw, Stamp, Users } from 'lucide-react'
+import { Images, RefreshCw, Stamp, Users } from 'lucide-react'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import type { BulkAction } from '../schemas'
 import {
@@ -22,7 +22,7 @@ import {
 import { api, postJson } from './api'
 import { Modal } from './controls'
 import type { EditorPerms } from './SeriesEditor'
-import { countdown, formatChapterNumber } from './util'
+import { canEditPages, countdown, formatChapterNumber } from './util'
 
 export interface ChapterRowData {
   id: number
@@ -73,6 +73,8 @@ interface GroupOption {
   id: number
   name: string
 }
+
+const pagesHref = (r: ChapterRowData) => `/admin/chapters/${r.id}/pages`
 
 const toLocalInput = (d: Date) => {
   const pad = (n: number) => String(n).padStart(2, '0')
@@ -386,7 +388,24 @@ export function ChaptersTable({
                   <WatermarkPill state={r.watermark} />
                 </Td>
                 <Td align="right">
-                  <Num>{r.pageCount}</Num>
+                  {/*
+                   * The count is the way in to the page editor, as it is on Admin → Chapters:
+                   * the number is what an operator is looking at when they notice it is wrong.
+                   * There is an explicit button in Actions too, because a bare number does not
+                   * read as a link — which is how a whole editing screen stayed invisible from
+                   * the screen people actually manage a series from.
+                   */}
+                  {canEditPages(r) ? (
+                    <a
+                      className="hover:text-brand-hover"
+                      href={pagesHref(r)}
+                      title={m.editPagesHint}
+                    >
+                      <Num>{r.pageCount}</Num>
+                    </a>
+                  ) : (
+                    <Num>{r.pageCount}</Num>
+                  )}
                 </Td>
                 <Td>
                   {r.isPremium ? (
@@ -449,6 +468,16 @@ export function ChaptersTable({
                         <Stamp size={12} aria-hidden="true" />
                         {m.reapplyWatermark}
                       </button>
+                    ) : null}
+                    {canEditPages(r) ? (
+                      <a
+                        className="inline-flex h-7 items-center gap-1 rounded-md border border-line px-2 text-[12px] font-semibold hover:bg-surface-2"
+                        href={pagesHref(r)}
+                        title={m.editPagesHint}
+                      >
+                        <Images size={12} aria-hidden="true" />
+                        {m.editPages}
+                      </a>
                     ) : null}
                     <a
                       href={`/admin/chapters?series=${seriesId}&chapter=${r.id}`}

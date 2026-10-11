@@ -54,3 +54,22 @@ export const slugify = (input: string): string =>
     .replace(/^-+|-+$/g, '')
     .slice(0, 80)
     .replace(/^-+|-+$/g, '')
+
+/**
+ * Whether a chapter's pages can be edited in the page editor.
+ *
+ * The editor rewrites the processing document — reorder, delete, replace one page, insert
+ * one — and that document describes the originals in our own bucket. A chapter imported in
+ * remote mode has none: its pages are served from the host that already had them, and the
+ * link would open an empty grid, which reads as a broken screen rather than as the
+ * deliberate limit it is. The Mark column already says `Remote`, with the reason.
+ *
+ * Structurally typed rather than taking a row type, so this lives beside the other pure
+ * helpers instead of inside a component file that a test cannot import.
+ */
+export const canEditPages = (chapter: {
+  pageCount: number
+  /** `@palscans/core/watermark`'s `WatermarkPageState`; `remote` is the one that excludes. */
+  watermark: string
+  deletedAt: string | null
+}): boolean => chapter.pageCount > 0 && chapter.watermark !== 'remote' && !chapter.deletedAt
