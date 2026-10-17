@@ -1,5 +1,6 @@
 'use client'
 
+import { CHAPTER_LANGUAGES, DEFAULT_CHAPTER_LANGUAGE } from '@palscans/core/languages'
 import { fmt, messages } from '@palscans/core/messages'
 import { adminMessages } from '@palscans/core/messages/admin'
 import type { WatermarkPageState } from '@palscans/core/watermark'
@@ -22,13 +23,15 @@ import {
 import { api, patchJson, postJson } from './api'
 import { Modal } from './controls'
 import type { EditorPerms } from './SeriesEditor'
-import { canEditPages, countdown, formatChapterNumber } from './util'
+import { canEditPages, chapterNumberClash, countdown, formatChapterNumber } from './util'
 
 export interface ChapterRowData {
   id: number
   number: number
   title: string | null
   volume: number | null
+  /** The translation this chapter is, which is half of what makes its number unique. */
+  language: string
   state: string
   isPremium: boolean
   earlyAccessUntil: string | null
@@ -128,8 +131,11 @@ export function ChaptersTable({
   const [draftNumber, setDraftNumber] = useState('')
   const [draftTitle, setDraftTitle] = useState('')
   const [draftVolume, setDraftVolume] = useState('')
+  const [draftLanguage, setDraftLanguage] = useState(DEFAULT_CHAPTER_LANGUAGE)
   const lastClick = useRef<number | null>(null)
   const visible = useMemo(() => rows.filter((r) => !r.deletedAt), [rows])
+  /** Only worth showing a language tag when the series actually has more than one. */
+  const multilingual = useMemo(() => new Set(rows.map((r) => r.language)).size > 1, [rows])
   const now = new Date()
 
   const toggle = (id: number, shift: boolean) => {
@@ -234,10 +240,16 @@ export function ChaptersTable({
     setDraftNumber(formatChapterNumber(row.number))
     setDraftTitle(row.title ?? '')
     setDraftVolume(row.volume === null ? '' : String(row.volume))
+    setDraftLanguage(row.language)
   }
 
   /**
    * The number this edit would take, and whether another chapter already holds it.
+   *
+   * Compared on number *and language*, because that is what the unique index is on: a German
+   * chapter 1196 and an English 1196 are two different chapters, and the first version of
+   * this compared the number alone and refused a rename the database would have accepted
+   * happily — on exactly the dual-language series the feature exists for.
    *
    * Checked here as well as by the database so the operator is told while the dialog is
    * open, next to the field they typed into, rather than by a failed save. The index is
@@ -245,12 +257,9 @@ export function ChaptersTable({
    * answers 409 for that.
    */
   const editNumber = Number.parseFloat(draftNumber)
-  const numberTaken =
-    editing !== null &&
-    Number.isFinite(editNumber) &&
-    rows.some(
-      (r) => r.id !== editing.id && !r.deletedAt && r.number.toFixed(3) === editNumber.toFixed(3),
-    )
+  const clash =
+    editing === null ? null : chapterNumberClash(rows, editing.id, editNumber, draftLanguage)
+  const numberTaken = clash !== null
 
   const saveEdit = useCallback(async () => {
     if (!editing) return
@@ -263,6 +272,7 @@ export function ChaptersTable({
       number,
       title,
       volume: Number.isFinite(volume as number) ? volume : null,
+      language: draftLanguage,
     })
     setBusy(false)
     if (!res.ok) {
@@ -276,13 +286,28 @@ export function ChaptersTable({
     setRows((rs) =>
       rs.map((r) =>
         r.id === editing.id
-          ? { ...r, number, title, volume: Number.isFinite(volume as number) ? volume : null }
+          ? {
+              ...r,
+              number,
+              title,
+              volume: Number.isFinite(volume as number) ? volume : null,
+              language: draftLanguage,
+            }
           : r,
       ),
     )
     setEditing(null)
     toast({ title: m.edit.saved, tone: 'ok' })
-  }, [editing, draftNumber, draftTitle, draftVolume, toast, m.edit.saved, m.edit.taken])
+  }, [
+    editing,
+    draftNumber,
+    draftTitle,
+    draftVolume,
+    draftLanguage,
+    toast,
+    m.edit.saved,
+    m.edit.taken,
+  ])
 
   const whenIso = () => new Date(when).toISOString()
 
@@ -435,6 +460,16 @@ export function ChaptersTable({
                 </Td>
                 <Td>
                   <span className="font-semibold">Ch. {formatChapterNumber(r.number)}</span>
+                  {/*
+                    The language, whenever a series has more than one. Without it two rows
+                    numbered 1196 look like a mistake rather than two translations, which is
+                    exactly the confusion the edit dialog used to add to.
+                  */}
+                  {multilingual ? (
+                    <span className="ml-1.5 text-[11px] font-semibold uppercase tracking-[0.04em] text-fg-subtle">
+                      {r.language}
+                    </span>
+                  ) : null}
                   {r.title ? <span className="ml-2 text-fg-muted">{r.title}</span> : null}
                 </Td>
                 <Td>
@@ -704,7 +739,15 @@ export function ChaptersTable({
           </label>
           {/* Decimals are not a workaround here, they are how a .5 release is numbered. */}
           <p className="text-[12px] text-fg-muted">{m.edit.numberHint}</p>
-          {numberTaken ? <p className="text-[12.5px] text-danger">{m.edit.taken}</p> : null}
+          {clash ? (
+            <p className="text-[12.5px] text-danger">
+              {fmt(m.edit.takenBy, {
+                number: formatChapterNumber(clash.number),
+                language: clash.language,
+                title: clash.title ?? m.edit.untitled,
+              })}
+            </p>
+          ) : null}
           <label className="flex flex-col gap-1.5 text-[13px] font-medium">
             {m.edit.chapterTitle}
             <input
@@ -713,6 +756,21 @@ export function ChaptersTable({
               placeholder={m.edit.untitled}
               value={draftTitle}
             />
+          </label>
+          {/* One chapter number per series is only true per language, so this belongs here. */}
+          <label className="flex flex-col gap-1.5 text-[13px] font-medium">
+            {adminMessages.admin.upload.language}
+            <select
+              className={selectClass}
+              onChange={(e) => setDraftLanguage(e.target.value)}
+              value={draftLanguage}
+            >
+              {CHAPTER_LANGUAGES.map((l) => (
+                <option key={l.code} value={l.code}>
+                  {l.label}
+                </option>
+              ))}
+            </select>
           </label>
           <label className="flex flex-col gap-1.5 text-[13px] font-medium">
             {m.edit.volume}

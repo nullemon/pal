@@ -71,6 +71,11 @@ export interface SeriesEditorData {
     number: number
     title: string | null
     volume: number | null
+    /**
+     * Which translation this chapter is. The editor needs it, because one chapter number per
+     * series is only true *per language*: a German 1196 and an English 1196 are two chapters.
+     */
+    language: string
     state: string
     isPremium: boolean
     earlyAccessUntil: Date | null
@@ -123,6 +128,7 @@ export const loadSeriesEditor = async (id: number): Promise<SeriesEditorData | n
         number: chapters.number,
         title: chapters.title,
         volume: chapters.volume,
+        language: chapters.language,
         state: chapters.state,
         isPremium: chapters.isPremium,
         earlyAccessUntil: chapters.earlyAccessUntil,

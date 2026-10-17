@@ -301,6 +301,8 @@ export const adminMessages = {
         save: 'Save',
         saved: 'Chapter updated.',
         taken: 'Another chapter in this series already has that number.',
+        /** Says *which* one, because the clash is usually a chapter in another language. */
+        takenBy: 'Ch. {number} ({language}) already has that number — “{title}”.',
       },
       editPages: 'Pages',
       editPagesHint:

@@ -165,3 +165,44 @@ export const movePagesTo = <T extends { id: string }>(
   const rest = pages.filter((p) => !ids.has(p.id))
   return where === 'front' ? [...moving, ...rest] : [...rest, ...moving]
 }
+
+/** The minimum a chapter row needs for the clash rule below. */
+export interface ClashCandidate {
+  id: number
+  number: number
+  language: string
+  title: string | null
+  deletedAt: string | null
+}
+
+/**
+ * The chapter that would block this renumber, or null when nothing does.
+ *
+ * Compared on number *and language*, because that is what `chapters_series_number_language
+ * _unique` is on. The first version of this compared the number alone, and so refused a
+ * rename the database would have accepted happily: a series carrying a German chapter 1196
+ * beside an English 1196.1 is two translations, not a clash — and that is precisely the kind
+ * of series the edit dialog is for.
+ *
+ * Returns the offending row rather than a boolean so the dialog can name it. "Already taken"
+ * is not actionable when the chapter taking it is in another language and not visible from
+ * the field being typed into.
+ */
+export const chapterNumberClash = <T extends ClashCandidate>(
+  rows: readonly T[],
+  editingId: number,
+  number: number,
+  language: string,
+): T | null => {
+  if (!Number.isFinite(number)) return null
+  const wanted = number.toFixed(3)
+  return (
+    rows.find(
+      (r) =>
+        r.id !== editingId &&
+        !r.deletedAt &&
+        r.language === language &&
+        r.number.toFixed(3) === wanted,
+    ) ?? null
+  )
+}

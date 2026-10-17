@@ -1,6 +1,12 @@
 import type { WatermarkPageState } from '@palscans/core/watermark'
 import { describe, expect, it } from 'vitest'
-import { canEditPages, duplicateNumberKeys, movePagesTo, resolveDuplicateNumbers } from './util'
+import {
+  canEditPages,
+  chapterNumberClash,
+  duplicateNumberKeys,
+  movePagesTo,
+  resolveDuplicateNumbers,
+} from './util'
 
 /**
  * Which chapters offer the page editor from a series' Chapters tab.
@@ -171,5 +177,51 @@ describe('movePagesTo', () => {
       'c',
       'd',
     ])
+  })
+})
+
+/**
+ * Whether a renumber would collide with another chapter.
+ *
+ * The first version compared the number alone and refused a rename the database would have
+ * accepted: a series carrying a German 1196 and an English 1196.1 is two translations, not a
+ * clash, and the unique index is on `(series, number, language)`. It refused on exactly the
+ * dual-language series the edit dialog exists for.
+ */
+describe('chapterNumberClash', () => {
+  const rows = [
+    { id: 1, number: 1196, language: 'de', title: 'Die Liebe', deletedAt: null },
+    { id: 2, number: 1196.1, language: 'en', title: 'Love From Someone', deletedAt: null },
+    { id: 3, number: 1195, language: 'en', title: 'Weak Point', deletedAt: null },
+  ]
+
+  it('allows a number another language already uses', () => {
+    // The case from the panel: renumbering the English 1196.1 to 1196 beside a German 1196.
+    expect(chapterNumberClash(rows, 2, 1196, 'en')).toBeNull()
+  })
+
+  it('refuses a number the same language already uses', () => {
+    expect(chapterNumberClash(rows, 2, 1195, 'en')?.id).toBe(3)
+  })
+
+  it('refuses when the edit also switches language onto a taken number', () => {
+    expect(chapterNumberClash(rows, 2, 1196, 'de')?.id).toBe(1)
+  })
+
+  it('does not count the chapter being edited against itself', () => {
+    expect(chapterNumberClash(rows, 3, 1195, 'en')).toBeNull()
+  })
+
+  it('ignores deleted chapters, whose numbers are free again in the panel', () => {
+    const withDeleted = [
+      ...rows,
+      { id: 4, number: 900, language: 'en', title: null, deletedAt: '2026-01-01' },
+    ]
+    expect(chapterNumberClash(withDeleted, 3, 900, 'en')).toBeNull()
+  })
+
+  it('treats 7 and 7.0 as the same number', () => {
+    const pair = [{ id: 1, number: 7, language: 'en', title: null, deletedAt: null }]
+    expect(chapterNumberClash(pair, 2, 7.0, 'en')?.id).toBe(1)
   })
 })
