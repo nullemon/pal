@@ -306,6 +306,39 @@ export function Reader({ data, comments }: ReaderProps) {
           }
           return
         }
+        /**
+         * Chapter navigation, which the arrows do not cover.
+         *
+         * In paged mode ← and → turn pages, so there was no key at all for "next chapter" —
+         * the one thing a reader does between every chapter and the next. In strip mode the
+         * arrows already move chapters, and these do the same thing, so the pair works the
+         * same way whichever mode somebody reads in.
+         */
+        case 'n':
+        case 'N': {
+          const link = rtl ? data.prev : data.next
+          if (link) router.push(link.href)
+          return
+        }
+        case 'p':
+        case 'P': {
+          const link = rtl ? data.next : data.prev
+          if (link) router.push(link.href)
+          return
+        }
+        // First and last page, for a reader who wants the cover again or the credits page.
+        case 'Home':
+          if (paged) {
+            e.preventDefault()
+            setItemIndex(0)
+          }
+          return
+        case 'End':
+          if (paged) {
+            e.preventDefault()
+            setItemIndex(Math.max(0, items.length - 1))
+          }
+          return
         case 'f':
         case 'F':
           toggleFullscreen()
@@ -347,6 +380,8 @@ export function Reader({ data, comments }: ReaderProps) {
     toggleFullscreen,
     setMode,
     scrollToComments,
+    items.length,
+    setItemIndex,
   ])
 
   // Strip: hide the chrome on scroll-down, bring it back on scroll-up.

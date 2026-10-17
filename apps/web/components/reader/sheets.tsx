@@ -287,6 +287,8 @@ export function SettingsSheet({
 const shortcuts: Array<{ keys: string[]; label: string }> = [
   { keys: ['←', '→'], label: messages.readerUi.shortcutTurn },
   { keys: ['Space', 'Shift + Space'], label: messages.readerUi.shortcutScroll },
+  { keys: ['N', 'P'], label: messages.readerUi.shortcutChapter },
+  { keys: ['Home', 'End'], label: messages.readerUi.shortcutEnds },
   { keys: ['F'], label: messages.readerUi.shortcutFullscreen },
   { keys: ['S'], label: messages.readerUi.shortcutMode },
   { keys: ['C'], label: messages.readerUi.shortcutComments },

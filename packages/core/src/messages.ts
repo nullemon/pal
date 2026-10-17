@@ -695,6 +695,8 @@ export const messages = {
     shortcutMode: 'Switch strip / paged',
     shortcutComments: 'Jump to comments',
     shortcutChrome: 'Show / hide controls',
+    shortcutChapter: 'Next / previous chapter',
+    shortcutEnds: 'First / last page',
     shortcutSheet: 'This sheet',
     adSkyscraper: 'Skyscraper',
     adInStrip: 'after every {n} pages',

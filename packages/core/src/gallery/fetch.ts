@@ -292,3 +292,125 @@ export const downloadGalleryImage = async (
   if (!type) throw new GalleryError('not_an_image', `${bytes.byteLength} bytes`)
   return { bytes, type }
 }
+
+export interface StreamedImage {
+  type: ImageType
+  /** The image, head chunk first — pass straight to the client. */
+  body: ReadableStream<Uint8Array>
+  /** The host's `Content-Length` when it declared a plausible one, else null. */
+  bytes: number | null
+}
+
+/**
+ * Enough bytes for `sniffImage`, which reads a 12-byte signature at most.
+ *
+ * The whole reason streaming is possible: deciding what an image *is* needs the first few
+ * bytes, not the file. Everything after them can go straight to the reader.
+ */
+const SNIFF_BYTES = 32
+
+/**
+ * Stream one page image through, instead of buffering it.
+ *
+ * `downloadGalleryImage` above reads the whole file into memory, which is right for the
+ * worker — it hands the bytes to `sharp`, which needs all of them. It is wrong for the
+ * reader proxy (`/p/:chapter/:idx`), where the bytes are only passing through on their way to
+ * a browser: that route held an entire image in the heap for the length of its download, with
+ * nothing limiting how many did so at once. Fifty readers on a premium chapter was fifty
+ * images resident at once, on a box with 2 GB for everything.
+ *
+ * So: same guards, same refusal to believe the host's `Content-Type`, but the body is piped.
+ * Memory per request becomes one chunk rather than one file, and the reader sees the image
+ * start arriving instead of waiting for the last byte.
+ *
+ * The cap is still enforced, now *during* the stream — a host that lies in `Content-Length`,
+ * or declares nothing, is caught as the bytes arrive and the body is cancelled. The consumer
+ * sees the stream error, which for a proxy means a truncated response rather than a clean
+ * one: the alternative is buffering to find out, which is the thing being removed.
+ */
+export const streamGalleryImage = async (
+  link: string,
+  opts: GalleryFetchOptions & { maxBytes: number },
+): Promise<StreamedImage> => {
+  let hostname: string
+  try {
+    hostname = new URL(link).hostname
+  } catch {
+    throw new GalleryError('bad_image_host', link.slice(0, 120))
+  }
+  if (!publicHost(hostname)) throw new GalleryError('bad_image_host', hostname)
+  const response = await fetchGuarded(
+    link,
+    { headers: { accept: 'image/*' } },
+    fetcher(opts),
+    IMAGE_TIMEOUT_MS,
+    publicHost,
+  )
+  const declared = Number(response.headers.get('content-length'))
+  if (Number.isFinite(declared) && declared > opts.maxBytes)
+    throw new GalleryError('too_large', `${declared} bytes`)
+  const body = response.body
+  if (!body) throw new GalleryError('unavailable', 'empty body')
+  const reader = body.getReader()
+
+  // Pull just enough to identify it. A host that closes before 12 bytes has not sent an image.
+  const head: Uint8Array[] = []
+  let headLength = 0
+  while (headLength < SNIFF_BYTES) {
+    const { done, value } = await reader.read()
+    if (done) break
+    if (value && value.byteLength > 0) {
+      head.push(value)
+      headLength += value.byteLength
+    }
+  }
+  const sniffBuffer = new Uint8Array(headLength)
+  let at = 0
+  for (const chunk of head) {
+    sniffBuffer.set(chunk, at)
+    at += chunk.byteLength
+  }
+  const type = sniffImage(sniffBuffer)
+  if (!type) {
+    await reader.cancel().catch(() => undefined)
+    throw new GalleryError('not_an_image', `${headLength} bytes`)
+  }
+  if (headLength > opts.maxBytes) {
+    await reader.cancel().catch(() => undefined)
+    throw new GalleryError('too_large', `over ${opts.maxBytes} bytes`)
+  }
+
+  let total = headLength
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      // The bytes already pulled for sniffing go out first, or the image loses its header.
+      for (const chunk of head) controller.enqueue(chunk)
+    },
+    async pull(controller) {
+      try {
+        const { done, value } = await reader.read()
+        if (done) {
+          controller.close()
+          return
+        }
+        if (!value || value.byteLength === 0) return
+        total += value.byteLength
+        if (total > opts.maxBytes) {
+          await reader.cancel().catch(() => undefined)
+          controller.error(new GalleryError('too_large', `over ${opts.maxBytes} bytes`))
+          return
+        }
+        controller.enqueue(value)
+      } catch (error) {
+        controller.error(error)
+      }
+    },
+    async cancel(reason) {
+      // A reader who navigated away: stop pulling from the host rather than finishing a
+      // download nobody is waiting for.
+      await reader.cancel(reason).catch(() => undefined)
+    },
+  })
+
+  return { type, body: stream, bytes: Number.isFinite(declared) && declared > 0 ? declared : null }
+}

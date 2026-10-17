@@ -1,6 +1,6 @@
 import { canReadChapter } from '@palscans/core/access'
 import { getEnv } from '@palscans/core/env'
-import { downloadGalleryImage, GalleryError } from '@palscans/core/gallery'
+import { GalleryError, streamGalleryImage } from '@palscans/core/gallery'
 import { MAX_ORIGINAL_BYTES } from '@palscans/core/storage'
 import { chapterPages, chapters, getDb } from '@palscans/db'
 import { and, eq, isNull } from 'drizzle-orm'
@@ -85,16 +85,27 @@ export async function GET(
   const locked = row.isPremium || (row.earlyAccessUntil && row.earlyAccessUntil > now)
 
   try {
-    // Same guard as the import: host allowlist, byte cap, and the type taken from the bytes
-    // rather than from the remote host's Content-Type header.
-    const image = await downloadGalleryImage(row.remoteUrl, {
+    /**
+     * Streamed, not buffered.
+     *
+     * Same guards as the import — host allowlist, byte cap, and the type taken from the
+     * bytes rather than from the host's Content-Type header — but the body is piped straight
+     * through. Buffering held a whole image in the heap for the length of its download, with
+     * nothing bounding how many did so at once: fifty readers on a premium chapter was fifty
+     * images resident at once, on a box with 2 GB for everything. It also meant the reader
+     * saw nothing until the last byte arrived. Nothing is stored either way — that is the
+     * point of this mode — this is only about what passes through memory on the way out.
+     */
+    const image = await streamGalleryImage(row.remoteUrl, {
       token: getEnv().IMGCHEST_TOKEN,
       maxBytes: MAX_ORIGINAL_BYTES,
     })
-    return new Response(image.bytes as BodyInit, {
+    return new Response(image.body as BodyInit, {
       headers: {
         'content-type': image.type,
-        'content-length': String(image.bytes.byteLength),
+        // Only when the host declared one: we no longer know the length up front, and a
+        // wrong `content-length` is worse than none — the browser truncates or stalls.
+        ...(image.bytes === null ? {} : { 'content-length': String(image.bytes) }),
         // A locked page is never cached by a shared cache: the entitlement check above is
         // per viewer, and an edge copy would serve it to the next person regardless.
         'cache-control': locked ? 'private, no-store' : PUBLIC_CACHE,
