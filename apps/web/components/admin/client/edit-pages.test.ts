@@ -1,6 +1,6 @@
 import type { WatermarkPageState } from '@palscans/core/watermark'
 import { describe, expect, it } from 'vitest'
-import { canEditPages } from './util'
+import { canEditPages, duplicateNumberKeys } from './util'
 
 /**
  * Which chapters offer the page editor from a series' Chapters tab.
@@ -48,5 +48,43 @@ describe('canEditPages', () => {
 
   it('does not offer it for a deleted chapter', () => {
     expect(canEditPages(row({ deletedAt: new Date().toISOString() }))).toBe(false)
+  })
+})
+
+/**
+ * Duplicate chapter numbers in one bulk drop.
+ *
+ * The uploader blocks Upload while two chapters claim one number, which is right — the
+ * server would otherwise write both into a single chapter row. What was wrong was that the
+ * block could not be cleared: the issue came from the plan built when the folders were
+ * dropped, and editing a number did not rebuild it, so the button stayed disabled however
+ * the numbers were retyped.
+ */
+describe('duplicateNumberKeys', () => {
+  it('finds nothing when every number is distinct', () => {
+    expect(duplicateNumberKeys(['1', '2', '3.5'])).toEqual(new Set())
+  })
+
+  it('finds a number two chapters both claim', () => {
+    expect(duplicateNumberKeys(['7', '7', '8'])).toEqual(new Set(['7.000']))
+  })
+
+  it('treats 7 and 7.0 as one number, because the unique index does', () => {
+    // The bulk plan compares the typed strings and lets this pair through; the server then
+    // has to refuse the batch. Normalising here means the operator is told before uploading.
+    expect(duplicateNumberKeys(['7', '7.0'])).toEqual(new Set(['7.000']))
+  })
+
+  it('clears once the operator retypes one of them — the point of recomputing', () => {
+    expect(duplicateNumberKeys(['7', '7.5'])).toEqual(new Set())
+  })
+
+  it('ignores entries whose number has not been typed yet', () => {
+    // Those are reported as `no number found` and blocked by their own warning, not this one.
+    expect(duplicateNumberKeys(['', 'abc', '4'])).toEqual(new Set())
+  })
+
+  it('reports several clashes at once', () => {
+    expect(duplicateNumberKeys(['1', '1', '2', '2', '3'])).toEqual(new Set(['1.000', '2.000']))
   })
 })

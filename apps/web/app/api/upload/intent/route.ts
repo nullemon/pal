@@ -75,6 +75,34 @@ export const POST = withPermission('chapter.create', async (request, _ctx, user)
     .limit(1)
   if (!s) return notFound()
 
+  /**
+   * Two entries for the same number in one batch, refused before anything is written.
+   *
+   * `resolveChapterSlot` cannot catch this, and the way it failed to was quiet. The first
+   * entry inserted the row; the second ran its lookup inside the *same* transaction, found
+   * that brand-new row, saw `page_count = 0` and reused it as an empty slot — which is
+   * exactly the right behaviour for a draft left by an earlier upload, and exactly the wrong
+   * one for a row this batch created a millisecond ago. Both entries came back pointing at
+   * one chapter id, so two sets of files were signed into one chapter's folder and the
+   * second commit replaced the first's pages. Two chapters in, one chapter out, no error.
+   *
+   * Compared on the number as the database stores it (`numeric(10,3)`), because that is what
+   * the unique index compares: 7 and 7.0 are one chapter, and a batch containing both is a
+   * mistake however it was typed.
+   */
+  const seen = new Map<string, number>()
+  for (const ch of parsed.data.chapters) {
+    const key = ch.number.toFixed(3)
+    const first = seen.get(key)
+    if (first !== undefined)
+      return fail(
+        400,
+        'duplicate_number',
+        fmt(adminMessages.bulkImport.issues.duplicateNumberServer, { n: String(ch.number) }),
+      )
+    seen.set(key, ch.number)
+  }
+
   let resolved: ResolvedChapter[]
   try {
     resolved = await db.transaction(async (tx) => {

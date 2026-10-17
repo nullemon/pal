@@ -73,3 +73,27 @@ export const canEditPages = (chapter: {
   watermark: string
   deletedAt: string | null
 }): boolean => chapter.pageCount > 0 && chapter.watermark !== 'remote' && !chapter.deletedAt
+
+/**
+ * Which chapter numbers in one bulk drop are claimed by more than one chapter.
+ *
+ * Returned as the keys the database would compare — `numeric(10,3)` — rather than the raw
+ * strings the folder names parsed to. That matters twice over: `1` and `1.0` are one chapter
+ * to the unique index, and a check that compares the typed text lets that pair through to a
+ * server that has to refuse it.
+ *
+ * Pure and exported so the uploader can recompute it on every edit. The bulk plan's own
+ * `duplicate_number` is a snapshot of the original folder names and blocks the Upload button;
+ * leaving it frozen meant retyping the number — the only remedy an operator has — could never
+ * clear the block.
+ */
+export const duplicateNumberKeys = (numbers: readonly string[]): Set<string> => {
+  const count = new Map<string, number>()
+  for (const raw of numbers) {
+    const n = Number.parseFloat(raw)
+    if (!Number.isFinite(n)) continue
+    const key = n.toFixed(3)
+    count.set(key, (count.get(key) ?? 0) + 1)
+  }
+  return new Set([...count].filter(([, n]) => n > 1).map(([key]) => key))
+}

@@ -2047,6 +2047,8 @@ export const adminMessages = {
       no_number: 'No chapter number in the name — type one',
       ambiguous_number: 'More than one number here ({candidates}) — check it',
       duplicate_number: 'Two folders both read as chapter {number}',
+      /** The same thing, said by the server to a client that let the pair through anyway. */
+      duplicateNumberServer: 'Two chapters in this upload are both numbered {n}.',
       missing_pages: 'Page numbers skip {numbers}',
       repeated_page_number: 'Two files claim page {numbers}',
       extra_files: '{count} file(s) are not numbered pages — kept at the ends',

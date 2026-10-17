@@ -142,6 +142,45 @@ describe('POST /api/upload/intent — duplicate chapter numbers', () => {
     expect(await rows()).toEqual([{ number: 12, state: 'draft', pageCount: 0 }])
   })
 
+  /**
+   * Two entries for the same number in one batch.
+   *
+   * It reads like an operator error and it is, but the shape of the failure was the problem:
+   * the first entry inserted the row, the second found that brand-new row inside the same
+   * transaction, saw `page_count = 0`, and quietly reused it. Both entries came back pointing
+   * at one chapter id, so the two sets of files were signed into one chapter's folder and the
+   * second commit replaced the first's pages. Two chapters in, one chapter out, no error.
+   */
+  it('refuses two entries for the same number instead of collapsing them into one', async () => {
+    const res = await post({
+      seriesId: ids.series,
+      chapters: [chapter({ number: 7 }), chapter({ number: 7 })],
+    })
+    expect(res.status).toBe(400)
+    const body = (await res.json()) as { error: string }
+    expect(body.error).toBe('duplicate_number')
+    // And nothing was written: the batch is refused whole, like every other refusal here.
+    expect(await rows()).toEqual([])
+  })
+
+  it('treats 7 and 7.0 as the same number, because the database does', async () => {
+    const res = await post({
+      seriesId: ids.series,
+      chapters: [chapter({ number: 7 }), chapter({ number: 7.0 })],
+    })
+    expect(res.status).toBe(400)
+    expect(await rows()).toEqual([])
+  })
+
+  it('still accepts a batch whose numbers are merely close', async () => {
+    const res = await post({
+      seriesId: ids.series,
+      chapters: [chapter({ number: 7 }), chapter({ number: 7.5 })],
+    })
+    expect(res.status).toBe(200)
+    expect((await rows()).map((r) => r.number)).toEqual([7, 7.5])
+  })
+
   it('refuses a chapter that already has pages when nothing said replace', async () => {
     await existing()
     for (const body of [

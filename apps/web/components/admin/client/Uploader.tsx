@@ -27,7 +27,7 @@ import {
   unzipEntries,
   uploadWithRetry,
 } from './upload-lib'
-import { formatChapterNumber } from './util'
+import { duplicateNumberKeys, formatChapterNumber } from './util'
 
 interface UPage {
   id: string
@@ -285,6 +285,15 @@ export function Uploader({
     const numbers = chapters
       .map((c) => Number.parseFloat(c.number))
       .filter((n) => Number.isFinite(n))
+    /**
+     * Which numbers this drop currently claims twice, recomputed rather than trusted.
+     *
+     * The plan's `duplicate_number` is a snapshot of what the *folder names* parsed to, and
+     * it blocks the Upload button. Editing the number afterwards — the one remedy an operator
+     * has — left that frozen issue in place, so the button stayed disabled however the
+     * numbers were retyped and the only way out was to clear the drop and start over.
+     */
+    const duplicates = duplicateNumberKeys(chapters.map((c) => c.number))
     const maxExisting = existing.reduce((a, b2) => Math.max(a, b2.number), Number.NEGATIVE_INFINITY)
     const all = [...numbers, ...(Number.isFinite(maxExisting) ? [maxExisting] : [])].sort(
       (a, b2) => a - b2,
@@ -317,7 +326,13 @@ export function Uploader({
         }
         return { ...p, warnings: w }
       })
-      return { ...c, warnings, clash, pages }
+      // The live verdict replaces the plan's: the stale one is what kept Upload disabled.
+      // Annotated as the full union, because `filter` narrows it to "everything except a
+      // duplicate" and the whole point is to put a fresh duplicate back.
+      const issues: ChapterIssue[] = c.issues.filter((i) => i.kind !== 'duplicate_number')
+      if (Number.isFinite(n) && duplicates.has(n.toFixed(3)))
+        issues.unshift({ kind: 'duplicate_number', number: c.number })
+      return { ...c, warnings, clash, pages, issues }
     })
   }, [chapters, existing, m.warnings])
 
