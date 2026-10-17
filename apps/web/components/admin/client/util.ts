@@ -142,3 +142,26 @@ export const resolveDuplicateNumbers = (numbers: readonly string[]): string[] =>
     return raw
   })
 }
+
+/**
+ * Move a set of pages to the front or the back of the order, keeping their relative order.
+ *
+ * The page editor could already delete several at once but only move one at a time, which on
+ * a 40-page chapter is the difference between a drag and forty of them — and the usual reason
+ * to move several is structural: a batch of credits pages that belong at the end, or a cover
+ * that arrived last.
+ *
+ * Relative order is preserved rather than reversed or sorted: the selection was made in the
+ * order it appears, and an operator moving pages 12–15 to the end means those four, still in
+ * that sequence.
+ */
+export const movePagesTo = <T extends { id: string }>(
+  pages: readonly T[],
+  ids: ReadonlySet<string>,
+  where: 'front' | 'back',
+): T[] => {
+  if (ids.size === 0) return [...pages]
+  const moving = pages.filter((p) => ids.has(p.id))
+  const rest = pages.filter((p) => !ids.has(p.id))
+  return where === 'front' ? [...moving, ...rest] : [...rest, ...moving]
+}

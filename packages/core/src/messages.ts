@@ -111,6 +111,8 @@ export const messages = {
     artist: 'Artist',
     translator: 'Translator',
     aboutTitle: 'About {title}',
+    markAllRead: 'Mark all read',
+    markedRead: '{n} chapters marked as read.',
     group: 'Scanlation',
     groups: 'Scanlation groups',
     genres: 'Genres',
@@ -485,6 +487,16 @@ export const messages = {
     justNow: 'just now',
   },
   // P2 · series page (direction B) — appended
+  groups: {
+    scanlationGroup: 'Scanlation group',
+    indexTitle: 'Scanlation groups',
+    indexSubtitle: 'The groups whose work is hosted here, and everything they have translated.',
+    indexEmpty: 'No groups are credited yet.',
+    empty: 'Nothing published from this group yet.',
+    counts: '{titles} titles · {chapters} chapters',
+    seoTitle: '{name} — scanlation group',
+    seoDescription: 'Every series scanlated by {name} — {titles} titles, read free online.',
+  },
   seriesDetail: {
     released: 'Released',
     updated: 'Updated {time}',

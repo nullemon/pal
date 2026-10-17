@@ -6,6 +6,7 @@ import { Button, useToast } from '@palscans/ui'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import { Hint, Panel, PanelHeader, Pill } from '@/components/admin/ui'
+import { movePagesTo } from './util'
 
 /**
  * The page grid: drag to reorder, select to delete, save once.
@@ -55,6 +56,12 @@ export function PageEditor({ chapterId, initial, editable }: Props) {
   const [server, setServer] = useState<EditorPage[]>(initial)
   const [pages, setPages] = useState<EditorPage[]>(initial)
   const [doomed, setDoomed] = useState<Set<string>>(new Set())
+  /**
+   * Pages ticked for a bulk move. Separate from `doomed`, which is a staged *delete*: a page
+   * can sensibly be moved without being deleted, and conflating the two made "select" mean
+   * two different things depending on which button was pressed next.
+   */
+  const [picked, setPicked] = useState<Set<string>>(new Set())
   const [dragging, setDragging] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
@@ -63,6 +70,7 @@ export function PageEditor({ chapterId, initial, editable }: Props) {
     setServer(initial)
     setPages(initial)
     setDoomed(new Set())
+    setPicked(new Set())
   }, [initial])
 
   const reordered = pages.some((p, i) => server[i]?.id !== p.id)
@@ -88,9 +96,27 @@ export function PageEditor({ chapterId, initial, editable }: Props) {
     })
   }, [])
 
+  const togglePicked = useCallback((id: string) => {
+    setPicked((current) => {
+      const next = new Set(current)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }, [])
+
+  const movePicked = useCallback(
+    (where: 'front' | 'back') => {
+      setPages((current) => movePagesTo(current, picked, where))
+      setPicked(new Set())
+    },
+    [picked],
+  )
+
   const discard = useCallback(() => {
     setPages(server)
     setDoomed(new Set())
+    setPicked(new Set())
   }, [server])
 
   const save = useCallback(async () => {
@@ -113,6 +139,7 @@ export function PageEditor({ chapterId, initial, editable }: Props) {
       setServer(next)
       setPages(next)
       setDoomed(new Set())
+      setPicked(new Set())
       toast({ title: m.saved, tone: 'ok' })
     } catch {
       toast({ title: m.failed, tone: 'danger' })
@@ -219,6 +246,41 @@ export function PageEditor({ chapterId, initial, editable }: Props) {
         </p>
       ) : null}
 
+      {/*
+        The bulk bar, shown only while something is ticked: an always-visible row of disabled
+        buttons is noise on the common visit, which is "look at the pages".
+      */}
+      {picked.size > 0 ? (
+        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-brand/40 bg-surface-2 px-3 py-2">
+          <span className="text-[13px] font-semibold">{fmt(m.selected, { n: picked.size })}</span>
+          <Button size="sm" variant="outline" onClick={() => movePicked('front')} disabled={saving}>
+            {m.moveToFront}
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => movePicked('back')} disabled={saving}>
+            {m.moveToEnd}
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-danger"
+            disabled={saving}
+            onClick={() => {
+              setDoomed((current) => new Set([...current, ...picked]))
+              setPicked(new Set())
+            }}
+          >
+            {m.deleteSelected}
+          </Button>
+          <button
+            type="button"
+            className="ml-auto text-[12px] text-fg-muted underline"
+            onClick={() => setPicked(new Set())}
+          >
+            {m.clearSelection}
+          </button>
+        </div>
+      ) : null}
+
       {pages.length === 0 ? (
         <Hint>{m.empty}</Hint>
       ) : (
@@ -260,7 +322,16 @@ export function PageEditor({ chapterId, initial, editable }: Props) {
                   className="aspect-[2/3] w-full rounded object-cover"
                 />
                 <div className="mt-2 flex items-center justify-between gap-1">
-                  <span className="text-xs tabular-nums text-fg-subtle">{index + 1}</span>
+                  <span className="flex items-center gap-1.5 text-xs tabular-nums text-fg-subtle">
+                    <input
+                      type="checkbox"
+                      aria-label={fmt(m.page, { n: index + 1 })}
+                      checked={picked.has(page.id)}
+                      onChange={() => togglePicked(page.id)}
+                      disabled={saving}
+                    />
+                    {index + 1}
+                  </span>
                   {page.split ? <Pill tone="neutral">{m.strip}</Pill> : null}
                 </div>
                 <div className="mt-1 flex items-center gap-1">

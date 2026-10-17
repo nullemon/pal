@@ -8,7 +8,12 @@ import { CommentsSection } from '@/components/comments/CommentsSection'
 import { StatusBadge, TypeBadge } from '@/components/discovery/Badges'
 import { COVER_HEIGHT, COVER_WIDTH } from '@/components/discovery/media'
 import { AboutBlock } from '@/components/series/AboutBlock'
-import { BookmarkButton, DownloadButton, RateButton } from '@/components/series/ActionIslands'
+import {
+  BookmarkButton,
+  DownloadButton,
+  MarkAllReadButton,
+  RateButton,
+} from '@/components/series/ActionIslands'
 import { ChapterTable } from '@/components/series/ChapterTable'
 import { FollowControl } from '@/components/series/FollowControl'
 import { NovelCard } from '@/components/series/NovelCard'
@@ -202,6 +207,11 @@ export function SeriesF({
                   seriesSlug={series.slug}
                   signedIn={!!user}
                   initial={state.bookmarkStatus !== null}
+                />
+                <MarkAllReadButton
+                  seriesId={series.id}
+                  seriesSlug={series.slug}
+                  signedIn={!!user}
                 />
                 {/* A follow is not the bookmark above it: the shelf stays a shelf, this decides
                     whether and how the next chapter reaches the reader (docs/17 §D). */}

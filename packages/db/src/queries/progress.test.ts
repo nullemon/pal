@@ -9,6 +9,7 @@ import { chapterReads, chapters, readingProgress, series, users } from '../schem
 import {
   currentProgress,
   decideProgress,
+  markSeriesRead,
   mergeLocalProgress,
   observedAtFrom,
   TIE_WINDOW_MS,
@@ -33,6 +34,53 @@ const T = (iso: string) => new Date(iso)
 const MORNING = T('2026-09-05T09:00:00Z')
 const LUNCH = T('2026-09-05T12:00:00Z')
 const EVENING = T('2026-09-05T20:00:00Z')
+
+/**
+ * A reader and a series of their own, so one suite's rows cannot be another's "already read".
+ * `markSeriesRead` writes across a whole series, which makes shared fixtures a trap here.
+ */
+let freshCounter = 0
+const freshSeries = async (
+  publishedNumbers: number[],
+  opts: { draftNumbers?: number[]; deletedNumbers?: number[] } = {},
+): Promise<{ userId: number; seriesId: number; chapterIds: number[] }> => {
+  freshCounter += 1
+  const [person] = await db
+    .insert(users)
+    .values({ email: `fresh-${freshCounter}@progress.test` })
+    .returning({ id: users.id })
+  const [row] = await db
+    .insert(series)
+    .values({
+      slug: `fresh-${freshCounter}`,
+      title: `Fresh ${freshCounter}`,
+      type: 'manhwa',
+      state: 'published',
+    })
+    .returning({ id: series.id })
+  const seriesId = row?.id ?? 0
+  const values = [
+    ...publishedNumbers.map((n) => ({ seriesId, number: n, state: 'published' as const })),
+    ...(opts.draftNumbers ?? []).map((n) => ({ seriesId, number: n, state: 'draft' as const })),
+    ...(opts.deletedNumbers ?? []).map((n) => ({
+      seriesId,
+      number: n,
+      state: 'published' as const,
+      deletedAt: new Date(),
+    })),
+  ]
+  const made = values.length
+    ? await db
+        .insert(chapters)
+        .values(values)
+        .returning({ id: chapters.id, number: chapters.number })
+    : []
+  const chapterIds = publishedNumbers
+    .slice()
+    .sort((a, b) => a - b)
+    .map((n) => made.find((c) => Number(c.number) === n)?.id as number)
+  return { userId: person?.id ?? 0, seriesId, chapterIds }
+}
 
 beforeAll(async () => {
   dir = await mkdtemp(path.join(os.tmpdir(), 'palscans-progress-'))
@@ -307,5 +355,66 @@ describe('merging a signed-out device into an account', () => {
       kept: 0,
       skipped: 0,
     })
+  })
+})
+
+/**
+ * Marking a whole series read.
+ *
+ * Two tables have to agree: `chapter_reads` is what ticks the chapter list off, and
+ * `reading_progress` is what "Continue reading" points at. Writing one without the other
+ * leaves a reader who marked everything read still being offered chapter 1.
+ */
+describe('markSeriesRead', () => {
+  it('records every published chapter and parks progress on the latest', async () => {
+    const { userId, seriesId, chapterIds } = await freshSeries([1, 2, 3])
+    const result = await markSeriesRead(db, userId, seriesId, new Date('2026-05-01T10:00:00Z'))
+    expect(result.chapters).toBe(3)
+    const reads = await db
+      .select({ chapterId: chapterReads.chapterId })
+      .from(chapterReads)
+      .where(eq(chapterReads.userId, userId))
+    expect(reads.map((r) => r.chapterId).sort()).toEqual([...chapterIds].sort())
+    const position = await currentProgress(db, userId, seriesId)
+    // The newest chapter, not the first one found.
+    expect(position?.chapterId).toBe(chapterIds[chapterIds.length - 1])
+  })
+
+  it('ignores drafts, which a reader could not have read', async () => {
+    const { userId, seriesId } = await freshSeries([1, 2], { draftNumbers: [3] })
+    expect((await markSeriesRead(db, userId, seriesId)).chapters).toBe(2)
+  })
+
+  it('ignores deleted chapters', async () => {
+    const { userId, seriesId } = await freshSeries([1, 2], { deletedNumbers: [3] })
+    expect((await markSeriesRead(db, userId, seriesId)).chapters).toBe(2)
+  })
+
+  it('is idempotent, and keeps the earlier read time', async () => {
+    const { userId, seriesId, chapterIds } = await freshSeries([1])
+    const first = new Date('2026-05-01T10:00:00Z')
+    await markSeriesRead(db, userId, seriesId, first)
+    await markSeriesRead(db, userId, seriesId, new Date('2026-04-01T10:00:00Z'))
+    const [row] = await db
+      .select({ readAt: chapterReads.readAt })
+      .from(chapterReads)
+      .where(
+        and(eq(chapterReads.userId, userId), eq(chapterReads.chapterId, chapterIds[0] as number)),
+      )
+    // `greatest`, so re-running never rewrites history backwards.
+    expect(row?.readAt?.toISOString()).toBe(first.toISOString())
+  })
+
+  it('does nothing for a series with no published chapters', async () => {
+    const { userId, seriesId } = await freshSeries([], { draftNumbers: [1] })
+    expect((await markSeriesRead(db, userId, seriesId)).chapters).toBe(0)
+    expect(await currentProgress(db, userId, seriesId)).toBeNull()
+  })
+
+  it('leaves another series alone', async () => {
+    const mine = await freshSeries([1, 2])
+    const other = await freshSeries([1, 2])
+    await markSeriesRead(db, mine.userId, mine.seriesId)
+    expect(await currentProgress(db, mine.userId, other.seriesId)).toBeNull()
   })
 })

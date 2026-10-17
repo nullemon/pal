@@ -1,4 +1,4 @@
-import { and, eq, inArray, sql } from 'drizzle-orm'
+import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm'
 import type { Db } from '../client.js'
 import { chapterReads, chapters, readingProgress } from '../schema/index.js'
 
@@ -316,4 +316,56 @@ export const mergeLocalProgress = async (
     else out.kept++
   }
   return out
+}
+
+/**
+ * Mark every published chapter of a series as read, and move the reader's position to the
+ * latest one.
+ *
+ * The chore this removes: catching up on a long series elsewhere and then facing forty
+ * unread markers, each of which has to be opened to clear. Both halves are needed — the
+ * history rows are what the chapter list ticks off, and `reading_progress` is what
+ * "Continue reading" points at — and doing one without the other leaves the two disagreeing.
+ *
+ * Only published, undeleted chapters: a draft is not something a reader could have read, and
+ * marking it would hand them a row referring to a chapter that may never go live.
+ *
+ * Idempotent, like `recordChapterRead`: running it twice keeps the earlier `read_at` rather
+ * than restating that everything was read just now.
+ */
+export const markSeriesRead = async (
+  db: Db,
+  userId: number,
+  seriesId: number,
+  readAt: Date = new Date(),
+): Promise<{ chapters: number }> => {
+  const rows = await db
+    .select({ id: chapters.id, number: chapters.number })
+    .from(chapters)
+    .where(
+      and(
+        eq(chapters.seriesId, seriesId),
+        eq(chapters.state, 'published'),
+        isNull(chapters.deletedAt),
+      ),
+    )
+    .orderBy(desc(chapters.number))
+  if (rows.length === 0) return { chapters: 0 }
+  await db
+    .insert(chapterReads)
+    .values(rows.map((r) => ({ userId, chapterId: r.id, readAt })))
+    .onConflictDoUpdate({
+      target: [chapterReads.userId, chapterReads.chapterId],
+      set: { readAt: sql`greatest(${chapterReads.readAt}, excluded.read_at)` },
+    })
+  const latest = rows[0]
+  if (latest)
+    await db
+      .insert(readingProgress)
+      .values({ userId, seriesId, chapterId: latest.id, pageIdx: 0, scrollPct: 0, readAt })
+      .onConflictDoUpdate({
+        target: [readingProgress.userId, readingProgress.seriesId],
+        set: { chapterId: latest.id, pageIdx: 0, scrollPct: 0, readAt },
+      })
+  return { chapters: rows.length }
 }

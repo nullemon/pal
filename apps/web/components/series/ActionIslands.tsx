@@ -3,7 +3,17 @@
 import { formatChapterLabel } from '@palscans/core/formatting'
 import { fmt, messages } from '@palscans/core/messages'
 import { cn, Sheet, useFormatting, useToast } from '@palscans/ui'
-import { Bookmark, Check, Download, FileArchive, Lock, Smartphone, Star } from 'lucide-react'
+import {
+  Bookmark,
+  Check,
+  CheckCheck,
+  Download,
+  FileArchive,
+  Lock,
+  Smartphone,
+  Star,
+} from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import type { ChapterRowData } from '@/app/(site)/series/[slug]/data'
 import { del, postJson } from '@/lib/comments/client'
@@ -406,5 +416,50 @@ export function DownloadButton({
         </div>
       </Sheet>
     </>
+  )
+}
+
+/**
+ * "Mark all read" — every published chapter at once.
+ *
+ * For the reader who caught up elsewhere and comes back to forty unread markers, each of
+ * which has to be opened to clear. It refreshes rather than patching state locally: the
+ * chapter list's read ticks are server-rendered, and the alternative is a page that says
+ * "done" above a list that still looks untouched.
+ *
+ * Signed out it points at the sign-in, like the bookmark: anonymous progress lives in the
+ * reader's own browser, which this route cannot reach.
+ */
+export function MarkAllReadButton({ seriesId, seriesSlug, signedIn }: Common) {
+  const { toast } = useToast()
+  const router = useRouter()
+  const [busy, setBusy] = useState(false)
+  if (!signedIn)
+    return (
+      <a href={signInHref(seriesSlug)} className={ghost}>
+        <CheckCheck size={18} aria-hidden="true" />
+        {messages.series.markAllRead}
+      </a>
+    )
+  return (
+    <button
+      type="button"
+      disabled={busy}
+      className={ghost}
+      onClick={async () => {
+        setBusy(true)
+        const res = await postJson<{ chapters: number }>(`/api/series/${seriesId}/read-all`, {})
+        setBusy(false)
+        if (!res.ok) {
+          toast({ title: messages.errors.generic, tone: 'danger' })
+          return
+        }
+        toast({ title: fmt(messages.series.markedRead, { n: res.data.chapters }), tone: 'ok' })
+        router.refresh()
+      }}
+    >
+      <CheckCheck size={18} aria-hidden="true" />
+      {messages.series.markAllRead}
+    </button>
   )
 }

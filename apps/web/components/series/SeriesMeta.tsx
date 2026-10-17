@@ -83,7 +83,7 @@ export function Credits({
             {groups.map((g) => (
               <a
                 className="font-semibold text-fg hover:text-brand-hover"
-                href={`/browse?group=${encodeURIComponent(g.slug)}`}
+                href={`/groups/${g.slug}`}
                 key={g.id}
               >
                 {g.name}

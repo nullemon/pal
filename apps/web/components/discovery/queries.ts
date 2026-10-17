@@ -6,12 +6,14 @@ import {
 } from '@palscans/core'
 import {
   announcements,
+  chapterGroups,
   chapters,
   featuredSeries,
   genreBySlug,
   genreCounts,
   genres,
   getDb,
+  groups,
   pageWindow,
   popular,
   randomPublishedSeries,
@@ -539,6 +541,71 @@ export async function genreDetail(slug: string) {
     .innerJoin(series, eq(series.id, seriesGenres.seriesId))
     .where(and(eq(seriesGenres.genreId, row.id), published()))
   return { ...row, count: Number(count), href: `/genres/${row.slug}` }
+}
+
+/**
+ * A scanlation group's page: the group, and every published series it has chapters on.
+ *
+ * Derived from `chapter_groups` rather than from anything stored on the series, for the same
+ * reason the credit on the series page is: a series has no group of its own, chapters do.
+ * `selectDistinct` because a group with forty chapters on one title must appear as one row.
+ *
+ * Crediting the group is the convention this work is shared under, and some groups make it a
+ * condition of hosting — a page that collects their work and links it is the other half of
+ * keeping that bargain.
+ */
+export async function groupDetail(slug: string) {
+  await ensureConfig()
+  const db = await getDb()
+  const [row] = await db
+    .select({
+      id: groups.id,
+      slug: groups.slug,
+      name: groups.name,
+      description: groups.description,
+      links: groups.links,
+    })
+    .from(groups)
+    .where(and(eq(groups.slug, slug), isNull(groups.deletedAt)))
+    .limit(1)
+  if (!row) return null
+  const titles = await db
+    .selectDistinct(cardColumns)
+    .from(chapterGroups)
+    .innerJoin(chapters, eq(chapters.id, chapterGroups.chapterId))
+    .innerJoin(series, eq(series.id, chapters.seriesId))
+    .where(and(eq(chapterGroups.groupId, row.id), isNull(chapters.deletedAt), published()))
+    .orderBy(desc(series.lastChapterAt), desc(series.id))
+    .limit(200)
+  return {
+    ...row,
+    links: row.links ?? {},
+    href: `/groups/${row.slug}`,
+    series: titles.map(toSummary),
+  }
+}
+
+/** Every group with published work, for `/groups`. */
+export async function groupIndex() {
+  await ensureConfig()
+  const db = await getDb()
+  const rows = await db
+    .select({
+      slug: groups.slug,
+      name: groups.name,
+      description: groups.description,
+      titles: sql<number>`count(distinct ${chapters.seriesId})::int`,
+      chapters: sql<number>`count(distinct ${chapters.id})::int`,
+    })
+    .from(groups)
+    .innerJoin(chapterGroups, eq(chapterGroups.groupId, groups.id))
+    .innerJoin(chapters, eq(chapters.id, chapterGroups.chapterId))
+    .innerJoin(series, eq(series.id, chapters.seriesId))
+    .where(and(isNull(groups.deletedAt), isNull(chapters.deletedAt), published()))
+    .groupBy(groups.id)
+    .orderBy(desc(sql`count(distinct ${chapters.id})`), groups.name)
+    .limit(200)
+  return rows.map((r) => ({ ...r, href: `/groups/${r.slug}` }))
 }
 
 /** Latest chapter for a page of cards (the "Ch. N" pill on `SeriesCard`). */

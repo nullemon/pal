@@ -2947,6 +2947,10 @@ export const adminMessages = {
     noGroupsYet: 'No groups yet — add one on the Groups screen first.',
   },
   pageEditor: {
+    moveToFront: 'Move to front',
+    moveToEnd: 'Move to end',
+    clearSelection: 'Clear',
+
     navLabel: 'Pages',
     title: 'Pages',
     subtitle: 'Reorder, delete and replace the pages of a chapter without re-uploading it.',

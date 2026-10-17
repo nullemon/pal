@@ -1,6 +1,6 @@
 import type { WatermarkPageState } from '@palscans/core/watermark'
 import { describe, expect, it } from 'vitest'
-import { canEditPages, duplicateNumberKeys, resolveDuplicateNumbers } from './util'
+import { canEditPages, duplicateNumberKeys, movePagesTo, resolveDuplicateNumbers } from './util'
 
 /**
  * Which chapters offer the page editor from a series' Chapters tab.
@@ -129,5 +129,47 @@ describe('resolveDuplicateNumbers', () => {
   it('leaves nothing clashing behind, which is the whole contract', () => {
     const fixed = resolveDuplicateNumbers(['3', '3', '3', '3.1', '3.2'])
     expect(duplicateNumberKeys(fixed)).toEqual(new Set())
+  })
+})
+
+/**
+ * Moving several pages at once.
+ *
+ * The editor could delete a selection but only move one page at a time, which on a 40-page
+ * chapter is forty drags. The rule worth pinning is that a selection keeps its own order —
+ * moving pages 12–15 to the end means those four, still in that sequence.
+ */
+describe('movePagesTo', () => {
+  const pages = [{ id: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'd' }]
+  const ids = (...xs: string[]) => new Set(xs)
+
+  it('moves a selection to the back, keeping its order', () => {
+    expect(movePagesTo(pages, ids('a', 'b'), 'back').map((p) => p.id)).toEqual(['c', 'd', 'a', 'b'])
+  })
+
+  it('moves a selection to the front, keeping its order', () => {
+    expect(movePagesTo(pages, ids('c', 'd'), 'front').map((p) => p.id)).toEqual([
+      'c',
+      'd',
+      'a',
+      'b',
+    ])
+  })
+
+  it('keeps the selection in page order, not in the order it was clicked', () => {
+    expect(movePagesTo(pages, ids('d', 'b'), 'back').map((p) => p.id)).toEqual(['a', 'c', 'b', 'd'])
+  })
+
+  it('does nothing when nothing is selected', () => {
+    expect(movePagesTo(pages, ids(), 'back').map((p) => p.id)).toEqual(['a', 'b', 'c', 'd'])
+  })
+
+  it('loses no pages when everything is selected', () => {
+    expect(movePagesTo(pages, ids('a', 'b', 'c', 'd'), 'front').map((p) => p.id)).toEqual([
+      'a',
+      'b',
+      'c',
+      'd',
+    ])
   })
 })
