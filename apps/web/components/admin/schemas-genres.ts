@@ -50,3 +50,31 @@ export const isSlugConflict = (error: unknown): boolean => {
   const message = error instanceof Error ? error.message : String(error ?? '')
   return /duplicate key|unique constraint/i.test(message) && /genres_slug/i.test(message)
 }
+
+/**
+ * A unique-violation on `chapters_series_number_language_unique`.
+ *
+ * Renumbering a chapter onto a number its series already uses is an ordinary operator
+ * mistake — they are looking at a list and typing — and it reached the index as an unhandled
+ * error, so the panel showed a 500 and the only clue was in the container log. Same shape as
+ * the slug conflict above: the index is the authority, this just turns its verdict into the
+ * 409 the operator can act on.
+ *
+ * The chain is walked rather than the top error inspected, because Drizzle wraps the driver
+ * error: the outer message is `Failed query: update "chapters" set …`, which carries neither
+ * the SQLSTATE nor the constraint name. Both are on the cause. Checking only the top is why
+ * the first version of this returned false for the very error it was written for.
+ */
+export const isChapterNumberConflict = (error: unknown): boolean => {
+  for (let current: unknown = error, depth = 0; current && depth < 5; depth++) {
+    const code = (current as { code?: unknown }).code
+    const message = current instanceof Error ? current.message : String(current ?? '')
+    const named = /chapters_series_(number_language_)?unique|chapters_series_id_number/i.test(
+      message,
+    )
+    if (code === '23505' && (named || /duplicate key|unique constraint/i.test(message))) return true
+    if (named && /duplicate key|unique constraint/i.test(message)) return true
+    current = (current as { cause?: unknown }).cause
+  }
+  return false
+}

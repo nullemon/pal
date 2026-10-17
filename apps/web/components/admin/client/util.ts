@@ -97,3 +97,48 @@ export const duplicateNumberKeys = (numbers: readonly string[]): Set<string> => 
   }
   return new Set([...count].filter(([, n]) => n > 1).map(([key]) => key))
 }
+
+/**
+ * Spread chapters that claim the same number onto free decimals, in place.
+ *
+ * The drop that produces this is ordinary: two folders named `Chapter 7` and `Chapter 7 (2)`,
+ * or a part-1/part-2 release whose names both read as 7. The remedy was to retype the numbers
+ * by hand, one field at a time, which on a ten-chapter clash is why people give up and upload
+ * them one by one instead.
+ *
+ * The first chapter claiming a number keeps it; the others take `7.1`, `7.2` and so on. That
+ * ordering is the conventional one for a split release, and keeping the first in place means
+ * the fix never moves a chapter that was already right.
+ *
+ * Numbers already claimed anywhere in the drop are skipped, so this cannot invent a second
+ * clash while resolving the first. An entry whose number has not been typed yet is left
+ * alone — it has its own warning, and guessing a number for it would be inventing data.
+ *
+ * Returns a new array, same length and order, so the caller can apply it row by row.
+ */
+export const resolveDuplicateNumbers = (numbers: readonly string[]): string[] => {
+  const key = (n: number) => n.toFixed(3)
+  const claimed = new Set<string>()
+  for (const raw of numbers) {
+    const n = Number.parseFloat(raw)
+    if (Number.isFinite(n)) claimed.add(key(n))
+  }
+  const seen = new Set<string>()
+  return numbers.map((raw) => {
+    const n = Number.parseFloat(raw)
+    if (!Number.isFinite(n)) return raw
+    if (!seen.has(key(n))) {
+      seen.add(key(n))
+      return raw
+    }
+    // A later claim on a number already taken: walk the decimals under it for a free one.
+    for (let step = 1; step <= 99; step++) {
+      const candidate = Math.round((n + step / 10) * 1000) / 1000
+      if (claimed.has(key(candidate))) continue
+      claimed.add(key(candidate))
+      seen.add(key(candidate))
+      return formatChapterNumber(candidate)
+    }
+    return raw
+  })
+}

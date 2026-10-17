@@ -2,6 +2,7 @@ import { normaliseLanguage } from '@palscans/core/languages'
 import { chapters, getDb } from '@palscans/db'
 import { eq } from 'drizzle-orm'
 import { chapterPatchSchema } from '@/components/admin/schemas'
+import { isChapterNumberConflict } from '@/components/admin/schemas-genres'
 import { audit, snapshot } from '@/components/admin/server/audit'
 import { purgeCatalog } from '@/components/admin/server/cache'
 import { publishChapters, scheduleChapters } from '@/components/admin/server/chapters'
@@ -38,26 +39,37 @@ export const PATCH = withPermission<{ id: string }>(
     )
       return fail(403, 'forbidden')
     const now = new Date()
-    await db
-      .update(chapters)
-      .set({
-        ...(body.number !== undefined ? { number: body.number } : {}),
-        ...(body.title !== undefined ? { title: body.title } : {}),
-        ...(body.volume !== undefined ? { volume: body.volume } : {}),
-        ...(body.language !== undefined ? { language: normaliseLanguage(body.language) } : {}),
-        ...(body.isPremium !== undefined ? { isPremium: body.isPremium } : {}),
-        ...(body.earlyAccessUntil !== undefined
-          ? { earlyAccessUntil: body.earlyAccessUntil ? new Date(body.earlyAccessUntil) : null }
-          : {}),
-        ...(body.state === 'draft' || body.state === 'ready' ? { state: body.state } : {}),
-        // Unscheduling from the release calendar: back to `ready` *and* no date, so the
-        // chapter shows up in the "ready, no date" rail instead of keeping a stale slot.
-        ...((body.state === 'draft' || body.state === 'ready') && body.publishedAt === null
-          ? { publishedAt: null }
-          : {}),
-        updatedAt: now,
-      })
-      .where(eq(chapters.id, id.data))
+    /**
+     * Renumbering onto a number the series already uses is an operator mistake, not a
+     * server fault: they are looking at a list of chapters and typing into it. It used to
+     * reach the unique index unhandled, so the panel showed a generic failure and the reason
+     * was only in the container log.
+     */
+    try {
+      await db
+        .update(chapters)
+        .set({
+          ...(body.number !== undefined ? { number: body.number } : {}),
+          ...(body.title !== undefined ? { title: body.title } : {}),
+          ...(body.volume !== undefined ? { volume: body.volume } : {}),
+          ...(body.language !== undefined ? { language: normaliseLanguage(body.language) } : {}),
+          ...(body.isPremium !== undefined ? { isPremium: body.isPremium } : {}),
+          ...(body.earlyAccessUntil !== undefined
+            ? { earlyAccessUntil: body.earlyAccessUntil ? new Date(body.earlyAccessUntil) : null }
+            : {}),
+          ...(body.state === 'draft' || body.state === 'ready' ? { state: body.state } : {}),
+          // Unscheduling from the release calendar: back to `ready` *and* no date, so the
+          // chapter shows up in the "ready, no date" rail instead of keeping a stale slot.
+          ...((body.state === 'draft' || body.state === 'ready') && body.publishedAt === null
+            ? { publishedAt: null }
+            : {}),
+          updatedAt: now,
+        })
+        .where(eq(chapters.id, id.data))
+    } catch (error) {
+      if (isChapterNumberConflict(error)) return fail(409, 'number_taken')
+      throw error
+    }
     if (body.state === 'published') await publishChapters([id.data], now)
     if (body.state === 'scheduled' && body.publishedAt)
       await scheduleChapters([id.data], new Date(body.publishedAt), now)

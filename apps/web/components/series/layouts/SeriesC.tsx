@@ -4,6 +4,7 @@ import { AdSlot, cn, RelativeTime } from '@palscans/ui'
 import { ArrowRight } from 'lucide-react'
 import Link from 'next/link'
 import { CommentsSection } from '@/components/comments/CommentsSection'
+import { AboutBlock } from '@/components/series/AboutBlock'
 import { BookmarkButton, DownloadButton, RateButton } from '@/components/series/ActionIslands'
 import { ChapterTable } from '@/components/series/ChapterTable'
 import { FollowControl } from '@/components/series/FollowControl'
@@ -291,6 +292,8 @@ export function SeriesC({
             </div>
           </div>
         </div>
+
+        <AboutBlock doc={series.seoText} title={series.title} />
 
         <CommentsSection
           target={{ kind: 'series', id: series.id }}

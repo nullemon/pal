@@ -7,6 +7,7 @@ import type { ReactNode } from 'react'
 import { CommentsSection } from '@/components/comments/CommentsSection'
 import { StatusBadge, TypeBadge } from '@/components/discovery/Badges'
 import { COVER_HEIGHT, COVER_WIDTH } from '@/components/discovery/media'
+import { AboutBlock } from '@/components/series/AboutBlock'
 import { BookmarkButton, DownloadButton, RateButton } from '@/components/series/ActionIslands'
 import { ChapterTable } from '@/components/series/ChapterTable'
 import { FollowControl } from '@/components/series/FollowControl'
@@ -355,6 +356,7 @@ export function SeriesF({
         </div>
 
         <div className="container-page">
+          <AboutBlock doc={series.seoText} title={series.title} />
           <CommentsSection
             target={{ kind: 'series', id: series.id }}
             user={user}

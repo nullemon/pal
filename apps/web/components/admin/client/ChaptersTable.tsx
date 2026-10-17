@@ -4,7 +4,7 @@ import { fmt, messages } from '@palscans/core/messages'
 import { adminMessages } from '@palscans/core/messages/admin'
 import type { WatermarkPageState } from '@palscans/core/watermark'
 import { Button, cn, useToast } from '@palscans/ui'
-import { Images, RefreshCw, Stamp, Users } from 'lucide-react'
+import { Images, Pencil, RefreshCw, Stamp, Users } from 'lucide-react'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import type { BulkAction } from '../schemas'
 import {
@@ -19,7 +19,7 @@ import {
   Td,
   Th,
 } from '../ui'
-import { api, postJson } from './api'
+import { api, patchJson, postJson } from './api'
 import { Modal } from './controls'
 import type { EditorPerms } from './SeriesEditor'
 import { canEditPages, countdown, formatChapterNumber } from './util'
@@ -117,6 +117,17 @@ export function ChaptersTable({
    */
   const [groupOptions, setGroupOptions] = useState<GroupOption[] | null>(null)
   const [groupId, setGroupId] = useState('')
+  /**
+   * The chapter being renamed or renumbered.
+   *
+   * Both have been editable through `PATCH /api/admin/chapters/:id` since it was written and
+   * neither had a control anywhere in the panel, so a typo'd number or title meant deleting
+   * the chapter and uploading it again. This is that control.
+   */
+  const [editing, setEditing] = useState<ChapterRowData | null>(null)
+  const [draftNumber, setDraftNumber] = useState('')
+  const [draftTitle, setDraftTitle] = useState('')
+  const [draftVolume, setDraftVolume] = useState('')
   const lastClick = useRef<number | null>(null)
   const visible = useMemo(() => rows.filter((r) => !r.deletedAt), [rows])
   const now = new Date()
@@ -217,6 +228,61 @@ export function ChaptersTable({
     setRows((rs) => rs.map((r) => (r.id === id ? { ...r, state: 'processing' } : r)))
     toast({ title: adminMessages.admin.upload.committed, tone: 'ok' })
   }
+
+  const openEdit = (row: ChapterRowData) => {
+    setEditing(row)
+    setDraftNumber(formatChapterNumber(row.number))
+    setDraftTitle(row.title ?? '')
+    setDraftVolume(row.volume === null ? '' : String(row.volume))
+  }
+
+  /**
+   * The number this edit would take, and whether another chapter already holds it.
+   *
+   * Checked here as well as by the database so the operator is told while the dialog is
+   * open, next to the field they typed into, rather than by a failed save. The index is
+   * still the authority — two people renumbering at once is its to settle — and the route
+   * answers 409 for that.
+   */
+  const editNumber = Number.parseFloat(draftNumber)
+  const numberTaken =
+    editing !== null &&
+    Number.isFinite(editNumber) &&
+    rows.some(
+      (r) => r.id !== editing.id && !r.deletedAt && r.number.toFixed(3) === editNumber.toFixed(3),
+    )
+
+  const saveEdit = useCallback(async () => {
+    if (!editing) return
+    const number = Number.parseFloat(draftNumber)
+    if (!Number.isFinite(number)) return
+    const volume = draftVolume.trim() === '' ? null : Number.parseInt(draftVolume, 10)
+    const title = draftTitle.trim() === '' ? null : draftTitle.trim()
+    setBusy(true)
+    const res = await patchJson(`/api/admin/chapters/${editing.id}`, {
+      number,
+      title,
+      volume: Number.isFinite(volume as number) ? volume : null,
+    })
+    setBusy(false)
+    if (!res.ok) {
+      toast({
+        title: res.status === 409 ? m.edit.taken : adminMessages.admin.errorSaving,
+        description: res.status === 409 ? undefined : res.message,
+        tone: 'danger',
+      })
+      return
+    }
+    setRows((rs) =>
+      rs.map((r) =>
+        r.id === editing.id
+          ? { ...r, number, title, volume: Number.isFinite(volume as number) ? volume : null }
+          : r,
+      ),
+    )
+    setEditing(null)
+    toast({ title: m.edit.saved, tone: 'ok' })
+  }, [editing, draftNumber, draftTitle, draftVolume, toast, m.edit.saved, m.edit.taken])
 
   const whenIso = () => new Date(when).toISOString()
 
@@ -469,6 +535,17 @@ export function ChaptersTable({
                         {m.reapplyWatermark}
                       </button>
                     ) : null}
+                    {perms.chapterUpdate ? (
+                      <button
+                        className="inline-flex h-7 items-center gap-1 rounded-md border border-line px-2 text-[12px] font-semibold hover:bg-surface-2"
+                        onClick={() => openEdit(r)}
+                        title={m.edit.hint}
+                        type="button"
+                      >
+                        <Pencil size={12} aria-hidden="true" />
+                        {m.edit.action}
+                      </button>
+                    ) : null}
                     {canEditPages(r) ? (
                       <a
                         className="inline-flex h-7 items-center gap-1 rounded-md border border-line px-2 text-[12px] font-semibold hover:bg-surface-2"
@@ -590,6 +667,64 @@ export function ChaptersTable({
             everyone: describe(when ? new Date(when).toISOString() : null, now),
           })}
         </p>
+      </Modal>
+
+      {/*
+       * Rename and renumber. Small dialog, but it is the difference between fixing a typo and
+       * deleting a chapter to upload it again, which is what the panel offered before.
+       */}
+      <Modal
+        open={editing !== null}
+        title={m.edit.title}
+        onClose={() => setEditing(null)}
+        footer={
+          <>
+            <Button variant="outline" size="sm" onClick={() => setEditing(null)}>
+              {messages.common.cancel}
+            </Button>
+            <Button
+              size="sm"
+              disabled={busy || numberTaken || !Number.isFinite(editNumber)}
+              onClick={() => void saveEdit()}
+            >
+              {m.edit.save}
+            </Button>
+          </>
+        }
+      >
+        <div className="flex flex-col gap-3">
+          <label className="flex flex-col gap-1.5 text-[13px] font-medium">
+            {m.edit.number}
+            <input
+              className={inputClass}
+              inputMode="decimal"
+              onChange={(e) => setDraftNumber(e.target.value)}
+              value={draftNumber}
+            />
+          </label>
+          {/* Decimals are not a workaround here, they are how a .5 release is numbered. */}
+          <p className="text-[12px] text-fg-muted">{m.edit.numberHint}</p>
+          {numberTaken ? <p className="text-[12.5px] text-danger">{m.edit.taken}</p> : null}
+          <label className="flex flex-col gap-1.5 text-[13px] font-medium">
+            {m.edit.chapterTitle}
+            <input
+              className={inputClass}
+              onChange={(e) => setDraftTitle(e.target.value)}
+              placeholder={m.edit.untitled}
+              value={draftTitle}
+            />
+          </label>
+          <label className="flex flex-col gap-1.5 text-[13px] font-medium">
+            {m.edit.volume}
+            <input
+              className={inputClass}
+              inputMode="numeric"
+              onChange={(e) => setDraftVolume(e.target.value)}
+              placeholder={m.edit.noVolume}
+              value={draftVolume}
+            />
+          </label>
+        </div>
       </Modal>
 
       {/*

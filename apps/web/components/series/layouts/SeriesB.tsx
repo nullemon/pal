@@ -3,6 +3,7 @@ import { fmt, messages } from '@palscans/core/messages'
 import { AdSlot } from '@palscans/ui'
 import { BookOpen } from 'lucide-react'
 import { CommentsSection } from '@/components/comments/CommentsSection'
+import { AboutBlock } from '@/components/series/AboutBlock'
 import { BookmarkButton, DownloadButton, RateButton } from '@/components/series/ActionIslands'
 import { ChapterTable } from '@/components/series/ChapterTable'
 import { FollowControl } from '@/components/series/FollowControl'
@@ -237,6 +238,7 @@ export function SeriesB({
           </div>
 
           <div className="mx-auto mt-[18px] max-w-[1200px]">
+            <AboutBlock doc={series.seoText} title={series.title} />
             <CommentsSection
               target={{ kind: 'series', id: series.id }}
               user={user}

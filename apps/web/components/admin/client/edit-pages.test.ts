@@ -1,6 +1,6 @@
 import type { WatermarkPageState } from '@palscans/core/watermark'
 import { describe, expect, it } from 'vitest'
-import { canEditPages, duplicateNumberKeys } from './util'
+import { canEditPages, duplicateNumberKeys, resolveDuplicateNumbers } from './util'
 
 /**
  * Which chapters offer the page editor from a series' Chapters tab.
@@ -86,5 +86,48 @@ describe('duplicateNumberKeys', () => {
 
   it('reports several clashes at once', () => {
     expect(duplicateNumberKeys(['1', '1', '2', '2', '3'])).toEqual(new Set(['1.000', '2.000']))
+  })
+})
+
+/**
+ * The one-click fix for a drop where two folders read as the same chapter.
+ *
+ * Retyping the numbers by hand is the alternative, one field at a time — which on a
+ * ten-chapter clash is why an operator gives up and uploads them individually instead.
+ */
+describe('resolveDuplicateNumbers', () => {
+  it('leaves a clean drop exactly as it is', () => {
+    expect(resolveDuplicateNumbers(['1', '2', '3'])).toEqual(['1', '2', '3'])
+  })
+
+  it('keeps the first claim and moves the second under it', () => {
+    // 7 and 7.1, the conventional numbering for a two-part release.
+    expect(resolveDuplicateNumbers(['7', '7'])).toEqual(['7', '7.1'])
+  })
+
+  it('spreads a three-way clash', () => {
+    expect(resolveDuplicateNumbers(['7', '7', '7'])).toEqual(['7', '7.1', '7.2'])
+  })
+
+  it('steps over a decimal the drop already uses, rather than creating a new clash', () => {
+    expect(resolveDuplicateNumbers(['7', '7.1', '7'])).toEqual(['7', '7.1', '7.2'])
+  })
+
+  it('resolves 7 and 7.0, which the database considers one number', () => {
+    expect(resolveDuplicateNumbers(['7', '7.0'])).toEqual(['7', '7.1'])
+  })
+
+  it('never moves a chapter that was already unique', () => {
+    expect(resolveDuplicateNumbers(['1', '7', '7', '12'])).toEqual(['1', '7', '7.1', '12'])
+  })
+
+  it('leaves an entry whose number has not been typed yet alone', () => {
+    // It carries its own "no number found" warning; inventing one would be inventing data.
+    expect(resolveDuplicateNumbers(['', '7', '7'])).toEqual(['', '7', '7.1'])
+  })
+
+  it('leaves nothing clashing behind, which is the whole contract', () => {
+    const fixed = resolveDuplicateNumbers(['3', '3', '3', '3.1', '3.2'])
+    expect(duplicateNumberKeys(fixed)).toEqual(new Set())
   })
 })

@@ -27,7 +27,7 @@ import {
   unzipEntries,
   uploadWithRetry,
 } from './upload-lib'
-import { duplicateNumberKeys, formatChapterNumber } from './util'
+import { duplicateNumberKeys, formatChapterNumber, resolveDuplicateNumbers } from './util'
 
 interface UPage {
   id: string
@@ -355,6 +355,15 @@ export function Uploader({
         return b.issues[issue.kind]
     }
   }
+
+  /** Whether anything in the drop currently claims a number twice. */
+  const hasDuplicates = duplicateNumberKeys(chapters.map((c) => c.number)).size > 0
+
+  const fixDuplicates = () =>
+    setChapters((cs) => {
+      const fixed = resolveDuplicateNumbers(cs.map((c) => c.number))
+      return cs.map((c, i) => (c.number === fixed[i] ? c : { ...c, number: fixed[i] ?? c.number }))
+    })
 
   const updateChapter = (id: string, patch: Partial<UChapter> | ((c: UChapter) => UChapter)) =>
     setChapters((cs) =>
@@ -1063,6 +1072,18 @@ export function Uploader({
                 : fmt(m.uploadN, { n: pending })}
             </Button>
             {blocked ? <p className="text-[12px] text-warn">{b.blocked}</p> : null}
+            {/*
+              The one case the operator can be helped out of rather than told about: two
+              folders reading as the same chapter, which `resolveDuplicateNumbers` spreads
+              onto 7, 7.1, 7.2 — the conventional numbering for a split release. Retyping
+              them one field at a time is why a ten-chapter clash ends in uploading them
+              individually instead.
+            */}
+            {hasDuplicates ? (
+              <Button size="sm" variant="outline" onClick={fixDuplicates} type="button">
+                {b.fixDuplicates}
+              </Button>
+            ) : null}
             {anyFailed && !uploading ? (
               <Button variant="outline" onClick={() => upload(true)}>
                 {m.retryFailed}

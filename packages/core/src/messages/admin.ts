@@ -281,6 +281,27 @@ export const adminMessages = {
       pageErrors: '{n} pages failed',
       noChapters: 'No chapters yet. Upload the first one.',
       colMark: 'Mark',
+      /**
+       * Renaming and renumbering, from the chapter list.
+       *
+       * `PATCH /api/admin/chapters/:id` has accepted both since it was written and nothing in
+       * the panel called it, so correcting a typo meant deleting the chapter and uploading it
+       * again.
+       */
+      edit: {
+        action: 'Edit',
+        hint: 'Change this chapter’s number, title or volume',
+        title: 'Edit chapter',
+        number: 'Chapter number',
+        numberHint: 'Decimals are fine — 7.5 sits between 7 and 8.',
+        chapterTitle: 'Title',
+        untitled: 'No title',
+        volume: 'Volume',
+        noVolume: 'None',
+        save: 'Save',
+        saved: 'Chapter updated.',
+        taken: 'Another chapter in this series already has that number.',
+      },
       editPages: 'Pages',
       editPagesHint:
         'Reorder, delete, replace or add page images. Only for chapters stored on our side — imported pages live on the host.',
@@ -2033,6 +2054,7 @@ export const adminMessages = {
     foundIn: 'from {path}',
     clear: 'Clear all',
     blocked: 'Fix the chapters marked above before uploading.',
+    fixDuplicates: 'Renumber the duplicates (7, 7.1, 7.2…)',
     numberFrom: {
       marker: 'number read from “{text}”',
       single: 'the only number in the name',

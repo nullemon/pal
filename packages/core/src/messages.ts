@@ -110,6 +110,7 @@ export const messages = {
     author: 'Author',
     artist: 'Artist',
     translator: 'Translator',
+    aboutTitle: 'About {title}',
     group: 'Scanlation',
     groups: 'Scanlation groups',
     genres: 'Genres',
