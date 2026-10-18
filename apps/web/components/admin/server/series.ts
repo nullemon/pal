@@ -76,6 +76,8 @@ export interface SeriesEditorData {
      * series is only true *per language*: a German 1196 and an English 1196 are two chapters.
      */
     language: string
+    /** This chapter's credit-page note; null uses the site default. */
+    creditNote: string | null
     state: string
     isPremium: boolean
     earlyAccessUntil: Date | null
@@ -129,6 +131,7 @@ export const loadSeriesEditor = async (id: number): Promise<SeriesEditorData | n
         title: chapters.title,
         volume: chapters.volume,
         language: chapters.language,
+        creditNote: chapters.creditNote,
         state: chapters.state,
         isPremium: chapters.isPremium,
         earlyAccessUntil: chapters.earlyAccessUntil,

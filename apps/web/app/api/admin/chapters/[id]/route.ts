@@ -13,6 +13,7 @@ const KEYS = [
   'number',
   'title',
   'volume',
+  'creditNote',
   'state',
   'isPremium',
   'earlyAccessUntil',
@@ -52,6 +53,7 @@ export const PATCH = withPermission<{ id: string }>(
           ...(body.number !== undefined ? { number: body.number } : {}),
           ...(body.title !== undefined ? { title: body.title } : {}),
           ...(body.volume !== undefined ? { volume: body.volume } : {}),
+          ...(body.creditNote !== undefined ? { creditNote: body.creditNote } : {}),
           ...(body.language !== undefined ? { language: normaliseLanguage(body.language) } : {}),
           ...(body.isPremium !== undefined ? { isPremium: body.isPremium } : {}),
           ...(body.earlyAccessUntil !== undefined

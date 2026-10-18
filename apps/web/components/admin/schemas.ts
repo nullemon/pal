@@ -117,6 +117,8 @@ export const chapterPatchSchema = z
     publishedAt: z.string().datetime({ offset: true }).nullable(),
     state: z.enum(['draft', 'ready', 'scheduled', 'published']),
     language: z.string().max(16),
+    /** This chapter's line on the credit page; null falls back to the site's default note. */
+    creditNote: nullableText(600),
   })
   .partial()
 

@@ -113,3 +113,42 @@ describe('creditPageIndex', () => {
     expect(creditPageIndex(0)).toBeNull()
   })
 })
+
+/**
+ * Chapters that predate the switch.
+ *
+ * Turning the feature on must not insert a page into a thousand chapters readers have
+ * already read and linked to — that is what "new chapters only" means, and it has to be a
+ * line in the data rather than a rule somebody remembers.
+ */
+describe('the enabled-at cutoff', () => {
+  const withCutoff = settings({ enabledAt: '2026-10-18T12:00:00.000Z' })
+
+  it('gives a card to a chapter created after it was switched on', () => {
+    expect(
+      resolveCredit({ settings: withCutoff, chapterCreatedAt: '2026-10-19T09:00:00.000Z' }),
+    ).not.toBeNull()
+  })
+
+  it('leaves a chapter from before the switch exactly as it was', () => {
+    expect(
+      resolveCredit({ settings: withCutoff, chapterCreatedAt: '2026-09-01T09:00:00.000Z' }),
+    ).toBeNull()
+  })
+
+  it('treats an unknown creation date as old, not new', () => {
+    // The failure that matters is inserting a page into an archive nobody asked to change.
+    expect(resolveCredit({ settings: withCutoff, chapterCreatedAt: null })).toBeNull()
+    expect(resolveCredit({ settings: withCutoff })).toBeNull()
+  })
+
+  it('applies to every chapter when no cutoff was stamped', () => {
+    expect(resolveCredit({ settings: settings(), chapterCreatedAt: null })).not.toBeNull()
+  })
+
+  it('accepts a Date as readily as a string, since the database hands back Dates', () => {
+    expect(
+      resolveCredit({ settings: withCutoff, chapterCreatedAt: new Date('2026-10-20T00:00:00Z') }),
+    ).not.toBeNull()
+  })
+})

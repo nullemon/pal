@@ -32,6 +32,8 @@ export interface ChapterRowData {
   volume: number | null
   /** The translation this chapter is, which is half of what makes its number unique. */
   language: string
+  /** The chapter's own credit-page note; null falls back to the site default. */
+  creditNote: string | null
   state: string
   isPremium: boolean
   earlyAccessUntil: string | null
@@ -132,6 +134,7 @@ export function ChaptersTable({
   const [draftTitle, setDraftTitle] = useState('')
   const [draftVolume, setDraftVolume] = useState('')
   const [draftLanguage, setDraftLanguage] = useState(DEFAULT_CHAPTER_LANGUAGE)
+  const [draftNote, setDraftNote] = useState('')
   const lastClick = useRef<number | null>(null)
   const visible = useMemo(() => rows.filter((r) => !r.deletedAt), [rows])
   /** Only worth showing a language tag when the series actually has more than one. */
@@ -241,6 +244,7 @@ export function ChaptersTable({
     setDraftTitle(row.title ?? '')
     setDraftVolume(row.volume === null ? '' : String(row.volume))
     setDraftLanguage(row.language)
+    setDraftNote(row.creditNote ?? '')
   }
 
   /**
@@ -273,6 +277,8 @@ export function ChaptersTable({
       title,
       volume: Number.isFinite(volume as number) ? volume : null,
       language: draftLanguage,
+      // Blank clears it back to the site's default note, which is what emptying a box means.
+      creditNote: draftNote.trim() === '' ? null : draftNote.trim(),
     })
     setBusy(false)
     if (!res.ok) {
@@ -292,6 +298,7 @@ export function ChaptersTable({
               title,
               volume: Number.isFinite(volume as number) ? volume : null,
               language: draftLanguage,
+              creditNote: draftNote.trim() === '' ? null : draftNote.trim(),
             }
           : r,
       ),
@@ -304,6 +311,7 @@ export function ChaptersTable({
     draftTitle,
     draftVolume,
     draftLanguage,
+    draftNote,
     toast,
     m.edit.saved,
     m.edit.taken,
@@ -789,6 +797,18 @@ export function ChaptersTable({
               value={draftVolume}
             />
           </label>
+          {/* The credit page's note for this chapter. Empty means the site's default. */}
+          <label className="flex flex-col gap-1.5 text-[13px] font-medium">
+            {m.edit.creditNote}
+            <textarea
+              className={cn(inputClass, 'min-h-[76px] py-2')}
+              maxLength={600}
+              onChange={(e) => setDraftNote(e.target.value)}
+              placeholder={m.edit.creditNotePlaceholder}
+              value={draftNote}
+            />
+          </label>
+          <p className="text-[12px] text-fg-muted">{m.edit.creditNoteHint}</p>
         </div>
       </Modal>
 

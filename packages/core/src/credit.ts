@@ -45,6 +45,16 @@ export const creditSettingsSchema = z.object({
    * has uploaded an overlay and turned it on deliberately.
    */
   enabled: z.boolean().default(false),
+  /**
+   * When the feature was switched on, ISO. Chapters created before it do not get a card.
+   *
+   * The operator's choice, and it needs a line in the data rather than a rule in the head:
+   * turning this on should not silently insert a page into a thousand chapters that readers
+   * have already read, bookmarked and linked to. Stamped by the save, cleared when the
+   * feature is turned off, so switching it on again starts a fresh line rather than
+   * retroactively claiming everything since the first time.
+   */
+  enabledAt: z.string().trim().max(40).default(''),
   overlays: z.array(creditOverlaySchema).max(12).default([]),
   /** Which overlay a series uses when it has not chosen one. */
   defaultOverlayId: z.string().trim().max(40).default(''),
@@ -76,6 +86,8 @@ export interface ResolvedCredit {
 
 export interface CreditSources {
   settings: CreditSettings
+  /** When this chapter was created. Before `enabledAt` means no card — see that field. */
+  chapterCreatedAt?: Date | string | null
   /** `series.credit_background_key` / `credit_overlay_id`. */
   series?: { backgroundKey?: string | null; overlayId?: string | null } | null
   /** `chapters.credit_note` — the per-chapter override. */
@@ -97,8 +109,23 @@ export const resolveCredit = ({
   settings,
   series,
   chapterNote,
+  chapterCreatedAt,
 }: CreditSources): ResolvedCredit | null => {
   if (!settings.enabled) return null
+  /**
+   * Chapters that predate the switch keep the pages they were published with.
+   *
+   * An unknown creation date is treated as *older*, not newer: the failure that matters is
+   * inserting a page into an archive nobody asked to change, and a missing timestamp is not
+   * evidence that a chapter is new.
+   */
+  const since = settings.enabledAt.trim() ? Date.parse(settings.enabledAt) : Number.NaN
+  if (Number.isFinite(since)) {
+    const created = chapterCreatedAt
+      ? Date.parse(String(new Date(chapterCreatedAt).toISOString()))
+      : Number.NaN
+    if (!Number.isFinite(created) || created < since) return null
+  }
   const overlayId = series?.overlayId?.trim() || settings.defaultOverlayId.trim()
   const overlay = settings.overlays.find((o) => o.id === overlayId) ?? null
   if (!overlay) return null

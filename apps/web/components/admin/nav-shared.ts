@@ -209,6 +209,15 @@ export const adminNav: readonly AdminNavGroup[] = [
         icon: 'palette',
         permission: 'settings.write',
       },
+      // The credit card inserted as every new chapter's second page (docs/03). Under
+      // Appearance rather than Content because it decides how chapters *look*, like the
+      // watermark — it is not something to change while adding a chapter.
+      {
+        label: adminMessages.creditPage.navLabel,
+        href: '/admin/appearance/credit',
+        icon: 'stamp',
+        permission: 'settings.write',
+      },
       // docs/15 "Brand and identity": the name, the logo pair, the monogram the favicon and
       // PWA icons are generated from, and the default share image.
       {

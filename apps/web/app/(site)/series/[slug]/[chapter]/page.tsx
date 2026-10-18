@@ -4,11 +4,13 @@ import { fmt, messages } from '@palscans/core/messages'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { preload } from 'react-dom'
+import { creditForChapter } from '@/components/admin/server/credit'
 import { ChapterComments } from '@/components/reader/ChapterComments'
 import { ChapterJsonLd } from '@/components/reader/ChapterJsonLd'
 import { LockedGate } from '@/components/reader/LockedGate'
 import { chapterHref, parseChapterSegment, seriesHref } from '@/components/reader/params'
 import { Reader } from '@/components/reader/Reader'
+import { withCreditPage } from '@/components/reader/server/credit-page'
 import {
   lockOf,
   readerChapter,
@@ -124,7 +126,16 @@ export default async function ChapterPage({ params, searchParams }: PageProps) {
     )
   }
 
-  const pages = await toReaderPages(bundle.pages, lock)
+  /**
+   * The credit card goes in here, at read time, not into `chapter_pages` (docs/03).
+   *
+   * `creditForChapter` returns null whenever the chapter should not have one — the feature
+   * off, no overlay chosen, or a chapter that predates the switch — so this is a no-op for
+   * every chapter until an operator sets it up.
+   */
+  const uncredited = await toReaderPages(bundle.pages, lock)
+  const credit = await creditForChapter(bundle.chapter.id)
+  const pages = credit ? withCreditPage(uncredited, bundle.chapter.id) : uncredited
   const first = pages[0]
   if (first) preload(first.url, { as: 'image', fetchPriority: 'high' })
   const { data, coverUrl, prev, next, label, number } = await buildReaderData({
