@@ -179,14 +179,18 @@ export interface ClashCandidate {
  * The chapter that would block this renumber, or null when nothing does.
  *
  * Compared on number *and language*, because that is what `chapters_series_number_language
- * _unique` is on. The first version of this compared the number alone, and so refused a
- * rename the database would have accepted happily: a series carrying a German chapter 1196
- * beside an English 1196.1 is two translations, not a clash — and that is precisely the kind
- * of series the edit dialog is for.
+ * _unique` is on. The first version compared the number alone, and so refused a rename the
+ * database would have accepted: a series carrying a German chapter 1196 beside an English
+ * 1196.1 is two translations, not a clash.
  *
- * Returns the offending row rather than a boolean so the dialog can name it. "Already taken"
- * is not actionable when the chapter taking it is in another language and not visible from
- * the field being typed into.
+ * **Deleted chapters count.** The unique constraint covers soft-deleted rows — deleting a
+ * chapter does not give its number back — so a deleted draft nobody can see still blocks the
+ * rename. Skipping them here is what made the panel refuse with "already taken" while the
+ * list showed nothing taking it, and the only way to find the culprit was a SQL query.
+ *
+ * Returns the offending row rather than a boolean so the dialog can name it, and say whether
+ * it is deleted, because the remedy is different: a live chapter means pick another number, a
+ * deleted one means restore or purge it first.
  */
 export const chapterNumberClash = <T extends ClashCandidate>(
   rows: readonly T[],
@@ -198,11 +202,7 @@ export const chapterNumberClash = <T extends ClashCandidate>(
   const wanted = number.toFixed(3)
   return (
     rows.find(
-      (r) =>
-        r.id !== editingId &&
-        !r.deletedAt &&
-        r.language === language &&
-        r.number.toFixed(3) === wanted,
+      (r) => r.id !== editingId && r.language === language && r.number.toFixed(3) === wanted,
     ) ?? null
   )
 }

@@ -740,8 +740,15 @@ export function ChaptersTable({
           {/* Decimals are not a workaround here, they are how a .5 release is numbered. */}
           <p className="text-[12px] text-fg-muted">{m.edit.numberHint}</p>
           {clash ? (
+            /*
+             * A deleted chapter still holds its number — the unique constraint covers
+             * soft-deleted rows — and it is not in the list below, so saying only "already
+             * taken" sent an operator looking for a chapter that is not there. The remedy
+             * differs too: a live one means pick another number, a deleted one means restore
+             * it or remove it for good.
+             */
             <p className="text-[12.5px] text-danger">
-              {fmt(m.edit.takenBy, {
+              {fmt(clash.deletedAt ? m.edit.takenByDeleted : m.edit.takenBy, {
                 number: formatChapterNumber(clash.number),
                 language: clash.language,
                 title: clash.title ?? m.edit.untitled,

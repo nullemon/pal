@@ -303,6 +303,12 @@ export const adminMessages = {
         taken: 'Another chapter in this series already has that number.',
         /** Says *which* one, because the clash is usually a chapter in another language. */
         takenBy: 'Ch. {number} ({language}) already has that number — “{title}”.',
+        /**
+         * The invisible case: deleting a chapter does not free its number, and the deleted
+         * row is not in the list, so "already taken" sends an operator hunting for nothing.
+         */
+        takenByDeleted:
+          'A deleted chapter ({language} {number}, “{title}”) still holds that number. Restore it or remove it for good first.',
       },
       editPages: 'Pages',
       editPagesHint:

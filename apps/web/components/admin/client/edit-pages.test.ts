@@ -212,12 +212,28 @@ describe('chapterNumberClash', () => {
     expect(chapterNumberClash(rows, 3, 1195, 'en')).toBeNull()
   })
 
-  it('ignores deleted chapters, whose numbers are free again in the panel', () => {
+  /**
+   * The one that cost an evening. Deleting a chapter does not give its number back — the
+   * unique constraint covers soft-deleted rows — so a deleted draft nobody can see still
+   * blocks the rename. This originally asserted the opposite, which is why the dialog said
+   * "already taken" while the list showed nothing taking it, and the only way to find the
+   * culprit was a SQL query against the live database.
+   */
+  it('counts a deleted chapter, which still holds its number in the database', () => {
     const withDeleted = [
       ...rows,
-      { id: 4, number: 900, language: 'en', title: null, deletedAt: '2026-01-01' },
+      { id: 4, number: 900, language: 'en', title: 'Failed import', deletedAt: '2026-01-01' },
     ]
-    expect(chapterNumberClash(withDeleted, 3, 900, 'en')).toBeNull()
+    expect(chapterNumberClash(withDeleted, 3, 900, 'en')?.id).toBe(4)
+  })
+
+  it('reports the deleted blocker as deleted, so the remedy is obvious', () => {
+    // A live clash means pick another number; a deleted one means restore or purge it.
+    const withDeleted = [
+      ...rows,
+      { id: 4, number: 900, language: 'en', title: 'Failed import', deletedAt: '2026-01-01' },
+    ]
+    expect(chapterNumberClash(withDeleted, 3, 900, 'en')?.deletedAt).toBe('2026-01-01')
   })
 
   it('treats 7 and 7.0 as the same number', () => {
