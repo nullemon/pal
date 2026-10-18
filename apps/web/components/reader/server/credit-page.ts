@@ -1,4 +1,4 @@
-import { CREDIT_SIZE } from '@/lib/credit/render'
+import { CREDIT_HEIGHT, CREDIT_WIDTH } from '@/lib/credit/render'
 import type { ReaderPage } from '../types'
 
 /**
@@ -36,8 +36,11 @@ export const withCreditPage = (pages: readonly ReaderPage[], chapterId: number):
   if (at === null) return [...pages]
   const card: ReaderPage = {
     idx: at,
-    width: CREDIT_SIZE,
-    height: CREDIT_SIZE,
+    // The reader lays out from these before the image arrives, so they only need the right
+    // *shape* — the card is landscape, and claiming it square would reserve a tall gap and
+    // then jump when it loads.
+    width: CREDIT_WIDTH,
+    height: CREDIT_HEIGHT,
     blurHash: null,
     url: `/credit/${chapterId}`,
     variants: [],
