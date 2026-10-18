@@ -2996,6 +2996,11 @@ export const adminMessages = {
     uploadFailed: 'That upload did not work.',
     perSeries: 'Backgrounds',
     perSeriesHint: 'A background per series, behind the overlay. Series with none use the default.',
+    defaultBackground: 'Default background',
+    defaultBackgroundHint:
+      'Behind the overlay on every series that has not been given its own. Without one, that part of the card is flat dark.',
+    backgroundUploaded: 'Background uploaded — save to apply it.',
+    clear: 'Clear',
     findSeries: 'Find a series…',
     seriesColumn: 'Series',
     backgroundColumn: 'Background',

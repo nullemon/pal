@@ -267,7 +267,11 @@ behind the same `canReadChapter` gate as the pages, and the result is cached at 
 Nothing lands in the bucket, which matters because most chapters here store nothing at all.
 
 The card is a per-series background, an uploaded overlay on top, and the text drawn in. The
-precedence is the whole feature: chapter note beats the default note, series background beats
+background is fitted to the **window** — the hole the artwork leaves, measured off the
+overlay's own alpha channel — and not to the whole canvas: scaled to the canvas, what shows
+through the hole is a crop of the middle of the picture, which on a portrait cover is
+somebody's chin. Outside the window the card is flat backdrop, under artwork that is opaque
+there anyway. The precedence is the whole feature: chapter note beats the default note, series background beats
 the default background, series overlay beats the default overlay, and a *blank* override is
 not an override. `settings.enabledAt` is stamped the moment the feature is switched on and
 chapters created before it get no card — turning this on must not insert a page into an

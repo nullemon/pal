@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { FONTS, fitSize, fontMetrics, LAYOUT, MIN_SIZE, wrapNote } from './layout'
+import { creditWindow, FONTS, fitSize, fontMetrics, LAYOUT, MIN_SIZE, wrapNote } from './layout'
 
 /**
  * The credit card's measurements.
@@ -88,5 +88,49 @@ describe('wrapNote', () => {
 
   it('draws nothing for an empty note', () => {
     expect(wrapNote('   ', 40, 4)).toEqual([])
+  })
+})
+
+/**
+ * The window the background is fitted to.
+ *
+ * Measured off the supplied overlay's alpha channel — the clear pixels flood-filled from the
+ * middle of the card — so what is pinned here is that it stays on the artwork's left-hand
+ * hole and never reaches the panels the text is drawn into. A background that crept under
+ * the TEAM rows would put a photograph behind the handles.
+ */
+describe('creditWindow', () => {
+  const W = 1448
+  const H = 1086
+
+  it('stays inside the canvas', () => {
+    const win = creditWindow(W, H)
+    expect(win.left).toBeGreaterThanOrEqual(0)
+    expect(win.top).toBeGreaterThanOrEqual(0)
+    expect(win.left + win.width).toBeLessThanOrEqual(W)
+    expect(win.top + win.height).toBeLessThanOrEqual(H)
+  })
+
+  it('keeps clear of the panels the text goes in', () => {
+    const win = creditWindow(W, H)
+    // The handle boxes start here; the window must end well before them.
+    expect(win.left + win.width).toBeLessThan(LAYOUT.rows.x * W)
+    // And above the footer links, which run along the bottom of the card.
+    expect(win.top + win.height).toBeLessThan(LAYOUT.links.discordY * H)
+  })
+
+  it('is most of the card, not a stamp in the corner', () => {
+    const win = creditWindow(W, H)
+    expect((win.width * win.height) / (W * H)).toBeGreaterThan(0.3)
+  })
+
+  it('survives an overlay too small to have a window', () => {
+    // A replacement overlay may be any size, and `sharp` throws on a layer that hangs off
+    // the canvas — which would take the whole card down rather than just the background.
+    const win = creditWindow(1, 1)
+    expect(win.width).toBeGreaterThan(0)
+    expect(win.height).toBeGreaterThan(0)
+    expect(win.left + win.width).toBeLessThanOrEqual(1)
+    expect(win.top + win.height).toBeLessThanOrEqual(1)
   })
 })

@@ -41,7 +41,42 @@ export const LAYOUT = {
   note: { top: 0.714, left: 0.668, right: 0.968, size: 0.017, lineHeight: 1.36, maxLines: 4 },
   /** The two LINKS boxes, beside their printed captions. */
   links: { discordY: 0.8905, twitterY: 0.9365, x: 0.792, right: 0.968, size: 0.0195 },
+  /**
+   * The window the artwork leaves clear, where the series background shows.
+   *
+   * Measured off the overlay's own alpha channel, not judged by eye: the clear pixels were
+   * flood-filled from the middle of the card and this is that region's bounding box, plus a
+   * little bleed so no hairline of backdrop shows at its edge.
+   *
+   * It matters that the background is fitted to *this* and not to the card. Covering the
+   * whole canvas means what shows through the window is a crop of the middle of the image —
+   * a cover ends up showing somebody's chin — while fitting it here puts the picture where
+   * the hole is. The rest of the card stays backdrop, under artwork that is opaque anyway.
+   */
+  window: { left: 0, right: 0.65, top: 0.02, bottom: 0.822 },
 } as const
+
+/** What the backdrop shows where neither the background nor the artwork covers it. */
+export const CREDIT_BACKDROP = '#0b0b0f'
+
+/**
+ * The window in pixels, for a card of this size.
+ *
+ * Clamped to the canvas: the fractions are measured against the supplied artwork, and a
+ * replacement overlay is free to be a different shape, in which case a rounded edge must not
+ * end up asking `sharp` to composite a layer that hangs off the canvas — that throws, and it
+ * would take the whole card down rather than the background with it.
+ */
+export const creditWindow = (
+  width: number,
+  height: number,
+): { left: number; top: number; width: number; height: number } => {
+  const left = Math.max(0, Math.min(width - 1, Math.round(LAYOUT.window.left * width)))
+  const top = Math.max(0, Math.min(height - 1, Math.round(LAYOUT.window.top * height)))
+  const right = Math.max(left + 1, Math.min(width, Math.round(LAYOUT.window.right * width)))
+  const bottom = Math.max(top + 1, Math.min(height, Math.round(LAYOUT.window.bottom * height)))
+  return { left, top, width: right - left, height: bottom - top }
+}
 
 /**
  * What a face costs in width, and how big it wants to be set.

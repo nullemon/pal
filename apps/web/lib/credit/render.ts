@@ -2,7 +2,16 @@ import 'server-only'
 import type { ResolvedCredit } from '@palscans/core/credit'
 import type { Storage } from '@palscans/core/storage'
 import sharp from 'sharp'
-import { CREDIT_HEIGHT, CREDIT_WIDTH, fitSize, fontMetrics, LAYOUT, wrapNote } from './layout'
+import {
+  CREDIT_BACKDROP,
+  CREDIT_HEIGHT,
+  CREDIT_WIDTH,
+  creditWindow,
+  fitSize,
+  fontMetrics,
+  LAYOUT,
+  wrapNote,
+} from './layout'
 
 /**
  * Compose one credit page: background, overlay, text (docs/03).
@@ -121,23 +130,35 @@ export const renderCreditPage = async (
   const width = meta?.width && meta.width > 0 ? meta.width : CREDIT_WIDTH
   const height = meta?.height && meta.height > 0 ? meta.height : CREDIT_HEIGHT
 
-  // The background is optional — the overlay may be opaque everywhere — so a missing one
-  // falls back to ink rather than failing the render.
+  // The background is optional — a series may have none and the artwork stands on its own —
+  // so a missing one falls back to the backdrop rather than failing the render.
   const backgroundBytes = credit.backgroundKey
     ? await storage.get(credit.backgroundKey).catch(() => null)
     : null
 
-  const base = backgroundBytes
-    ? sharp(Buffer.from(backgroundBytes))
-        // `cover`, so a background of any aspect fills the window the overlay leaves for it
-        // without bars showing inside the frame.
-        .resize(width, height, { fit: 'cover', position: 'centre' })
-    : sharp({ create: { width, height, channels: 3, background: '#0b0b0f' } })
+  /**
+   * The background goes in the window, not across the card.
+   *
+   * The frame is transparent over roughly the left two thirds and opaque under its own
+   * artwork, so a background scaled to the whole canvas shows the *middle* of the picture
+   * through the hole — on a portrait cover, somebody's chin. Fitted to the window, the
+   * picture lands where the hole is. `cover` within it, so any aspect fills the window
+   * without bars inside the frame.
+   */
+  const windowRect = creditWindow(width, height)
+  const background = backgroundBytes
+    ? await sharp(Buffer.from(backgroundBytes))
+        .resize(windowRect.width, windowRect.height, { fit: 'cover', position: 'centre' })
+        .png()
+        .toBuffer()
+        .catch(() => null)
+    : null
 
   const overlay = await overlayImage.resize(width, height, { fit: 'fill' }).png().toBuffer()
 
-  return base
+  return sharp({ create: { width, height, channels: 3, background: CREDIT_BACKDROP } })
     .composite([
+      ...(background ? [{ input: background, top: windowRect.top, left: windowRect.left }] : []),
       { input: overlay, top: 0, left: 0 },
       // Text last: it belongs on top of the frame, not under it.
       { input: textLayer(credit, width, height), top: 0, left: 0 },

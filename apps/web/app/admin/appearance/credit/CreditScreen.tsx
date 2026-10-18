@@ -145,6 +145,30 @@ export function CreditScreen({
     [toast],
   )
 
+  /**
+   * The background every series falls back to.
+   *
+   * It is a separate control from the table below because it is a different decision: the
+   * table says what *this* series looks like, this says what the rest do. The overlay is
+   * transparent where the background shows, so without one that window is flat dark — which
+   * is a reasonable card, but it should be a choice rather than what happens by default.
+   */
+  const setDefaultBackground = useCallback(
+    async (file: File) => {
+      setBusy(true)
+      const key = await uploadAsset(file, 'background')
+      setBusy(false)
+      if (!key) {
+        toast({ title: m.uploadFailed, tone: 'danger' })
+        return
+      }
+      // Functional form: an upload takes seconds and `doc` from the closure would be stale.
+      setDoc((d) => ({ ...d, defaultBackgroundKey: key }))
+      toast({ title: m.backgroundUploaded, tone: 'ok' })
+    },
+    [toast],
+  )
+
   const visible = rows.filter((r) => r.title.toLowerCase().includes(filter.toLowerCase()))
 
   return (
@@ -340,6 +364,47 @@ export function CreditScreen({
 
       <Panel>
         <PanelHeader title={m.perSeries} hint={m.perSeriesHint} />
+        <Field hint={m.defaultBackgroundHint} label={m.defaultBackground}>
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-md border border-line px-3 py-2 text-[13px] hover:bg-surface-2">
+              <Upload aria-hidden className="size-4" />
+              {doc.defaultBackgroundKey ? m.replace : m.upload}
+              <input
+                accept="image/png,image/jpeg,image/webp"
+                className="sr-only"
+                disabled={busy}
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) void setDefaultBackground(file)
+                  e.target.value = ''
+                }}
+                type="file"
+              />
+            </label>
+            {doc.defaultBackgroundKey ? (
+              <>
+                <span className="text-[12px] text-fg-subtle">
+                  {doc.defaultBackgroundKey.split('/').pop()}
+                </span>
+                <Button
+                  className="text-danger"
+                  onClick={() => patch({ defaultBackgroundKey: '' })}
+                  size="sm"
+                  variant="ghost"
+                >
+                  <Trash2 aria-hidden className="size-3.5" />
+                  {m.clear}
+                </Button>
+              </>
+            ) : null}
+            {/* The Save for this panel. Uploading only puts the key in the form -- the same
+                as the overlays above -- and the only other Save is three panels up, which is
+                far enough away to read as "nothing happened". */}
+            <Button className="ml-auto" disabled={busy} onClick={() => void save()} size="sm">
+              {busy ? m.saving : m.save}
+            </Button>
+          </div>
+        </Field>
         <input
           className={inputClass}
           onChange={(e) => setFilter(e.target.value)}
