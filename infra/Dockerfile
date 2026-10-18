@@ -13,6 +13,14 @@ RUN corepack enable && corepack prepare pnpm@11.25.0 --activate
 # so every page would come out unmarked. The worker composites and the web app renders the
 # admin preview with the same code, so both stages need this.
 RUN apk add --no-cache fontconfig font-dejavu
+# The credit page (docs/03) is set in one of two comic faces, which Alpine has no package for.
+# They are in the repository rather than fetched here for the same reason the line above
+# exists: a missing face is not an error, it is an empty layer, so a build that could not
+# reach a font host would quietly ship credit pages with no names on them. See
+# infra/fonts/README.md -- the family names fontconfig registers from these files are what
+# apps/web/lib/credit/layout.ts asks for by name.
+COPY infra/fonts/*.ttf /usr/share/fonts/truetype/palscans/
+RUN fc-cache -f
 WORKDIR /repo
 
 FROM base AS deps

@@ -36,6 +36,20 @@ export const creditOverlaySchema = z.object({
 })
 export type CreditOverlay = z.infer<typeof creditOverlaySchema>
 
+/**
+ * The face the card's text is drawn in.
+ *
+ * A fixed list rather than an upload: the font has to exist in the image fontconfig reads,
+ * and librsvg fails *silently* on a missing face — it draws an empty layer, so a card with an
+ * unavailable font would come out as artwork with no names on it. Shipping the faces with the
+ * image and naming them here is what keeps that from being possible.
+ */
+export const creditFontSchema = z.enum(['anime-ace', 'vampire-wars', 'plain'])
+export type CreditFont = z.infer<typeof creditFontSchema>
+
+/** Comic lettering, which is what a credit page is set in. */
+export const DEFAULT_CREDIT_FONT: CreditFont = 'anime-ace'
+
 export const creditSettingsSchema = z.object({
   /**
    * Off by default, and the renderer refuses while it is off.
@@ -61,6 +75,12 @@ export const creditSettingsSchema = z.object({
   /** A background for series that have none, so the page is never bare. */
   defaultBackgroundKey: z.string().trim().max(300).default(''),
   roles: z.array(creditRoleSchema).max(12).default([]),
+  /**
+   * `.catch` rather than a plain default: a value stored by a build that offered a face this
+   * one no longer has would otherwise fail the whole parse, and a failed parse falls back to
+   * settings with the feature *off* — one retired font would silently stop every credit page.
+   */
+  font: creditFontSchema.catch(DEFAULT_CREDIT_FONT).default(DEFAULT_CREDIT_FONT),
   /** The note shown when a chapter has not been given its own. */
   defaultNote: z.string().trim().max(600).default(''),
   /** The two footer values. Rendered as text, not as links — it is an image. */
@@ -78,6 +98,7 @@ export const DEFAULT_CREDIT_SETTINGS: CreditSettings = creditSettingsSchema.pars
 export interface ResolvedCredit {
   overlayKey: string | null
   backgroundKey: string | null
+  font: CreditFont
   roles: CreditRole[]
   note: string
   discord: string
@@ -133,6 +154,7 @@ export const resolveCredit = ({
   return {
     overlayKey: overlay.key,
     backgroundKey: series?.backgroundKey?.trim() || settings.defaultBackgroundKey.trim() || null,
+    font: settings.font,
     // A role with no handle is a row the group has not filled in; printing an empty box is
     // worse than printing nothing.
     roles: settings.roles.filter((r) => r.handle.trim() !== ''),

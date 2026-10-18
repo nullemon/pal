@@ -3,6 +3,7 @@ import {
   type CreditSettings,
   creditPageIndex,
   creditSettingsSchema,
+  DEFAULT_CREDIT_FONT,
   resolveCredit,
 } from '../credit.js'
 
@@ -150,5 +151,33 @@ describe('the enabled-at cutoff', () => {
     expect(
       resolveCredit({ settings: withCutoff, chapterCreatedAt: new Date('2026-10-20T00:00:00Z') }),
     ).not.toBeNull()
+  })
+})
+
+/**
+ * The face the card is set in.
+ *
+ * It is a fixed list rather than an upload because the font has to exist in the image, and a
+ * face that does not is not an error — librsvg draws an empty layer. The case worth pinning
+ * is a stored value this build no longer offers: it has to degrade to a face that renders,
+ * not take the whole settings row down with it.
+ */
+describe('the font', () => {
+  it('defaults to the comic face a credit page is set in', () => {
+    expect(creditSettingsSchema.parse({}).font).toBe(DEFAULT_CREDIT_FONT)
+  })
+
+  it('carries the chosen face through to the renderer', () => {
+    expect(resolveCredit({ settings: settings({ font: 'vampire-wars' }) })?.font).toBe(
+      'vampire-wars',
+    )
+  })
+
+  it('falls back rather than failing on a face this build has dropped', () => {
+    // A row written by an older build. A thrown parse here would fall back to settings with
+    // the feature *off*, so one retired font would silently stop every credit page.
+    const parsed = creditSettingsSchema.parse({ enabled: true, font: 'retired-face' })
+    expect(parsed.font).toBe(DEFAULT_CREDIT_FONT)
+    expect(parsed.enabled).toBe(true)
   })
 })

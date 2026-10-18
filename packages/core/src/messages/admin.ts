@@ -2971,6 +2971,13 @@ export const adminMessages = {
       'Transparent PNGs the text is drawn into. Upload as many as you like; a series can pick its own.',
     addOverlay: 'Upload an overlay',
     defaultOverlay: 'Default overlay',
+    font: 'Font',
+    fontHint: 'The face the names and the note are set in.',
+    fonts: {
+      'anime-ace': 'Anime Ace — comic lettering',
+      'vampire-wars': 'Vampire Wars — heavy italic',
+      plain: 'Plain text',
+    },
     none: 'None',
     remove: 'Remove',
     roles: 'Roles',

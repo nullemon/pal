@@ -1,6 +1,6 @@
 'use client'
 
-import type { CreditSettings } from '@palscans/core/credit'
+import { type CreditSettings, creditFontSchema } from '@palscans/core/credit'
 import { messages } from '@palscans/core/messages'
 import { adminMessages } from '@palscans/core/messages/admin'
 import { Button, useToast } from '@palscans/ui'
@@ -217,6 +217,23 @@ export function CreditScreen({
             />
           </label>
         </div>
+        <Field label={m.font} htmlFor="credit-font">
+          <select
+            className={selectClass}
+            id="credit-font"
+            onChange={(e) =>
+              patch({ font: creditFontSchema.catch(doc.font).parse(e.target.value) })
+            }
+            value={doc.font}
+          >
+            {creditFontSchema.options.map((id) => (
+              <option key={id} value={id}>
+                {m.fonts[id]}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Hint>{m.fontHint}</Hint>
         {doc.overlays.length > 0 ? (
           <Field label={m.defaultOverlay} htmlFor="credit-default-overlay">
             <select

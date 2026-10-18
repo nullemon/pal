@@ -253,6 +253,41 @@ none and librsvg fails silently on a missing face, so the worker probes once per
 processes unmarked — with a warning — rather than burning an invisible watermark into every
 page. `infra/Dockerfile` installs `font-dejavu` for this.
 
+### Credit page
+
+A card naming the people who worked on the chapter, inserted as its **second page**. Second,
+not first: the cover is what every thumbnail, share and series card shows, and burying it
+behind a credit page would change what the chapter looks like everywhere it is linked.
+
+It is **composed at read time, never stored**. The chapter's own pages are untouched — twenty
+uploaded pages stay twenty rows in `chapter_pages` and the reader sees twenty-one — so fixing
+a typo in a handle is one edit rather than a rewrite of every chapter, and switching the
+feature off leaves every chapter exactly as it was. `/credit/:chapter` renders on demand
+behind the same `canReadChapter` gate as the pages, and the result is cached at the edge.
+Nothing lands in the bucket, which matters because most chapters here store nothing at all.
+
+The card is a per-series background, an uploaded overlay on top, and the text drawn in. The
+precedence is the whole feature: chapter note beats the default note, series background beats
+the default background, series overlay beats the default overlay, and a *blank* override is
+not an override. `settings.enabledAt` is stamped the moment the feature is switched on and
+chapters created before it get no card — turning this on must not insert a page into an
+archive readers have already read and linked to.
+
+The rules are in `@palscans/core/credit`, the measurements in `apps/web/lib/credit/layout.ts`,
+and both are tested, because nothing downstream catches them being wrong: an SVG text node
+does not clip, so a value sized too large prints over the artwork and the page still returns
+200. Each face carries a *measured* average glyph width — render at 100 px, trim to the ink,
+divide by the character count — which is what every wrap and shrink-to-fit decision is made
+of; the comic faces run a third wider than a text face at the same size. Single-line values
+(handles, the two footer links) are shrunk until they fit their box rather than trusted to.
+
+The faces live in `infra/fonts/` and are installed by `infra/Dockerfile`, for the same reason
+the watermark's DejaVu is: **a missing face is not an error, it is an empty layer**. A card
+set in a font the image does not have would come out as artwork with nobody's name on it, and
+nothing would say so. That is also why the font is a fixed list in the settings rather than an
+upload. Default is Anime Ace; `plain` is the DejaVu already in the image and is what an
+unknown stored value falls back to.
+
 ### Long-strip splitting
 
 Webtoon sources sometimes arrive as one 30,000 px tall image. Browsers on low-end Android

@@ -1,4 +1,4 @@
-import { CREDIT_HEIGHT, CREDIT_WIDTH } from '@/lib/credit/render'
+import { CREDIT_HEIGHT, CREDIT_WIDTH } from '@/lib/credit/layout'
 import type { ReaderPage } from '../types'
 
 /**
