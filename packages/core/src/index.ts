@@ -1,6 +1,7 @@
 export * from './access.js'
 export * from './comments/index.js'
 export * from './credentials.js'
+export * from './credit.js'
 export * from './entitlements.js'
 export * from './env.js'
 export * from './messages.js'

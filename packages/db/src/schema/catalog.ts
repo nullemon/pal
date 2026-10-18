@@ -85,6 +85,13 @@ export const series = pgTable(
     seoTitle: text('seo_title'),
     seoDescription: text('seo_description'),
     seoText: jsonb('seo_text').$type<RichText | null>(), // the "About {title}" block
+    /**
+     * The credit page's look for this series (docs/03). Both null mean "use the site
+     * default" — a series that has not been given a background or an overlay is the common
+     * case, not a broken one.
+     */
+    creditBackgroundKey: text('credit_background_key'),
+    creditOverlayId: text('credit_overlay_id'),
     focusKeyword: text('focus_keyword'),
     noindex: boolean('noindex').notNull().default(false),
     canonicalUrl: text('canonical_url'),

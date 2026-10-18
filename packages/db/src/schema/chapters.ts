@@ -125,6 +125,11 @@ export const chapters = pgTable(
      * the default for everything after, so a single-language site never has to think about it.
      */
     language: text('language').notNull().default('en'),
+    /**
+     * This chapter's line on the credit page — a translator's aside, a word from the author.
+     * Null falls back to the site's default note, which is what clearing the box means.
+     */
+    creditNote: text('credit_note'),
     isPremium: boolean('is_premium').notNull().default(false),
     earlyAccessUntil: timestamptz('early_access_until'), // premium-only window before it goes free
     publishedAt: timestamptz('published_at'),
