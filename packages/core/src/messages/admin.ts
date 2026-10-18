@@ -2966,6 +2966,10 @@ export const adminMessages = {
     enabledHint:
       'Applies to chapters added from the moment you turn this on — nothing already published changes.',
     since: 'Running since {date}.',
+    allChapters: 'Show on existing chapters too',
+    allChaptersHint:
+      'Adds the card to everything already published as well. Page counts change for chapters readers have already read — a 20-page chapter becomes 21.',
+    allChaptersOn: 'Showing on every chapter, including everything published before.',
     overlays: 'Overlays',
     overlaysHint:
       'Transparent PNGs the text is drawn into. Upload as many as you like; a series can pick its own.',

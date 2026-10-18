@@ -275,7 +275,11 @@ there anyway. The precedence is the whole feature: chapter note beats the defaul
 the default background, series overlay beats the default overlay, and a *blank* override is
 not an override. `settings.enabledAt` is stamped the moment the feature is switched on and
 chapters created before it get no card — turning this on must not insert a page into an
-archive readers have already read and linked to.
+archive readers have already read and linked to. **Show on existing chapters too**
+(`allChapters`) is the operator's override for when that is exactly what they want: a group
+crediting its back catalogue should not have to re-upload a thousand chapters. It is a
+separate switch rather than clearing the stamp, so turning it back off restores the cutoff
+instead of losing it — nothing was written to the chapters either way.
 
 The rules are in `@palscans/core/credit`, the measurements in `apps/web/lib/credit/layout.ts`,
 and both are tested, because nothing downstream catches them being wrong: an SVG text node

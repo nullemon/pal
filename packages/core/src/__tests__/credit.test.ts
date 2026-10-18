@@ -143,6 +143,25 @@ describe('the enabled-at cutoff', () => {
     expect(resolveCredit({ settings: withCutoff })).toBeNull()
   })
 
+  it('credits the whole archive when the operator asks for it', () => {
+    // The opposite decision, and an operator is allowed to make it: a group that wants its
+    // back catalogue credited should not have to re-upload a thousand chapters.
+    const all = settings({ enabledAt: '2026-10-18T12:00:00.000Z', allChapters: true })
+    expect(
+      resolveCredit({ settings: all, chapterCreatedAt: '2020-01-01T00:00:00.000Z' }),
+    ).not.toBeNull()
+    expect(resolveCredit({ settings: all, chapterCreatedAt: null })).not.toBeNull()
+  })
+
+  it('keeps the cutoff when the archive switch is turned back off', () => {
+    // Nothing is written to the chapters, so this has to be reversible: the stamp stays put
+    // and the old chapters go back to having no card.
+    const back = settings({ enabledAt: '2026-10-18T12:00:00.000Z', allChapters: false })
+    expect(
+      resolveCredit({ settings: back, chapterCreatedAt: '2020-01-01T00:00:00.000Z' }),
+    ).toBeNull()
+  })
+
   it('applies to every chapter when no cutoff was stamped', () => {
     expect(resolveCredit({ settings: settings(), chapterCreatedAt: null })).not.toBeNull()
   })

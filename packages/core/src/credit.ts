@@ -66,9 +66,20 @@ export const creditSettingsSchema = z.object({
    * turning this on should not silently insert a page into a thousand chapters that readers
    * have already read, bookmarked and linked to. Stamped by the save, cleared when the
    * feature is turned off, so switching it on again starts a fresh line rather than
-   * retroactively claiming everything since the first time.
+   * retroactively claiming everything since the first time. `allChapters` overrides it for
+   * an operator who does want the whole archive credited.
    */
   enabledAt: z.string().trim().max(40).default(''),
+  /**
+   * Put a card into everything already published, not just what is uploaded from now on.
+   *
+   * Off by default, and it is a separate switch rather than simply clearing `enabledAt`
+   * because it is a separate decision with a visible cost: every existing chapter gains a
+   * page, so page counts change under readers who have already read, bookmarked and linked
+   * to them. Turning it back off restores the cutoff rather than losing it, since nothing
+   * was written to the chapters themselves — the card is composed at read time.
+   */
+  allChapters: z.boolean().default(false),
   overlays: z.array(creditOverlaySchema).max(12).default([]),
   /** Which overlay a series uses when it has not chosen one. */
   defaultOverlayId: z.string().trim().max(40).default(''),
@@ -140,7 +151,8 @@ export const resolveCredit = ({
    * inserting a page into an archive nobody asked to change, and a missing timestamp is not
    * evidence that a chapter is new.
    */
-  const since = settings.enabledAt.trim() ? Date.parse(settings.enabledAt) : Number.NaN
+  const since =
+    !settings.allChapters && settings.enabledAt.trim() ? Date.parse(settings.enabledAt) : Number.NaN
   if (Number.isFinite(since)) {
     const created = chapterCreatedAt
       ? Date.parse(String(new Date(chapterCreatedAt).toISOString()))

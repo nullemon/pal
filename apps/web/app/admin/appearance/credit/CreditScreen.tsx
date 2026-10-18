@@ -187,8 +187,33 @@ export function CreditScreen({
           </span>
           <span className="text-[12.5px] text-fg-muted">{m.enabledHint}</span>
         </div>
-        {doc.enabled && doc.enabledAt ? (
-          <Hint>{m.since.replace('{date}', doc.enabledAt.slice(0, 10))}</Hint>
+        {doc.enabled ? (
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-[13px]">
+            <span className="inline-flex items-center gap-2.5">
+              {m.allChapters}
+              <Toggle
+                ariaLabel={m.allChapters}
+                checked={doc.allChapters}
+                onChange={(v) => patch({ allChapters: v })}
+                size="sm"
+              />
+            </span>
+            <span className="text-[12.5px] text-fg-muted">{m.allChaptersHint}</span>
+          </div>
+        ) : null}
+        {doc.enabled ? (
+          <Hint>
+            {doc.allChapters
+              ? m.allChaptersOn
+              : doc.enabledAt
+                ? m.since.replace('{date}', doc.enabledAt.slice(0, 10))
+                : ''}
+          </Hint>
+        ) : null}
+        {doc.enabled ? (
+          <Button className="w-fit" disabled={busy} onClick={() => void save()} size="sm">
+            {busy ? m.saving : m.save}
+          </Button>
         ) : null}
       </Panel>
 
