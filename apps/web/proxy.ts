@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto'
 import { type NextRequest, NextResponse } from 'next/server'
 import { ipAllowed } from '@/lib/auth/ip-allowlist'
 import { clientIp } from '@/lib/auth/rate-limit'
+import { SESSION_COOKIE } from '@/lib/auth/session'
 import { STAFF_PATH_DEFAULT } from '@/lib/auth/staff-path'
 import { goneHtml } from '@/lib/seo/gone'
 import { EMPTY_SNAPSHOT, type ProxySnapshot, resolveProxy } from '@/lib/seo/proxy'
@@ -188,7 +189,69 @@ export const staffAccess: ProxyHandler = async (request, ctx) => {
 const notFoundResponse = () =>
   new Response(null, { status: 404, headers: { 'x-robots-tag': 'noindex' } })
 
-export const proxy = composeProxy([storageGuard, staffAccess, seoRules])
+/**
+ * Which paths an anonymous reader may be served from a shared cache.
+ *
+ * Deliberately a list rather than "everything public". A page qualifies only if its
+ * signed-out render is the same for every signed-out reader — the series page, the reader,
+ * and the discovery surfaces are, because `getAppUser()` returns null for all of them and
+ * every per-reader decision (`canRead`, bookmark, rating, progress, ads) is computed from
+ * that null. Anything that might key on the visitor cookie stays off the list.
+ */
+const CACHEABLE_PUBLIC = [
+  /^\/series\/[^/]+$/,
+  /^\/series\/[^/]+\/chapter-[^/]+$/,
+  /^\/browse$/,
+  /^\/genres\/[^/]+$/,
+]
+
+/**
+ * Sixty seconds at the edge, five minutes of stale-while-revalidate.
+ *
+ * Short on purpose: a chapter going live has to appear quickly, and the publish path already
+ * purges the catalogue. The win is not the TTL, it is that a release-day crowd arriving at
+ * one chapter is one render instead of ten thousand.
+ */
+const PUBLIC_TTL = 'public, s-maxage=60, stale-while-revalidate=300'
+
+/**
+ * Let a shared cache hold the signed-out render of the reader-facing pages (docs/20).
+ *
+ * The measured problem: the series and chapter pages are rendered from scratch for every
+ * visitor, costing ~30 ms of CPU each, and on one core that caps the site at about twenty
+ * pages a second however many readers arrive. Almost all of that traffic is signed out and
+ * every signed-out render is byte-identical, so it is the same page built ten thousand times.
+ *
+ * Two things make this safe rather than a way to serve one reader's page to another:
+ *
+ *  1. **Only when there is no session.** A request carrying `sid` is marked `private,
+ *     no-store` and never enters a shared cache. So nothing personalised is ever cacheable,
+ *     and the paywall is unaffected: a signed-out render already shows locked chapters
+ *     locked, because `canReadChapter` was given a null user.
+ *  2. **A page render cannot set a cookie.** Next throws if a server component tries, so the
+ *     visitor id is minted by route handlers only (`lib/visitor.ts`). A cached page therefore
+ *     carries no `Set-Cookie` to hand one browser's identity to the next.
+ *
+ * `Vary: Cookie` is deliberately *not* set. It reads as the careful choice and is the
+ * opposite: the visitor cookie is unique per browser, so varying on it gives every reader
+ * their own cache entry and caches nothing at all. Keeping signed-in readers off the cached
+ * copy is the edge's job — a Cloudflare cache rule that bypasses when `sid` is present —
+ * which is why the signed-in branch below is explicit rather than merely absent.
+ */
+export const publicCache: ProxyHandler = (request, ctx) => {
+  if (request.method !== 'GET') return undefined
+  if (!CACHEABLE_PUBLIC.some((re) => re.test(ctx.pathname))) return undefined
+  if (request.cookies.get(SESSION_COOKIE)) {
+    // Said rather than left unsaid: an intermediary that would otherwise apply its own
+    // default must be told this response belongs to one reader.
+    ctx.headers.set('cache-control', 'private, no-store')
+    return undefined
+  }
+  ctx.headers.set('cache-control', PUBLIC_TTL)
+  return undefined
+}
+
+export const proxy = composeProxy([storageGuard, staffAccess, seoRules, publicCache])
 
 export const config = {
   matcher: [
