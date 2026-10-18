@@ -4,6 +4,7 @@ import {
   creditPageIndex,
   creditSettingsSchema,
   DEFAULT_CREDIT_FONT,
+  DEFAULT_CREDIT_ROLES,
   resolveCredit,
 } from '../credit.js'
 
@@ -208,20 +209,23 @@ describe('the font', () => {
  * six blank boxes give no clue which row is which. The duplicates are the artwork's own.
  */
 describe('the default roles', () => {
-  it('starts with the rows the supplied card has printed on it', () => {
-    expect(creditSettingsSchema.parse({}).roles.map((r) => r.label)).toEqual([
-      'CLEANER',
-      'REDRAWER',
-      'PROOFREADER',
+  it('starts with one row per job, each of them distinct', () => {
+    // Not the artwork's own labels: it names CLEANER and REDRAWER twice and has no row for
+    // quality check. The renderer paints the printed ones out, so these are the real list.
+    const labels = creditSettingsSchema.parse({}).roles.map((r) => r.label)
+    expect(labels).toEqual([
+      'TRANSLATOR',
       'CLEANER',
       'REDRAWER',
       'TYPESETTER',
+      'PROOFREADER',
+      'QUALITY CHECK',
     ])
+    expect(new Set(labels).size).toBe(labels.length)
+    expect(labels.length).toBeLessThanOrEqual(6)
   })
 
-  it('leaves every prefilled row off the card until it is given a name', () => {
-    // A role with no handle is a row the group has not filled in; an empty box is worse
-    // than no box, and a fresh install must not print six of them.
+  it('ships every row filled in', () => {
     expect(
       resolveCredit({
         settings: creditSettingsSchema.parse({
@@ -230,7 +234,22 @@ describe('the default roles', () => {
           defaultOverlayId: 'a',
         }),
       })?.roles,
-    ).toEqual([])
+    ).toHaveLength(DEFAULT_CREDIT_ROLES.length)
+  })
+
+  it('leaves a row with no handle off the card', () => {
+    // A role with no handle is a row the group has not filled in, and an empty box beside a
+    // name of a job nobody did is worse than no row at all.
+    const settings = creditSettingsSchema.parse({
+      enabled: true,
+      overlays: [{ id: 'a', name: 'A', key: 'k' }],
+      defaultOverlayId: 'a',
+      roles: [
+        { label: 'TYPESETTER', handle: 'NaPal__' },
+        { label: 'QUALITY CHECK', handle: '' },
+      ],
+    })
+    expect(resolveCredit({ settings })?.roles.map((r) => r.label)).toEqual(['TYPESETTER'])
   })
 
   it('keeps a deletion deleted', () => {

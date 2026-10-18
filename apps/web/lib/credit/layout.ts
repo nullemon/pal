@@ -42,6 +42,55 @@ export const LAYOUT = {
   /** The two LINKS boxes, beside their printed captions. */
   links: { discordY: 0.8905, twitterY: 0.9365, x: 0.792, right: 0.968, size: 0.0195 },
   /**
+   * The label plates: the dark strips the role names are printed on.
+   *
+   * The artwork has its own names baked into them — and the wrong ones, as it turned out:
+   * two of the six are duplicates and the group needed a row the designer did not draw. So
+   * the renderer paints over the printed text and draws the labels from the settings, which
+   * is what makes them editable at all.
+   *
+   * `patch` is the area painted over: inside the plate, stopping short of the brush edge
+   * where it breaks into the cream box, because a straight patch across that edge would be
+   * obvious. `sample` is the strip of untouched plate the patch is made of — the plate is
+   * textured, so a flat fill reads as a sticker, while the plate's own pixels stretched
+   * across read as the plate.
+   */
+  plates: {
+    /**
+     * The area painted over: the plate's whole interior, stopping short of its border
+     * lines and of the brush edge where it breaks into the cream box.
+     *
+     * The whole interior rather than just the printed name, which is all it has to cover:
+     * patch only the text and the plate carries a seam where the patch meets the original,
+     * and on a row with no name drawn over it that seam is all there is to look at. Taking
+     * the interior edge to edge leaves nothing for the patch to be compared against.
+     */
+    patch: { left: 0.649, right: 0.7625, band: 0.0205 },
+    /**
+     * Clean plate to make the patch out of: the strip just below the printed text, which
+     * profiling the artwork puts between 9 and 22 pixels under each row's centre.
+     *
+     * Below rather than beside, and stretched vertically rather than horizontally. The
+     * plate is lit left-to-right — dark at the edge, lifting towards the brush — so a
+     * vertical strip smeared sideways paints that gradient out flat and drags the plate's
+     * border and the red spatter across the row with it, which is exactly what it looked
+     * like. Stretching a horizontal band downwards keeps every column's colour where the
+     * artwork put it.
+     */
+    sample: { from: 0.0105, to: 0.0195 },
+    /**
+     * Half-height of the name the artwork prints, measured off it: the printed label runs
+     * about nine pixels either side of a row's centre on a 1086px card.
+     *
+     * Here so the sample band can be checked against it. The sample is taken from the
+     * original artwork, so it may sit inside the area about to be painted — what it must
+     * never contain is the printed text itself.
+     */
+    printed: 0.0085,
+    /** Where the drawn label sits inside the plate. */
+    text: { x: 0.6545, right: 0.7625, size: 0.0225 },
+  },
+  /**
    * The window the artwork leaves clear, where the series background shows.
    *
    * Measured off the overlay's own alpha channel, not judged by eye: the clear pixels were
@@ -67,6 +116,43 @@ export const CREDIT_BACKDROP = '#0b0b0f'
  * end up asking `sharp` to composite a layer that hangs off the canvas — that throws, and it
  * would take the whole card down rather than the background with it.
  */
+/**
+ * The label plates in pixels: what to paint over, and what to paint it with.
+ *
+ * One entry per printed row, in the artwork's order. Clamped to the canvas for the same
+ * reason `creditWindow` is — a composite that hangs off the edge throws, and that would take
+ * the whole card down rather than leaving a printed label showing.
+ */
+export const creditPlates = (
+  width: number,
+  height: number,
+  rows: number = LAYOUT.rows.max,
+): Array<{
+  patch: { left: number; top: number; width: number; height: number }
+  sample: { left: number; top: number; width: number; height: number }
+}> => {
+  const { plates, rows: rowLayout } = LAYOUT
+  const left = Math.max(0, Math.min(width, Math.round(plates.patch.left * width)))
+  const right = Math.max(0, Math.min(width, Math.round(plates.patch.right * width)))
+  const out = []
+  for (let i = 0; i < Math.min(rows, rowLayout.max); i++) {
+    const centre = rowLayout.firstY * height + i * rowLayout.stepY * height
+    const top = Math.round(centre - plates.patch.band * height)
+    const bottom = Math.round(centre + plates.patch.band * height)
+    const sampleTop = Math.round(centre + plates.sample.from * height)
+    const sampleBottom = Math.round(centre + plates.sample.to * height)
+    // Every rect has to be inside the canvas and at least a pixel of it: `sharp` throws on
+    // a composite that hangs off the edge, and that costs the whole card, not one label.
+    if (right - left < 2 || bottom - top < 2 || sampleBottom - sampleTop < 2) continue
+    if (top < 0 || sampleBottom > height) continue
+    out.push({
+      patch: { left, top, width: right - left, height: bottom - top },
+      sample: { left, top: sampleTop, width: right - left, height: sampleBottom - sampleTop },
+    })
+  }
+  return out
+}
+
 export const creditWindow = (
   width: number,
   height: number,

@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { creditWindow, FONTS, fitSize, fontMetrics, LAYOUT, MIN_SIZE, wrapNote } from './layout'
+import {
+  creditPlates,
+  creditWindow,
+  FONTS,
+  fitSize,
+  fontMetrics,
+  LAYOUT,
+  MIN_SIZE,
+  wrapNote,
+} from './layout'
 
 /**
  * The credit card's measurements.
@@ -132,5 +141,73 @@ describe('creditWindow', () => {
     expect(win.height).toBeGreaterThan(0)
     expect(win.left + win.width).toBeLessThanOrEqual(1)
     expect(win.top + win.height).toBeLessThanOrEqual(1)
+  })
+})
+
+/**
+ * The patches that cover the labels printed on the artwork.
+ *
+ * The renderer draws the role names itself, which only works because the printed ones are
+ * painted out first. A patch in the wrong place is worse than no feature: it would put a
+ * grey smear across the card, on every chapter, with nothing to say so.
+ */
+describe('creditPlates', () => {
+  const W = 1448
+  const H = 1086
+
+  it('covers one plate per row the card is given', () => {
+    expect(creditPlates(W, H, 4)).toHaveLength(4)
+    expect(creditPlates(W, H, 6)).toHaveLength(6)
+  })
+
+  it('never covers more plates than the artwork has', () => {
+    expect(creditPlates(W, H, 20)).toHaveLength(LAYOUT.rows.max)
+  })
+
+  it('stops short of the handle boxes', () => {
+    // The plate breaks into the cream box in a brush edge; a straight patch across that
+    // edge is the one way this is visible.
+    for (const plate of creditPlates(W, H)) {
+      expect(plate.patch.left + plate.patch.width).toBeLessThan(LAYOUT.rows.x * W)
+    }
+  })
+
+  it('takes its texture from plate the printed name does not reach', () => {
+    // The sample is read from the original artwork, so it may lie inside the area about to
+    // be painted. What it must not contain is the printed label — sampling that is how a
+    // patch ends up smearing a ghost of the old name across the new one.
+    expect(LAYOUT.plates.sample.from).toBeGreaterThan(LAYOUT.plates.printed)
+    // And it must stay on the plate, not run into the border below it.
+    expect(LAYOUT.plates.sample.to).toBeLessThanOrEqual(LAYOUT.plates.patch.band)
+    for (const plate of creditPlates(W, H)) {
+      // Same columns, so the plate's left-to-right lighting lands where the artwork put it.
+      expect(plate.sample.left).toBe(plate.patch.left)
+      expect(plate.sample.width).toBe(plate.patch.width)
+      expect(plate.sample.height).toBeGreaterThan(1)
+    }
+  })
+
+  it('does not step outside the canvas', () => {
+    for (const plate of creditPlates(W, H)) {
+      expect(plate.patch.top).toBeGreaterThanOrEqual(0)
+      expect(plate.patch.top + plate.patch.height).toBeLessThanOrEqual(H)
+      expect(plate.patch.left + plate.patch.width).toBeLessThanOrEqual(W)
+    }
+  })
+
+  it('gives up rather than returning a rect an overlay cannot hold', () => {
+    // `sharp` throws on a composite that hangs off the canvas, and that would cost the
+    // whole card rather than one label.
+    expect(creditPlates(4, 4)).toEqual([])
+  })
+
+  it('does not overlap the row below it', () => {
+    const plates = creditPlates(W, H)
+    for (let i = 1; i < plates.length; i++) {
+      const previous = plates[i - 1]
+      const current = plates[i]
+      if (!previous || !current) throw new Error('missing plate')
+      expect(previous.patch.top + previous.patch.height).toBeLessThanOrEqual(current.patch.top + 1)
+    }
   })
 })

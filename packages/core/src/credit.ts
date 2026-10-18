@@ -51,22 +51,23 @@ export type CreditFont = z.infer<typeof creditFontSchema>
 export const DEFAULT_CREDIT_FONT: CreditFont = 'anime-ace'
 
 /**
- * The rows the supplied artwork has printed on it, in the order it prints them.
+ * The rows a fresh install starts with, and who is in them.
  *
- * Prefilled so the panel is not six empty boxes an operator has to guess the shape of. The
- * labels are *not* drawn — they are part of the card — so these are the operator's own
- * reference for which box is which, and the duplicates are not a mistake: the artwork really
- * does name CLEANER and REDRAWER twice, because the card was drawn for a team with two of
- * each. They are editable like any other row, and a different overlay will want different
- * ones.
+ * Both halves are prefilled on purpose. The labels, because they are no longer the
+ * artwork's: the renderer paints over the names printed on the card and draws these
+ * instead, so the supplied artwork naming CLEANER and REDRAWER twice and having no row for
+ * quality check stopped being a constraint. The handles, because this is one group's site
+ * and typing its own team in on first run is a chore with one correct answer.
+ *
+ * Every one of them is editable, and a row with no handle beside it is left off the card.
  */
 export const DEFAULT_CREDIT_ROLES: ReadonlyArray<{ label: string; handle: string }> = [
-  { label: 'CLEANER', handle: '' },
-  { label: 'REDRAWER', handle: '' },
-  { label: 'PROOFREADER', handle: '' },
-  { label: 'CLEANER', handle: '' },
-  { label: 'REDRAWER', handle: '' },
-  { label: 'TYPESETTER', handle: '' },
+  { label: 'TRANSLATOR', handle: 'JaPal__' },
+  { label: 'CLEANER', handle: 'HaPal__' },
+  { label: 'REDRAWER', handle: 'NaPal__' },
+  { label: 'TYPESETTER', handle: 'PaPal__' },
+  { label: 'PROOFREADER', handle: 'DaPal__' },
+  { label: 'QUALITY CHECK', handle: 'LaPal__' },
 ]
 
 export const creditSettingsSchema = z.object({

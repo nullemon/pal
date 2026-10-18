@@ -266,10 +266,18 @@ feature off leaves every chapter exactly as it was. `/credit/:chapter` renders o
 behind the same `canReadChapter` gate as the pages, and the result is cached at the edge.
 Nothing lands in the bucket, which matters because most chapters here store nothing at all.
 
-The card is one uploaded overlay and the text drawn into it. The roles start prefilled with
-the rows the supplied artwork has printed on it, because those labels are part of the image
-rather than something the renderer draws — six blank boxes would give no clue which row is
-which.
+The card is one uploaded overlay and the text drawn into it, **including the role names**.
+The artwork has its own printed on it — and the wrong ones: two of its six rows are
+duplicates and it has no row for quality check. So the renderer paints the printed labels
+out and draws the settings' labels in their place, which is what makes them editable at all.
+
+Each patch is made of the plate it covers: the strip of clean plate just below the printed
+text, stretched down over the whole interior. Below and stretched *downwards*, because the
+plates are lit left to right — dark at the edge, lifting towards the brush — so a vertical
+strip smeared sideways flattens that gradient and drags the plate's border and the red
+spatter across the row. And the whole interior rather than just the text, because a patch
+that covers only the text leaves a seam, and on a row with no name over it that seam is all
+there is to look at.
 
 The renderer can also put a background behind the overlay, fitted to the **window** — the
 hole the artwork leaves, measured off the overlay's own alpha channel, not scaled to the
