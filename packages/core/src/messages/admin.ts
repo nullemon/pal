@@ -2961,7 +2961,7 @@ export const adminMessages = {
   creditPage: {
     navLabel: 'Credit page',
     title: 'Credit page',
-    subtitle: 'The card inserted as the second page of every new chapter.',
+    subtitle: 'The card inserted as the second page of a chapter.',
     enabled: 'Insert a credit page',
     enabledHint:
       'Applies to chapters added from the moment you turn this on — nothing already published changes.',
@@ -2972,7 +2972,7 @@ export const adminMessages = {
     allChaptersOn: 'Showing on every chapter, including everything published before.',
     overlays: 'Overlays',
     overlaysHint:
-      'Transparent PNGs the text is drawn into. Upload as many as you like; a series can pick its own.',
+      'The card the text is drawn into. Upload as many as you like — the default one is the card every chapter gets.',
     addOverlay: 'Upload an overlay',
     defaultOverlay: 'Default overlay',
     font: 'Font',
@@ -2998,22 +2998,6 @@ export const adminMessages = {
     saved: 'Credit page saved.',
     uploaded: 'Overlay uploaded.',
     uploadFailed: 'That upload did not work.',
-    perSeries: 'Backgrounds',
-    perSeriesHint: 'A background per series, behind the overlay. Series with none use the default.',
-    defaultBackground: 'Default background',
-    defaultBackgroundHint:
-      'Behind the overlay on every series that has not been given its own. Without one, that part of the card is flat dark.',
-    backgroundUploaded: 'Background uploaded — save to apply it.',
-    clear: 'Clear',
-    findSeries: 'Find a series…',
-    seriesColumn: 'Series',
-    backgroundColumn: 'Background',
-    overlayColumn: 'Overlay',
-    upload: 'Upload',
-    replace: 'Replace',
-    useDefault: 'Use the default',
-    seriesSaved: 'Saved.',
-    narrowSearch: 'Showing the first 100 — search to narrow it down.',
   },
   pageEditor: {
     moveToFront: 'Move to front',

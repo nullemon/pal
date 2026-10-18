@@ -1,5 +1,5 @@
 import { adminMessages } from '@palscans/core/messages/admin'
-import { creditSeriesList, creditSettings } from '@/components/admin/server/credit'
+import { creditSettings } from '@/components/admin/server/credit'
 import { PageHeader } from '@/components/admin/ui'
 import { withPermission } from '@/lib/auth'
 import { CreditScreen } from './CreditScreen'
@@ -12,14 +12,14 @@ import { CreditScreen } from './CreditScreen'
  */
 export default async function CreditPage() {
   await withPermission('settings.write', { returnTo: '/admin/appearance/credit' })
-  const [settings, series] = await Promise.all([creditSettings(), creditSeriesList()])
+  const settings = await creditSettings()
   return (
     <>
       <PageHeader
         title={adminMessages.creditPage.title}
         subtitle={adminMessages.creditPage.subtitle}
       />
-      <CreditScreen initial={settings} series={series} />
+      <CreditScreen initial={settings} />
     </>
   )
 }

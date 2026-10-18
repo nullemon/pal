@@ -8,34 +8,22 @@ import { Trash2, Upload } from 'lucide-react'
 import { useCallback, useState } from 'react'
 import { postJson, putJson } from '@/components/admin/client/api'
 import { Toggle } from '@/components/admin/client/controls'
-import {
-  Field,
-  Hint,
-  inputClass,
-  Panel,
-  PanelHeader,
-  selectClass,
-  Table,
-  Td,
-  Th,
-} from '@/components/admin/ui'
+import { Field, Hint, inputClass, Panel, PanelHeader, selectClass } from '@/components/admin/ui'
 
 /**
  * Appearance → Credit page (docs/03).
  *
- * The card that goes in as every new chapter's second page. Three things live here and
- * nowhere else: the overlays (uploaded, not shipped — so a new design needs no deploy), the
- * roles and handles, and the footer. The per-series background sits below, and the per
- * -chapter note is on the chapter itself, because that is where each belongs.
+ * The card that goes in as every chapter's second page: one image, uploaded rather than
+ * shipped so a new design needs no deploy, and the text drawn into it. The per-chapter note
+ * is on the chapter itself, because that is where it belongs.
+ *
+ * There was a per-series panel here — its own background and its own overlay per series —
+ * and it is gone deliberately: one card for everything is what the group asked for, and a
+ * table of a thousand series each wanting its own artwork is work nobody was going to do.
+ * The renderer still composites a background if a series has one, so bringing the panel
+ * back is a change to this file rather than to the compositor.
  */
 const m = adminMessages.creditPage
-
-export interface SeriesRow {
-  id: number
-  title: string
-  backgroundKey: string | null
-  overlayId: string | null
-}
 
 /** Upload straight to storage through a presigned PUT, like every other admin asset. */
 const uploadAsset = async (file: File, kind: 'overlay' | 'background'): Promise<string | null> => {
@@ -54,18 +42,10 @@ const uploadAsset = async (file: File, kind: 'overlay' | 'background'): Promise<
   return put.ok ? intent.data.key : null
 }
 
-export function CreditScreen({
-  initial,
-  series,
-}: {
-  initial: CreditSettings
-  series: SeriesRow[]
-}) {
+export function CreditScreen({ initial }: { initial: CreditSettings }) {
   const { toast } = useToast()
   const [doc, setDoc] = useState<CreditSettings>(initial)
-  const [rows, setRows] = useState(series)
   const [busy, setBusy] = useState(false)
-  const [filter, setFilter] = useState('')
 
   const patch = (p: Partial<CreditSettings>) => setDoc((d) => ({ ...d, ...p }))
 
@@ -104,72 +84,6 @@ export function CreditScreen({
     },
     [toast],
   )
-
-  const setSeriesAsset = useCallback(
-    async (row: SeriesRow, file: File | null, overlayId?: string) => {
-      setBusy(true)
-      const key = file ? await uploadAsset(file, 'background') : undefined
-      if (file && !key) {
-        setBusy(false)
-        toast({ title: m.uploadFailed, tone: 'danger' })
-        return
-      }
-      const body = {
-        seriesId: row.id,
-        ...(key !== undefined ? { backgroundKey: key } : {}),
-        ...(overlayId !== undefined ? { overlayId } : {}),
-      }
-      const res = await fetch('/api/admin/credit', {
-        method: 'PATCH',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(body),
-      })
-      setBusy(false)
-      if (!res.ok) {
-        toast({ title: messages.errors.generic, tone: 'danger' })
-        return
-      }
-      setRows((current) =>
-        current.map((r) =>
-          r.id === row.id
-            ? {
-                ...r,
-                ...(key !== undefined ? { backgroundKey: key } : {}),
-                ...(overlayId !== undefined ? { overlayId } : {}),
-              }
-            : r,
-        ),
-      )
-      toast({ title: m.seriesSaved, tone: 'ok' })
-    },
-    [toast],
-  )
-
-  /**
-   * The background every series falls back to.
-   *
-   * It is a separate control from the table below because it is a different decision: the
-   * table says what *this* series looks like, this says what the rest do. The overlay is
-   * transparent where the background shows, so without one that window is flat dark — which
-   * is a reasonable card, but it should be a choice rather than what happens by default.
-   */
-  const setDefaultBackground = useCallback(
-    async (file: File) => {
-      setBusy(true)
-      const key = await uploadAsset(file, 'background')
-      setBusy(false)
-      if (!key) {
-        toast({ title: m.uploadFailed, tone: 'danger' })
-        return
-      }
-      // Functional form: an upload takes seconds and `doc` from the closure would be stale.
-      setDoc((d) => ({ ...d, defaultBackgroundKey: key }))
-      toast({ title: m.backgroundUploaded, tone: 'ok' })
-    },
-    [toast],
-  )
-
-  const visible = rows.filter((r) => r.title.toLowerCase().includes(filter.toLowerCase()))
 
   return (
     <div className="flex flex-col gap-4">
@@ -221,7 +135,10 @@ export function CreditScreen({
         <PanelHeader title={m.overlays} hint={m.overlaysHint} />
         <div className="flex flex-col gap-2">
           {doc.overlays.map((o) => (
-            <div className="flex flex-wrap items-center gap-2" key={o.id}>
+            <div
+              className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-2"
+              key={o.id}
+            >
               <input
                 className={inputClass}
                 onChange={(e) =>
@@ -233,9 +150,9 @@ export function CreditScreen({
                 }
                 value={o.name}
               />
-              <span className="text-[12px] text-fg-subtle">{o.key.split('/').pop()}</span>
+              <span className="truncate text-[12px] text-fg-subtle">{o.key.split('/').pop()}</span>
               <Button
-                className="ml-auto text-danger"
+                className="text-danger"
                 onClick={() =>
                   patch({
                     overlays: doc.overlays.filter((x) => x.id !== o.id),
@@ -306,8 +223,11 @@ export function CreditScreen({
         <PanelHeader title={m.roles} hint={m.rolesHint} />
         <div className="flex flex-col gap-2">
           {doc.roles.map((role, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: rows are positional and reorderable
-            <div className="flex flex-wrap items-center gap-2" key={i}>
+            <div
+              className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)_auto] items-center gap-2"
+              // biome-ignore lint/suspicious/noArrayIndexKey: rows are positional and reorderable
+              key={i}
+            >
               <input
                 className={inputClass}
                 onChange={(e) =>
@@ -385,105 +305,6 @@ export function CreditScreen({
         <Button className="mt-3 w-fit" disabled={busy} onClick={() => void save()}>
           {busy ? m.saving : m.save}
         </Button>
-      </Panel>
-
-      <Panel>
-        <PanelHeader title={m.perSeries} hint={m.perSeriesHint} />
-        <Field hint={m.defaultBackgroundHint} label={m.defaultBackground}>
-          <div className="flex flex-wrap items-center gap-2">
-            <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-md border border-line px-3 py-2 text-[13px] hover:bg-surface-2">
-              <Upload aria-hidden className="size-4" />
-              {doc.defaultBackgroundKey ? m.replace : m.upload}
-              <input
-                accept="image/png,image/jpeg,image/webp"
-                className="sr-only"
-                disabled={busy}
-                onChange={(e) => {
-                  const file = e.target.files?.[0]
-                  if (file) void setDefaultBackground(file)
-                  e.target.value = ''
-                }}
-                type="file"
-              />
-            </label>
-            {doc.defaultBackgroundKey ? (
-              <>
-                <span className="text-[12px] text-fg-subtle">
-                  {doc.defaultBackgroundKey.split('/').pop()}
-                </span>
-                <Button
-                  className="text-danger"
-                  onClick={() => patch({ defaultBackgroundKey: '' })}
-                  size="sm"
-                  variant="ghost"
-                >
-                  <Trash2 aria-hidden className="size-3.5" />
-                  {m.clear}
-                </Button>
-              </>
-            ) : null}
-            {/* The Save for this panel. Uploading only puts the key in the form -- the same
-                as the overlays above -- and the only other Save is three panels up, which is
-                far enough away to read as "nothing happened". */}
-            <Button className="ml-auto" disabled={busy} onClick={() => void save()} size="sm">
-              {busy ? m.saving : m.save}
-            </Button>
-          </div>
-        </Field>
-        <input
-          className={inputClass}
-          onChange={(e) => setFilter(e.target.value)}
-          placeholder={m.findSeries}
-          value={filter}
-        />
-        <Table>
-          <thead>
-            <tr>
-              <Th>{m.seriesColumn}</Th>
-              <Th>{m.backgroundColumn}</Th>
-              <Th>{m.overlayColumn}</Th>
-            </tr>
-          </thead>
-          <tbody>
-            {visible.slice(0, 100).map((row) => (
-              <tr key={row.id}>
-                <Td>{row.title}</Td>
-                <Td>
-                  <label className="inline-flex cursor-pointer items-center gap-1.5 text-[12.5px] text-accent">
-                    <Upload aria-hidden className="size-3.5" />
-                    {row.backgroundKey ? m.replace : m.upload}
-                    <input
-                      accept="image/png,image/jpeg,image/webp"
-                      className="sr-only"
-                      disabled={busy}
-                      onChange={(e) => {
-                        const file = e.target.files?.[0]
-                        if (file) void setSeriesAsset(row, file)
-                        e.target.value = ''
-                      }}
-                      type="file"
-                    />
-                  </label>
-                </Td>
-                <Td>
-                  <select
-                    className={selectClass}
-                    onChange={(e) => void setSeriesAsset(row, null, e.target.value)}
-                    value={row.overlayId ?? ''}
-                  >
-                    <option value="">{m.useDefault}</option>
-                    {doc.overlays.map((o) => (
-                      <option key={o.id} value={o.id}>
-                        {o.name}
-                      </option>
-                    ))}
-                  </select>
-                </Td>
-              </tr>
-            ))}
-          </tbody>
-        </Table>
-        {visible.length > 100 ? <Hint>{m.narrowSearch}</Hint> : null}
       </Panel>
     </div>
   )

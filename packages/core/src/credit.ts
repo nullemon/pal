@@ -50,6 +50,25 @@ export type CreditFont = z.infer<typeof creditFontSchema>
 /** Comic lettering, which is what a credit page is set in. */
 export const DEFAULT_CREDIT_FONT: CreditFont = 'anime-ace'
 
+/**
+ * The rows the supplied artwork has printed on it, in the order it prints them.
+ *
+ * Prefilled so the panel is not six empty boxes an operator has to guess the shape of. The
+ * labels are *not* drawn — they are part of the card — so these are the operator's own
+ * reference for which box is which, and the duplicates are not a mistake: the artwork really
+ * does name CLEANER and REDRAWER twice, because the card was drawn for a team with two of
+ * each. They are editable like any other row, and a different overlay will want different
+ * ones.
+ */
+export const DEFAULT_CREDIT_ROLES: ReadonlyArray<{ label: string; handle: string }> = [
+  { label: 'CLEANER', handle: '' },
+  { label: 'REDRAWER', handle: '' },
+  { label: 'PROOFREADER', handle: '' },
+  { label: 'CLEANER', handle: '' },
+  { label: 'REDRAWER', handle: '' },
+  { label: 'TYPESETTER', handle: '' },
+]
+
 export const creditSettingsSchema = z.object({
   /**
    * Off by default, and the renderer refuses while it is off.
@@ -85,7 +104,10 @@ export const creditSettingsSchema = z.object({
   defaultOverlayId: z.string().trim().max(40).default(''),
   /** A background for series that have none, so the page is never bare. */
   defaultBackgroundKey: z.string().trim().max(300).default(''),
-  roles: z.array(creditRoleSchema).max(12).default([]),
+  roles: z
+    .array(creditRoleSchema)
+    .max(12)
+    .default([...DEFAULT_CREDIT_ROLES]),
   /**
    * `.catch` rather than a plain default: a value stored by a build that offered a face this
    * one no longer has would otherwise fail the whole parse, and a failed parse falls back to

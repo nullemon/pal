@@ -200,3 +200,41 @@ describe('the font', () => {
     expect(parsed.enabled).toBe(true)
   })
 })
+
+/**
+ * The rows an operator starts with.
+ *
+ * Prefilled from the artwork rather than left empty: the labels are printed on the card, so
+ * six blank boxes give no clue which row is which. The duplicates are the artwork's own.
+ */
+describe('the default roles', () => {
+  it('starts with the rows the supplied card has printed on it', () => {
+    expect(creditSettingsSchema.parse({}).roles.map((r) => r.label)).toEqual([
+      'CLEANER',
+      'REDRAWER',
+      'PROOFREADER',
+      'CLEANER',
+      'REDRAWER',
+      'TYPESETTER',
+    ])
+  })
+
+  it('leaves every prefilled row off the card until it is given a name', () => {
+    // A role with no handle is a row the group has not filled in; an empty box is worse
+    // than no box, and a fresh install must not print six of them.
+    expect(
+      resolveCredit({
+        settings: creditSettingsSchema.parse({
+          enabled: true,
+          overlays: [{ id: 'a', name: 'A', key: 'k' }],
+          defaultOverlayId: 'a',
+        }),
+      })?.roles,
+    ).toEqual([])
+  })
+
+  it('keeps a deletion deleted', () => {
+    // An explicit empty array is a decision, not an absent field.
+    expect(creditSettingsSchema.parse({ roles: [] }).roles).toEqual([])
+  })
+})

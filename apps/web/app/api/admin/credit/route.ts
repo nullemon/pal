@@ -3,12 +3,7 @@ import { creditSettingsSchema } from '@palscans/core/credit'
 import { z } from 'zod'
 import { audit } from '@/components/admin/server/audit'
 import { purgeCatalog } from '@/components/admin/server/cache'
-import {
-  creditSeriesList,
-  creditSettings,
-  saveCreditSettings,
-  setSeriesCredit,
-} from '@/components/admin/server/credit'
+import { creditSettings, saveCreditSettings } from '@/components/admin/server/credit'
 import { ok, parseJson, withPermission } from '@/lib/auth'
 import { presignUpload } from '@/lib/storage'
 
@@ -30,14 +25,8 @@ const assetSchema = z.object({
     .max(12 * 1024 * 1024),
 })
 
-const seriesSchema = z.object({
-  seriesId: z.number().int().positive(),
-  backgroundKey: z.string().max(300).nullish(),
-  overlayId: z.string().max(40).nullish(),
-})
-
 export const GET = withPermission('settings.write', async () =>
-  ok({ settings: await creditSettings(), series: await creditSeriesList() }),
+  ok({ settings: await creditSettings() }),
 )
 
 export const PUT = withPermission('settings.write', async (request, _ctx, user) => {
@@ -71,25 +60,6 @@ export const PUT = withPermission('settings.write', async (request, _ctx, user) 
   // has to reach them.
   purgeCatalog()
   return ok({ settings })
-})
-
-/** Point one series at its own background and overlay. */
-export const PATCH = withPermission('settings.write', async (request, _ctx, user) => {
-  const parsed = await parseJson(request, seriesSchema)
-  if (!parsed.ok) return parsed.response
-  const saved = await setSeriesCredit(parsed.data.seriesId, {
-    backgroundKey: parsed.data.backgroundKey,
-    overlayId: parsed.data.overlayId,
-  })
-  await audit({
-    actorId: user.id,
-    action: 'credit.series',
-    targetType: 'series',
-    targetId: parsed.data.seriesId,
-    after: { backgroundKey: parsed.data.backgroundKey, overlayId: parsed.data.overlayId },
-  })
-  purgeCatalog()
-  return ok({ saved })
 })
 
 /**
