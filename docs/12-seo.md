@@ -26,6 +26,32 @@ Rules: lowercase, hyphenated, ASCII slugs generated from the title with a collis
 (`https://palscans.org`, `www` 301s to it). **Slugs never break links**: renaming a series
 writes the old slug to `slug_history`, and the router 301s old → new forever.
 
+### Translations
+
+A chapter's translations live at `?lang=<code>` on the same path. English carries no
+parameter, so every URL indexed before migration 9044 is byte-for-byte what it was.
+
+Each translation is **its own indexable page**, and three things have to agree for that to
+work. Its canonical points at itself, parameter included — pointing a German chapter at the
+English URL tells Google the German one is a duplicate and should be dropped, which is the
+opposite of the intent. Its `hreflang` set is reciprocal and lists every language *that
+chapter number* is published in (not the series': a German run that stopped at 40 must not
+claim a German chapter 90, and an `hreflang` pointing at a 404 is dropped as unverified).
+And the sitemap lists one entry per translation, carrying the same set — which is also what
+gets the translated URLs into IndexNow, since that submits what the sitemap build changed.
+
+Everything the page *says* follows the chapter's language too: `<title>`, meta description,
+`og:locale`, the JSON-LD `name` and `inLanguage`, the "previous/next chapter" sentence, and
+the chapter label in the reader and the chapter list — `Kapitel 1196`, `第1196話`, `1196화`.
+The strings are one table per language in `@palscans/core/locale`, and a test holds that
+table in step with the uploader's language picker, because a language added to the picker
+with no strings would quietly serve English and nothing would fail.
+
+The operator's own SEO template (§8) applies to the site's default language. A translated
+chapter uses its language's default template instead: the operator wrote their template in
+English, and an English title on a German URL is the problem this section exists to fix.
+Per-language template overrides in the panel are the obvious next step.
+
 ## 2. Per-page metadata
 
 Rendered server-side on every page — never injected by client JavaScript, which is how

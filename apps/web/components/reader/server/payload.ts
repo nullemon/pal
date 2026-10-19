@@ -1,6 +1,7 @@
 import type { SessionUser } from '@palscans/core'
 import { type ChapterLock, can } from '@palscans/core'
 import { chapterLanguage, DEFAULT_CHAPTER_LANGUAGE } from '@palscans/core/languages'
+import { localeChapterLabel } from '@palscans/core/locale'
 import { fmt, messages } from '@palscans/core/messages'
 import type { EntitlementGate } from '@/lib/entitlements'
 import { chapterHref, formatChapterNumber, seriesHref } from '../params'
@@ -15,8 +16,14 @@ import {
 } from './data'
 import type { ReaderSiteSettings } from './settings'
 
-export const chapterLabel = (n: number) =>
-  fmt(messages.readerUi.chapterTitle, { n: formatChapterNumber(n) })
+/**
+ * "Chapter 1196" — or "Kapitel 1196" on the German translation of it.
+ *
+ * The reader's own label rather than the operator's chapter-label style: inside a chapter,
+ * "Ch. 1196" and "#1196" are too terse for the one line that says where you are.
+ */
+export const chapterLabel = (n: number, language?: string | null) =>
+  localeChapterLabel(language, formatChapterNumber(n))
 
 export const toLink = (
   slug: string,
@@ -25,7 +32,7 @@ export const toLink = (
   language?: string,
 ): ChapterLink => ({
   number: c.number,
-  label: chapterLabel(c.number),
+  label: chapterLabel(c.number, language),
   // Carrying the language here is what keeps a German reader in German: every chapter link
   // on the page — prev, next and the whole select — is built from this one function.
   href: chapterHref(slug, c.number, language),
@@ -103,8 +110,10 @@ export const buildReaderData = async (args: BuildReaderDataArgs): Promise<BuiltR
   const prev = bundle.prev ? (byNumber.get(bundle.prev.number) ?? null) : null
   const next = bundle.next ? (byNumber.get(bundle.next.number) ?? null) : null
   const number = formatChapterNumber(bundle.chapter.number)
-  const label = chapterLabel(bundle.chapter.number)
-  const here = chapterHref(series.slug, bundle.chapter.number)
+  const label = chapterLabel(bundle.chapter.number, language)
+  // In the chapter's own language: this is what `returnTo` sends a reader back to after a
+  // sign-in, and sending a German reader back to the English page is a small betrayal.
+  const here = chapterHref(series.slug, bundle.chapter.number, language)
   const returnTo = encodeURIComponent(here)
   const coverUrl = series.coverKey ? storageUrl(series.coverKey) : null
   const pages = args.pages ?? (await toReaderPages(bundle.pages, lockOf(bundle.chapter, now)))
@@ -126,9 +135,9 @@ export const buildReaderData = async (args: BuildReaderDataArgs): Promise<BuiltR
       id: bundle.chapter.id,
       number: bundle.chapter.number,
       label,
-      labelWithTitle: bundle.chapter.title
-        ? fmt(messages.readerUi.chapterWithTitle, { n: number, title: bundle.chapter.title })
-        : label,
+      // `Kapitel 1196: Der Titel` on a German chapter — the separator is punctuation, so
+      // the label carries the language and the chapter's own title is left as written.
+      labelWithTitle: bundle.chapter.title ? `${label}: ${bundle.chapter.title}` : label,
       title: bundle.chapter.title,
       href: here,
       altTemplate: fmt(messages.reader.pageAlt, { title: series.title, chapter: number }),

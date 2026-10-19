@@ -1,5 +1,7 @@
 import { DEFAULT_SEO_TEMPLATES, DEFAULT_SEPARATOR, renderSeo } from '@palscans/core'
-import { fmt, messages } from '@palscans/core/messages'
+import { DEFAULT_CHAPTER_LANGUAGE } from '@palscans/core/languages'
+import { chapterLocale, localeChapterHint, localeChapterLabel } from '@palscans/core/locale'
+import { messages } from '@palscans/core/messages'
 import { getDb, getSeoSetting } from '@palscans/db'
 import type { Metadata } from 'next'
 import { unstable_cache } from 'next/cache'
@@ -61,20 +63,44 @@ export interface ChapterMetaInput {
   /** First page URL, only when the viewer may read the chapter (never a locked page). */
   firstPageUrl: string | null
   coverUrl: string | null
+  /** The chapter's language. Decides every string on the page and its canonical URL. */
+  language?: string
+  /**
+   * The other languages *this chapter number* exists in, for `hreflang`.
+   *
+   * This number, not the series': a series with a German run that stopped at 40 must not
+   * tell Google that chapter 90 has a German version. An `hreflang` pointing at a 404 is
+   * worse than none — it is a promise the site does not keep, and the pair is dropped.
+   */
+  languages?: readonly string[]
 }
 
-const nextPrevHint = (b: ChapterBundle): string => {
-  const parts: string[] = []
-  if (b.prev) parts.push(`Previous: Chapter ${formatChapterNumber(b.prev.number)}.`)
-  if (b.next) parts.push(`Next: Chapter ${formatChapterNumber(b.next.number)}.`)
-  return parts.join(' ')
-}
+const nextPrevHint = (b: ChapterBundle, language: string): string =>
+  localeChapterHint(
+    language,
+    b.prev ? formatChapterNumber(b.prev.number) : null,
+    b.next ? formatChapterNumber(b.next.number) : null,
+  )
 
 export async function chapterMetadata(input: ChapterMetaInput): Promise<Metadata> {
   const env = getEnv()
   const seo = await cachedChapterSeo()
   const { series, bundle } = input
+  const language = input.language ?? DEFAULT_CHAPTER_LANGUAGE
+  const locale = chapterLocale(language)
   const number = formatChapterNumber(bundle.chapter.number)
+  /**
+   * The operator's own template wins in the site's language, and only there.
+   *
+   * They wrote it in English, for English pages. Rendering it on a German chapter would put
+   * an English title on a German URL, which is the exact thing this is here to stop — so a
+   * translated chapter falls back to its own language's default. Per-language overrides in
+   * the panel are the obvious next step; this is the behaviour that needs no new settings.
+   */
+  const template =
+    language === DEFAULT_CHAPTER_LANGUAGE
+      ? { ...DEFAULT_SEO_TEMPLATES.chapter, ...seo.template }
+      : locale.seo
   const rendered = renderSeo(
     'chapter',
     {
@@ -83,11 +109,11 @@ export async function chapterMetadata(input: ChapterMetaInput): Promise<Metadata
       title: series.title,
       type: messages.series.type[series.type],
       chapter: number,
-      next_prev_hint: nextPrevHint(bundle),
+      next_prev_hint: nextPrevHint(bundle, language),
     },
-    { chapter: { ...DEFAULT_SEO_TEMPLATES.chapter, ...seo.template } },
+    { chapter: template },
   )
-  const path = chapterHref(series.slug, bundle.chapter.number)
+  const path = chapterHref(series.slug, bundle.chapter.number, language)
   const url = new URL(path, env.SITE_URL).toString()
   const card = await chapterCardImage(series.slug, number)
   // The generated card is the preview; the first page (or the cover) is only the fallback
@@ -106,16 +132,45 @@ export async function chapterMetadata(input: ChapterMetaInput): Promise<Metadata
       }
     : undefined
   const noindex = !seo.indexChapters || series.noindex
+  /**
+   * `hreflang` for every language this chapter number is actually published in.
+   *
+   * Each translation is its own URL with its own title and its own canonical pointing at
+   * itself — the canonical above carries `?lang=`, which is the fix that matters: pointing
+   * a German page at the English URL tells Google the German one is a duplicate and should
+   * be dropped from the index, which is precisely what we do not want.
+   *
+   * `x-default` goes to the English URL, which is also the parameter-free one.
+   */
+  const alternateLanguages = Object.fromEntries(
+    (input.languages ?? [])
+      .filter((code) => code !== language)
+      .map((code) => [
+        code,
+        new URL(chapterHref(series.slug, bundle.chapter.number, code), env.SITE_URL).toString(),
+      ]),
+  )
+  const hreflang =
+    Object.keys(alternateLanguages).length > 0
+      ? {
+          ...alternateLanguages,
+          'x-default': new URL(
+            chapterHref(series.slug, bundle.chapter.number),
+            env.SITE_URL,
+          ).toString(),
+        }
+      : undefined
   return {
     title: { absolute: rendered.title },
     description: rendered.description,
-    alternates: { canonical: url },
+    alternates: { canonical: url, ...(hreflang ? { languages: hreflang } : {}) },
     robots: noindex ? { index: false, follow: true } : undefined,
     openGraph: {
       type: 'article',
       siteName: seo.siteName,
       title: rendered.title,
       description: rendered.description,
+      locale: locale.ogLocale,
       url,
       ...(image ? { images: [image] } : {}),
     },
@@ -149,10 +204,10 @@ export function chapterJsonLd(input: ChapterMetaInput): Record<string, unknown> 
   const { series, bundle } = input
   const number = formatChapterNumber(bundle.chapter.number)
   const abs = (p: string) => new URL(p, env.SITE_URL).toString()
-  const chapterUrl = abs(chapterHref(series.slug, bundle.chapter.number))
-  const name = bundle.chapter.title
-    ? fmt(messages.readerUi.chapterWithTitle, { n: number, title: bundle.chapter.title })
-    : fmt(messages.readerUi.chapterTitle, { n: number })
+  const language = input.language ?? DEFAULT_CHAPTER_LANGUAGE
+  const chapterUrl = abs(chapterHref(series.slug, bundle.chapter.number, language))
+  const label = localeChapterLabel(language, number)
+  const name = bundle.chapter.title ? `${label}: ${bundle.chapter.title}` : label
   const image = input.firstPageUrl ?? input.coverUrl
   return {
     '@context': 'https://schema.org',
@@ -181,6 +236,9 @@ export function chapterJsonLd(input: ChapterMetaInput): Record<string, unknown> 
         url: chapterUrl,
         issueNumber: number,
         name: `${series.title} ${name}`,
+        // Which translation this page is. The German chapter and the English one are the
+        // same issue at different URLs, and this is what says so in the structured data.
+        inLanguage: language,
         isPartOf: {
           '@type': 'ComicSeries',
           name: series.title,

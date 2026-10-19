@@ -47,12 +47,13 @@ const text = async (name: string): Promise<string> => {
   return gunzipSync(Buffer.from(bytes)).toString('utf8')
 }
 
-const addChapter = async (n: number, seriesRef = seriesId) => {
+const addChapter = async (n: number, seriesRef = seriesId, language = 'en') => {
   const [row] = await db
     .insert(chapters)
     .values({
       seriesId: seriesRef,
       number: n,
+      language,
       state: 'published',
       publishedAt: new Date(),
       pageCount: 1,
@@ -178,6 +179,25 @@ describe('the publish → sitemap.build producer', () => {
 })
 
 describe('runSitemapBuild', () => {
+  it('lists each translation, with the hreflang set pointing every way', async () => {
+    // A German chapter is its own URL. Left out of the sitemap it is a page Google has no
+    // reason to crawl; listed without alternates it looks like a duplicate of the English
+    // one and gets dropped. Both halves have to be here.
+    await addChapter(7)
+    await addChapter(7, seriesId, 'de')
+    const build = await runSitemapBuild({ db, storage, siteUrl: SITE }, { kind: 'full' })
+    expect(build.error).toBeNull()
+    const xml = await text('chapters-1.xml.gz')
+
+    expect(xml).toContain(`<loc>${SITE}/series/blade-of-dusk/chapter-7</loc>`)
+    expect(xml).toContain(`<loc>${SITE}/series/blade-of-dusk/chapter-7?lang=de</loc>`)
+    // Reciprocal: each URL names both languages and the default, or Google ignores it.
+    expect(
+      xml.match(/hreflang="de" href="[^"]*\/series\/blade-of-dusk\/chapter-7\?lang=de"/g),
+    ).toHaveLength(2)
+    expect(xml).toContain('hreflang="x-default"')
+  })
+
   it('writes a full build, then an incremental one that carries the new chapter', async () => {
     await addChapter(1)
     const full = await runSitemapBuild({ db, storage, siteUrl: SITE }, { kind: 'full' })

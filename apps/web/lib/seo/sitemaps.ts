@@ -126,6 +126,8 @@ async function chapterRows(db: Db, settings: SeoSettings) {
       seriesId: chapters.seriesId,
       slug: series.slug,
       number: chapters.number,
+      // Each translation is its own URL, so each one is its own row in the sitemap.
+      language: chapters.language,
       publishedAt: chapters.publishedAt,
       updatedAt: chapters.updatedAt,
     })
@@ -182,10 +184,43 @@ export async function collectSitemapUrls(
 
   if (want.has('chapters') && settings.indexing.chapters) {
     const chapterList = await chapterRows(db, settings)
-    const urls = chapterList.map((c) => ({
-      loc: abs(chapterPath(c.slug, c.number)),
-      lastmod: c.updatedAt ?? c.publishedAt,
-    }))
+    /**
+     * Every translation listed, and each one carrying the whole `hreflang` set.
+     *
+     * A German chapter that is not in the sitemap is a page Google has no reason to crawl,
+     * and the one it would find by following links announces itself as a translation — so
+     * without this the German pages are either missing or ambiguous. Grouped by series and
+     * number because the set has to be reciprocal: each URL lists all of them, itself
+     * included, or Google treats the claim as unverified and ignores it.
+     *
+     * A chapter that exists in one language gets no alternates at all. There is nothing to
+     * declare, and `hreflang` on a single-language page is bytes in a 50 MB budget.
+     */
+    const byNumber = new Map<string, string[]>()
+    for (const c of chapterList) {
+      const key = `${c.slug}|${c.number}`
+      const langs = byNumber.get(key)
+      if (langs) langs.push(c.language)
+      else byNumber.set(key, [c.language])
+    }
+    const urls = chapterList.map((c) => {
+      const langs = byNumber.get(`${c.slug}|${c.number}`) ?? []
+      return {
+        loc: abs(chapterPath(c.slug, c.number, c.language)),
+        lastmod: c.updatedAt ?? c.publishedAt,
+        ...(langs.length > 1
+          ? {
+              alternates: [
+                ...langs.map((language) => ({
+                  hreflang: language,
+                  href: abs(chapterPath(c.slug, c.number, language)),
+                })),
+                { hreflang: 'x-default', href: abs(chapterPath(c.slug, c.number)) },
+              ],
+            }
+          : {}),
+      }
+    })
     const per = Math.min(SITEMAP_MAX_URLS, settings.sitemap.chapters_per_file)
     for (const [i, part] of chunk(urls, per).entries())
       out.push({ name: `chapters-${i + 1}.xml.gz`, urls: part })

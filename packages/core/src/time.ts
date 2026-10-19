@@ -1,3 +1,6 @@
+import { DEFAULT_CHAPTER_LANGUAGE } from './languages.js'
+import { localeChapterLabel } from './locale.js'
+
 const MINUTE = 60
 const HOUR = 3600
 const DAY = 86400
@@ -46,16 +49,27 @@ export const formatChapterNumber = (n: number | string): string => {
   return String(Number.parseFloat(value.toFixed(3)))
 }
 
-export const chapterLabel = (n: number | string, style: ChapterLabelStyle = 'short'): string => {
+/**
+ * "Ch. 12.5" · "Chapter 12.5" · "#12.5", in the chapter's own language.
+ *
+ * The style is the operator's (docs/15), the language is the chapter's, and they compose:
+ * a German chapter in a site set to the long style reads "Kapitel 12.5". English is
+ * untouched, down to the byte, because every label on the site goes through here.
+ *
+ * `#12.5` stays `#12.5` everywhere — it is a number with a sigil, not a word — and the
+ * short style falls back to the full translated label rather than inventing an
+ * abbreviation, because most languages have no agreed one and a guessed "Kap." is worse
+ * than a word that is simply correct.
+ */
+export const chapterLabel = (
+  n: number | string,
+  style: ChapterLabelStyle = 'short',
+  language?: string | null,
+): string => {
   const num = formatChapterNumber(n)
-  switch (style) {
-    case 'long':
-      return `Chapter ${num}`
-    case 'hash':
-      return `#${num}`
-    default:
-      return `Ch. ${num}`
-  }
+  if (style === 'hash') return `#${num}`
+  if (language && language !== DEFAULT_CHAPTER_LANGUAGE) return localeChapterLabel(language, num)
+  return style === 'long' ? `Chapter ${num}` : `Ch. ${num}`
 }
 
 /** Compact numbers: 81_300 → "81.3K", 1_200_000 → "1.2M". */

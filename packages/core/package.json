@@ -110,6 +110,10 @@
       "types": "./dist/templates.d.ts",
       "default": "./dist/templates.js"
     },
+    "./locale": {
+      "types": "./dist/locale.d.ts",
+      "default": "./dist/locale.js"
+    },
     "./languages": {
       "types": "./dist/languages.d.ts",
       "default": "./dist/languages.js"

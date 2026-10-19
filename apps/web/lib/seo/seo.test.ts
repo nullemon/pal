@@ -1,11 +1,12 @@
 import { gunzipSync, gzipSync } from 'node:zlib'
 import { describe, expect, it } from 'vitest'
+import { chapterHref } from '@/components/reader/params'
 import { atomXml, type FeedItem, rssXml } from './feeds'
 import { submitIndexNow } from './indexnow'
 import { EMPTY_SNAPSHOT, type ProxySnapshot, resolveProxy } from './proxy'
 import { AI_CRAWLERS, DEFAULT_ROBOTS, robotsTxt } from './robots'
 import { DEFAULT_SEO_SETTINGS, parseSeoSetting, type SeoSettings } from './settings'
-import { normalisePath } from './urls'
+import { chapterPath, normalisePath } from './urls'
 import { chunk, esc, sitemapIndexXml, urlsetXml } from './xml'
 
 const settings = (patch: Partial<SeoSettings> = {}): SeoSettings => ({
@@ -42,6 +43,25 @@ describe('robots.txt (docs/12 §5, §8)', () => {
   })
 })
 
+describe('chapter URLs', () => {
+  it('are built identically by the sitemap and by the page', () => {
+    // Two builders for one URL: `chapterPath` for the sitemap and feeds, `chapterHref` for
+    // links and the canonical. If they ever disagree about `?lang=`, the sitemap offers
+    // Google a URL whose own canonical points somewhere else, and the page is dropped.
+    for (const language of [undefined, 'en', 'de', 'pt-BR']) {
+      expect(chapterPath('blade-of-dusk', 12.5, language)).toBe(
+        chapterHref('blade-of-dusk', 12.5, language),
+      )
+    }
+  })
+
+  it('leaves the English URL exactly as it was indexed', () => {
+    expect(chapterPath('a', 1)).toBe('/series/a/chapter-1')
+    expect(chapterPath('a', 1, 'en')).toBe('/series/a/chapter-1')
+    expect(chapterPath('a', 1, 'de')).toBe('/series/a/chapter-1?lang=de')
+  })
+})
+
 describe('sitemap XML', () => {
   it('escapes, emits lastmod and image extensions', () => {
     const xml = urlsetXml([
@@ -57,6 +77,27 @@ describe('sitemap XML', () => {
     expect(xml).toContain('<image:title>C &lt;cover&gt;</image:title>')
     expect(xml).not.toContain('changefreq')
   })
+  it('declares hreflang alternates, and only where there are any', () => {
+    const xml = urlsetXml([
+      {
+        loc: 'https://p.org/series/a/chapter-1?lang=de',
+        alternates: [
+          { hreflang: 'en', href: 'https://p.org/series/a/chapter-1' },
+          { hreflang: 'de', href: 'https://p.org/series/a/chapter-1?lang=de' },
+          { hreflang: 'x-default', href: 'https://p.org/series/a/chapter-1' },
+        ],
+      },
+    ])
+    expect(xml).toContain('xmlns:xhtml="http://www.w3.org/1999/xhtml"')
+    expect(xml).toContain(
+      '<xhtml:link rel="alternate" hreflang="de" href="https://p.org/series/a/chapter-1?lang=de"/>',
+    )
+    expect(xml).toContain('hreflang="x-default"')
+    // The namespace costs bytes on every file in a 50 MB budget, so a sitemap with no
+    // translations in it must not carry one.
+    expect(urlsetXml([{ loc: 'https://p.org/series/a/chapter-1' }])).not.toContain('xmlns:xhtml')
+  })
+
   it('builds an index and chunks files', () => {
     const idx = sitemapIndexXml([{ loc: 'https://p.org/sitemaps/series-1.xml.gz' }])
     expect(idx).toContain('<sitemapindex')

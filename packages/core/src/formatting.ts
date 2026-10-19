@@ -98,7 +98,8 @@ export const formatCount = (n: number, mode: NumberFormat = DEFAULT_FORMATTING.n
 export const formatChapterLabel = (
   n: number | string,
   style: ChapterLabelStyle = DEFAULT_FORMATTING.chapterLabel,
-): string => chapterLabel(n, style)
+  language?: string | null,
+): string => chapterLabel(n, style, language)
 
 const MONTHS = [
   'Jan',

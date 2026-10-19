@@ -67,11 +67,16 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
   const first = ctx.bundle.pages[0]
   // Locked chapters never put a page URL in the metadata, entitled viewer or not.
   const free = readable && lockOf(ctx.bundle.chapter, now) === 'none'
+  // Which languages this *number* exists in, for `hreflang`. Cached per request, and the
+  // page below asks for the same thing, so this is one query for both.
+  const languages = await readerLanguages(ctx.series.id, ctx.bundle.chapter.number)
   return chapterMetadata({
     series: ctx.series,
     bundle: ctx.bundle,
     firstPageUrl: free && first ? storageUrl(first.key) : null,
     coverUrl: ctx.series.coverKey ? storageUrl(ctx.series.coverKey) : null,
+    language: ctx.language,
+    languages: languages.filter((l) => l.hasThisNumber).map((l) => l.language),
   })
 }
 
@@ -96,7 +101,7 @@ export default async function ChapterPage({ params, searchParams }: PageProps) {
     const byNumber = new Map(links.map((l) => [l.number, l]))
     const prev = bundle.prev ? (byNumber.get(bundle.prev.number) ?? null) : null
     const next = bundle.next ? (byNumber.get(bundle.next.number) ?? null) : null
-    const label = chapterLabel(bundle.chapter.number)
+    const label = chapterLabel(bundle.chapter.number, language)
     const returnTo = encodeURIComponent(chapterHref(series.slug, bundle.chapter.number, language))
     const coverUrl = series.coverKey ? storageUrl(series.coverKey) : null
     return (
@@ -106,7 +111,9 @@ export default async function ChapterPage({ params, searchParams }: PageProps) {
         {/* A paywall gate is not a read of the chapter, but it is still interest in the
             series, so it counts as a series-page view (chapter_id 0). */}
         <ViewBeacon seriesId={series.id} />
-        <ChapterJsonLd data={chapterJsonLd({ series, bundle, firstPageUrl: null, coverUrl })} />
+        <ChapterJsonLd
+          data={chapterJsonLd({ series, bundle, firstPageUrl: null, coverUrl, language })}
+        />
         <LockedGate
           seriesTitle={series.title}
           seriesHref={seriesHref(series.slug)}
@@ -171,7 +178,13 @@ export default async function ChapterPage({ params, searchParams }: PageProps) {
       {/* docs/02 "Views and ranking": reported by the browser after a moment on the page. */}
       <ViewBeacon seriesId={series.id} chapterId={bundle.chapter.id} />
       <ChapterJsonLd
-        data={chapterJsonLd({ series, bundle, firstPageUrl: first?.url ?? null, coverUrl })}
+        data={chapterJsonLd({
+          series,
+          bundle,
+          firstPageUrl: first?.url ?? null,
+          coverUrl,
+          language,
+        })}
       />
       {/* docs/12 §3: H1, breadcrumb, prev/next anchor text and a one-line summary are in the HTML for crawlers. */}
       <div className="sr-only">

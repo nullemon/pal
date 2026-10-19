@@ -1,4 +1,5 @@
 import { formatChapterNumber } from '@palscans/core'
+import { DEFAULT_CHAPTER_LANGUAGE } from '@palscans/core/languages'
 import { configMirror } from '../config/mirror'
 import { getEnv } from '../env'
 
@@ -43,8 +44,14 @@ export const storageSrc = (key: string | null | undefined): string | null => {
 }
 
 export const seriesPath = (slug: string): string => `/series/${slug}`
-export const chapterPath = (slug: string, n: number): string =>
-  `/series/${slug}/chapter-${formatChapterNumber(n)}`
+/**
+ * English carries no parameter, so every URL indexed before migration 9044 is byte-for-byte
+ * what it was. A translation is its own URL — which is the whole reason it can be indexed.
+ */
+export const chapterPath = (slug: string, n: number, language?: string | null): string => {
+  const base = `/series/${slug}/chapter-${formatChapterNumber(n)}`
+  return !language || language === DEFAULT_CHAPTER_LANGUAGE ? base : `${base}?lang=${language}`
+}
 export const genrePath = (slug: string): string => `/genres/${slug}`
 export const announcementPath = (slug: string): string => `/announcements/${slug}`
 

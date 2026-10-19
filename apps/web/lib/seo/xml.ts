@@ -23,10 +23,26 @@ export interface SitemapImage {
   title?: string
 }
 
+/** One `hreflang` pairing: a language and the URL that serves it. */
+export interface SitemapAlternate {
+  hreflang: string
+  href: string
+}
+
 export interface SitemapUrl {
   loc: string
   lastmod?: Date | string | null
   images?: SitemapImage[]
+  /**
+   * The other languages of this page, including itself.
+   *
+   * Google wants the set to be reciprocal — every URL in it listing every URL in it, this
+   * one included — and treats a one-way claim as unverified and drops it. Listing them in
+   * the sitemap is the cheaper half of doing that: the page's own `<head>` carries the same
+   * set, and between them a translation gets indexed as a translation rather than as a
+   * duplicate of the English page.
+   */
+  alternates?: SitemapAlternate[]
 }
 
 /** Protocol limits (docs/12 §5). */
@@ -35,9 +51,19 @@ export const SITEMAP_MAX_BYTES = 50 * 1024 * 1024
 
 export function urlsetXml(urls: readonly SitemapUrl[]): string {
   const hasImages = urls.some((u) => u.images?.length)
-  const ns = hasImages ? ' xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"' : ''
+  const hasAlternates = urls.some((u) => u.alternates?.length)
+  // Namespaces only when something uses them: these files are gzipped and counted against a
+  // 50 MB limit, and two unused declarations on every sitemap is bytes for nothing.
+  const ns =
+    (hasImages ? ' xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"' : '') +
+    (hasAlternates ? ' xmlns:xhtml="http://www.w3.org/1999/xhtml"' : '')
   const items = urls.map((u) => {
     const lastmod = isoDate(u.lastmod)
+    const alternates = (u.alternates ?? [])
+      .map(
+        (a) => `<xhtml:link rel="alternate" hreflang="${esc(a.hreflang)}" href="${esc(a.href)}"/>`,
+      )
+      .join('')
     const images = (u.images ?? [])
       .map(
         (img) =>
@@ -46,7 +72,7 @@ export function urlsetXml(urls: readonly SitemapUrl[]): string {
           }</image:image>`,
       )
       .join('')
-    return `<url><loc>${esc(u.loc)}</loc>${lastmod ? `<lastmod>${lastmod}</lastmod>` : ''}${images}</url>`
+    return `<url><loc>${esc(u.loc)}</loc>${lastmod ? `<lastmod>${lastmod}</lastmod>` : ''}${alternates}${images}</url>`
   })
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"${ns}>\n${items.join('\n')}\n</urlset>\n`
 }

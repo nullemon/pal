@@ -33,7 +33,8 @@ const VIRTUAL_ABOVE = 200
 const SSR_ROWS = 60
 const OVERSCAN = 12
 
-const chapterLabel = (n: number, style: ChapterLabelStyle) => formatChapterLabel(n, style)
+const chapterLabel = (n: number, style: ChapterLabelStyle, language: string) =>
+  formatChapterLabel(n, style, language)
 const longLabel = (n: number) =>
   fmt(messages.reader.chapterSelect, { n: String(Number.parseFloat(n.toFixed(3))) })
 
@@ -326,7 +327,7 @@ export function ChapterTable({
                     {isRead ? (
                       <Check size={14} aria-label={messages.series.read} className="shrink-0" />
                     ) : null}
-                    {chapterLabel(c.number, chapterStyle)}
+                    {chapterLabel(c.number, chapterStyle, language)}
                   </span>
                   {/* Beside the number: how long this chapter stays Premium-only. Ticks every
                       second while it is live (see FINE_TICK_WITHIN_MS). */}
