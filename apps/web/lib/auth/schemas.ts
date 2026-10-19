@@ -46,6 +46,15 @@ export const registerSchema = z.object({
   turnstile: z.string().max(4096).optional(),
   /** docs/17 §C: required only while `settings.site.registration` is `invite`. */
   invite: z.string().trim().max(32).optional(),
+  /**
+   * Where this visit came from, carried from the browser's own session (docs/13).
+   *
+   * The raw referrer is *not* stored: the server buckets it into a source and keeps that.
+   * A referrer URL can carry a search query, which would turn one marketing number into a
+   * record of what somebody typed into Google before they signed up.
+   */
+  source: z.string().max(2048).optional(),
+  ref: z.string().max(64).optional(),
 })
 
 export const loginSchema = z.object({

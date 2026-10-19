@@ -15,6 +15,7 @@ import {
   KeyRound,
   LayoutTemplate,
   Library,
+  Link2 as LinkIcon,
   ListChecks,
   Megaphone,
   MessageSquare,
@@ -36,6 +37,7 @@ import type { ComponentType } from 'react'
 import { type AdminIcon, type AdminNavGroup, breadcrumbFor, isNavActive } from '../nav-shared'
 
 const icons: Record<AdminIcon, ComponentType<{ size?: number; className?: string }>> = {
+  link: LinkIcon,
   gauge: Gauge,
   'chart-line': ChartLine,
   bell: Bell,

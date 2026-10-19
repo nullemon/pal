@@ -6,6 +6,7 @@ import { CustomCode, CustomFooterCode } from '@/components/shell/CustomCode'
 import { Footer } from '@/components/shell/Footer'
 import { Header } from '@/components/shell/Header'
 import { PreviewBar } from '@/components/shell/PreviewBar'
+import { TrafficBeacon } from '@/components/views/TrafficBeacon'
 import { SiteCopyProvider } from '@/lib/copy/SiteCopyProvider'
 
 /**
@@ -36,6 +37,9 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
         <CustomFooterCode />
         {/* Renders nothing at all unless this request is a staff draft preview (docs/15). */}
         <PreviewBar />
+        {/* One request per visit, counting where it came from (docs/13). Here rather than
+            on the chapter page: a shared link lands wherever it was pointed. */}
+        <TrafficBeacon />
       </ToastProvider>
     </SiteCopyProvider>
   )

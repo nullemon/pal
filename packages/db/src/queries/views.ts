@@ -145,3 +145,61 @@ export const listViewPartitions = async (db: Db): Promise<string[]> => {
   )
   return rows.map((r) => r.name)
 }
+
+export interface TrafficHitRow {
+  bucket: string
+  source: string
+  campaign: string
+  hits: number
+}
+
+/**
+ * Add a batch of traffic counts (migration 9051, docs/13).
+ *
+ * One statement for the batch, and `hits + excluded.hits` rather than a read and a write:
+ * several app processes count the same day's Discord traffic at the same time, and anything
+ * that reads first loses counts whenever two of them interleave.
+ */
+export const recordTrafficHits = async (
+  db: Db,
+  rows: readonly TrafficHitRow[],
+): Promise<number> => {
+  if (rows.length === 0) return 0
+  const values = sql.join(
+    rows.map(
+      (r) => sql`(${r.bucket}::date, ${r.source}::text, ${r.campaign}::text, ${r.hits}::integer)`,
+    ),
+    sql`, `,
+  )
+  const out = await executeRows<{ ok: number }>(
+    db,
+    sql`
+      insert into traffic_daily (bucket, source, campaign, hits)
+      select v.bucket, v.source, v.campaign, v.hits from (values ${values}) as v(bucket, source, campaign, hits)
+      on conflict (bucket, source, campaign)
+      do update set hits = traffic_daily.hits + excluded.hits
+      returning 1 as ok
+    `,
+  )
+  return out.length
+}
+
+export interface TrafficRow extends Record<string, unknown> {
+  source: string
+  campaign: string
+  hits: number
+}
+
+/** Traffic by source over the last `days` days, busiest first (Admin → Analytics). */
+export const trafficBySource = async (db: Db, days: number): Promise<TrafficRow[]> =>
+  executeRows<TrafficRow>(
+    db,
+    sql`
+      select source, campaign, sum(hits)::int as hits
+      from traffic_daily
+      where bucket >= (current_date - ${days}::int)
+      group by source, campaign
+      order by hits desc, source asc
+      limit 100
+    `,
+  )

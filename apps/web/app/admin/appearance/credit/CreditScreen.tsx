@@ -5,7 +5,7 @@ import { messages } from '@palscans/core/messages'
 import { adminMessages } from '@palscans/core/messages/admin'
 import { Button, useToast } from '@palscans/ui'
 import { Trash2, Upload } from 'lucide-react'
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { postJson, putJson } from '@/components/admin/client/api'
 import { Toggle } from '@/components/admin/client/controls'
 import { Field, Hint, inputClass, Panel, PanelHeader, selectClass } from '@/components/admin/ui'
@@ -45,9 +45,28 @@ const uploadAsset = async (file: File, kind: 'overlay' | 'background'): Promise<
 export function CreditScreen({ initial }: { initial: CreditSettings }) {
   const { toast } = useToast()
   const [doc, setDoc] = useState<CreditSettings>(initial)
+  /** The live settings, readable from a callback that started before the last keystroke. */
+  const docRef = useRef(doc)
+  docRef.current = doc
   const [busy, setBusy] = useState(false)
 
   const patch = (p: Partial<CreditSettings>) => setDoc((d) => ({ ...d, ...p }))
+
+  /**
+   * Whether a chapter would get a card right now, and if not, which missing piece stops it.
+   *
+   * Mirrors `resolveCredit` in @palscans/core/credit — the order matters, because the first
+   * failing condition is the one to fix.
+   */
+  const status = !doc.enabled
+    ? { ok: false, message: m.statusOff }
+    : doc.overlays.length === 0
+      ? { ok: false, message: m.statusNoOverlay }
+      : !doc.overlays.some((o) => o.id === doc.defaultOverlayId)
+        ? { ok: false, message: m.statusNoDefault }
+        : doc.roles.every((r) => r.handle.trim() === '')
+          ? { ok: false, message: m.statusNoHandles }
+          : { ok: true, message: doc.allChapters ? m.statusReadyAll : m.statusReadyNew }
 
   const save = useCallback(async () => {
     setBusy(true)
@@ -61,25 +80,47 @@ export function CreditScreen({ initial }: { initial: CreditSettings }) {
     toast({ title: m.saved, tone: 'ok' })
   }, [doc, toast])
 
+  /**
+   * Upload the card and save it in the same step.
+   *
+   * It used to stage the overlay in the form and wait for Save, which is how a site ran for
+   * a day with the feature switched on, every role filled in, and `overlays: []` in the
+   * database — inserting no card into anything and saying nothing about why. The toast said
+   * "Overlay uploaded", and it was: into storage, where nothing could reach it.
+   *
+   * Saving here also means no orphan. A file uploaded and then abandoned at Save is bytes in
+   * the bucket that nothing will ever reference or clean up.
+   */
   const addOverlay = useCallback(
     async (file: File) => {
       setBusy(true)
       const key = await uploadAsset(file, 'overlay')
-      setBusy(false)
       if (!key) {
+        setBusy(false)
         toast({ title: m.uploadFailed, tone: 'danger' })
         return
       }
       const id = `o${Date.now().toString(36)}`
-      // The functional form, not `patch`: an upload takes seconds, and reading `doc` from
-      // the closure would write back the settings as they were when the file was chosen.
-      setDoc((d) => ({
-        ...d,
-        overlays: [...d.overlays, { id, name: file.name.replace(/\.[^.]+$/, ''), key }],
-        // The first overlay uploaded becomes the default, so the feature is usable without
-        // a second trip to a dropdown nobody has reason to look at yet.
-        defaultOverlayId: d.defaultOverlayId || id,
-      }))
+      // From the ref, not from `doc` in this closure and not from inside a state updater:
+      // the upload took seconds, the closure's copy predates anything typed since, and
+      // React does not promise to run an updater before the next line of this function.
+      const next: CreditSettings = {
+        ...docRef.current,
+        overlays: [
+          ...docRef.current.overlays,
+          { id, name: file.name.replace(/\.[^.]+$/, ''), key },
+        ],
+        // The first card uploaded becomes the default, so the feature works without a
+        // second trip to a dropdown nobody has reason to open yet.
+        defaultOverlayId: docRef.current.defaultOverlayId || id,
+      }
+      const res = await putJson<{ settings: CreditSettings }>('/api/admin/credit', next)
+      setBusy(false)
+      if (!res.ok) {
+        toast({ title: res.message || messages.errors.generic, tone: 'danger' })
+        return
+      }
+      setDoc(res.data.settings)
       toast({ title: m.uploaded, tone: 'ok' })
     },
     [toast],
@@ -124,6 +165,19 @@ export function CreditScreen({ initial }: { initial: CreditSettings }) {
                 : ''}
           </Hint>
         ) : null}
+        {/*
+          What the reader will actually get, in one line.
+          Every condition below is one the renderer fails *silently* on — it returns no card
+          and the chapter simply has no credit page, which is the right way to fail and a
+          terrible way to debug. The panel says it instead.
+        */}
+        <div
+          className={`rounded-md border px-3 py-2 text-[12.5px] ${
+            status.ok ? 'border-ok/40 text-ok' : 'border-warn/40 text-warn'
+          }`}
+        >
+          {status.message}
+        </div>
         {doc.enabled ? (
           <Button className="w-fit" disabled={busy} onClick={() => void save()} size="sm">
             {busy ? m.saving : m.save}

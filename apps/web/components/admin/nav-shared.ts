@@ -35,6 +35,7 @@ export type AdminIcon =
   | 'tags'
   | 'key'
   | 'braces'
+  | 'link'
 
 export interface AdminNavItem {
   label: string
@@ -272,6 +273,14 @@ export const adminNav: readonly AdminNavGroup[] = [
         permission: 'settings.write',
       },
       { label: m.seo, href: '/admin/seo', icon: 'search', permission: 'settings.write' },
+      // Short links (docs/13). The same table the SEO screen's redirects panel writes,
+      // under the name an operator thinks in: "where does /discord point today".
+      {
+        label: adminMessages.links.navLabel,
+        href: '/admin/links',
+        icon: 'link',
+        permission: 'settings.write',
+      },
       // E · Legacy site importer (docs/17 §E).
       {
         label: m.importer,

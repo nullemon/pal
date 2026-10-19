@@ -5,6 +5,7 @@ import {
   parseAnalyticsWindow,
   topChaptersByViews,
   topSeriesByViews,
+  trafficBySource,
   viewsByDay,
   viewTotals,
 } from '@palscans/db'
@@ -12,6 +13,7 @@ import {
   TopChaptersPanel,
   TopSeriesPanel,
   TotalsRow,
+  TrafficSourcesPanel,
   ViewsOverTime,
   WindowFilter,
 } from '@/components/admin/analytics/panels'
@@ -41,11 +43,13 @@ export default async function AdminAnalyticsPage({
   const now = new Date()
   const range = analyticsWindow(days, now)
   const db = await getDb()
-  const [points, totals, series, chapters] = await Promise.all([
+  const [points, totals, series, chapters, traffic] = await Promise.all([
     viewsByDay(db, range),
     viewTotals(db, now),
     topSeriesByViews(db, range, 10),
     topChaptersByViews(db, range, 10),
+    // Over the same window as everything else on the screen, so the header describes it too.
+    trafficBySource(db, days),
   ])
   const m = adminMessages.admin.analytics
   return (
@@ -54,6 +58,7 @@ export default async function AdminAnalyticsPage({
       <TotalsRow totals={totals} />
       <WindowFilter days={days} hrefFor={(n) => `/admin/analytics?window=${n}`} />
       <ViewsOverTime points={points} range={range} />
+      <TrafficSourcesPanel rows={traffic} />
       <div className="grid gap-3.5 xl:grid-cols-2">
         <TopSeriesPanel rows={series} />
         <TopChaptersPanel rows={chapters} />

@@ -1461,6 +1461,15 @@ export const adminMessages = {
     // Analytics (docs/13 "Analytics"): the numbers the view pipeline has been collecting
     // all along, finally rendered. Appended by the analytics screen — nothing above changes.
     analytics: {
+      traffic: {
+        title: 'Where visitors come from',
+        hint: 'Counted per day, by source. No visitor is recorded — these are totals, not a trail.',
+        source: 'Source',
+        campaign: 'Link tag',
+        hits: 'Visits',
+        none: 'Nothing counted yet. Numbers appear as people arrive.',
+        untagged: '—',
+      },
       navLabel: 'Analytics',
       title: 'Analytics',
       subtitle: 'Views across the site, from the daily rollup. Every day is a UTC day.',
@@ -2958,6 +2967,34 @@ export const adminMessages = {
     appliedToSeries: 'Credited on {n} chapters.',
     noGroupsYet: 'No groups yet — add one on the Groups screen first.',
   },
+  links: {
+    navLabel: 'Links',
+    title: 'Short links',
+    subtitle:
+      'Send a short path on the site to anywhere you like. Change where it points whenever you want — the link you shared stays the same.',
+    path: 'Path',
+    pathHint: 'Starts with a slash, e.g. /discord',
+    target: 'Goes to',
+    targetHint: 'A full URL, or another path on this site.',
+    clicks: 'Clicks',
+    add: 'Add link',
+    save: 'Save',
+    saving: 'Saving…',
+    saved: 'Saved.',
+    removed: 'Link removed.',
+    remove: 'Remove',
+    copy: 'Copy',
+    copied: 'Copied.',
+    none: 'No links yet. The first one most sites want is /discord.',
+    permanent: 'Permanent (301)',
+    temporary: 'Temporary (302)',
+    kind: 'Kind',
+    kindHint:
+      'Temporary is the safer default: a permanent redirect is cached in browsers for good, so changing it later does not reach anyone who already followed it.',
+    invalid: 'Check the path and the destination.',
+    tagHint:
+      'Add ?ref= to a link you share and Analytics will show which one brought people in — e.g. /discord?ref=x-bio.',
+  },
   creditPage: {
     navLabel: 'Credit page',
     title: 'Credit page',
@@ -2970,6 +3007,13 @@ export const adminMessages = {
     allChaptersHint:
       'Adds the card to everything already published as well. Page counts change for chapters readers have already read — a 20-page chapter becomes 21.',
     allChaptersOn: 'Showing on every chapter, including everything published before.',
+    statusOff: 'Off — no chapter gets a credit page.',
+    statusNoOverlay:
+      'No card yet. Upload one below and it is saved straight away — until then no chapter gets a credit page.',
+    statusNoDefault: 'Pick which card to use below — until then no chapter gets a credit page.',
+    statusNoHandles: 'No names filled in, so the card would be blank. Add at least one.',
+    statusReadyNew: 'Ready. Chapters added from now on get a credit page as their second page.',
+    statusReadyAll: 'Ready. Every chapter gets a credit page as its second page.',
     overlays: 'Overlays',
     overlaysHint:
       'The card the text is drawn into. Upload as many as you like — the default one is the card every chapter gets.',

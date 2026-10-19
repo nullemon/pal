@@ -1,6 +1,7 @@
 import { chapterLabel, compactNumber } from '@palscans/core'
 import { fmt } from '@palscans/core/messages'
 import { adminMessages } from '@palscans/core/messages/admin'
+import { TRAFFIC_SOURCE_LABELS, type TrafficSource } from '@palscans/core/traffic'
 import type { BucketRange, TopChapterRow, TopSeriesRow, ViewTotals } from '@palscans/db'
 import { ANALYTICS_WINDOWS } from '@palscans/db'
 import { cn } from '@palscans/ui'
@@ -284,6 +285,65 @@ export function TopChaptersPanel({ rows }: { rows: TopChapterRow[] }) {
               </Td>
               <Td align="right" className="font-semibold">
                 <Num>{groupDigits(row.views)}</Num>
+              </Td>
+            </tr>
+          ))}
+        </tbody>
+      </Table>
+    </Panel>
+  )
+}
+
+export interface TrafficSourceRow {
+  source: string
+  campaign: string
+  hits: number
+}
+
+/**
+ * Where the visits came from (docs/13).
+ *
+ * Totals per source, and the `?ref=` tag beside each one so two links posted in the same
+ * place can still be told apart. There is no visitor column here and there is none in the
+ * table behind it: the question "which link is working" is a property of the traffic, and
+ * answering it does not require keeping a trail of anybody.
+ */
+export function TrafficSourcesPanel({ rows }: { rows: TrafficSourceRow[] }) {
+  const t = m.traffic
+  const total = rows.reduce((sum, r) => sum + r.hits, 0)
+  const max = rows[0]?.hits ?? 0
+  return (
+    <Panel className="min-w-0 p-0 md:px-0">
+      <div className="px-4 pt-4 md:px-5">
+        <PanelHeader title={t.title} hint={t.hint} />
+      </div>
+      <Table className="rounded-none border-0 border-t">
+        <thead>
+          <tr>
+            <Th>{t.source}</Th>
+            <Th>{t.campaign}</Th>
+            <Th className="w-[26%]" />
+            <Th align="right">{t.hits}</Th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.length === 0 ? <EmptyRow colSpan={4}>{t.none}</EmptyRow> : null}
+          {rows.map((row) => (
+            <tr key={`${row.source}|${row.campaign}`}>
+              <Td className="font-semibold">
+                {TRAFFIC_SOURCE_LABELS[row.source as TrafficSource] ?? row.source}
+              </Td>
+              <Td className="text-fg-muted">{row.campaign || t.untagged}</Td>
+              <Td>
+                <Bar value={row.hits} max={max} />
+              </Td>
+              <Td align="right" className="tabular-nums">
+                {compactNumber(row.hits)}
+                {total > 0 ? (
+                  <span className="ml-1.5 text-[11px] text-fg-subtle">
+                    {Math.round((row.hits / total) * 100)}%
+                  </span>
+                ) : null}
               </Td>
             </tr>
           ))}

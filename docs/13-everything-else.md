@@ -159,3 +159,58 @@ whether it ships in v1 or later. Items already covered in another doc point ther
   bar, Ads, Analytics, Email templates, Webhooks, Legal pages, Trash, Bans.
 - `10-roadmap.md`: v1 items above fold into Phases 2–5; none of them changes the order of
   work or the twelve-week shape, because most are small once the spine exists.
+
+## Traffic sources and short links
+
+Two questions the team asks constantly — *which link is bringing people in*, and *where
+does /discord point today* — answered without breaking the site's own rule that it keeps no
+logs.
+
+### Where visits come from
+
+`traffic_daily` (migration 9051) is a counter: a row is a day, a source and a count. There
+is no visitor column, no address, no path and no time finer than the day, so there is
+nothing in it to reconstruct a person's browsing from even with the database open. The
+question "are these readers coming from the post on X?" is a property of the traffic, not of
+any reader in it, and this is the shape that answers it without keeping anything else.
+
+`TrafficBeacon` (in the site layout, not the chapter page — a shared link lands wherever it
+was pointed) reports once per browser session: the referrer the browser already revealed on
+the navigation, and the `?ref=` tag from the URL. `classifyTraffic` buckets the referrer
+into a source and the two are counted side by side, because they answer different questions
+— Discord is *where* the click came from, `x-bio` is *which link* was clicked.
+
+A referral from the site itself is classified and then dropped. Counting a reader moving
+from chapter 1 to chapter 2 would bury every real source under the site, which is the
+failure where the panel looks fine and says nothing.
+
+Counts are buffered in process and flushed as one upsert every ten seconds, for the reason
+views are: a write per visit to a handful of hot rows is contention bought for nothing. A
+failed flush drops the counts rather than retrying — these are rounded numbers on an admin
+panel, and a growing retry queue on a 2 GB box is the worse failure. The buffer is capped,
+because `?ref=` is attacker-supplied: past the cap the tag is dropped and the visit still
+counts under its source.
+
+`users.signup_source` is the one per-account fact: where a registration came from, written
+once and never updated. The raw referrer never reaches the database — it can carry the
+search query that led here, and "Google" is the fact worth keeping, not the words somebody
+typed.
+
+### Short links
+
+**Admin → Links** writes the same `redirects` table the SEO screen's redirects panel does,
+under the name an operator actually thinks in. The SEO panel is for the SEO job — a moved
+page, a dead URL; this one is for the marketing job: `/discord` in a bio, `/x` on a credit
+page. One mechanism, two doors, because "where does /discord point today" behind a screen
+called SEO is why nobody found it.
+
+A link is a path on the site pointing anywhere, changed whenever the operator likes — the
+link that was shared stays the same. Default status is **302**: a 301 is cached in browsers
+more or less permanently, so changing it later never reaches anyone who already followed it,
+and these are not URLs anybody is trying to rank. Each row counts its clicks, and adding
+`?ref=` to a shared link lets Analytics tell two postings of the same link apart.
+
+Redirects resolve in the proxy, before any page renders, and a saved link is live within a
+minute (the save purges the proxy snapshot; the snapshot's own cache is 60 seconds). No
+deploy is involved in adding or changing one.
+

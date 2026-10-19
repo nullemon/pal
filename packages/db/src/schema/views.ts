@@ -1,4 +1,4 @@
-import { bigint, date, index, integer, pgTable, primaryKey } from 'drizzle-orm/pg-core'
+import { bigint, date, index, integer, pgTable, primaryKey, text } from 'drizzle-orm/pg-core'
 import { ref } from './_shared.js'
 import { series } from './catalog.js'
 import { chapters } from './chapters.js'
@@ -63,5 +63,28 @@ export const chapterStatsDaily = pgTable(
   (t) => [
     primaryKey({ columns: [t.chapterId, t.bucket] }),
     index('chapter_stats_daily_bucket_idx').on(t.bucket),
+  ],
+)
+
+/**
+ * Where visits came from, per day (migration 9051, docs/13).
+ *
+ * A row is a day, a source and a count — no visitor, nothing to join to a person. The site
+ * keeps no logs, and this is what lets it stay that way and still answer which link is
+ * working: "Discord, 412 today" is a property of the traffic, not of any reader in it.
+ */
+export const trafficDaily = pgTable(
+  'traffic_daily',
+  {
+    bucket: date('bucket', { mode: 'string' }).notNull(),
+    /** A `TrafficSource` from `@palscans/core/traffic`. */
+    source: text('source').notNull(),
+    /** The `?ref=` tag on the link, or '' — which link, as opposed to which site. */
+    campaign: text('campaign').notNull().default(''),
+    hits: integer('hits').notNull().default(0),
+  },
+  (t) => [
+    primaryKey({ columns: [t.bucket, t.source, t.campaign] }),
+    index('traffic_daily_bucket_idx').on(t.bucket),
   ],
 )

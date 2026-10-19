@@ -4,6 +4,7 @@ import { messages } from '@palscans/core/messages'
 import { Button } from '@palscans/ui'
 import { useRouter } from 'next/navigation'
 import { type FormEvent, useState } from 'react'
+import { TRAFFIC_MARK } from '@/components/views/TrafficBeacon'
 import { api, Field, Notice, PasswordField } from './fields'
 
 const USERNAME_RE = /^[a-z0-9](?:[a-z0-9_]{1,22})[a-z0-9]$/i
@@ -36,12 +37,29 @@ export function RegisterForm({
     if (Object.keys(next).length) return
     setBusy(true)
     setError(null)
+    /**
+     * Where this visit started, which the beacon put in `sessionStorage` on the first page
+     * of it (docs/13). Read here rather than tracked server-side: it lives in the visitor's
+     * own browser until they choose to create an account, and nothing about them is stored
+     * before that. The server buckets it and keeps the bucket, never the referrer itself.
+     */
+    const firstTouch = (() => {
+      try {
+        const raw = sessionStorage.getItem(TRAFFIC_MARK)
+        if (!raw) return null
+        const parsed = JSON.parse(raw) as { referrer?: string; ref?: string }
+        return { source: parsed.referrer || undefined, ref: parsed.ref || undefined }
+      } catch {
+        return null
+      }
+    })()
     const res = await api<{ return: string }>('/api/auth/register', {
       email,
       password,
       username: username || undefined,
       return: returnTo,
       invite: invite.trim() || undefined,
+      ...(firstTouch ?? {}),
     })
     setBusy(false)
     if (!res.ok) {

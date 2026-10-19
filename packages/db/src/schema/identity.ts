@@ -39,6 +39,14 @@ export const users = pgTable(
      */
     totpLastStep: integer('totp_last_step'),
     totpEnabledAt: timestamptz('totp_enabled_at'),
+    /**
+     * Where this account came from, written once at registration (migration 9051).
+     *
+     * One attribute, not a history: it answers "are these sign-ups from the X link?" and
+     * then never changes. Nothing reads it per request and nothing accumulates after it.
+     */
+    signupSource: text('signup_source'),
+    signupCampaign: text('signup_campaign'),
     usernameChangedAt: timestamptz('username_changed_at'), // docs/13: once per 30 days
     deletionRequestedAt: timestamptz('deletion_requested_at'), // docs/13: 14-day grace
     createdAt: createdAt(),

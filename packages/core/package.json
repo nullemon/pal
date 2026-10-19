@@ -30,6 +30,10 @@
       "types": "./dist/env.d.ts",
       "default": "./dist/env.js"
     },
+    "./traffic": {
+      "types": "./dist/traffic.d.ts",
+      "default": "./dist/traffic.js"
+    },
     "./storage": {
       "types": "./dist/storage/index.d.ts",
       "default": "./dist/storage/index.js"

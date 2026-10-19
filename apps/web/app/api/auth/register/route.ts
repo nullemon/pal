@@ -20,6 +20,7 @@ import { hashPassword } from '@/lib/auth/password'
 import { registerSchema } from '@/lib/auth/schemas'
 import { usernameAvailability } from '@/lib/auth/users'
 import { getMailer } from '@/lib/email'
+import { signupAttribution } from '@/lib/views/traffic'
 
 /**
  * POST /api/auth/register {email, password, username?, return?}
@@ -91,6 +92,9 @@ export async function POST(request: Request): Promise<Response> {
       passwordHash,
       username: username ?? null,
       lastLoginMethod: 'password',
+      // Bucketed here, never stored raw: a referrer URL can carry the search query that
+      // led here, and "signed up from Google" is the fact worth keeping, not the words.
+      ...signupAttribution(parsed.data.source, parsed.data.ref),
       // Nothing can ever verify this address while no provider exists; an account that can
       // never leave the unverified state is worse than one that was never checked.
       emailVerifiedAt: canVerifyByEmail ? null : new Date(),
