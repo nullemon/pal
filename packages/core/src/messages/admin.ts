@@ -3016,8 +3016,9 @@ export const adminMessages = {
     statusReadyAll: 'Ready. Every chapter gets a credit page as its second page.',
     overlays: 'Overlays',
     overlaysHint:
-      'The card the text is drawn into. Upload as many as you like — the default one is the card every chapter gets.',
+      'The card the text is drawn into. One ships with the site and is used unless you upload your own; an upload is saved as soon as it finishes.',
     addOverlay: 'Upload an overlay',
+    builtin: 'Ships with the site',
     defaultOverlay: 'Default overlay',
     font: 'Font',
     fontHint: 'The face the names and the note are set in.',

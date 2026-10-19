@@ -70,6 +70,27 @@ export const DEFAULT_CREDIT_ROLES: ReadonlyArray<{ label: string; handle: string
   { label: 'QUALITY CHECK', handle: 'LaPal__' },
 ]
 
+/**
+ * Cards that ship with the site, so the feature works the moment it is switched on.
+ *
+ * Overlays are uploads, and for a while they were *only* uploads — a new design should not
+ * need a deploy. The cost of that showed up immediately: a fresh install has no card, so
+ * turning the feature on inserts nothing into anything and says nothing about why. One
+ * shipped card is the difference between a switch that works and a switch that looks broken.
+ *
+ * A `builtin:` key is read from the application's own files rather than from storage (see
+ * `apps/web/lib/credit/render.ts`), which is what lets it exist before anyone has uploaded
+ * anything. An operator can still upload their own and pick it instead.
+ */
+export const BUILTIN_CREDIT_OVERLAY_PREFIX = 'builtin:'
+
+export const BUILTIN_CREDIT_OVERLAYS: ReadonlyArray<CreditOverlay> = [
+  { id: 'sakura-ink', name: 'Sakura Ink (built in)', key: 'builtin:sakura-ink' },
+]
+
+export const isBuiltinOverlay = (key: string): boolean =>
+  key.startsWith(BUILTIN_CREDIT_OVERLAY_PREFIX)
+
 export const creditSettingsSchema = z.object({
   /**
    * Off by default, and the renderer refuses while it is off.
@@ -100,9 +121,20 @@ export const creditSettingsSchema = z.object({
    * was written to the chapters themselves — the card is composed at read time.
    */
   allChapters: z.boolean().default(false),
-  overlays: z.array(creditOverlaySchema).max(12).default([]),
+  /**
+   * The shipped card is in the default, so an operator who switches the feature on and
+   * fills in the names gets a credit page without uploading anything.
+   */
+  overlays: z
+    .array(creditOverlaySchema)
+    .max(12)
+    .default([...BUILTIN_CREDIT_OVERLAYS]),
   /** Which overlay a series uses when it has not chosen one. */
-  defaultOverlayId: z.string().trim().max(40).default(''),
+  defaultOverlayId: z
+    .string()
+    .trim()
+    .max(40)
+    .default(BUILTIN_CREDIT_OVERLAYS[0]?.id ?? ''),
   /** A background for series that have none, so the page is never bare. */
   defaultBackgroundKey: z.string().trim().max(300).default(''),
   roles: z

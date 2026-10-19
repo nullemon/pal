@@ -1,5 +1,11 @@
 import 'server-only'
-import type { ResolvedCredit } from '@palscans/core/credit'
+import { readFile } from 'node:fs/promises'
+import { join } from 'node:path'
+import {
+  BUILTIN_CREDIT_OVERLAY_PREFIX,
+  isBuiltinOverlay,
+  type ResolvedCredit,
+} from '@palscans/core/credit'
 import type { Storage } from '@palscans/core/storage'
 import sharp from 'sharp'
 import {
@@ -130,6 +136,28 @@ const textLayer = (credit: ResolvedCredit, width: number, height: number): Buffe
 }
 
 /**
+ * The card's bytes, from the application's own files or from storage.
+ *
+ * A `builtin:` key is a card that ships with the site, read from `public/credit`. It exists
+ * so that switching the feature on produces a credit page rather than nothing: an install
+ * where nobody has uploaded artwork yet is the normal state on day one, and the renderer
+ * refusing to draw is correct but indistinguishable from the feature being broken.
+ *
+ * The name is sanitised rather than trusted. It arrives from a settings row, which is
+ * operator-written JSON, and a key of `builtin:../../.env` reading a file off the disk is
+ * not a trade worth making for a convenience.
+ */
+const loadOverlay = async (key: string, storage: Storage): Promise<Uint8Array | null> => {
+  if (!isBuiltinOverlay(key)) {
+    const bytes = await storage.get(key).catch(() => null)
+    return bytes ? new Uint8Array(bytes) : null
+  }
+  const name = key.slice(BUILTIN_CREDIT_OVERLAY_PREFIX.length).replace(/[^a-z0-9-]/g, '')
+  if (!name) return null
+  return readFile(join(process.cwd(), 'public', 'credit', `${name}.webp`)).catch(() => null)
+}
+
+/**
  * Render the card. Returns null when a piece it cannot do without is missing from storage.
  *
  * Null rather than a half-drawn card: a credit page whose overlay failed to load is text on
@@ -141,7 +169,7 @@ export const renderCreditPage = async (
   storage: Storage,
 ): Promise<Buffer | null> => {
   if (!credit.overlayKey) return null
-  const overlayBytes = await storage.get(credit.overlayKey).catch(() => null)
+  const overlayBytes = await loadOverlay(credit.overlayKey, storage)
   if (!overlayBytes) return null
 
   /**

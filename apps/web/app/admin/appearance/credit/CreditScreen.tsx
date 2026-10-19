@@ -1,6 +1,6 @@
 'use client'
 
-import { type CreditSettings, creditFontSchema } from '@palscans/core/credit'
+import { type CreditSettings, creditFontSchema, isBuiltinOverlay } from '@palscans/core/credit'
 import { messages } from '@palscans/core/messages'
 import { adminMessages } from '@palscans/core/messages/admin'
 import { Button, useToast } from '@palscans/ui'
@@ -205,20 +205,24 @@ export function CreditScreen({ initial }: { initial: CreditSettings }) {
                 value={o.name}
               />
               <span className="truncate text-[12px] text-fg-subtle">{o.key.split('/').pop()}</span>
-              <Button
-                className="text-danger"
-                onClick={() =>
-                  patch({
-                    overlays: doc.overlays.filter((x) => x.id !== o.id),
-                    defaultOverlayId: doc.defaultOverlayId === o.id ? '' : doc.defaultOverlayId,
-                  })
-                }
-                size="sm"
-                variant="ghost"
-              >
-                <Trash2 aria-hidden className="size-3.5" />
-                {m.remove}
-              </Button>
+              {isBuiltinOverlay(o.key) ? (
+                <span className="text-[12px] text-fg-subtle">{m.builtin}</span>
+              ) : (
+                <Button
+                  className="text-danger"
+                  onClick={() =>
+                    patch({
+                      overlays: doc.overlays.filter((x) => x.id !== o.id),
+                      defaultOverlayId: doc.defaultOverlayId === o.id ? '' : doc.defaultOverlayId,
+                    })
+                  }
+                  size="sm"
+                  variant="ghost"
+                >
+                  <Trash2 aria-hidden className="size-3.5" />
+                  {m.remove}
+                </Button>
+              )}
             </div>
           ))}
           <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-md border border-line px-3 py-2 text-[13px] hover:bg-surface-2">

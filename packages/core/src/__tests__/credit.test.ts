@@ -257,3 +257,30 @@ describe('the default roles', () => {
     expect(creditSettingsSchema.parse({ roles: [] }).roles).toEqual([])
   })
 })
+
+/**
+ * A site on its first day.
+ *
+ * The feature was switched on, every name was filled in, and nothing appeared — because
+ * `overlays` was empty and the renderer will not draw a card with no artwork. That refusal
+ * is right; shipping no artwork was not.
+ */
+describe('a fresh install', () => {
+  it('has a card before anyone uploads one', () => {
+    const fresh = creditSettingsSchema.parse({ enabled: true })
+    expect(fresh.overlays.length).toBeGreaterThan(0)
+    expect(fresh.overlays.some((o) => o.id === fresh.defaultOverlayId)).toBe(true)
+    expect(resolveCredit({ settings: fresh })).not.toBeNull()
+  })
+
+  it('keeps an operator who uploaded their own out of it', () => {
+    // An explicit list is a decision; the default only fills a field nobody has set.
+    const mine = creditSettingsSchema.parse({
+      enabled: true,
+      overlays: [{ id: 'mine', name: 'Mine', key: 'credit/overlay/mine.png' }],
+      defaultOverlayId: 'mine',
+    })
+    expect(mine.overlays.map((o) => o.id)).toEqual(['mine'])
+    expect(resolveCredit({ settings: mine })?.overlayKey).toBe('credit/overlay/mine.png')
+  })
+})

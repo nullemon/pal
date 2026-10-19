@@ -266,7 +266,14 @@ feature off leaves every chapter exactly as it was. `/credit/:chapter` renders o
 behind the same `canReadChapter` gate as the pages, and the result is cached at the edge.
 Nothing lands in the bucket, which matters because most chapters here store nothing at all.
 
-The card is one uploaded overlay and the text drawn into it, **including the role names**.
+The card is one overlay and the text drawn into it, **including the role names**.
+
+One card **ships with the site** (`apps/web/public/credit`, keyed `builtin:`), read from the
+application's own files rather than from storage. Without it, switching the feature on did
+nothing at all until somebody uploaded artwork — the renderer declines to draw a card it has
+no artwork for, which is correct and indistinguishable from the feature being broken. An
+upload replaces it and is saved the moment it finishes, rather than waiting for a Save press
+that an operator has no reason to expect.
 The artwork has its own printed on it — and the wrong ones: two of its six rows are
 duplicates and it has no row for quality check. So the renderer paints the printed labels
 out and draws the settings' labels in their place, which is what makes them editable at all.
