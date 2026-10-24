@@ -294,7 +294,13 @@ sets one: the per-series panel was removed at the operator's request, one card f
 being the point. The capability and its columns stay, so re-exposing it is a change to the
 screen rather than to the compositor. The precedence is the whole feature: chapter note beats the default note, series background beats
 the default background, series overlay beats the default overlay, and a *blank* override is
-not an override. `settings.enabledAt` is stamped the moment the feature is switched on and
+not an override. **Work the site did not scanlate gets no card**, whatever the settings say. `series.credit_disabled`
+covers a whole series (Admin → Appearance → Credit page lists them) and `chapters.credit_disabled`
+a single release that came from elsewhere. Both are checked before anything else in
+`resolveCredit`, because this is not a preference the site settings get to outvote: printing
+this team's names on another group's release is worse than printing nothing at all.
+
+`settings.enabledAt` is stamped the moment the feature is switched on and
 chapters created before it get no card — turning this on must not insert a page into an
 archive readers have already read and linked to. **Show on existing chapters too**
 (`allChapters`) is the operator's override for when that is exactly what they want: a group

@@ -130,6 +130,8 @@ export const chapters = pgTable(
      * Null falls back to the site's default note, which is what clearing the box means.
      */
     creditNote: text('credit_note'),
+    /** No credit page on this chapter (migration 9052) — the one-off from elsewhere. */
+    creditDisabled: boolean('credit_disabled').notNull().default(false),
     isPremium: boolean('is_premium').notNull().default(false),
     earlyAccessUntil: timestamptz('early_access_until'), // premium-only window before it goes free
     publishedAt: timestamptz('published_at'),

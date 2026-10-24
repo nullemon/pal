@@ -175,10 +175,17 @@ export interface CreditSources {
   settings: CreditSettings
   /** When this chapter was created. Before `enabledAt` means no card — see that field. */
   chapterCreatedAt?: Date | string | null
-  /** `series.credit_background_key` / `credit_overlay_id`. */
-  series?: { backgroundKey?: string | null; overlayId?: string | null } | null
+  /** `series.credit_background_key` / `credit_overlay_id` / `credit_disabled`. */
+  series?: {
+    backgroundKey?: string | null
+    overlayId?: string | null
+    /** This series is another group's work: no credit page on any chapter of it. */
+    disabled?: boolean | null
+  } | null
   /** `chapters.credit_note` — the per-chapter override. */
   chapterNote?: string | null
+  /** `chapters.credit_disabled` — this one chapter came from elsewhere. */
+  chapterDisabled?: boolean | null
 }
 
 /**
@@ -197,8 +204,17 @@ export const resolveCredit = ({
   series,
   chapterNote,
   chapterCreatedAt,
+  chapterDisabled,
 }: CreditSources): ResolvedCredit | null => {
   if (!settings.enabled) return null
+  /**
+   * Work that is not ours gets no credit page, whatever the site settings say.
+   *
+   * Checked before everything else because it is not a preference: a site that hosts
+   * another group's chapters printing its own team on them is worse than printing nothing,
+   * and no combination of the switches below should be able to override it.
+   */
+  if (series?.disabled === true || chapterDisabled === true) return null
   /**
    * Chapters that predate the switch keep the pages they were published with.
    *

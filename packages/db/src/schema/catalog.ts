@@ -92,6 +92,13 @@ export const series = pgTable(
      */
     creditBackgroundKey: text('credit_background_key'),
     creditOverlayId: text('credit_overlay_id'),
+    /**
+     * No credit page on this series (migration 9052).
+     *
+     * For a series the site hosts but did not scanlate: printing this team's names on
+     * another group's work is worse than printing nothing at all.
+     */
+    creditDisabled: boolean('credit_disabled').notNull().default(false),
     focusKeyword: text('focus_keyword'),
     noindex: boolean('noindex').notNull().default(false),
     canonicalUrl: text('canonical_url'),

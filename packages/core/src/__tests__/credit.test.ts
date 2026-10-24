@@ -284,3 +284,44 @@ describe('a fresh install', () => {
     expect(resolveCredit({ settings: mine })?.overlayKey).toBe('credit/overlay/mine.png')
   })
 })
+
+/**
+ * Work that is not ours.
+ *
+ * A site hosting another group's chapters must not print this team's names on them. That
+ * makes it unlike every other switch here: it is not a preference the site settings can
+ * outvote, which is why it is checked before all of them.
+ */
+describe('turning the credit page off for work we did not do', () => {
+  const on = () => settings({ allChapters: true })
+
+  it('skips every chapter of an excluded series', () => {
+    expect(resolveCredit({ settings: on(), series: { disabled: true } })).toBeNull()
+  })
+
+  it('skips a single chapter that came from elsewhere', () => {
+    expect(resolveCredit({ settings: on(), chapterDisabled: true })).toBeNull()
+  })
+
+  it('cannot be overridden by the site settings', () => {
+    // `allChapters` is the broadest switch there is; it still does not reach these.
+    const everything = settings({ allChapters: true, enabledAt: '' })
+    expect(resolveCredit({ settings: everything, series: { disabled: true } })).toBeNull()
+    expect(
+      resolveCredit({
+        settings: everything,
+        series: { disabled: true },
+        chapterNote: 'a note somebody wrote',
+      }),
+    ).toBeNull()
+  })
+
+  it('leaves everything else alone', () => {
+    expect(resolveCredit({ settings: on(), series: { disabled: false } })).not.toBeNull()
+    expect(resolveCredit({ settings: on(), chapterDisabled: false })).not.toBeNull()
+    // Absent is not excluded: every row predating the column is false, and a site that
+    // silently stopped crediting its own work would be the worse failure.
+    expect(resolveCredit({ settings: on(), series: {} })).not.toBeNull()
+    expect(resolveCredit({ settings: on(), chapterDisabled: null })).not.toBeNull()
+  })
+})

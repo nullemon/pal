@@ -302,6 +302,9 @@ export const adminMessages = {
         saved: 'Chapter updated.',
         taken: 'Another chapter in this series already has that number.',
         creditNote: 'Credit page note',
+        creditOff: 'No credit page on this chapter',
+        creditOffHint:
+          'For a release that came from another group — the card is left out entirely.',
         creditNotePlaceholder: 'Leave empty to use the default note',
         creditNoteHint:
           'Shown in the NOTES box on this chapter’s credit page. Empty uses the site default.',
@@ -3008,6 +3011,15 @@ export const adminMessages = {
       'Adds the card to everything already published as well. Page counts change for chapters readers have already read — a 20-page chapter becomes 21.',
     allChaptersOn: 'Showing on every chapter, including everything published before.',
     statusOff: 'Off — no chapter gets a credit page.',
+    excluded: 'Series without a credit page',
+    excludedHint:
+      'For work the site hosts but did not scanlate. No chapter of a series listed here gets a card — printing this team on another group\u2019s release is worse than printing nothing.',
+    excludedFind: 'Find a series…',
+    excludedNone: 'Every series gets one.',
+    excludedCount: '{n} excluded',
+    excludedOn: 'Credit page on',
+    excludedOff: 'No credit page',
+    excludedNarrow: 'Showing the first 50 — search to narrow it down.',
     statusNoOverlay:
       'No card yet. Upload one below and it is saved straight away — until then no chapter gets a credit page.',
     statusNoDefault: 'Pick which card to use below — until then no chapter gets a credit page.',

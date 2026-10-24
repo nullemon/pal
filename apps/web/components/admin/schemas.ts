@@ -119,6 +119,8 @@ export const chapterPatchSchema = z
     language: z.string().max(16),
     /** This chapter's line on the credit page; null falls back to the site's default note. */
     creditNote: nullableText(600),
+    /** No credit page on this chapter — a release that came from another group. */
+    creditDisabled: z.boolean(),
   })
   .partial()
 

@@ -64,6 +64,9 @@ export const creditForChapter = async (
       createdAt: chapters.createdAt,
       backgroundKey: series.creditBackgroundKey,
       overlayId: series.creditOverlayId,
+      // Work that is not ours: no credit page, whatever the site settings say.
+      seriesDisabled: series.creditDisabled,
+      chapterDisabled: chapters.creditDisabled,
     })
     .from(chapters)
     .innerJoin(series, eq(series.id, chapters.seriesId))
@@ -72,8 +75,42 @@ export const creditForChapter = async (
   if (!row) return null
   return resolveCredit({
     settings: await creditSettings(database),
-    series: { backgroundKey: row.backgroundKey, overlayId: row.overlayId },
+    series: {
+      backgroundKey: row.backgroundKey,
+      overlayId: row.overlayId,
+      disabled: row.seriesDisabled,
+    },
     chapterNote: row.note,
+    chapterDisabled: row.chapterDisabled,
     chapterCreatedAt: row.createdAt,
   })
+}
+
+/** Series the credit screen lists, with whether each one is excluded. */
+export const creditSeriesList = async (
+  db?: Db,
+): Promise<Array<{ id: number; title: string; disabled: boolean }>> => {
+  const database = db ?? (await getDb())
+  const rows = await database
+    .select({ id: series.id, title: series.title, disabled: series.creditDisabled })
+    .from(series)
+    .where(isNull(series.deletedAt))
+    .orderBy(series.title)
+    .limit(2000)
+  return rows.map((r) => ({ ...r, disabled: r.disabled === true }))
+}
+
+/** Turn the credit page off (or back on) for one series. */
+export const setSeriesCreditDisabled = async (
+  seriesId: number,
+  disabled: boolean,
+  db?: Db,
+): Promise<boolean> => {
+  const database = db ?? (await getDb())
+  const rows = await database
+    .update(series)
+    .set({ creditDisabled: disabled, updatedAt: new Date() })
+    .where(and(eq(series.id, seriesId), isNull(series.deletedAt)))
+    .returning({ id: series.id })
+  return rows.length > 0
 }

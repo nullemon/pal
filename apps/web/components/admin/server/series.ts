@@ -78,6 +78,8 @@ export interface SeriesEditorData {
     language: string
     /** This chapter's credit-page note; null uses the site default. */
     creditNote: string | null
+    /** No credit page on this chapter at all — a release from another group. */
+    creditDisabled: boolean
     state: string
     isPremium: boolean
     earlyAccessUntil: Date | null
@@ -132,6 +134,7 @@ export const loadSeriesEditor = async (id: number): Promise<SeriesEditorData | n
         volume: chapters.volume,
         language: chapters.language,
         creditNote: chapters.creditNote,
+        creditDisabled: chapters.creditDisabled,
         state: chapters.state,
         isPremium: chapters.isPremium,
         earlyAccessUntil: chapters.earlyAccessUntil,

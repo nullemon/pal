@@ -6,9 +6,19 @@ import { adminMessages } from '@palscans/core/messages/admin'
 import { Button, useToast } from '@palscans/ui'
 import { Trash2, Upload } from 'lucide-react'
 import { useCallback, useRef, useState } from 'react'
-import { postJson, putJson } from '@/components/admin/client/api'
+import { patchJson, postJson, putJson } from '@/components/admin/client/api'
 import { Toggle } from '@/components/admin/client/controls'
-import { Field, Hint, inputClass, Panel, PanelHeader, selectClass } from '@/components/admin/ui'
+import {
+  Field,
+  Hint,
+  inputClass,
+  Panel,
+  PanelHeader,
+  selectClass,
+  Table,
+  Td,
+  Th,
+} from '@/components/admin/ui'
 
 /**
  * Appearance → Credit page (docs/03).
@@ -17,9 +27,11 @@ import { Field, Hint, inputClass, Panel, PanelHeader, selectClass } from '@/comp
  * shipped so a new design needs no deploy, and the text drawn into it. The per-chapter note
  * is on the chapter itself, because that is where it belongs.
  *
- * There was a per-series panel here — its own background and its own overlay per series —
- * and it is gone deliberately: one card for everything is what the group asked for, and a
- * table of a thousand series each wanting its own artwork is work nobody was going to do.
+ * The per-series artwork panel that used to be here is gone deliberately: one card for
+ * everything is what the group asked for, and a table of a thousand series each wanting its
+ * own artwork is work nobody was going to do. What came back in its place is narrower and
+ * is not about looks at all — which series get a credit page, for the ones the site hosts
+ * but did not scanlate.
  * The renderer still composites a background if a series has one, so bringing the panel
  * back is a change to this file rather than to the compositor.
  */
@@ -42,15 +54,54 @@ const uploadAsset = async (file: File, kind: 'overlay' | 'background'): Promise<
   return put.ok ? intent.data.key : null
 }
 
-export function CreditScreen({ initial }: { initial: CreditSettings }) {
+export interface SeriesRow {
+  id: number
+  title: string
+  disabled: boolean
+}
+
+export function CreditScreen({
+  initial,
+  series,
+}: {
+  initial: CreditSettings
+  series: SeriesRow[]
+}) {
   const { toast } = useToast()
   const [doc, setDoc] = useState<CreditSettings>(initial)
   /** The live settings, readable from a callback that started before the last keystroke. */
   const docRef = useRef(doc)
   docRef.current = doc
   const [busy, setBusy] = useState(false)
+  const [rows, setRows] = useState(series)
+  const [filter, setFilter] = useState('')
 
   const patch = (p: Partial<CreditSettings>) => setDoc((d) => ({ ...d, ...p }))
+
+  /**
+   * Exclude one series, or put it back.
+   *
+   * Written immediately rather than with the rest of the settings: this is a property of
+   * the series, and batching it into the settings save would make two people editing two
+   * different series overwrite each other's work.
+   */
+  const setSeriesDisabled = useCallback(
+    async (row: SeriesRow, disabled: boolean) => {
+      setBusy(true)
+      const res = await patchJson<{ saved: boolean }>('/api/admin/credit', {
+        seriesId: row.id,
+        disabled,
+      })
+      setBusy(false)
+      if (!res.ok) {
+        toast({ title: res.message || messages.errors.generic, tone: 'danger' })
+        return
+      }
+      setRows((current) => current.map((r) => (r.id === row.id ? { ...r, disabled } : r)))
+      toast({ title: m.saved, tone: 'ok' })
+    },
+    [toast],
+  )
 
   /**
    * Whether a chapter would get a card right now, and if not, which missing piece stops it.
@@ -58,6 +109,12 @@ export function CreditScreen({ initial }: { initial: CreditSettings }) {
    * Mirrors `resolveCredit` in @palscans/core/credit — the order matters, because the first
    * failing condition is the one to fix.
    */
+  /** Excluded first — they are the ones somebody came here to check. */
+  const visible = [...rows]
+    .filter((r) => r.title.toLowerCase().includes(filter.toLowerCase()))
+    .sort((a, b) => Number(b.disabled) - Number(a.disabled) || a.title.localeCompare(b.title))
+  const excludedCount = rows.filter((r) => r.disabled).length
+
   const status = !doc.enabled
     ? { ok: false, message: m.statusOff }
     : doc.overlays.length === 0
@@ -363,6 +420,49 @@ export function CreditScreen({ initial }: { initial: CreditSettings }) {
         <Button className="mt-3 w-fit" disabled={busy} onClick={() => void save()}>
           {busy ? m.saving : m.save}
         </Button>
+      </Panel>
+      <Panel>
+        <PanelHeader title={m.excluded} hint={m.excludedHint} />
+        <Hint>
+          {excludedCount === 0
+            ? m.excludedNone
+            : m.excludedCount.replace('{n}', String(excludedCount))}
+        </Hint>
+        <input
+          className={inputClass}
+          onChange={(e) => setFilter(e.target.value)}
+          placeholder={m.excludedFind}
+          value={filter}
+        />
+        <Table>
+          <thead>
+            <tr>
+              <Th>{m.excluded}</Th>
+              <Th> </Th>
+            </tr>
+          </thead>
+          <tbody>
+            {visible.slice(0, 50).map((row) => (
+              <tr key={row.id}>
+                <Td>{row.title}</Td>
+                <Td>
+                  <span className="inline-flex items-center justify-end gap-2.5">
+                    <span className={row.disabled ? 'text-warn' : 'text-fg-muted'}>
+                      {row.disabled ? m.excludedOff : m.excludedOn}
+                    </span>
+                    <Toggle
+                      ariaLabel={`${m.excludedOn} — ${row.title}`}
+                      checked={!row.disabled}
+                      onChange={(v) => void setSeriesDisabled(row, !v)}
+                      size="sm"
+                    />
+                  </span>
+                </Td>
+              </tr>
+            ))}
+          </tbody>
+        </Table>
+        {visible.length > 50 ? <Hint>{m.excludedNarrow}</Hint> : null}
       </Panel>
     </div>
   )

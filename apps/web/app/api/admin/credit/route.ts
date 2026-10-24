@@ -3,7 +3,12 @@ import { creditSettingsSchema } from '@palscans/core/credit'
 import { z } from 'zod'
 import { audit } from '@/components/admin/server/audit'
 import { purgeCatalog } from '@/components/admin/server/cache'
-import { creditSettings, saveCreditSettings } from '@/components/admin/server/credit'
+import {
+  creditSeriesList,
+  creditSettings,
+  saveCreditSettings,
+  setSeriesCreditDisabled,
+} from '@/components/admin/server/credit'
 import { ok, parseJson, withPermission } from '@/lib/auth'
 import { presignUpload } from '@/lib/storage'
 
@@ -26,7 +31,7 @@ const assetSchema = z.object({
 })
 
 export const GET = withPermission('settings.write', async () =>
-  ok({ settings: await creditSettings() }),
+  ok({ settings: await creditSettings(), series: await creditSeriesList() }),
 )
 
 export const PUT = withPermission('settings.write', async (request, _ctx, user) => {
@@ -60,6 +65,33 @@ export const PUT = withPermission('settings.write', async (request, _ctx, user) 
   // has to reach them.
   purgeCatalog()
   return ok({ settings })
+})
+
+/**
+ * Turn the credit page off for one series — work the site hosts but did not scanlate.
+ *
+ * Its own call rather than part of the settings document: the settings are one row an
+ * operator edits and saves as a whole, and a list of excluded series would make every save
+ * a read-modify-write race with whoever is editing a different series in another tab.
+ */
+const seriesSchema = z.object({
+  seriesId: z.number().int().positive(),
+  disabled: z.boolean(),
+})
+
+export const PATCH = withPermission('settings.write', async (request, _ctx, user) => {
+  const parsed = await parseJson(request, seriesSchema)
+  if (!parsed.ok) return parsed.response
+  const saved = await setSeriesCreditDisabled(parsed.data.seriesId, parsed.data.disabled)
+  await audit({
+    actorId: user.id,
+    action: 'credit.series',
+    targetType: 'series',
+    targetId: parsed.data.seriesId,
+    after: { creditDisabled: parsed.data.disabled },
+  })
+  purgeCatalog()
+  return ok({ saved })
 })
 
 /**

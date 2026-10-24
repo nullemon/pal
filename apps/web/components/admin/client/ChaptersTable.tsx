@@ -34,6 +34,7 @@ export interface ChapterRowData {
   language: string
   /** The chapter's own credit-page note; null falls back to the site default. */
   creditNote: string | null
+  creditDisabled?: boolean
   state: string
   isPremium: boolean
   earlyAccessUntil: string | null
@@ -135,6 +136,7 @@ export function ChaptersTable({
   const [draftVolume, setDraftVolume] = useState('')
   const [draftLanguage, setDraftLanguage] = useState(DEFAULT_CHAPTER_LANGUAGE)
   const [draftNote, setDraftNote] = useState('')
+  const [draftCreditOff, setDraftCreditOff] = useState(false)
   const lastClick = useRef<number | null>(null)
   const visible = useMemo(() => rows.filter((r) => !r.deletedAt), [rows])
   /** Only worth showing a language tag when the series actually has more than one. */
@@ -245,6 +247,7 @@ export function ChaptersTable({
     setDraftVolume(row.volume === null ? '' : String(row.volume))
     setDraftLanguage(row.language)
     setDraftNote(row.creditNote ?? '')
+    setDraftCreditOff(row.creditDisabled === true)
   }
 
   /**
@@ -279,6 +282,7 @@ export function ChaptersTable({
       language: draftLanguage,
       // Blank clears it back to the site's default note, which is what emptying a box means.
       creditNote: draftNote.trim() === '' ? null : draftNote.trim(),
+      creditDisabled: draftCreditOff,
     })
     setBusy(false)
     if (!res.ok) {
@@ -299,6 +303,7 @@ export function ChaptersTable({
               volume: Number.isFinite(volume as number) ? volume : null,
               language: draftLanguage,
               creditNote: draftNote.trim() === '' ? null : draftNote.trim(),
+              creditDisabled: draftCreditOff,
             }
           : r,
       ),
@@ -809,6 +814,17 @@ export function ChaptersTable({
             />
           </label>
           <p className="text-[12px] text-fg-muted">{m.edit.creditNoteHint}</p>
+          {/* Work that came from elsewhere: no card at all, not an empty one. */}
+          <label className="flex items-center gap-2.5 text-[13px] font-medium">
+            <input
+              checked={draftCreditOff}
+              className="size-4 accent-brand"
+              onChange={(e) => setDraftCreditOff(e.target.checked)}
+              type="checkbox"
+            />
+            {m.edit.creditOff}
+          </label>
+          <p className="text-[12px] text-fg-muted">{m.edit.creditOffHint}</p>
         </div>
       </Modal>
 
