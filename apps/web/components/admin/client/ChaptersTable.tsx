@@ -165,6 +165,26 @@ export function ChaptersTable({
     lastClick.current = id
   }
 
+  /**
+   * One row's credit page, on or off, saved as the box is ticked.
+   *
+   * Optimistic, and rolled back if the write fails: the checkbox is the only feedback there
+   * is, so a box that stays ticked while the chapter underneath it did not change is a lie
+   * the operator has no way to notice.
+   */
+  const setCredit = useCallback(
+    async (row: ChapterRowData, credited: boolean) => {
+      const before = rows
+      setRows((rs) => rs.map((r) => (r.id === row.id ? { ...r, creditDisabled: !credited } : r)))
+      const res = await patchJson(`/api/admin/chapters/${row.id}`, { creditDisabled: !credited })
+      if (!res.ok) {
+        setRows(before)
+        toast({ title: adminMessages.admin.errorSaving, description: res.message, tone: 'danger' })
+      }
+    },
+    [rows, toast],
+  )
+
   const run = useCallback(
     async (action: BulkAction, optimistic?: (r: ChapterRowData) => ChapterRowData) => {
       setBusy(true)
@@ -397,6 +417,28 @@ export function ChaptersTable({
               <Button size="sm" variant="outline" disabled={busy} onClick={() => setModal('early')}>
                 {m.bulk.earlyAccess}
               </Button>
+              {/* For a run that came from another group: no card, rather than this team's
+                  names on somebody else's work. */}
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={busy}
+                onClick={() =>
+                  run({ action: 'credit_off', ids }, (r) => ({ ...r, creditDisabled: true }))
+                }
+              >
+                {m.bulk.creditOff}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={busy}
+                onClick={() =>
+                  run({ action: 'credit_on', ids }, (r) => ({ ...r, creditDisabled: false }))
+                }
+              >
+                {m.bulk.creditOn}
+              </Button>
               <Button size="sm" variant="outline" disabled={busy} onClick={() => void openGroups()}>
                 <Users size={13} aria-hidden="true" />
                 {g.assign}
@@ -447,6 +489,7 @@ export function ChaptersTable({
             <Th>{m.colMark}</Th>
             <Th align="right">{m.colPages}</Th>
             <Th>{m.colPremium}</Th>
+            <Th>{m.colCredit}</Th>
             <Th>{m.colPublished}</Th>
             <Th align="right">{m.colViews}</Th>
             <Th align="right">{adminMessages.admin.actions}</Th>
@@ -534,6 +577,24 @@ export function ChaptersTable({
                       early → {countdown(new Date(r.earlyAccessUntil ?? 0), now)}
                     </span>
                   ) : null}
+                </Td>
+                <Td>
+                  {/*
+                    One tap, saved immediately — no dialog. Excluding a release that came
+                    from another group is a judgement made while looking at the list, and a
+                    round trip through an edit dialog is where that intention gets lost.
+                  */}
+                  <label className="inline-flex cursor-pointer items-center gap-1.5 text-[12px] text-fg-muted">
+                    <input
+                      aria-label={m.colCredit}
+                      checked={r.creditDisabled !== true}
+                      className="size-4 accent-brand"
+                      disabled={busy}
+                      onChange={(e) => void setCredit(r, e.target.checked)}
+                      type="checkbox"
+                    />
+                    {r.creditDisabled === true ? m.creditOffShort : ''}
+                  </label>
                 </Td>
                 <Td className="text-fg-muted">
                   {r.publishedAt ? (

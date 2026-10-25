@@ -69,7 +69,12 @@ const add = async (number: number, over: Record<string, unknown> = {}) => {
 
 const read = async (id: number) => {
   const [row] = await db
-    .select({ number: chapters.number, title: chapters.title, volume: chapters.volume })
+    .select({
+      number: chapters.number,
+      title: chapters.title,
+      volume: chapters.volume,
+      creditDisabled: chapters.creditDisabled,
+    })
     .from(chapters)
     .where(eq(chapters.id, id))
     .limit(1)
@@ -117,6 +122,26 @@ describe('PATCH /api/admin/chapters/:id', () => {
     const res = await patch(id, { title: 'From Pawn to Knight' })
     expect(res.status).toBe(200)
     expect((await read(id))?.title).toBe('From Pawn to Knight')
+  })
+
+  it('turns the credit page off for one chapter, and back on', async () => {
+    // A release that came from another group: this team's names must not be printed on it.
+    const id = await add(7)
+    expect((await read(id))?.creditDisabled).toBe(false)
+    expect((await patch(id, { creditDisabled: true })).status).toBe(200)
+    expect((await read(id))?.creditDisabled).toBe(true)
+    expect((await patch(id, { creditDisabled: false })).status).toBe(200)
+    expect((await read(id))?.creditDisabled).toBe(false)
+  })
+
+  it('leaves the credit setting alone when the edit is about something else', async () => {
+    // The edit dialog sends the fields it holds. Renaming a chapter that was excluded must
+    // not quietly start crediting it again.
+    const id = await add(7, { creditDisabled: true })
+    expect((await patch(id, { title: 'A new title' })).status).toBe(200)
+    const row = await read(id)
+    expect(row?.title).toBe('A new title')
+    expect(row?.creditDisabled).toBe(true)
   })
 
   it('renumbers a chapter', async () => {

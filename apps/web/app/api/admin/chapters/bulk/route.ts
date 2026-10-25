@@ -64,6 +64,14 @@ export const POST = withPermission('chapter.update', async (request, _ctx, user)
       await setChapterGroups(body.ids, body.groupIds, db)
       affected = body.ids
       break
+    case 'credit_off':
+    case 'credit_on':
+      await db
+        .update(chapters)
+        .set({ creditDisabled: body.action === 'credit_off', updatedAt: now })
+        .where(inArray(chapters.id, body.ids))
+      affected = body.ids
+      break
     case 'delete':
       await db
         .update(chapters)

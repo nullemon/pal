@@ -148,6 +148,21 @@ export const bulkActionSchema = z.discriminatedUnion('action', [
     ids: z.array(z.number().int()).min(1).max(500),
     groupIds: z.array(z.number().int().positive()).max(10),
   }),
+  /**
+   * Leave the credit page off these chapters, or put it back.
+   *
+   * In bulk because that is the shape of the problem: a series is rarely half somebody
+   * else's, but when forty chapters of a run came from another group, opening forty edit
+   * dialogs is not a workflow anyone completes correctly.
+   */
+  z.object({
+    action: z.literal('credit_off'),
+    ids: z.array(z.number().int()).min(1).max(500),
+  }),
+  z.object({
+    action: z.literal('credit_on'),
+    ids: z.array(z.number().int()).min(1).max(500),
+  }),
   z.object({ action: z.literal('delete'), ids: z.array(z.number().int()).min(1).max(500) }),
   z.object({ action: z.literal('restore'), ids: z.array(z.number().int()).min(1).max(500) }),
   /**

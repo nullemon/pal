@@ -55,9 +55,7 @@ export const PATCH = withPermission<{ id: string }>(
           ...(body.title !== undefined ? { title: body.title } : {}),
           ...(body.volume !== undefined ? { volume: body.volume } : {}),
           ...(body.creditNote !== undefined ? { creditNote: body.creditNote } : {}),
-          ...(body.creditDisabled !== undefined
-            ? { creditDisabled: body.creditDisabled }
-            : {}),
+          ...(body.creditDisabled !== undefined ? { creditDisabled: body.creditDisabled } : {}),
           ...(body.language !== undefined ? { language: normaliseLanguage(body.language) } : {}),
           ...(body.isPremium !== undefined ? { isPremium: body.isPremium } : {}),
           ...(body.earlyAccessUntil !== undefined

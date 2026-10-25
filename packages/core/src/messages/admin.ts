@@ -247,6 +247,8 @@ export const adminMessages = {
       colPages: 'Pages',
       colPublished: 'Published',
       colPremium: 'Premium',
+      colCredit: 'Credit page',
+      creditOffShort: 'off',
       colViews: 'Views',
       uploadChapters: 'Upload chapters',
       bulk: {
@@ -254,6 +256,8 @@ export const adminMessages = {
         schedule: 'Schedule…',
         setPremium: 'Set premium',
         clearPremium: 'Clear premium',
+        creditOff: 'No credit page',
+        creditOn: 'Credit page on',
         earlyAccess: 'Set early access window…',
         delete: 'Delete',
         scheduleTitle: 'Schedule {n} chapters',
