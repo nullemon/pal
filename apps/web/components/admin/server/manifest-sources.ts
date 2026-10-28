@@ -147,14 +147,32 @@ export const forgetManifestSource = async (
 /**
  * Ask the worker to check this source now.
  *
- * `jobId` is per source rather than per press, so an impatient double-click is one check.
+ * `jobId` collapses a double-click and nothing more.
+ *
+ * It used to be `manifest.sync:source:<id>` with no time in it, which reads as "one check
+ * per source" and behaves as "one check per source, ever": BullMQ ignores an `add` whose
+ * id exists, and completed jobs are retained (`removeOnComplete: 1000`). So the button
+ * worked once and was then silently inert until a thousand other jobs had evicted it --
+ * the operator presses it, the panel says it was queued, and nothing happens.
+ *
+ * Ten seconds is long enough to swallow an impatient second click and short enough that
+ * "try again" means what it says.
+ *
  * Returns false when there is no queue to ask — the panel says "it will be picked up on the
  * next pass", which is true: the scheduler's own producer does not depend on this.
  */
-export const checkManifestSourceNow = async (id: number): Promise<boolean> => {
+export const checkManifestSourceNow = async (
+  id: number,
+  now: Date = new Date(),
+): Promise<boolean> => {
   try {
     const queue = await getQueue()
-    await queue.add('manifest.sync', { sourceId: id }, { jobId: `manifest.sync:source:${id}` })
+    const window = Math.floor(now.getTime() / 10_000)
+    await queue.add(
+      'manifest.sync',
+      { sourceId: id },
+      { jobId: `manifest.sync:source:${id}:${window}` },
+    )
     return true
   } catch {
     return false

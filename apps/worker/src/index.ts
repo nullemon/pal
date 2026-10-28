@@ -49,6 +49,12 @@ let lastBackup = 0
 /** How often the manifest sync pass is enqueued (docs/03 "Keeping a manifest in sync"). */
 const MANIFEST_SYNC_MS = manifestSyncEnv().WORKER_MANIFEST_SYNC_MS
 let lastManifestSync = 0
+/**
+ * This process's start, which is what makes the boot pass's job id unique.
+ *
+ * A restart has to be able to force a manifest check — see the producer below.
+ */
+const startedAt = Date.now()
 /** How often the object mirror's reconcile sweep is enqueued (docs/08 "The mirror"). */
 const MIRROR_MS = mirrorEnv().WORKER_MIRROR_MS
 let lastMirror = 0
@@ -383,12 +389,21 @@ const main = async () => {
       // actually due, so a tick that fires while every source was checked a minute ago costs
       // one indexed query and nothing else.
       if (Date.now() - lastManifestSync >= MANIFEST_SYNC_MS) {
+        /**
+         * The first pass after a boot carries its own id, every later one the time bucket.
+         *
+         * The bucket is what stops a backlog of passes piling up, and it also made a restart
+         * do nothing: a worker that comes back inside a bucket whose pass already ran adds a
+         * job id that exists, BullMQ ignores it, and the next check is up to fifteen minutes
+         * away. "Restart the worker" is the first thing anyone tries when a source has just
+         * been added, so it has to mean something.
+         */
+        const id =
+          lastManifestSync === 0
+            ? `manifest.sync:boot:${startedAt}`
+            : `manifest.sync:${Math.floor(Date.now() / MANIFEST_SYNC_MS)}`
         lastManifestSync = Date.now()
-        await queue.add(
-          'manifest.sync',
-          {},
-          { jobId: `manifest.sync:${Math.floor(Date.now() / MANIFEST_SYNC_MS)}` },
-        )
+        await queue.add('manifest.sync', {}, { jobId: id })
       }
       // The `db.backup` producer, on the same pattern. `lastBackup` moves when the job is
       // *enqueued* as well as when it runs, so a queue that is not draining cannot pile up
