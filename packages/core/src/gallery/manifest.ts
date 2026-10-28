@@ -241,8 +241,24 @@ export const manifestRawUrl = (input: string): string | null => {
   }
   if (url.protocol !== 'https:') return null
   const host = url.hostname.toLowerCase()
-  if (host === 'raw.githubusercontent.com' || host === 'gist.githubusercontent.com')
+  if (host === 'gist.githubusercontent.com') {
+    /**
+     * Drop the revision a gist's own Raw button bakes in.
+     *
+     * `/{user}/{id}/raw/{sha}/{file}` is that gist *as it was*, frozen, forever — and it is
+     * precisely the URL GitHub hands you when you click Raw, so it is the one operators
+     * paste. Following it faithfully means the file updates, the sync re-reads the same
+     * bytes every fifteen minutes, finds nothing new, and reports success. The sync looks
+     * healthy while the site falls behind, which is the worst shape a bug can take.
+     *
+     * `/{user}/{id}/raw/{file}` is the same file at its latest revision.
+     */
+    const pinned = /^\/([^/]+)\/([0-9a-f]{20,})\/raw\/[0-9a-f]{40}\/(.+)$/.exec(url.pathname)
+    if (pinned)
+      return `https://gist.githubusercontent.com/${pinned[1]}/${pinned[2]}/raw/${pinned[3]}`
     return url.toString()
+  }
+  if (host === 'raw.githubusercontent.com') return url.toString()
   if (host === 'github.com') {
     const blob = /^\/([^/]+)\/([^/]+)\/blob\/(.+)$/.exec(url.pathname)
     if (blob) return `https://raw.githubusercontent.com/${blob[1]}/${blob[2]}/${blob[3]}`

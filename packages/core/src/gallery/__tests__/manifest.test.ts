@@ -207,6 +207,27 @@ describe('manifestRawUrl', () => {
     )
   })
 
+  it('unpins a gist raw URL, which is the one the Raw button hands you', () => {
+    // `/raw/<sha>/file` is that gist frozen at a revision. It is what GitHub gives you when
+    // you click Raw, so it is what gets pasted — and following it means the gist updates
+    // while the sync re-reads the same bytes forever and reports success.
+    expect(
+      manifestRawUrl(
+        'https://gist.githubusercontent.com/someone/6e39ed38e5c38093b6835e0f083049c6/raw/0123456789abcdef0123456789abcdef01234567/series.json',
+      ),
+    ).toBe(
+      'https://gist.githubusercontent.com/someone/6e39ed38e5c38093b6835e0f083049c6/raw/series.json',
+    )
+  })
+
+  it('leaves an already-unpinned gist raw URL alone', () => {
+    const raw =
+      'https://gist.githubusercontent.com/someone/6e39ed38e5c38093b6835e0f083049c6/raw/series.json'
+    expect(manifestRawUrl(raw)).toBe(raw)
+    const bare = 'https://gist.githubusercontent.com/someone/6e39ed38e5c38093b6835e0f083049c6/raw'
+    expect(manifestRawUrl(bare)).toBe(bare)
+  })
+
   it('refuses anything else, including http and other hosts', () => {
     for (const url of [
       'https://example.com/series.json',

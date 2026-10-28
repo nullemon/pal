@@ -237,7 +237,16 @@ export const resolveManifest = async (
   if (!url) throw new GalleryError('bad_url', input.slice(0, 120))
   const response = await fetchGuarded(
     url,
-    { headers: { accept: 'application/json, text/plain' } },
+    {
+      headers: {
+        accept: 'application/json, text/plain',
+        // The point of re-reading this file is to see what changed in it. A cache between
+        // here and the host answering with the copy we already have is the one answer that
+        // is never useful, and GitHub's CDN will hold a gist for minutes at a time.
+        'cache-control': 'no-cache',
+        pragma: 'no-cache',
+      },
+    },
     fetcher(opts),
     PAGE_TIMEOUT_MS,
     publicHost,
