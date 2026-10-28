@@ -46,8 +46,16 @@ const envSchema = z.object({
     .int()
     .positive()
     .default(15 * 60 * 1000),
-  /** Sources one pass checks, so a hundred followed series do not all fetch in one tick. */
-  WORKER_MANIFEST_SYNC_BATCH: z.coerce.number().int().positive().default(5),
+  /**
+   * Sources one pass checks, so a hundred followed series do not all fetch in one tick.
+   *
+   * Fifteen rather than five: a restart makes every source due at once, and at five per
+   * fifteen minutes a site following twenty series takes an hour to catch up on the
+   * releases that landed while it was down. The fetch is a small JSON file; what actually
+   * limits a pass is `MAX_NEW_PER_CHECK` below, which caps the chapters any one source can
+   * queue — so this number costs requests, not downloads.
+   */
+  WORKER_MANIFEST_SYNC_BATCH: z.coerce.number().int().positive().default(15),
 })
 
 export type ManifestSyncEnv = z.infer<typeof envSchema>

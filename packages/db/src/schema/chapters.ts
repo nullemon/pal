@@ -244,12 +244,13 @@ export const manifestSources = pgTable(
     /**
      * What a chapter discovered by the sync becomes once its pages are in.
      *
-     * `ready` leaves it for a human to look at; `publish` puts it straight on the site. The
-     * second is the point of the feature for most operators — a release appears without
-     * anybody being awake — but it is a decision to opt into rather than a default, because
-     * it hands a third party's file the ability to publish on this site.
+     * `ready` leaves it for a human to look at; `publish` puts it straight on the site, and
+     * that is the default (migration 9053) because it is the point of the feature: a release
+     * appears without anybody being awake. It does hand the followed file the ability to
+     * publish here, which is why following one needs `chapter.publish` — the trust is placed
+     * when the file is chosen, not re-asked on every release it carries.
      */
-    publishMode: text('publish_mode').$type<'ready' | 'publish'>().notNull().default('ready'),
+    publishMode: text('publish_mode').$type<'ready' | 'publish'>().notNull().default('publish'),
     isPremium: boolean('is_premium').notNull().default(false),
     /** Which group's version to take when the file offers several. Null means the first. */
     groupName: text('group_name'),

@@ -31,7 +31,16 @@ const followBody = z.object({
   url: z.string().min(1).max(500),
   language: z.string().max(16).optional(),
   store: z.enum(['remote', 'storage']).default('remote'),
-  publishMode: z.enum(['ready', 'publish']).default('ready'),
+  /**
+   * Absent means "whatever this operator is allowed to do", not "draft".
+   *
+   * The point of following a file is that releases appear without anybody being awake, so
+   * defaulting to draft made the feature do half its job until somebody found the toggle.
+   * Left optional rather than defaulted in the schema because the guard below is about an
+   * *explicit* request: asking to publish without the permission is refused, while not
+   * asking falls back to what the permission allows.
+   */
+  publishMode: z.enum(['ready', 'publish']).optional(),
   isPremium: z.boolean().optional(),
   /** Which group's version to take when the file offers several. */
   group: z.string().max(120).nullish(),
@@ -60,12 +69,13 @@ export const POST = withPermission<{ id: string }>('chapter.create', async (requ
   const body = parsed.data
   if (body.publishMode === 'publish' && !can(user, 'chapter.publish'))
     return fail(403, 'forbidden', messages.errors.forbidden)
+  const publishMode = body.publishMode ?? (can(user, 'chapter.publish') ? 'publish' : 'ready')
   const source = await followManifest({
     seriesId: id.data,
     url: body.url.trim(),
     language: normaliseLanguage(body.language),
     store: body.store,
-    publishMode: body.publishMode,
+    publishMode,
     isPremium: body.isPremium ?? false,
     groupName: body.group?.trim() || null,
     userId: user.id,
