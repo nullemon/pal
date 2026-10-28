@@ -241,6 +241,33 @@ export const manifestRawUrl = (input: string): string | null => {
   }
   if (url.protocol !== 'https:') return null
   const host = url.hostname.toLowerCase()
+  /**
+   * A Cubari reader link, which is the link a group actually has to hand.
+   *
+   * `cubari.moe/read/gist/<base64>/` carries the file's location base64url-encoded in the
+   * path: `raw/<user>/<repo>/<branch>/<path>`, which is a raw.githubusercontent.com URL with
+   * the host left off. Accepting it means an operator pastes the link they already share
+   * with readers rather than reverse-engineering where the JSON lives.
+   *
+   * Only `raw/` is accepted. The encoded value decides nothing but a path — the host is
+   * ours, fixed — but a slug that decodes to something else is a file we have no reason to
+   * fetch, and refusing is cheaper than finding out what it was.
+   */
+  if (host === 'cubari.moe' || host === 'www.cubari.moe') {
+    const slug = /^\/read\/gist\/([A-Za-z0-9_-]+)/.exec(url.pathname)?.[1]
+    if (!slug) return null
+    let decoded: string
+    try {
+      decoded = Buffer.from(slug, 'base64url').toString('utf8')
+    } catch {
+      return null
+    }
+    const parts = decoded.split('/').filter(Boolean)
+    // raw / user / repo / branch / …path
+    if (parts[0] !== 'raw' || parts.length < 5) return null
+    if (parts.some((part) => part === '.' || part === '..')) return null
+    return `https://raw.githubusercontent.com/${parts.slice(1).join('/')}`
+  }
   if (host === 'gist.githubusercontent.com') {
     /**
      * Drop the revision a gist's own Raw button bakes in.

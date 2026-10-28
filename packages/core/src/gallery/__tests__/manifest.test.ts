@@ -228,6 +228,44 @@ describe('manifestRawUrl', () => {
     expect(manifestRawUrl(bare)).toBe(bare)
   })
 
+  it('accepts the Cubari link a group already shares with readers', () => {
+    // The file's location is base64url in the path: raw/<user>/<repo>/<branch>/<path>.
+    // Nobody should have to decode that by hand to follow their own series.
+    expect(
+      manifestRawUrl(
+        'https://cubari.moe/read/gist/cmF3L05ha2ltb3ZzY2Fucy1jcHUvTWFqby10YWlzZW4vbWFpbi9TZXJpZXMvbWFqby10YWlzZW4uanNvbg/',
+      ),
+    ).toBe(
+      'https://raw.githubusercontent.com/Nakimovscans-cpu/Majo-taisen/main/Series/majo-taisen.json',
+    )
+  })
+
+  it('accepts a Cubari link that points at a chapter rather than the series', () => {
+    // Readers share the page they are on; the slug is the same either way.
+    expect(
+      manifestRawUrl(
+        'https://cubari.moe/read/gist/cmF3L05ha2ltb3ZzY2Fucy1jcHUvTWFqby10YWlzZW4vbWFpbi9TZXJpZXMvbWFqby10YWlzZW4uanNvbg/125/1/',
+      ),
+    ).toBe(
+      'https://raw.githubusercontent.com/Nakimovscans-cpu/Majo-taisen/main/Series/majo-taisen.json',
+    )
+  })
+
+  it('refuses a Cubari slug that decodes to anything but a raw path', () => {
+    // The slug decides a path, never a host — but one that is not `raw/<user>/<repo>/…`
+    // is a file there is no reason to fetch, and refusing costs nothing.
+    const encode = (value: string) => Buffer.from(value, 'utf8').toString('base64url')
+    for (const decoded of [
+      'imgur/abc123',
+      'raw/only-two',
+      'raw/user/repo/../../etc/passwd',
+      'not base64 at all!!',
+    ]) {
+      expect(manifestRawUrl(`https://cubari.moe/read/gist/${encode(decoded)}/`), decoded).toBeNull()
+    }
+    expect(manifestRawUrl('https://cubari.moe/read/imgur/abc/')).toBeNull()
+  })
+
   it('refuses anything else, including http and other hosts', () => {
     for (const url of [
       'https://example.com/series.json',
