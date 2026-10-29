@@ -55,7 +55,26 @@ services:
       POSTGRES_USER: pal
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pal}
       POSTGRES_DB: palscans
-    command: ["postgres", "-c", "shared_buffers=256MB", "-c", "max_connections=100"]
+    # Sized for a database sharing a 2 GB box with the app, not one that owns it. The usual
+    # "25% of RAM" assumes Postgres is the only thing running; here the web processes,
+    # Valkey and the worker are all resident, and the kernel reaching for swap under reader
+    # load costs far more than a smaller buffer pool does.
+    #
+    # `max_connections=100` is far above what the pool asks for (DATABASE_POOL_MAX, 10 per
+    # process) and each slot reserves memory, so it is also brought down to what two web
+    # processes, the worker and a psql session can actually use.
+    command:
+      [
+        "postgres",
+        "-c",
+        "shared_buffers=128MB",
+        "-c",
+        "max_connections=40",
+        "-c",
+        "work_mem=4MB",
+        "-c",
+        "effective_cache_size=512MB",
+      ]
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
@@ -74,7 +93,22 @@ services:
     # server drops job hashes and the wait/active lists under memory pressure, so queued work
     # simply disappears with no error — and import.run, notify.new_chapter and notify.comment
     # have no database safety net to pick them back up.
-    command: ["valkey-server", "--maxmemory", "512mb", "--maxmemory-policy", "noeviction", "--appendonly", "yes"]
+    #
+    # 192 MB, not 512: this holds a job queue, session rows and rate-limit counters, none of
+    # which is bulk data — and on a 2 GB box a ceiling it will never reach is still a ceiling
+    # the kernel has to leave room for. With `noeviction` the limit is a wall rather than a
+    # cache size, so it is set above any backlog this site produces and nowhere near the RAM
+    # the web processes need to serve readers.
+    command:
+      [
+        "valkey-server",
+        "--maxmemory",
+        "192mb",
+        "--maxmemory-policy",
+        "noeviction",
+        "--appendonly",
+        "yes",
+      ]
     volumes:
       - valkeydata:/data
     ports:
