@@ -64,7 +64,9 @@ describe('renderTemplate', () => {
       }),
     ).toBe('Read Overgrowth Chapter 12.5 at PALScans.')
     expect(renderTemplate('{genre} · {missing} · {site}', { genre: 'Action', site: 'P' })).toBe(
-      'Action · · P',
+      // The doubling is debris from the empty `{missing}`; the `·` is the operator's own
+      // character and survives, because the site separator (`-`) is not part of the run.
+      'Action · P',
     )
   })
   it('respects overrides and lists variables', () => {

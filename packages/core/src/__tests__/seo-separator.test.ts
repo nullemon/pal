@@ -134,11 +134,55 @@ describe('separators that render against nothing', () => {
     ).toBe('Re-Monster')
   })
 
-  it('does not touch a separator the page is not using', () => {
-    // An operator on `·` has not asked for their dashes to be tidied up.
+  /**
+   * The case the first fix got wrong, taken off the live site.
+   *
+   * `curl` on the deployed home page returned, after that fix had shipped:
+   *
+   *   <title>PALScans · - Read Manhwa, Manga and Manhua Online</title>
+   *
+   * A `·` beside a `-`: two separator characters, neither of them repeated. The repair only
+   * collapsed runs of the *configured* separator, so it matched nothing here — and the test
+   * that used to sit in this spot asserted exactly that, on the reasoning that "an operator
+   * using `·` has not asked for their dashes to be tidied". That holds for a lone dash
+   * somewhere in the text. It is wrong about one sitting immediately beside the `·`, which is
+   * never anything but a mistake. Any mixture counts as a run now.
+   */
+  it('collapses a mixed run of different separator characters', () => {
     expect(
-      renderSeo('series', { ...vars, sep: '·' }, { series: { title: '{title} - - {sep} {site}' } })
+      renderSeo(
+        'home',
+        { ...vars, sep: '·' },
+        { home: { title: '{site} {sep} - Read Manhwa, Manga and Manhua Online' } },
+      ).title,
+    ).toBe('PALScans · Read Manhwa, Manga and Manhua Online')
+  })
+
+  it('collapses a mixed run whichever way round it is written', () => {
+    expect(
+      renderSeo('series', { ...vars }, { series: { title: '{title} - · {sep} {site}' } }).title,
+    ).toBe('One Punch Man - PALScans')
+    expect(
+      renderSeo('series', { ...vars, sep: '|' }, { series: { title: '{title} — {sep} {site}' } })
         .title,
-    ).toBe('One Punch Man - - · PALScans')
+    ).toBe('One Punch Man | PALScans')
+  })
+
+  it('leaves a single separator alone even when it is not the configured one', () => {
+    // One `·` in a template whose separator is `-` is the operator's own text and reads
+    // correctly; only a run is debris. Rewriting it would be the repair overreaching.
+    expect(renderSeo('series', { ...vars }, { series: { title: '{title} · {site}' } }).title).toBe(
+      'One Punch Man · PALScans',
+    )
+  })
+
+  it('drops a dangling separator of any character, not just the configured one', () => {
+    expect(
+      renderSeo('series', { ...vars, site: null }, { series: { title: '{title} — {site}' } }).title,
+    ).toBe('One Punch Man')
+    expect(
+      renderSeo('home', { ...vars, site: ' ', sep: '-' }, { home: { title: '{site} · Read it' } })
+        .title,
+    ).toBe('Read it')
   })
 })

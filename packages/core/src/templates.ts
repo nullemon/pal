@@ -94,40 +94,77 @@ export const truncateWords = (text: string, max: number, ellipsis = '…'): stri
   return `${head}${ellipsis}`
 }
 
-const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+/**
+ * The characters that are only ever used *as* a separator in a title.
+ *
+ * Mixed runs are the common case, not an exotic one: the admin panel's separator is a
+ * setting (`-` `·` `—` `|`) while the templates are free text, so a template typed with its
+ * own dash beside `{sep}` produces `· -` — two different characters, neither repeated. A
+ * repair that only collapsed runs of the *configured* separator did not touch that, which is
+ * how `PALScans · - Read Manhwa, Manga and Manhua Online` stayed live after the first fix.
+ *
+ * `-` is first so it is a literal inside the character class. `:` and `,` are deliberately
+ * absent: they appear inside real titles ("Re:Zero") where these never do on their own.
+ */
+const SEPARATOR_CLASS = '[-–—·|•]'
 
 /**
  * Tidy the separators a rendered template is left holding.
  *
- * A separator in a template is punctuation *between* two things, and it only reads that way
+ * A separator in a title is punctuation *between* two things, and it only reads that way
  * when both are there. When one renders empty — a variable the caller forgot, a site name
  * saved as a space, a template an operator typed a second dash into — what reaches Google is
  * `PALScans · - Read Manhwa, Manga and Manhua Online` or
  * `Blue Lock - - Read Online Free - PALScans`. Both were live in the search results.
  *
- * Collapsing whitespace, which is all the renderer used to do, cannot fix this: the dash is a
+ * Collapsing whitespace, which is all the renderer used to do, cannot fix this: a dash is a
  * character, not a space, so it survives and only the gap around it closes up.
  *
- * So: a run of separators becomes one, and a separator with nothing on one side of it is
- * dropped. Both only apply where the separator stands alone between spaces, which is how a
- * template uses it — a hyphen inside a word ("mobile-friendly", "Re:Zero" under a `:`
- * separator) is part of the text and is left exactly as it is.
+ * Two rules, both only where a separator stands alone between spaces — which is how a
+ * template uses one, and never how a hyphen inside a word appears:
  *
- * This is deliberately a repair of the output rather than a stricter template validator. The
- * templates are operator-editable from the admin panel and the bad ones are already saved; a
- * rule that only rejected future saves would leave the live titles broken, and there is no
- * title where a dangling separator is what was meant.
+ *  - **A run of two or more becomes the configured separator.** Any mix of separator
+ *    characters counts as a run. An earlier version only matched repeats of the configured
+ *    one, on the reasoning that an operator using `·` has not asked for their dashes to be
+ *    tidied — true of a lone dash somewhere in the text, false of one sitting immediately
+ *    beside the `·`, which is never anything but a mistake.
+ *  - **A run at either end is dropped**, whatever the character, because there is nothing on
+ *    one side of it to separate.
+ *
+ * A single separator in the middle is left exactly as it is, including one that is not the
+ * configured character: that is the operator's text and it reads correctly.
+ *
+ * This repairs the output rather than validating the template on save, deliberately. The
+ * templates are operator-editable and the bad ones are already saved, so a rule that only
+ * rejected future saves would leave every live title broken.
  */
 export const collapseSeparators = (text: string, sep: string): string => {
   const token = sep.trim()
-  if (!token) return text
-  const e = escapeRe(token)
-  return text
-    .replace(new RegExp(`(?:^|\\s)${e}(?:\\s*${e})+(?=\\s|$)`, 'g'), ` ${token} `)
-    .replace(new RegExp(`^(?:${e}\\s*)+`), '')
-    .replace(new RegExp(`(?:\\s*${e})+$`), '')
-    .replace(/\s{2,}/g, ' ')
-    .trim()
+  const S = SEPARATOR_CLASS
+  const replacement = token && new RegExp(`^${S}$`).test(token) ? token : DEFAULT_SEPARATOR
+  return (
+    text
+      /*
+       * Two or more in a row, in any mixture, become one — the configured separator when it is
+       * one of them, otherwise the first character of the run.
+       *
+       * That second half keeps the repair from overreaching. A template written `{genre} ·
+       * {missing} · {site}` on a site whose separator is `-` renders `Action · · P`: the
+       * doubling is debris, but both characters are the operator's own and rewriting them to a
+       * dash would be this function editing their copy rather than cleaning up after a blank
+       * variable.
+       */
+      .replace(
+        new RegExp(`(^|\\s)(${S}(?:\\s*${S})+)(?=\\s|$)`, 'g'),
+        (_m: string, lead: string, run: string) =>
+          `${lead}${run.includes(replacement) ? replacement : run.trim()[0]}`,
+      )
+      // Nothing to the left of it, or nothing to the right: not a separator, just debris.
+      .replace(new RegExp(`^(?:${S}\\s+)+`), '')
+      .replace(new RegExp(`(?:\\s+${S})+$`), '')
+      .replace(/\s{2,}/g, ' ')
+      .trim()
+  )
 }
 
 /** Render a template. Unknown or empty variables render as '' and leftover whitespace collapses. */
