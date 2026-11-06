@@ -9,13 +9,17 @@ import {
   Crown,
   Flag,
   Keyboard,
+  Minus,
+  Plus,
   RectangleVertical,
+  RotateCcw,
   Rows3,
 } from 'lucide-react'
 import Link from 'next/link'
 import { type ReactNode, useId } from 'react'
 import { Kbd } from './chrome'
 import type { ReaderBackground, ReaderSettings } from './types'
+import { isZoomed, stepZoom, ZOOM_MAX, ZOOM_MIN, zoomLabel } from './zoom'
 
 interface Option<T extends string | number> {
   value: T
@@ -68,9 +72,60 @@ function Segmented<T extends string | number>({
   )
 }
 
+/**
+ * Zoom: a stepper, not a segmented control.
+ *
+ * The others are a short list of named choices; zoom is a continuous number a pinch can land
+ * anywhere on, so a row of fixed options would either misreport where the reader actually is
+ * or snap their pinch to the nearest preset. The percentage is the readout, and it is here at
+ * all because a reader zoomed to 250% by gesture has no other way to see why their pages look
+ * the way they do — or to get back to 100% without a keyboard.
+ */
+function ZoomStepper({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const button =
+    'flex size-11 shrink-0 items-center justify-center rounded-[9px] text-fg-muted transition-colors hover:bg-white/[.05] hover:text-fg focus-visible:outline-2 focus-visible:outline-brand disabled:opacity-35 disabled:hover:bg-transparent'
+  return (
+    <div className="flex min-w-0 flex-1 items-center gap-0.5 rounded-[12px] border border-line bg-bg-deep p-0.5">
+      <button
+        type="button"
+        aria-label={messages.readerUi.zoomOut}
+        disabled={value <= ZOOM_MIN}
+        onClick={() => onChange(stepZoom(value, -1))}
+        className={button}
+      >
+        <Minus size={18} aria-hidden="true" />
+      </button>
+      <output className="flex-1 text-center text-sm font-semibold tabular-nums text-fg">
+        {zoomLabel(value)}
+      </output>
+      <button
+        type="button"
+        aria-label={messages.readerUi.zoomIn}
+        disabled={value >= ZOOM_MAX}
+        onClick={() => onChange(stepZoom(value, 1))}
+        className={button}
+      >
+        <Plus size={18} aria-hidden="true" />
+      </button>
+      <button
+        type="button"
+        aria-label={messages.readerUi.zoomReset}
+        title={messages.readerUi.zoomReset}
+        disabled={!isZoomed(value)}
+        onClick={() => onChange(ZOOM_MIN)}
+        className={button}
+      >
+        <RotateCcw size={16} aria-hidden="true" />
+      </button>
+    </div>
+  )
+}
+
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="flex h-16 items-center gap-3 border-t border-white/[.06]">
+    // `min-h` rather than a fixed height: the zoom row carries a hint line under its
+    // stepper, and a fixed 64px clipped it.
+    <div className="flex min-h-16 items-center gap-3 py-2 border-t border-white/[.06]">
       <div className="w-[92px] shrink-0 text-sm font-semibold">{label}</div>
       {children}
     </div>
@@ -198,6 +253,14 @@ export function SettingsSheet({
               ]}
             />
           </Row>
+          <Row label={messages.reader.zoom}>
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
+              <ZoomStepper value={settings.zoom} onChange={(zoom) => update({ zoom })} />
+              <span className="text-[11px] leading-tight text-fg-muted">
+                {messages.readerUi.zoomHint}
+              </span>
+            </div>
+          </Row>
           <Row label={messages.reader.quality}>
             <Segmented
               label={messages.reader.quality}
@@ -290,6 +353,7 @@ const shortcuts: Array<{ keys: string[]; label: string }> = [
   { keys: ['N', 'P'], label: messages.readerUi.shortcutChapter },
   { keys: ['Home', 'End'], label: messages.readerUi.shortcutEnds },
   { keys: ['F'], label: messages.readerUi.shortcutFullscreen },
+  { keys: ['+', '−', '0'], label: messages.readerUi.shortcutZoom },
   { keys: ['S'], label: messages.readerUi.shortcutMode },
   { keys: ['C'], label: messages.readerUi.shortcutComments },
   { keys: ['H'], label: messages.readerUi.shortcutChrome },

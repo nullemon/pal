@@ -19,6 +19,14 @@ export interface ReaderSettings {
   preload: ReaderPreload
   background: ReaderBackground
   gap: ReaderGap
+  /**
+   * Magnification of the artwork, 1–4, continuous because a pinch is (see `zoom.ts`).
+   *
+   * Persisted with the rest: somebody who needs 150% to read comfortably needs it on every
+   * chapter, and re-pinching at the top of each one is the kind of small tax that makes a
+   * reader go somewhere else. It is the one preference a reader can also change by gesture.
+   */
+  zoom: number
 }
 
 export interface PageVariantUrl {

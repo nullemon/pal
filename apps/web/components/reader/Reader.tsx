@@ -36,6 +36,7 @@ import {
 } from './settings'
 import { MoreSheet, SettingsSheet, ShortcutsSheet } from './sheets'
 import type { ReaderData, ReaderPage } from './types'
+import { clampZoom, isZoomed, stepZoom, ZOOM_MIN, zoomFromWheel } from './zoom'
 
 export interface ReaderProps {
   data: ReaderData
@@ -115,6 +116,17 @@ export function Reader({ data, comments }: ReaderProps) {
   // writes to it — see the note there.
   const pageRef = useRef(pageIdx)
   pageRef.current = pageIdx
+
+  /**
+   * The zoom as the wheel and key listeners see it.
+   *
+   * Both are registered once so that scrolling and typing do not tear a listener down and
+   * re-add it on every frame, which means a closure over `settings.zoom` is frozen at its
+   * first-render value — the same trap the chrome flags above document, and here it would
+   * make every wheel notch zoom from 100% again.
+   */
+  const zoomRef = useRef(settings.zoom)
+  zoomRef.current = settings.zoom
 
   // Anonymous readers resume from the device (signed-in ones from the server row), once
   // the stored settings are known.
@@ -226,6 +238,34 @@ export function Reader({ data, comments }: ReaderProps) {
       ),
     [settings.quality],
   )
+
+  /**
+   * Zoom lives in the settings so it survives the next chapter, but every way of changing it
+   * goes through here: the +/− keys, Ctrl+wheel, double-tap, and the pinch each view runs.
+   * The views anchor the scroll themselves — they are the ones holding the scroll container.
+   */
+  const zoom = settings.zoom
+  const setZoom = useCallback((next: number) => update({ zoom: clampZoom(next) }), [update])
+
+  /**
+   * Ctrl+wheel, which is how zooming is done on a desktop — and which the browser would
+   * otherwise take for its own zoom, the one that cannot move this artwork (`zoom.ts`).
+   *
+   * Registered by hand, non-passively, because React attaches `wheel` passively and a
+   * passive listener cannot call `preventDefault()`: the page would zoom underneath us and
+   * the reader would get both behaviours at once.
+   */
+  useEffect(() => {
+    const el = rootRef.current
+    if (!el) return
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return
+      e.preventDefault()
+      setZoom(zoomFromWheel(zoomRef.current, e.deltaY))
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [setZoom])
 
   const setMode = useCallback(
     (mode: ReaderData['defaults']['mode'] | 'single' | 'double') => {
@@ -360,6 +400,27 @@ export function Reader({ data, comments }: ReaderProps) {
           } else if (chromeRef.current) setChrome(false)
           else setNavHidden(true)
           return
+        /**
+         * Zoom. `+`/`=` and `-`/`_` because the unshifted key is what readers actually press,
+         * and `0` to go back to 100% — the same trio every viewer uses. Ctrl is excluded by
+         * the guard at the top of this handler on purpose: Ctrl+ and Ctrl− stay the
+         * browser's, so nothing we add takes a key away from somebody who wants the page
+         * zoom for the chrome rather than the artwork.
+         */
+        case '+':
+        case '=':
+          e.preventDefault()
+          setZoom(stepZoom(zoomRef.current, 1))
+          return
+        case '-':
+        case '_':
+          e.preventDefault()
+          setZoom(stepZoom(zoomRef.current, -1))
+          return
+        case '0':
+          e.preventDefault()
+          setZoom(ZOOM_MIN)
+          return
         case '?':
           setShortcutsOpen(true)
           return
@@ -382,6 +443,7 @@ export function Reader({ data, comments }: ReaderProps) {
     scrollToComments,
     items.length,
     setItemIndex,
+    setZoom,
   ])
 
   // Strip: hide the chrome on scroll-down, bring it back on scroll-up.
@@ -461,6 +523,8 @@ export function Reader({ data, comments }: ReaderProps) {
           fit={settings.fit}
           direction={settings.direction}
           preload={settings.preload}
+          zoom={zoom}
+          onZoom={setZoom}
           srcFor={srcFor}
           altTemplate={data.chapter.altTemplate}
           lightInk={lightInk}
@@ -475,12 +539,25 @@ export function Reader({ data, comments }: ReaderProps) {
           end={end}
         />
       ) : (
-        <div ref={scrollRef} className="absolute inset-0 overflow-y-auto overscroll-contain">
+        <div
+          ref={scrollRef}
+          className={`absolute inset-0 overscroll-contain ${
+            // Horizontal panning only once there is something to pan to. Left on, the strip
+            // reserves a horizontal scrollbar on desktop and the column sits off-centre.
+            isZoomed(zoom) ? 'overflow-auto' : 'overflow-x-hidden overflow-y-auto'
+          }`}
+          // Ours, not the browser's: `pan-x pan-y` keeps the one-finger scroll and the
+          // zoomed-in pan native while turning off the pinch and double-tap zoom that the
+          // fixed overlay makes useless anyway (`zoom.ts`).
+          style={{ touchAction: 'pan-x pan-y' }}
+        >
           <StripView
             key={stripKey}
             scrollRef={scrollRef}
             items={items}
             pages={data.pages}
+            zoom={zoom}
+            onZoom={setZoom}
             srcFor={srcFor}
             altTemplate={data.chapter.altTemplate}
             gap={settings.gap}

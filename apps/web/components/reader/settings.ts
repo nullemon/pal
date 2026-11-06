@@ -1,5 +1,6 @@
 import { localResume } from '@/lib/progress/local'
 import type { ReaderBackground, ReaderDirection, ReaderMode, ReaderSettings } from './types'
+import { clampZoom, ZOOM_MIN } from './zoom'
 
 /** localStorage key; bump the suffix when the shape changes incompatibly. */
 export const SETTINGS_KEY = 'palscans.reader.v1'
@@ -19,7 +20,25 @@ export const READER_SETTING_VALUES = {
   preload: [3, 5, 10],
   background: ['black', 'dark', 'sepia', 'white'],
   gap: [0, 8, 16],
-} as const satisfies { [K in keyof ReaderSettings]: readonly ReaderSettings[K][] }
+} as const satisfies {
+  [K in keyof ReaderSettings as ReaderSettings[K] extends number
+    ? number extends ReaderSettings[K]
+      ? never
+      : K
+    : K]: readonly ReaderSettings[K][]
+}
+
+/**
+ * The preferences that are a *range* rather than a short list of literals.
+ *
+ * Zoom is continuous — a pinch does not land on a menu item — so the table above cannot
+ * describe it, and an `includes` check would throw away every value a gesture produced.
+ * Clamping is the validation: an out-of-range or hand-edited number becomes the nearest
+ * legal one instead of silently reverting the whole preference set to its default.
+ */
+const READER_SETTING_RANGES = {
+  zoom: clampZoom,
+} as const satisfies Partial<{ [K in keyof ReaderSettings]: (v: number) => ReaderSettings[K] }>
 
 export interface SettingsDefaults {
   /** Admin default from `settings.layouts.reader.default_mode`. */
@@ -39,6 +58,7 @@ export const defaultSettings = (d: SettingsDefaults): ReaderSettings => ({
   preload: 5,
   background: d.background,
   gap: 0,
+  zoom: ZOOM_MIN,
 })
 
 /**
@@ -48,10 +68,20 @@ export const defaultSettings = (d: SettingsDefaults): ReaderSettings => ({
 export const parseStoredSettings = (raw: unknown, defaults: ReaderSettings): ReaderSettings => {
   if (!raw || typeof raw !== 'object') return defaults
   const out: ReaderSettings = { ...defaults }
-  for (const key of Object.keys(READER_SETTING_VALUES) as Array<keyof ReaderSettings>) {
-    const value = (raw as Record<string, unknown>)[key]
+  const blob = raw as Record<string, unknown>
+  for (const key of Object.keys(READER_SETTING_VALUES) as Array<
+    keyof typeof READER_SETTING_VALUES
+  >) {
+    const value = blob[key]
     const allowed: readonly unknown[] = READER_SETTING_VALUES[key]
     if (allowed.includes(value)) (out as unknown as Record<string, unknown>)[key] = value
+  }
+  for (const key of Object.keys(READER_SETTING_RANGES) as Array<
+    keyof typeof READER_SETTING_RANGES
+  >) {
+    const value = blob[key]
+    if (typeof value === 'number' && Number.isFinite(value))
+      (out as unknown as Record<string, unknown>)[key] = READER_SETTING_RANGES[key](value)
   }
   return out
 }
