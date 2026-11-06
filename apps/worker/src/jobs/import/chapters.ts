@@ -3,7 +3,7 @@ import type { LegacySource, MappedChapter } from '@palscans/core/import'
 import type { Queue } from '@palscans/core/queue'
 import { MAX_ORIGINAL_BYTES, type Storage } from '@palscans/core/storage'
 import { type ChapterProcessing, type ChapterSource, chapters, type Db } from '@palscans/db'
-import { and, eq } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 
 /**
  * The chapter half of the importer. Legacy page images are *not* re-encoded here: they are
@@ -95,6 +95,10 @@ export const writeChapter = async (
         // target outright — which, when migration 9044 added `language` to it, silently
         // turned every legacy import into zero imported chapters.
         target: [chapters.seriesId, chapters.number, chapters.language],
+        // And its predicate, now that migration 9054 made the index partial over live rows:
+        // Postgres infers a partial index only from a statement that repeats the predicate.
+        // The same omission fails the same way — the whole insert, not just a colliding row.
+        targetWhere: sql`${chapters.deletedAt} is null`,
         set: base,
       })
       .returning({ id: chapters.id })

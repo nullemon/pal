@@ -213,27 +213,33 @@ describe('chapterNumberClash', () => {
   })
 
   /**
-   * The one that cost an evening. Deleting a chapter does not give its number back — the
-   * unique constraint covers soft-deleted rows — so a deleted draft nobody can see still
-   * blocks the rename. This originally asserted the opposite, which is why the dialog said
-   * "already taken" while the list showed nothing taking it, and the only way to find the
-   * culprit was a SQL query against the live database.
+   * This assertion has flipped twice, so read the reason before flipping it again: it
+   * mirrors the database rule, and the rule itself changed.
+   *
+   * Until migration 9054 uniqueness was a table constraint, which counts soft-deleted rows,
+   * so a deleted chapter really did keep its number and this test asserted the opposite of
+   * what it asserts now. 9054 made it a partial unique index over live rows, because the
+   * panel's advice — "remove it from the trash first" — was impossible to follow: there is
+   * no purge, deliberately, so the number was gone for good.
+   *
+   * If this ever needs to count deleted chapters again, the migration has to change first.
    */
-  it('counts a deleted chapter, which still holds its number in the database', () => {
+  it('ignores a deleted chapter, which no longer holds its number', () => {
     const withDeleted = [
       ...rows,
       { id: 4, number: 900, language: 'en', title: 'Failed import', deletedAt: '2026-01-01' },
     ]
-    expect(chapterNumberClash(withDeleted, 3, 900, 'en')?.id).toBe(4)
+    expect(chapterNumberClash(withDeleted, 3, 900, 'en')).toBeNull()
   })
 
-  it('reports the deleted blocker as deleted, so the remedy is obvious', () => {
-    // A live clash means pick another number; a deleted one means restore or purge it.
-    const withDeleted = [
+  it('still refuses when a live chapter shares the number with a deleted one', () => {
+    // The deleted row is not the blocker; the live one is, and it is the one to name.
+    const both = [
       ...rows,
       { id: 4, number: 900, language: 'en', title: 'Failed import', deletedAt: '2026-01-01' },
+      { id: 5, number: 900, language: 'en', title: 'The real one', deletedAt: null },
     ]
-    expect(chapterNumberClash(withDeleted, 3, 900, 'en')?.deletedAt).toBe('2026-01-01')
+    expect(chapterNumberClash(both, 3, 900, 'en')?.id).toBe(5)
   })
 
   it('treats 7 and 7.0 as the same number', () => {

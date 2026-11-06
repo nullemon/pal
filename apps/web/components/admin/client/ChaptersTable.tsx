@@ -815,14 +815,12 @@ export function ChaptersTable({
           <p className="text-[12px] text-fg-muted">{m.edit.numberHint}</p>
           {clash ? (
             /*
-             * A deleted chapter still holds its number — the unique constraint covers
-             * soft-deleted rows — and it is not in the list below, so saying only "already
-             * taken" sent an operator looking for a chapter that is not there. The remedy
-             * differs too: a live one means pick another number, a deleted one means restore
-             * it or remove it for good.
+             * Names the chapter in the way rather than only saying "already taken", which
+             * left an operator scrolling a thousand-row list to find it. Only live chapters
+             * reach here — a deleted one gave its number back in 9054.
              */
             <p className="text-[12.5px] text-danger">
-              {fmt(clash.deletedAt ? m.edit.takenByDeleted : m.edit.takenBy, {
+              {fmt(m.edit.takenBy, {
                 number: formatChapterNumber(clash.number),
                 language: clash.language,
                 title: clash.title ?? m.edit.untitled,

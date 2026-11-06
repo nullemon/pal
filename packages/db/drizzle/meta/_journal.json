@@ -267,6 +267,13 @@
       "when": 1788639264000,
       "tag": "9053_manifest_publish",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1788725664000,
+      "tag": "9054_chapter_number_live_unique",
+      "breakpoints": true
     }
   ]
 }

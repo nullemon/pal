@@ -1,6 +1,8 @@
+import { adminMessages } from '@palscans/core/messages/admin'
 import { chapters, getDb } from '@palscans/db'
 import { and, inArray } from 'drizzle-orm'
 import { bulkActionSchema } from '@/components/admin/schemas'
+import { isChapterNumberConflict } from '@/components/admin/schemas-genres'
 import { audit } from '@/components/admin/server/audit'
 import { purgeCatalog } from '@/components/admin/server/cache'
 import { publishChapters, scheduleChapters } from '@/components/admin/server/chapters'
@@ -80,10 +82,24 @@ export const POST = withPermission('chapter.update', async (request, _ctx, user)
       affected = body.ids
       break
     case 'restore':
-      await db
-        .update(chapters)
-        .set({ deletedAt: null, updatedAt: now })
-        .where(inArray(chapters.id, body.ids))
+      /**
+       * Restoring can now fail, and that is the trade 9054 made.
+       *
+       * A deleted chapter no longer holds its number, so the number may have been given to
+       * a chapter uploaded since — and bringing the old one back would put two live rows on
+       * it. The partial unique index refuses, which is correct; what matters is that the
+       * operator is told "that number is taken now" rather than shown a 500.
+       */
+      try {
+        await db
+          .update(chapters)
+          .set({ deletedAt: null, updatedAt: now })
+          .where(inArray(chapters.id, body.ids))
+      } catch (error) {
+        if (isChapterNumberConflict(error))
+          return fail(409, 'number_taken', adminMessages.admin.chapters.bulk.restoreTaken)
+        throw error
+      }
       affected = body.ids
       break
     // Queued, not done here: re-marking even one chapter is a pile of CPU-bound encodes, and

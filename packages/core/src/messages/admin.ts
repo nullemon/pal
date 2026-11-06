@@ -181,6 +181,14 @@ export const adminMessages = {
         title: 'Title',
         slug: 'Slug',
         slugCollision: 'This slug is taken by another series.',
+        /**
+         * The same clash, but the series holding the slug is in the trash — which the panel
+         * used to describe as "another series" while showing nothing. Slugs stay reserved
+         * after a series is trashed on purpose (its URL still redirects, docs/12), so the
+         * remedy is to restore it or pick a different slug, and the message has to say which.
+         */
+        slugCollisionTrashed:
+          'This slug belongs to “{title}”, which is in the trash. Restore it, or choose a different slug — a trashed series keeps its URL so old links still redirect.',
         slugAuto: 'Generated from the title. Editable.',
         type: 'Type',
         status: 'Status',
@@ -256,6 +264,8 @@ export const adminMessages = {
         schedule: 'Schedule…',
         setPremium: 'Set premium',
         clearPremium: 'Clear premium',
+        restoreTaken:
+          'That number belongs to another chapter now. Renumber the live one first, or restore this under a different number.',
         creditOff: 'No credit page',
         creditOn: 'Credit page on',
         earlyAccess: 'Set early access window…',
@@ -314,12 +324,6 @@ export const adminMessages = {
           'Shown in the NOTES box on this chapter’s credit page. Empty uses the site default.',
         /** Says *which* one, because the clash is usually a chapter in another language. */
         takenBy: 'Ch. {number} ({language}) already has that number — “{title}”.',
-        /**
-         * The invisible case: deleting a chapter does not free its number, and the deleted
-         * row is not in the list, so "already taken" sends an operator hunting for nothing.
-         */
-        takenByDeleted:
-          'A deleted chapter ({language} {number}, “{title}”) still holds that number. Restore it or remove it for good first.',
       },
       editPages: 'Pages',
       editPagesHint:
@@ -2230,6 +2234,10 @@ export const adminMessages = {
     nameRequired: 'Give the genre a name.',
     slugInvalid: 'Slugs are lowercase letters, digits and hyphens.',
     slugTaken: 'Another genre already uses that slug.',
+    /** The clash is a retired genre, which the list does not show. Same complaint as the
+     * chapter trash: the panel refused and there was nothing to go and look at. */
+    slugTakenRetired:
+      'That slug belongs to “{name}”, a retired genre. Restore it, or choose a different slug.',
 
     edit: 'Edit',
     save: 'Save',

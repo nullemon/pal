@@ -69,9 +69,12 @@ export const isChapterNumberConflict = (error: unknown): boolean => {
   for (let current: unknown = error, depth = 0; current && depth < 5; depth++) {
     const code = (current as { code?: unknown }).code
     const message = current instanceof Error ? current.message : String(current ?? '')
-    const named = /chapters_series_(number_language_)?unique|chapters_series_id_number/i.test(
-      message,
-    )
+    // Every name this rule has had: the original constraint, the language-aware one, and
+    // the partial index that replaced it in 9054. A database upgraded in place can still be
+    // reporting an older one, and an unrecognised name turns a 409 the operator can act on
+    // into a 500 that reads as the site being broken.
+    const named =
+      /chapters_series_(number_language_)?(live_)?unique|chapters_series_id_number/i.test(message)
     if (code === '23505' && (named || /duplicate key|unique constraint/i.test(message))) return true
     if (named && /duplicate key|unique constraint/i.test(message)) return true
     current = (current as { cause?: unknown }).cause

@@ -162,6 +162,22 @@ describe('PATCH /api/admin/chapters/:id', () => {
     expect((await read(id))?.title).toBeNull()
   })
 
+  it("gives a deleted chapter's number back", async () => {
+    /**
+     * The bug this fixes: uniqueness was a table constraint, which counts soft-deleted
+     * rows, so a chapter in the trash kept its number forever. The panel told the operator
+     * to empty the trash, and nothing in the product can — a soft delete is meant to be
+     * reversible — so the number was simply unusable. Migration 9054 made the rule a
+     * partial index over live rows.
+     */
+    const gone = await add(7)
+    await db.update(chapters).set({ deletedAt: new Date() }).where(eq(chapters.id, gone))
+
+    const replacement = await add(8)
+    expect((await patch(replacement, { number: 7 })).status).toBe(200)
+    expect((await read(replacement))?.number).toBe(7)
+  })
+
   it('answers 409, not 500, when the number is already taken', async () => {
     await add(7)
     const id = await add(8)

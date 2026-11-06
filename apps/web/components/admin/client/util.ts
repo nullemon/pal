@@ -178,19 +178,19 @@ export interface ClashCandidate {
 /**
  * The chapter that would block this renumber, or null when nothing does.
  *
- * Compared on number *and language*, because that is what `chapters_series_number_language
- * _unique` is on. The first version compared the number alone, and so refused a rename the
- * database would have accepted: a series carrying a German chapter 1196 beside an English
- * 1196.1 is two translations, not a clash.
+ * Compared on number *and language*, because that is what the database's own rule is on. The
+ * first version compared the number alone, and so refused a rename the database would have
+ * accepted: a series carrying a German chapter 1196 beside an English 1196.1 is two
+ * translations, not a clash.
  *
- * **Deleted chapters count.** The unique constraint covers soft-deleted rows — deleting a
- * chapter does not give its number back — so a deleted draft nobody can see still blocks the
- * rename. Skipping them here is what made the panel refuse with "already taken" while the
- * list showed nothing taking it, and the only way to find the culprit was a SQL query.
+ * **Deleted chapters do not count**, since migration 9054 made the rule a partial index over
+ * live rows. They used to, and that was the complaint: the panel refused with "already taken
+ * by a chapter in the trash", the trash showed nothing, and nothing in the product could have
+ * emptied it anyway — the number was simply gone. This mirrors the index; the two have to
+ * agree or the dialog refuses what the database accepts, or promises what it will reject.
  *
- * Returns the offending row rather than a boolean so the dialog can name it, and say whether
- * it is deleted, because the remedy is different: a live chapter means pick another number, a
- * deleted one means restore or purge it first.
+ * Returns the offending row rather than a boolean, so the dialog can name the chapter in the
+ * way rather than leaving the operator to go looking for it.
  */
 export const chapterNumberClash = <T extends ClashCandidate>(
   rows: readonly T[],
@@ -202,7 +202,14 @@ export const chapterNumberClash = <T extends ClashCandidate>(
   const wanted = number.toFixed(3)
   return (
     rows.find(
-      (r) => r.id !== editingId && r.language === language && r.number.toFixed(3) === wanted,
+      (r) =>
+        r.id !== editingId &&
+        // A chapter in the trash no longer holds its number (migration 9054), so the dialog
+        // must not refuse one the database would accept — that was the whole complaint:
+        // "it says the number is taken by something in the trash and the trash is empty".
+        r.deletedAt === null &&
+        r.language === language &&
+        r.number.toFixed(3) === wanted,
     ) ?? null
   )
 }

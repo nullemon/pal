@@ -285,6 +285,15 @@ export const syncManifestSource = async (
          */
         .onConflictDoNothing({
           target: [chapters.seriesId, chapters.number, chapters.language],
+          // The index is partial over live rows (migration 9054), and Postgres only infers a
+          // partial index when the statement repeats its predicate — without this the insert
+          // fails outright with "no unique or exclusion constraint matching the ON CONFLICT
+          // specification", which is every chapter of every sync, not a rare race.
+          // `where` rather than `targetWhere`: on `onConflictDoNothing` Drizzle renders only
+          // `where`, and renders it in the conflict target, which is the position Postgres
+          // needs. `targetWhere` is silently dropped here — it type-checks and ships SQL
+          // without the predicate, which is the same failure with no sign of a cause.
+          where: sql`${chapters.deletedAt} is null`,
         })
         .returning({ id: chapters.id })
       if (!created) continue

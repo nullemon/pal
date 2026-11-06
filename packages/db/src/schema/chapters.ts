@@ -11,6 +11,7 @@ import {
   smallint,
   text,
   unique,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core'
 import { createdAt, deletedAt, identity, ref, timestamptz, updatedAt } from './_shared.js'
 import { groups, series } from './catalog.js'
@@ -147,7 +148,16 @@ export const chapters = pgTable(
   (t) => [
     // One chapter N *per language*: the old `(series_id, number)` constraint made a German
     // chapter 1 beside the English one impossible, which is the whole feature.
-    unique('chapters_series_number_language_unique').on(t.seriesId, t.number, t.language),
+    /**
+     * One live chapter per number per language (migration 9054).
+     *
+     * Partial, because a soft-deleted chapter must not keep its number: there is no purge —
+     * a soft delete is meant to be reversible — so a plain constraint made the number
+     * unusable forever and told the operator to empty a trash the product cannot empty.
+     */
+    uniqueIndex('chapters_series_number_language_live_unique')
+      .on(t.seriesId, t.number, t.language)
+      .where(sql`${t.deletedAt} is null`),
     // The reader's shape: this series, this language, by number — the chapter list and both
     // neighbour lookups.
     index('chapters_series_language_number_idx')
