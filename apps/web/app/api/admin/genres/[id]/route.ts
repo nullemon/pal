@@ -1,3 +1,4 @@
+import { fmt } from '@palscans/core/messages'
 import { adminMessages } from '@palscans/core/messages/admin'
 import { genres, getDb, restoreGenre, softDeleteGenre, updateGenre } from '@palscans/db'
 import { and, eq, ne } from 'drizzle-orm'
@@ -34,11 +35,18 @@ export const PATCH = withPermission<{ id: string }>('series.update', async (requ
 
   const db = await getDb()
   const [clash] = await db
-    .select({ id: genres.id })
+    .select({ id: genres.id, name: genres.name, deletedAt: genres.deletedAt })
     .from(genres)
     .where(and(eq(genres.slug, slug), ne(genres.id, id.data)))
     .limit(1)
-  if (clash) return fail(409, 'slug', m.slugTaken)
+  // A retired genre keeps its slug and is not in the list, so name it and say so rather than
+  // refusing on behalf of "another genre" the operator cannot find.
+  if (clash)
+    return fail(
+      409,
+      'slug',
+      clash.deletedAt ? fmt(m.slugTakenRetired, { name: clash.name }) : m.slugTaken,
+    )
 
   let result: Awaited<ReturnType<typeof updateGenre>>
   try {

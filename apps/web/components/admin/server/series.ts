@@ -230,12 +230,24 @@ export const richTextFromPlain = (text: string | null) =>
       }
     : null
 
-export const slugTaken = async (slug: string, exceptId: number | null): Promise<boolean> => {
+/**
+ * The series holding a slug, or null when it is free.
+ *
+ * Returns the row rather than a boolean because of *which* row it can be: a trashed series
+ * keeps its slug on purpose — the URL still redirects — so the refusal an operator meets is
+ * often about a series the list is not showing them. Said as "this slug is taken by another
+ * series", that is the chapter-trash complaint over again: a refusal naming something the
+ * screen does not have. With the row in hand the caller can name it and point at the trash.
+ */
+export const slugOwner = async (
+  slug: string,
+  exceptId: number | null,
+): Promise<{ id: number; title: string; deletedAt: Date | null } | null> => {
   const db = await getDb()
   const [row] = await db
-    .select({ id: series.id })
+    .select({ id: series.id, title: series.title, deletedAt: series.deletedAt })
     .from(series)
     .where(and(eq(series.slug, slug), exceptId ? sql`${series.id} <> ${exceptId}` : undefined))
     .limit(1)
-  return !!row
+  return row ?? null
 }

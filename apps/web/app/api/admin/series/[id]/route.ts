@@ -1,5 +1,5 @@
 import { slugify } from '@palscans/core'
-import { messages } from '@palscans/core/messages'
+import { fmt, messages } from '@palscans/core/messages'
 import { adminMessages } from '@palscans/core/messages/admin'
 import {
   geoRestrictions,
@@ -16,7 +16,7 @@ import { seriesDocSchema } from '@/components/admin/schemas'
 import { audit, snapshot } from '@/components/admin/server/audit'
 import { purgeCatalog } from '@/components/admin/server/cache'
 import { idParam } from '@/components/admin/server/params'
-import { richTextFromPlain, slugTaken } from '@/components/admin/server/series'
+import { richTextFromPlain, slugOwner } from '@/components/admin/server/series'
 import { fail, notFound, ok, parseJson, withPermission } from '@/lib/auth'
 
 const AUDITED = [
@@ -53,8 +53,18 @@ export const PUT = withPermission<{ id: string }>('series.update', async (reques
   const [before] = await db.select().from(series).where(eq(series.id, id.data)).limit(1)
   if (!before) return notFound()
   if (doc.linkedSeriesId === id.data) return fail(400, 'validation', messages.errors.validation)
-  if (doc.slug !== before.slug && (await slugTaken(doc.slug, id.data)))
-    return fail(409, 'slug_taken', adminMessages.admin.series.fields.slugCollision)
+  if (doc.slug !== before.slug) {
+    const owner = await slugOwner(doc.slug, id.data)
+    // Name the series in the way, and say when it is one the list is not showing.
+    if (owner)
+      return fail(
+        409,
+        'slug_taken',
+        owner.deletedAt
+          ? fmt(adminMessages.admin.series.fields.slugCollisionTrashed, { title: owner.title })
+          : adminMessages.admin.series.fields.slugCollision,
+      )
+  }
 
   // people: create on the fly by name (docs/04 "typeahead that creates on the fly")
   const personIds: Array<{ personId: number; credit: string }> = []

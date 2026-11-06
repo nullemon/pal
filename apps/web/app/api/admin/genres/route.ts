@@ -1,4 +1,5 @@
 import { slugify } from '@palscans/core'
+import { fmt } from '@palscans/core/messages'
 import { adminMessages } from '@palscans/core/messages/admin'
 import { createGenre, genres, getDb, reorderGenres } from '@palscans/db'
 import { eq } from 'drizzle-orm'
@@ -27,11 +28,17 @@ const resolveSlug = async (name: string, wanted: string | undefined, exceptId?: 
   if (!slug) return { error: m.slugInvalid }
   const db = await getDb()
   const [clash] = await db
-    .select({ id: genres.id })
+    .select({ id: genres.id, name: genres.name, deletedAt: genres.deletedAt })
     .from(genres)
     .where(eq(genres.slug, slug))
     .limit(1)
-  if (clash && clash.id !== exceptId) return { error: m.slugTaken }
+  if (clash && clash.id !== exceptId)
+    return {
+      // A retired genre keeps its slug, and the genre list does not list it — so "another
+      // genre already uses that slug" sent the operator looking for something that is not on
+      // the screen. Name it and say it is retired.
+      error: clash.deletedAt ? fmt(m.slugTakenRetired, { name: clash.name }) : m.slugTaken,
+    }
   return { slug }
 }
 
