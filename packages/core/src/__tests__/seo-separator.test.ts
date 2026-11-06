@@ -77,3 +77,68 @@ describe('chapter counts agree with their noun', () => {
     expect(chapterCountLabel(240)).toBe('chapters')
   })
 })
+
+/**
+ * The second failure, which the first fix could not have caught.
+ *
+ * Threading `sep` through fixed the titles that had *no* separator. These are the titles that
+ * have too many, which arrived in the search results looking like this:
+ *
+ *   PALScans · - Read Manhwa, Manga and Manhua Online
+ *   Blue Lock - - Read Online Free - PALScans
+ *
+ * The first is `{site}` rendering empty against a saved site name of a single space: the dash
+ * is left leading the title and Google prepends the site name it worked out itself. The second
+ * is a template carrying both `{sep}` and a literal dash, which an operator editing the
+ * templates by hand can type without any feedback that it is wrong.
+ *
+ * Collapsing whitespace — all the renderer did — cannot repair either: a dash is a character,
+ * so closing the gap around it leaves the dash. The repair has to be on the separator itself.
+ */
+describe('separators that render against nothing', () => {
+  it('drops a separator the empty site name left leading the title', () => {
+    const home = renderSeo('home', { ...vars, site: ' ' })
+    expect(home.title).toBe('Read Manhwa, Manga and Manhua Online')
+  })
+
+  it('collapses a doubled separator in a hand-edited template', () => {
+    const title = renderSeo(
+      'series',
+      { ...vars },
+      { series: { title: '{title} {sep} - Read Online Free {sep} {site}' } },
+    ).title
+    expect(title).toBe('One Punch Man - Read Online Free - PALScans')
+  })
+
+  it('drops a trailing separator when the last variable is empty', () => {
+    expect(renderSeo('series', { ...vars, site: null }).title).toBe(
+      'One Punch Man - Read Online Free',
+    )
+  })
+
+  it('repairs a run of three, and under an operator separator', () => {
+    const title = renderSeo(
+      'series',
+      { ...vars, sep: '·' },
+      { series: { title: '{title} {sep} · · Read Online Free {sep} {site}' } },
+    ).title
+    expect(title).toBe('One Punch Man · Read Online Free · PALScans')
+  })
+
+  it('leaves punctuation inside words alone', () => {
+    // The separator is punctuation *between* things. A hyphen inside a word is part of it,
+    // and a description that reads "fast, mobile-friendly" must survive the repair intact.
+    expect(renderSeo('home', vars).description).toContain('mobile-friendly')
+    expect(
+      renderSeo('series', { ...vars, title: 'Re-Monster' }, { series: { title: '{title}' } }).title,
+    ).toBe('Re-Monster')
+  })
+
+  it('does not touch a separator the page is not using', () => {
+    // An operator on `·` has not asked for their dashes to be tidied up.
+    expect(
+      renderSeo('series', { ...vars, sep: '·' }, { series: { title: '{title} - - {sep} {site}' } })
+        .title,
+    ).toBe('One Punch Man - - · PALScans')
+  })
+})

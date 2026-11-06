@@ -94,9 +94,45 @@ export const truncateWords = (text: string, max: number, ellipsis = '…'): stri
   return `${head}${ellipsis}`
 }
 
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+/**
+ * Tidy the separators a rendered template is left holding.
+ *
+ * A separator in a template is punctuation *between* two things, and it only reads that way
+ * when both are there. When one renders empty — a variable the caller forgot, a site name
+ * saved as a space, a template an operator typed a second dash into — what reaches Google is
+ * `PALScans · - Read Manhwa, Manga and Manhua Online` or
+ * `Blue Lock - - Read Online Free - PALScans`. Both were live in the search results.
+ *
+ * Collapsing whitespace, which is all the renderer used to do, cannot fix this: the dash is a
+ * character, not a space, so it survives and only the gap around it closes up.
+ *
+ * So: a run of separators becomes one, and a separator with nothing on one side of it is
+ * dropped. Both only apply where the separator stands alone between spaces, which is how a
+ * template uses it — a hyphen inside a word ("mobile-friendly", "Re:Zero" under a `:`
+ * separator) is part of the text and is left exactly as it is.
+ *
+ * This is deliberately a repair of the output rather than a stricter template validator. The
+ * templates are operator-editable from the admin panel and the bad ones are already saved; a
+ * rule that only rejected future saves would leave the live titles broken, and there is no
+ * title where a dangling separator is what was meant.
+ */
+export const collapseSeparators = (text: string, sep: string): string => {
+  const token = sep.trim()
+  if (!token) return text
+  const e = escapeRe(token)
+  return text
+    .replace(new RegExp(`(?:^|\\s)${e}(?:\\s*${e})+(?=\\s|$)`, 'g'), ` ${token} `)
+    .replace(new RegExp(`^(?:${e}\\s*)+`), '')
+    .replace(new RegExp(`(?:\\s*${e})+$`), '')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+}
+
 /** Render a template. Unknown or empty variables render as '' and leftover whitespace collapses. */
-export const renderTemplate = (template: string, vars: TemplateVars): string =>
-  template
+export const renderTemplate = (template: string, vars: TemplateVars): string => {
+  const rendered = template
     .replace(TOKEN, (_m, name: string, len?: string) => {
       const raw = vars[name]
       if (raw === null || raw === undefined) return ''
@@ -106,6 +142,10 @@ export const renderTemplate = (template: string, vars: TemplateVars): string =>
     .replace(/\s{2,}/g, ' ')
     .replace(/\s+([.,;:!?])/g, '$1')
     .trim()
+  // The separator the page was rendered with, not a guess: an operator using `·` should not
+  // have stray dashes cleaned up on their behalf, and vice versa.
+  return collapseSeparators(rendered, String(vars.sep ?? DEFAULT_SEPARATOR))
+}
 
 /**
  * The noun that agrees with a chapter count: one chapter, two chapters.

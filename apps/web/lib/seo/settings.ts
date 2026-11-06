@@ -18,7 +18,10 @@ export { SEO_KEYS, type SeoKey, SITEMAP_SECTIONS, type SitemapSection }
 const nullableString = (max = 2000) => z.string().max(max).nullable().catch(null)
 
 export const seoIdentitySchema = z.object({
-  site_name: z.string().min(1).max(80).catch('PALScans'),
+  // Trimmed before the length check: a site name saved as a space passed `min(1)`, rendered
+  // as whitespace, and the renderer then collapsed it away — which is how `{site} {sep} Read
+  // Manhwa…` reached Google as `- Read Manhwa…` with Google supplying the name itself.
+  site_name: z.string().trim().min(1).max(80).catch('PALScans'),
   separator: z.enum(['-', '·', '—', '|']).catch('-'),
   default_description: z.string().max(400).catch(DEFAULT_SEO_TEMPLATES.home.description),
   default_og_image_key: nullableString(500),

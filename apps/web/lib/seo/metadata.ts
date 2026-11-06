@@ -1,4 +1,5 @@
 import {
+  collapseSeparators,
   renderTemplate,
   type SeoPageType,
   seoVars,
@@ -114,7 +115,10 @@ export function metadataFor(
   if (!title) title = site
   if (overrideDescription) description = overrideDescription
   if (!description) description = settings.identity.default_description
-  title = clean(title)
+  // The override path builds its title by hand rather than through a template, so it needs
+  // the same tidy-up: a per-entity SEO title with a blank site name behind it left the dash
+  // hanging off the end of the tab title and of the search result.
+  title = collapseSeparators(clean(title), sep)
   description = truncateWords(clean(description), 300)
 
   const origin = new URL(env.siteUrl).origin

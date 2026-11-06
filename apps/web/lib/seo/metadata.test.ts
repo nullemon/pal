@@ -137,3 +137,47 @@ describe('metadataFor (docs/12 §2, §7)', () => {
     expect((meta.openGraph as { type: string }).type).toBe('article')
   })
 })
+
+/**
+ * Separators that render against nothing, on the two paths `metadataFor` has.
+ *
+ * What was live in the search results was `PALScans · - Read Manhwa, Manga and Manhua Online`
+ * and `Blue Lock - - Read Online Free - PALScans`. The repair itself lives in core's
+ * `collapseSeparators` and is unit-tested there; these are the two ways a page reaches it,
+ * because the override path builds its title by hand and so had to be wired up separately.
+ */
+describe('separators that render against nothing', () => {
+  it('does not leave a dangling separator after an override title that ends in one', () => {
+    // An operator typing "Blue Lock -" into the per-series SEO title cannot see that the
+    // builder is about to append the separator and the site name behind it.
+    const meta = metadataFor(settings(), env, 'browse', {
+      path: '/browse',
+      override: { title: 'All Series -' },
+    })
+    expect(meta.title).toEqual({ absolute: 'All Series - PALScans' })
+  })
+
+  it('collapses a doubled separator coming out of a hand-edited template', () => {
+    const custom = settings({
+      templates: {
+        ...DEFAULT_SEO_SETTINGS.templates,
+        series: { title: '{title} {sep} - Read Online Free {sep} {site}', description: '' },
+      },
+    })
+    const meta = metadataFor(custom, env, 'series', {
+      path: '/series/blue-lock',
+      vars: { title: 'Blue Lock' },
+    })
+    expect(meta.title).toEqual({ absolute: 'Blue Lock - Read Online Free - PALScans' })
+  })
+
+  it('keeps a blank site name out of the title entirely', () => {
+    // A site name saved as a single space passed the old `min(1)` check, rendered as
+    // whitespace, and left the separator leading the title with Google supplying the name.
+    const blank = settings({
+      identity: { ...DEFAULT_SEO_SETTINGS.identity, site_name: ' ' },
+    })
+    const meta = metadataFor(blank, env, 'home', { path: '/' })
+    expect(String((meta.title as { absolute: string }).absolute)).not.toMatch(/^[-·—|]/)
+  })
+})
