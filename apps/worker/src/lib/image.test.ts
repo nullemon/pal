@@ -2,6 +2,9 @@ import { normalizeWatermark, type WatermarkConfig } from '@palscans/core/waterma
 import sharp from 'sharp'
 import { describe, expect, it } from 'vitest'
 import {
+  decodeSegments,
+  MAX_HEIGHT,
+  MAX_WIDTH,
   pageAddress,
   processImage,
   segmentsFor,
@@ -191,5 +194,45 @@ describe('image pipeline', () => {
     await expect(
       processImage(new Uint8Array([1, 2, 3, 4]), { prefix: 'pages/1/2', startIdx: 0 }),
     ).rejects.toThrow()
+  })
+})
+
+/**
+ * The limits, and the one that contradicted the splitter.
+ *
+ * `MAX_SIDE` was 12 000 and applied to both sides, so every strip the splitter exists for —
+ * anything over 12 000 px tall — was refused before it reached the splitter, with
+ * `image too large: 800×18000` and nothing to act on. That is "I can't upload images with
+ * large size": not bytes, not storage, a height ceiling below the one the pipeline documents
+ * two lines above it.
+ */
+describe('originals that are too big', () => {
+  it('accepts a strip taller than the old square ceiling and splits it', async () => {
+    // 14 000 px: over the old 12 000 limit, so this used to throw. Checked through
+    // decodeSegments rather than processImage so the assertion is about the limit and not
+    // about eight encodes per segment.
+    const segs = await decodeSegments(new Uint8Array(await solid(400, 14_000)))
+    expect(segs.length).toBe(3)
+    expect(segs.reduce((n, s) => n + s.height, 0)).toBe(14_000)
+    expect(segs.every((s) => s.height <= 5000 && s.width === 400)).toBe(true)
+  }, 60_000)
+
+  it('says which edge is too big, and refuses before decoding it', async () => {
+    // Each of these is refused off the header, which is why a 1.0 GP file does not have to be
+    // decoded to be turned away — and why the message has the dimensions in it at all.
+    await expect(decodeSegments(new Uint8Array(await solid(13_000, 80)))).rejects.toThrow(
+      /image too wide: 13000px, limit 12000px/,
+    )
+    await expect(decodeSegments(new Uint8Array(await solid(300, 41_000)))).rejects.toThrow(
+      /image too tall: 41000px, limit 40000px — split the strip first/,
+    )
+    await expect(decodeSegments(new Uint8Array(await solid(2_000, 25_000)))).rejects.toThrow(
+      /image too large: 2000×25000 is 50\.0 MP, limit 40\.0 MP/,
+    )
+  }, 120_000)
+
+  it('keeps the two ceilings apart', () => {
+    // The bug in one line: a single ceiling for both sides cannot hold a long strip.
+    expect(MAX_HEIGHT).toBeGreaterThan(MAX_WIDTH)
   })
 })

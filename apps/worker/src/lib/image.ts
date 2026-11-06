@@ -15,10 +15,32 @@ import sharp, { type OverlayOptions, type Sharp } from 'sharp'
  * than 10 000 px are sliced into ≤ 5 000 px segments emitted as consecutive pages.
  */
 export const WIDTHS = [480, 720, 1080, 1440] as const
-export const MAX_SIDE = 12_000
+
+/**
+ * A page wider than this is not a page. Width and height are capped separately, which they
+ * were not: one `MAX_SIDE` of 12 000 applied to both, and so rejected exactly the images
+ * `SPLIT_ABOVE` exists to handle. A manhwa chapter exported as one tall strip — 800 × 18 000,
+ * an ordinary file — was refused outright with `image too large: 800×18000`, while the
+ * splitter two lines below it sat waiting to cut that very image into four pages. "I can't
+ * upload images with large size" was this, and the operator had no way to see that only the
+ * *height* was the problem, or that the height was one the pipeline could handle.
+ */
+export const MAX_WIDTH = 12_000
+/**
+ * Tall is allowed; `MAX_PIXELS` is what actually binds.
+ *
+ * This is the height a 1 000-px-wide strip reaches at the pixel budget, so raising the height
+ * ceiling to it costs nothing in memory — any strip that would now pass on height and fail on
+ * area still fails, with the message that says so. Decoding happens into one buffer, so area
+ * is the honest limit on a 2 GB box, not either side on its own.
+ */
+export const MAX_HEIGHT = 40_000
 export const MAX_PIXELS = 40_000_000
 export const SPLIT_ABOVE = 10_000
 export const SEGMENT_HEIGHT = 5_000
+
+/** Megapixels, to one decimal, for an error an operator has to act on. */
+const mp = (n: number) => (n / 1_000_000).toFixed(1)
 
 sharp.concurrency(Math.max(1, Math.min(2, sharp.concurrency())))
 
@@ -199,6 +221,25 @@ export interface SourceSegment {
 }
 
 /**
+ * Refuse an original the pipeline cannot hold, saying which edge is the problem.
+ *
+ * Each limit names itself and what it wants, because the operator's only remedy is to edit the
+ * file and they have to know which edge to take off. The message was `image too large: W×H`
+ * for all three cases, which reads as "too big, somehow" — and on the common one, a long
+ * strip, it was wrong as well as unhelpful: the pipeline splits those.
+ */
+const assertSize = (width: number, height: number): void => {
+  if (width > MAX_WIDTH)
+    throw new Error(`image too wide: ${width}px, limit ${MAX_WIDTH}px (height ${height}px is fine)`)
+  if (height > MAX_HEIGHT)
+    throw new Error(`image too tall: ${height}px, limit ${MAX_HEIGHT}px — split the strip first`)
+  if (width * height > MAX_PIXELS)
+    throw new Error(
+      `image too large: ${width}×${height} is ${mp(width * height)} MP, limit ${mp(MAX_PIXELS)} MP — narrow or split it`,
+    )
+}
+
+/**
  * Decode one uploaded original into the segments the pipeline would emit for it.
  *
  * Split out of {@link processImage} so a caller can ask *what address would this page have*
@@ -207,14 +248,30 @@ export interface SourceSegment {
  * which is roughly a tenth of the cost of finding out by re-encoding.
  */
 export const decodeSegments = async (source: Uint8Array): Promise<SourceSegment[]> => {
+  /*
+   * The size checks run off the *header*, before a pixel is decoded.
+   *
+   * They used to run off the decode, which meant they could not fire: sharp's own
+   * `limitInputPixels` refused the file first, and its message is "Input image exceeds pixel
+   * limit" with no dimensions in it and nothing for the operator to do. Reading the header
+   * costs nothing, cannot OOM, and puts our own message — which says which edge is too big —
+   * in front of theirs. `limitInputPixels` stays on the decode as the real guard.
+   */
+  const head = await sharp(source, { limitInputPixels: false, failOn: 'error' }).metadata()
+  // `.rotate()` below applies EXIF orientation, which for 5–8 swaps the sides. Check what the
+  // pipeline will actually hold, not what the file claims.
+  const turned = (head.orientation ?? 1) >= 5
+  const headW = turned ? head.height : head.width
+  const headH = turned ? head.width : head.height
+  if (headW && headH) assertSize(headW, headH)
+
   const oriented = await sharp(source, { limitInputPixels: MAX_PIXELS, failOn: 'error' })
     .rotate()
     .png({ compressionLevel: 1 })
     .toBuffer({ resolveWithObject: true })
   const { width, height } = oriented.info
   if (!width || !height) throw new Error('decode failed')
-  if (width > MAX_SIDE || height > MAX_SIDE) throw new Error(`image too large: ${width}×${height}`)
-  if (width * height > MAX_PIXELS) throw new Error(`image too large: ${width}×${height}`)
+  assertSize(width, height)
 
   const out: SourceSegment[] = []
   for (const [i, seg] of segmentsFor(height).entries()) {
