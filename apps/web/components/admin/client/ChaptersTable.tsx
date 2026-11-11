@@ -5,7 +5,7 @@ import { fmt, messages } from '@palscans/core/messages'
 import { adminMessages } from '@palscans/core/messages/admin'
 import type { WatermarkPageState } from '@palscans/core/watermark'
 import { Button, cn, useToast } from '@palscans/ui'
-import { Images, Pencil, RefreshCw, Stamp, Users } from 'lucide-react'
+import { HardDriveDownload, Images, Pencil, RefreshCw, Stamp, Users } from 'lucide-react'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import type { BulkAction } from '../schemas'
 import {
@@ -191,10 +191,11 @@ export function ChaptersTable({
       const before = rows
       if (optimistic)
         setRows((rs) => rs.map((r) => (action.ids.includes(r.id) ? optimistic(r) : r)))
-      const res = await postJson<{ affected: number[]; runId: string | null }>(
-        '/api/admin/chapters/bulk',
-        action,
-      )
+      const res = await postJson<{
+        affected: number[]
+        runId: string | null
+        skipped?: Array<{ id: number; reason: string }>
+      }>('/api/admin/chapters/bulk', action)
       setBusy(false)
       if (!res.ok) {
         setRows(before)
@@ -211,6 +212,22 @@ export function ChaptersTable({
       const n = res.data.affected.length
       if (action.action === 'reapply_watermark') {
         toast({ title: fmt(m.reapplyQueued, { n }), tone: 'ok' })
+        setSelected(new Set())
+        return true
+      }
+      if (action.action === 'copy_to_storage') {
+        // Say which of the three outcomes it was. A bare count after selecting forty
+        // chapters and queueing nine of them is the kind of result that reads as a failure.
+        const skipped = res.data.skipped?.length ?? 0
+        toast({
+          title:
+            n === 0
+              ? m.copyToStorageNone
+              : skipped > 0
+                ? fmt(m.copyToStoragePartial, { n, skipped })
+                : fmt(m.copyToStorageQueued, { n }),
+          tone: n === 0 ? 'neutral' : 'ok',
+        })
         setSelected(new Set())
         return true
       }
@@ -446,15 +463,26 @@ export function ChaptersTable({
             </>
           ) : null}
           {perms.repair ? (
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={busy}
-              onClick={() => run({ action: 'reapply_watermark', ids })}
-            >
-              <Stamp size={13} aria-hidden="true" />
-              {m.reapplyWatermark}
-            </Button>
+            <>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={busy}
+                onClick={() => run({ action: 'reapply_watermark', ids })}
+              >
+                <Stamp size={13} aria-hidden="true" />
+                {m.reapplyWatermark}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={busy}
+                onClick={() => run({ action: 'copy_to_storage', ids })}
+              >
+                <HardDriveDownload size={13} aria-hidden="true" />
+                {m.copyToStorage}
+              </Button>
+            </>
           ) : null}
           {perms.chapterDelete ? (
             <Button

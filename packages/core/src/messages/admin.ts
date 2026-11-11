@@ -347,6 +347,18 @@ export const adminMessages = {
       },
       markFilter: 'Mark',
       reapplyWatermark: 'Re-apply watermark',
+      /**
+       * Named for the outcome, not the mechanism. "Convert to storage mode" describes our
+       * data model; "Copy pages into our storage" describes what the operator gets, which is
+       * pages they can edit, watermark, and keep when the other host goes away.
+       */
+      copyToStorage: 'Copy pages into our storage',
+      copyToStorageQueued:
+        '{n} queued. The pages are downloaded in the background; each chapter is back once its download finishes.',
+      copyToStorageNone:
+        'Nothing to copy — these chapters already have their pages in our storage.',
+      copyToStoragePartial:
+        '{n} queued. {skipped} skipped: already ours, or busy processing right now.',
       reapplyQueued:
         'Watermark re-apply queued for {n} chapters — watch it in Appearance → Watermark.',
       reapplyBusy:

@@ -175,6 +175,25 @@ export const bulkActionSchema = z.discriminatedUnion('action', [
     action: z.literal('reapply_watermark'),
     ids: z.array(z.number().int()).min(1).max(500),
   }),
+  /**
+   * Pull these chapters' pages into our own bucket, from the host they are streamed from now.
+   *
+   * A chapter imported in remote mode keeps no pages of ours: `/p/:chapter/:idx` fetches each
+   * image from the original host on a cache miss and stores nothing, which is the point of
+   * the mode. The cost is that there is nothing to edit — the page grid is empty, so a single
+   * bad page cannot be replaced — nothing to watermark, and a catalogue that stops working
+   * the day the other host does.
+   *
+   * Converting one chapter has always been possible through "Replace pages from a link" with
+   * the storage toggle on. In bulk because the unit of the decision is a series or a whole
+   * back catalogue, and re-pasting a link per chapter is the kind of job nobody finishes.
+   *
+   * Capped lower than the others on purpose: each chapter is a fresh download of every page.
+   */
+  z.object({
+    action: z.literal('copy_to_storage'),
+    ids: z.array(z.number().int()).min(1).max(100),
+  }),
 ])
 export type BulkAction = z.infer<typeof bulkActionSchema>
 

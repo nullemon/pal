@@ -5,7 +5,12 @@ import { bulkActionSchema } from '@/components/admin/schemas'
 import { isChapterNumberConflict } from '@/components/admin/schemas-genres'
 import { audit } from '@/components/admin/server/audit'
 import { purgeCatalog } from '@/components/admin/server/cache'
-import { publishChapters, scheduleChapters } from '@/components/admin/server/chapters'
+import {
+  convertChaptersToStorage,
+  publishChapters,
+  type StorageConversion,
+  scheduleChapters,
+} from '@/components/admin/server/chapters'
 import { setChapterGroups } from '@/components/admin/server/groups'
 import { startWatermarkRun, WatermarkRunBusyError } from '@/components/admin/server/watermark'
 import { fail, ok, parseJson, withPermission } from '@/lib/auth'
@@ -25,7 +30,7 @@ export const POST = withPermission('chapter.update', async (request, _ctx, user)
       ? 'chapter.publish'
       : body.action === 'delete' || body.action === 'restore'
         ? 'chapter.delete'
-        : body.action === 'reapply_watermark'
+        : body.action === 'reapply_watermark' || body.action === 'copy_to_storage'
           ? 'chapter.repair'
           : 'chapter.update'
   if (!can(user, needs)) return Response.json({ error: 'forbidden' }, { status: 403 })
@@ -35,6 +40,8 @@ export const POST = withPermission('chapter.update', async (request, _ctx, user)
   let affected: number[] = []
   /** Set only by `reapply_watermark`: the run the panel should follow. */
   let runId: string | null = null
+  /** Set only by `copy_to_storage`: which chapters were queued, and which were not and why. */
+  let conversion: StorageConversion | null = null
   switch (body.action) {
     case 'publish_now':
       affected = await publishChapters(body.ids, now)
@@ -113,6 +120,16 @@ export const POST = withPermission('chapter.update', async (request, _ctx, user)
         throw err
       }
       break
+    /*
+     * Queued, like the watermark above and for the same reason: each chapter is a fresh
+     * download of every page, which belongs to the worker. The response reports the skips
+     * per chapter so the panel can say "nine queued, three already in your storage" rather
+     * than a count that leaves the operator guessing which is which.
+     */
+    case 'copy_to_storage':
+      conversion = await convertChaptersToStorage(body.ids)
+      affected = conversion.converted
+      break
   }
   await audit({
     actorId: user.id,
@@ -123,10 +140,11 @@ export const POST = withPermission('chapter.update', async (request, _ctx, user)
     after: {
       affected,
       ...(runId ? { runId } : {}),
+      ...(conversion ? { skipped: conversion.skipped } : {}),
       ...('publishedAt' in body ? { publishedAt: body.publishedAt } : {}),
       ...('earlyAccessUntil' in body ? { earlyAccessUntil: body.earlyAccessUntil } : {}),
     },
   })
   purgeCatalog()
-  return ok({ affected, runId })
+  return ok({ affected, runId, skipped: conversion?.skipped ?? [] })
 })

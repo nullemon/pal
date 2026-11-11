@@ -3,6 +3,7 @@ import {
   bookmarks,
   type ChapterProcessing,
   chapters,
+  type Db,
   getDb,
   notificationPrefs,
   notifications,
@@ -295,4 +296,89 @@ export const enqueueFetch = async (
   } catch {
     return null
   }
+}
+
+/**
+ * Why a chapter could not be pulled into our bucket. Reported per chapter rather than
+ * summed, because "12 of 40 were skipped" without a reason is not something an operator can
+ * act on.
+ */
+export type StorageSkipReason = 'already_ours' | 'processing' | 'deleted'
+
+export interface StorageConversion {
+  converted: number[]
+  skipped: Array<{ id: number; reason: StorageSkipReason }>
+}
+
+/**
+ * Re-download these chapters' pages into our own storage.
+ *
+ * The mechanism is the one the import panel already uses: the chapter's own
+ * `processing.fetch` records where its pages came from, so converting it is that same
+ * descriptor with `mode` flipped to `storage`, a bumped attempt, and `chapter.fetch` queued
+ * again. Nothing is downloaded here — forty pages is eighty megabytes and this is a request
+ * handler on a small box; the worker has the retries, the progress and the shutdown.
+ *
+ * **A chapter with no `fetch` descriptor is already ours.** That is not a guess: the fetch
+ * job deletes the descriptor when it finishes in storage mode (`delete next.fetch`) and
+ * keeps it when it finishes in remote mode, and a chapter uploaded through the browser never
+ * had one. So its absence means the pages are in the bucket, by either route, and there is
+ * nothing to convert.
+ *
+ * `after` is carried over untouched, so a published chapter comes back published rather than
+ * quietly reverting to a draft while an operator is converting a back catalogue.
+ */
+export const convertChaptersToStorage = async (
+  ids: number[],
+  db?: Db,
+): Promise<StorageConversion> => {
+  const database = db ?? (await getDb())
+  const rows = await database
+    .select({
+      id: chapters.id,
+      state: chapters.state,
+      processing: chapters.processing,
+      deletedAt: chapters.deletedAt,
+    })
+    .from(chapters)
+    .where(inArray(chapters.id, ids))
+
+  const converted: number[] = []
+  const skipped: StorageConversion['skipped'] = []
+  for (const row of rows) {
+    if (row.deletedAt) {
+      skipped.push({ id: row.id, reason: 'deleted' })
+      continue
+    }
+    const fetchDoc = row.processing?.fetch
+    if (!fetchDoc || fetchDoc.mode !== 'remote') {
+      skipped.push({ id: row.id, reason: 'already_ours' })
+      continue
+    }
+    // A chapter mid-download would have its document overwritten underneath the running job.
+    if (row.state === 'processing') {
+      skipped.push({ id: row.id, reason: 'processing' })
+      continue
+    }
+    const attempt = (row.processing?.attempt ?? 0) + 1
+    const next: ChapterProcessing = {
+      ...row.processing,
+      sources: [],
+      results: {},
+      errors: {},
+      progress: { done: 0, total: row.processing?.progress?.total ?? 0 },
+      attempt,
+      mode: 'all',
+      fetch: { ...fetchDoc, mode: 'storage' },
+      startedAt: null,
+      finishedAt: null,
+    }
+    await database
+      .update(chapters)
+      .set({ state: 'processing', processing: next, updatedAt: new Date() })
+      .where(eq(chapters.id, row.id))
+    await enqueueFetch(row.id, attempt)
+    converted.push(row.id)
+  }
+  return { converted, skipped }
 }
