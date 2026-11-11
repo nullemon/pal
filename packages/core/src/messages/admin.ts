@@ -3100,9 +3100,19 @@ export const adminMessages = {
     moveRight: 'Move later',
     page: 'Page {n}',
     replace: 'Replace',
+    /** Accessible names: the glyph controls are identical across 200 pages without them. */
+    replacePage: 'Replace page {n}',
     insertBefore: 'Insert before',
+    insertBeforePage: 'Insert a page before page {n}',
     insertAtEnd: 'Add a page at the end',
-    dropToReplace: 'Drop an image on a page to replace it.',
+    /**
+     * Names the button first and the gesture second.
+     *
+     * Replacing a page was drop-only, and a drop target with no control is invisible — it
+     * says nothing on the screen and does not exist on a tablet at all, which left the most
+     * common reason to open this screen with no way to ask for it.
+     */
+    dropToReplace: 'To replace a page, press ⟳ on it — or drop an image straight onto it.',
     uploading: 'Uploading…',
     queued: 'Queued for processing. The new page appears once the worker finishes.',
     uploadFailed: 'That upload did not go through.',

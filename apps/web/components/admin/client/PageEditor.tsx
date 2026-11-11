@@ -362,10 +362,44 @@ export function PageEditor({ chapterId, initial, editable }: Props) {
                       type="file"
                       accept="image/*"
                       className="sr-only"
+                      aria-label={fmt(m.insertBeforePage, { n: index + 1 })}
                       disabled={saving || !!busy}
                       onChange={(event) => {
                         const file = event.target.files?.[0]
                         if (file) void addFile('insert', index, file)
+                        event.target.value = ''
+                      }}
+                    />
+                  </label>
+                  {/*
+                    Replace, as a button rather than only a drop target.
+                    
+                    The operation already existed — dropping a file from the desktop onto a
+                    page has always replaced it — but a drop target with no control is
+                    invisible: nothing on the screen says the page will take a file, and the
+                    gesture does not exist at all on a tablet, which is where a lot of this
+                    panel is used. So the one thing an operator comes to this screen to do
+                    ("this page is bad, here is a better one") was the one thing with no way
+                    to ask for it. Same hidden-input pattern as the insert control beside it.
+                  */}
+                  <label
+                    className={`rounded px-1.5 py-0.5 text-xs hover:bg-surface-3 ${
+                      gone ? 'cursor-not-allowed opacity-40' : 'cursor-pointer'
+                    }`}
+                    title={m.replace}
+                  >
+                    ⟳
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="sr-only"
+                      aria-label={fmt(m.replacePage, { n: index + 1 })}
+                      // A page already staged for deletion has nothing worth replacing, and
+                      // allowing it would leave the save with two contradictory intentions.
+                      disabled={saving || !!busy || gone}
+                      onChange={(event) => {
+                        const file = event.target.files?.[0]
+                        if (file) void addFile('replace', index, file)
                         event.target.value = ''
                       }}
                     />
