@@ -199,6 +199,16 @@ const notFoundResponse = () =>
  * that null. Anything that might key on the visitor cookie stays off the list.
  */
 const CACHEABLE_PUBLIC = [
+  /**
+   * The home page, which is where a crowd arrives before it is anywhere else.
+   *
+   * It belongs here for the same reason as the rest and was simply missed: a signed-out
+   * render is byte-identical for every reader, because the only personal things on it —
+   * Continue reading and the ad-free entitlement — are derived from a session that is not
+   * there. `?page=` and `?type=` are part of the URL, so each tab and page is its own entry
+   * rather than one reader's view of the feed served to another.
+   */
+  /^\/$/,
   /^\/series\/[^/]+$/,
   /^\/series\/[^/]+\/chapter-[^/]+$/,
   /^\/browse$/,

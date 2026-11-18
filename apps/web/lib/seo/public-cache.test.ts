@@ -58,6 +58,20 @@ describe('publicCache', () => {
     expect(call('/genres/action')).toContain('s-maxage')
   })
 
+  it('caches the home page, which is where a crowd arrives first', () => {
+    // It was missing from the list, and it is the page a release-day or a link-from-social
+    // spike lands on before any other. Signed out it is byte-identical like the rest: the
+    // only personal things on it come from a session that is not there.
+    expect(call('/')).toContain('s-maxage')
+    expect(call('/', { signedIn: true })).toBe('private, no-store')
+  })
+
+  it('does not treat every path as the home page', () => {
+    // `/^\/$/` must anchor both ends, or it matches nothing and everything by turns.
+    expect(call('/me')).toBeNull()
+    expect(call('/subscribe')).toBeNull()
+  })
+
   it('does not match a path that merely starts like a series page', () => {
     // `/series/one-piece/feed` is a different handler with its own caching.
     expect(call('/series/one-piece/feed')).toBeNull()
