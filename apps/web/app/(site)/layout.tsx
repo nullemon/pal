@@ -29,7 +29,12 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
         <CustomCode />
         <AnnouncementBar />
         <Header />
-        <main id="main" className="pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
+        <main
+          id="main"
+          /* The mobile tab bar, plus the anchor ad when one is up (`--anchor-h`, globals.css).
+             Desktop has no tab bar, so there it is the anchor alone. */
+          className="pb-[calc(4rem+env(safe-area-inset-bottom)+var(--anchor-h))] md:pb-[var(--anchor-h)]"
+        >
           {children}
         </main>
         <Footer />

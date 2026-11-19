@@ -32,7 +32,7 @@ export function BottomNavBar({ items }: { items: readonly BottomNavItem[] }) {
   return (
     <nav
       aria-label={messages.nav.primaryMobile}
-      className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface-2/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-[14px] md:hidden"
+      className="fixed inset-x-0 bottom-[var(--anchor-h)] z-30 border-t border-line bg-surface-2/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-[14px] md:hidden"
     >
       <ul
         className="grid h-16"

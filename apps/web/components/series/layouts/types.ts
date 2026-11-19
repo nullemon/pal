@@ -46,7 +46,7 @@ export interface SeriesViewProps {
   site: { url: string; name: string }
   /** Appearance → Formatting (docs/15), resolved once by `loadSeriesView()`. */
   formatting: FormattingSettings
-  ads: { top: AdPlacement; mpu: AdPlacement }
+  ads: { top: AdPlacement; mpu: AdPlacement; anchor: AdPlacement }
 }
 
 export type SeriesLayoutComponent = (props: SeriesViewProps) => ReactNode

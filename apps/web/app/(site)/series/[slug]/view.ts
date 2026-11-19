@@ -55,7 +55,7 @@ export async function loadSeriesView(
     siteFormatting(),
   ])
   const withAds = gate.showsAds(user, now)
-  const place = (id: 'series_top' | 'series_sidebar') => {
+  const place = (id: 'series_top' | 'series_sidebar' | 'mobile_anchor') => {
     const slot = adSlot(ads, id)
     // No placeholder for an untagged slot: `AdSlot` then renders nothing rather than a
     // grey box. The ads screen passes its own `placeholder` to preview placements.
@@ -79,6 +79,6 @@ export async function loadSeriesView(
     earlyAccessMinutes: gate.overrides.early_access_minutes,
     site: { url: env.SITE_URL, name: env.SITE_NAME },
     formatting,
-    ads: { top: place('series_top'), mpu: place('series_sidebar') },
+    ads: { top: place('series_top'), mpu: place('series_sidebar'), anchor: place('mobile_anchor') },
   }
 }

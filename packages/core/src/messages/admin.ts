@@ -992,7 +992,7 @@ export const adminMessages = {
         reader_sky: 'Reader gutters, wide screens only',
         reader_instrip: 'Between pages in the mobile strip',
         reader_end: 'After the last page',
-        mobile_anchor: 'Sticky bottom bar on mobile',
+        mobile_anchor: 'Sticky bar across the bottom, phone and desktop',
       },
     },
     premium: {

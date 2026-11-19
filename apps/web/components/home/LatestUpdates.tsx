@@ -28,7 +28,7 @@ export interface LatestUpdatesProps {
   user: SessionUser | null
   now: Date
   /** Sponsored cell: `null` hides it entirely (ad-free or slot disabled). */
-  sponsored: { placeholder: boolean } | null
+  sponsored: { placeholder: boolean; tag: string | null } | null
   /** `settings.entitlements` overrides, so a free feature renders unlocked (docs/17 §B). */
   overrides?: EntitlementOverrides | null
 }
@@ -57,7 +57,11 @@ export async function LatestUpdates({
     />
   ))
   if (sponsored && cells.length >= AD_INDEX) {
-    cells.splice(AD_INDEX, 0, <SponsoredCard key="sponsored" placeholder={sponsored.placeholder} />)
+    cells.splice(
+      AD_INDEX,
+      0,
+      <SponsoredCard key="sponsored" placeholder={sponsored.placeholder} tag={sponsored.tag} />,
+    )
   }
   return (
     <section aria-labelledby="latest-title" className="flex min-w-0 flex-col gap-2">

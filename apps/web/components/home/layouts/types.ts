@@ -58,7 +58,7 @@ export interface HomeViewProps {
   formatting: FormattingSettings
   /** Which sections `settings.home_layout` leaves enabled. */
   sections: { latest: boolean }
-  ads: { top: AdPlacement; sidebar: AdPlacement; infeed: AdPlacement }
+  ads: { top: AdPlacement; sidebar: AdPlacement; infeed: AdPlacement; anchor: AdPlacement }
 }
 
 export type HomeLayoutComponent = (props: HomeViewProps) => ReactNode

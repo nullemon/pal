@@ -22,7 +22,7 @@ export const AD_SLOT_SIZES: Record<AdSlotId, { desktop: string; mobile: string }
   reader_sky: { desktop: '160×600 / 300×600', mobile: '—' },
   reader_instrip: { desktop: '—', mobile: '300×250' },
   reader_end: { desktop: '336×280', mobile: '300×250' },
-  mobile_anchor: { desktop: '—', mobile: '320×50' },
+  mobile_anchor: { desktop: '728×90', mobile: '320×50' },
 }
 
 const slot = z.object({ enabled: z.boolean(), tag: z.string().max(20_000).nullable() })

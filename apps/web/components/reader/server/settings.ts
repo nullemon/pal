@@ -28,7 +28,12 @@ const slotSchema = z
 const adsRowSchema = z.object({
   reader: readerAdsSchema.catch(readerAdsSchema.parse({})),
   slots: z
-    .object({ reader_sky: slotSchema, reader_instrip: slotSchema, reader_end: slotSchema })
+    .object({
+      reader_sky: slotSchema,
+      reader_instrip: slotSchema,
+      reader_end: slotSchema,
+      mobile_anchor: slotSchema,
+    })
     .partial()
     .catch({}),
 })
@@ -41,13 +46,13 @@ export interface ReaderSiteSettings {
   layout: ReaderLayout
   ads: ReaderAdsSetting
   /** Ad network tags for the reader's slots, null until Business → Ads is filled in. */
-  tags: { sky: string | null; instrip: string | null; end: string | null }
+  tags: { sky: string | null; instrip: string | null; end: string | null; anchor: string | null }
 }
 
 export const DEFAULT_READER_SITE_SETTINGS: ReaderSiteSettings = {
   layout: readerLayoutSchema.parse({}),
   ads: readerAdsSchema.parse({}),
-  tags: { sky: null, instrip: null, end: null },
+  tags: { sky: null, instrip: null, end: null, anchor: null },
 }
 
 export const parseReaderSiteSettings = (layouts: unknown, ads: unknown): ReaderSiteSettings => {
@@ -60,6 +65,7 @@ export const parseReaderSiteSettings = (layouts: unknown, ads: unknown): ReaderS
       sky: a.success ? (a.data.slots.reader_sky?.tag ?? null) : null,
       instrip: a.success ? (a.data.slots.reader_instrip?.tag ?? null) : null,
       end: a.success ? (a.data.slots.reader_end?.tag ?? null) : null,
+      anchor: a.success ? (a.data.slots.mobile_anchor?.tag ?? null) : null,
     },
   }
 }

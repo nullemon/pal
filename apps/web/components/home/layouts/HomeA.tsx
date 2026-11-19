@@ -10,6 +10,7 @@ import { Hero } from '@/components/home/Hero'
 import { LatestUpdates } from '@/components/home/LatestUpdates'
 import { PopularSidebar } from '@/components/home/PopularSidebar'
 import { TrendingRail } from '@/components/home/TrendingRail'
+import { MediaOnly } from '@/components/shell/MediaOnly'
 import type { HomeViewProps } from './types'
 
 /**
@@ -67,7 +68,11 @@ export function HomeA({
               user={user}
               now={now}
               overrides={overrides}
-              sponsored={ads.infeed.show ? { placeholder: ads.infeed.placeholder } : null}
+              sponsored={
+                ads.infeed.show
+                  ? { placeholder: ads.infeed.placeholder, tag: ads.infeed.tag }
+                  : null
+              }
             />
           ) : (
             <div />
@@ -75,7 +80,7 @@ export function HomeA({
           <aside className="flex flex-col gap-2.5">
             {popular ? <PopularSidebar lists={popular} /> : null}
             {ads.sidebar.show ? (
-              <div className="hidden lg:block">
+              <MediaOnly query="(min-width: 1024px)" className="hidden lg:block">
                 <AdSlot
                   slot="home_sidebar"
                   label={messages.ads.mpu}
@@ -84,7 +89,7 @@ export function HomeA({
                   placeholder={ads.sidebar.placeholder}
                   tag={ads.sidebar.tag}
                 />
-              </div>
+              </MediaOnly>
             ) : null}
             <AnnouncementCard announcement={announcement} />
           </aside>

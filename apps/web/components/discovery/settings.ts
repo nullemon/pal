@@ -56,6 +56,7 @@ export const adsSettingsSchema = z.object({
       home_infeed: adSlotSchema,
       series_top: adSlotSchema,
       series_sidebar: adSlotSchema,
+      mobile_anchor: adSlotSchema,
     })
     .partial()
     .catch({}),
@@ -70,6 +71,10 @@ export type HomeAdSlot =
   | 'home_infeed'
   | 'series_top'
   | 'series_sidebar'
+  /* Not a discovery placement so much as a site-wide one, but it is read from the same
+     `settings.ads` row and resolved against the same `no_ads` gate, so it belongs here
+     rather than in a second loader that could disagree with this one. */
+  | 'mobile_anchor'
 
 export function adSlot(ads: AdsSettings, id: HomeAdSlot): { enabled: boolean; tag: string | null } {
   return ads.slots[id] ?? { enabled: true, tag: null }

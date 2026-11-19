@@ -253,7 +253,17 @@ export function ChaptersTable({
       setSelected(new Set())
       return true
     },
-    [rows, toast, m.bulk.deleted, m.bulk.updated, m.reapplyBusy, m.reapplyQueued],
+    [
+      rows,
+      toast,
+      m.bulk.deleted,
+      m.bulk.updated,
+      m.reapplyBusy,
+      m.reapplyQueued,
+      m.copyToStorageNone,
+      m.copyToStoragePartial,
+      m.copyToStorageQueued,
+    ],
   )
 
   const ids = [...selected]
@@ -354,6 +364,7 @@ export function ChaptersTable({
     draftVolume,
     draftLanguage,
     draftNote,
+    draftCreditOff,
     toast,
     m.edit.saved,
     m.edit.taken,

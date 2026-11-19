@@ -11,6 +11,7 @@ import type { UpdateItem } from '@/components/discovery/types'
 import { AnnouncementCard } from '@/components/home/AnnouncementCard'
 import { ContinueReading } from '@/components/home/ContinueReading'
 import { SponsoredCard } from '@/components/home/SponsoredCard'
+import { MediaOnly } from '@/components/shell/MediaOnly'
 import { siteFormatting } from '@/lib/copy/settings'
 import { chapterAccess } from './chapter-access'
 import type { HomeViewProps } from './types'
@@ -212,7 +213,7 @@ export function HomeD({
           ) : null}
 
           {ads.sidebar.show ? (
-            <div className="hidden lg:block">
+            <MediaOnly query="(min-width: 1024px)" className="hidden lg:block">
               <AdSlot
                 slot="home_sidebar"
                 label={messages.ads.mpu}
@@ -222,7 +223,7 @@ export function HomeD({
                 tag={ads.sidebar.tag}
                 className="lg:mx-0"
               />
-            </div>
+            </MediaOnly>
           ) : null}
           <AnnouncementCard announcement={announcement} />
         </aside>
@@ -272,7 +273,10 @@ export function HomeD({
                     <div key={item.id} className="contents">
                       {i === sponsoredAt && ads.infeed.show ? (
                         <div className="min-w-0">
-                          <SponsoredCard placeholder={ads.infeed.placeholder} />
+                          <SponsoredCard
+                            placeholder={ads.infeed.placeholder}
+                            tag={ads.infeed.tag}
+                          />
                         </div>
                       ) : null}
                       <CatalogCard
@@ -286,7 +290,7 @@ export function HomeD({
                   ))}
                   {sponsoredAt >= items.length && ads.infeed.show ? (
                     <div className="min-w-0">
-                      <SponsoredCard placeholder={ads.infeed.placeholder} />
+                      <SponsoredCard placeholder={ads.infeed.placeholder} tag={ads.infeed.tag} />
                     </div>
                   ) : null}
                 </div>

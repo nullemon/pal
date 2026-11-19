@@ -435,6 +435,8 @@ export const messages = {
     leaderboard: 'Leaderboard',
     mpu: 'MPU',
     sponsored: 'Sponsored',
+    anchor: 'Anchor',
+    closeAnchor: 'Close this ad',
   },
   common: {
     loading: 'Loading…',

@@ -2,6 +2,7 @@ import { renderSeo, truncateWords } from '@palscans/core'
 import { fmt, messages } from '@palscans/core/messages'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
+import { AnchorAd } from '@/components/shell/AnchorAd'
 import { ViewBeacon } from '@/components/views/ViewBeacon'
 import { storageUrl } from '@/lib/comments/media'
 import { getEnv } from '@/lib/env'
@@ -119,6 +120,9 @@ export default async function SeriesPage({ params, searchParams }: PageProps) {
       {/* docs/02 "Views and ranking": the browser reports the view, this render never writes. */}
       <ViewBeacon seriesId={rest.series.id} />
       <Layout {...rest} />
+      {/* Mounted here rather than inside each of the six layout directions: the bar is the
+          same on all of them, and six copies is six places for one to drift. */}
+      <AnchorAd show={rest.ads.anchor.show} tag={rest.ads.anchor.tag} />
     </>
   )
 }

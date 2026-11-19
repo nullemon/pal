@@ -2,6 +2,7 @@
 
 import { fmt, messages } from '@palscans/core/messages'
 import { AdSlot } from '@palscans/ui'
+import { MediaOnly } from '@/components/shell/MediaOnly'
 import type { ReaderAds } from './types'
 
 /**
@@ -13,10 +14,17 @@ export function Skyscrapers({ ads }: { ads: ReaderAds }) {
   if (!ads.enabled || !ads.skyscrapers) return null
   const { w, h } = ads.skySize
   const visible = w === 300 ? 'hidden min-[1520px]:block' : 'hidden xl:block'
+  const query = w === 300 ? '(min-width: 1520px)' : '(min-width: 1280px)'
   const offset = `calc((100vw - 820px) / 4 - ${w / 2}px)`
   const label = messages.readerUi.adSkyscraper
+  /*
+   * Gated on the query as well as the class. The class alone hides the box but still mounts
+   * the tag, so every phone was requesting two 160x600 creatives it could not show — the
+   * bulk of the traffic, spent on impressions nobody saw. `MediaOnly` renders nothing at
+   * all below the width, and the class stays as the fallback before hydration.
+   */
   return (
-    <>
+    <MediaOnly query={query}>
       <aside
         aria-label={messages.readerUi.adPage}
         className={`${visible} fixed top-1/2 z-20 -translate-y-1/2`}
@@ -45,11 +53,11 @@ export function Skyscrapers({ ads }: { ads: ReaderAds }) {
           tag={ads.tags.sky}
         />
       </aside>
-    </>
+    </MediaOnly>
   )
 }
 
-/** The mobile in-strip band: a full-width dark band with a 300×250 centred, after every N pages. */
+/** The in-strip band: a full-width dark band with a 300×250 centred, after every N pages. */
 export function AdBand({ ads, n, className }: { ads: ReaderAds; n: number; className?: string }) {
   if (!ads.enabled || ads.mobileInterval === 0) return null
   return (

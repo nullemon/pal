@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { pageMetadata } from '@/components/discovery/metadata'
+import { AnchorAd } from '@/components/shell/AnchorAd'
 import { homeLayout } from '@/lib/layouts/home'
 import { loadHomeView } from './home-view'
 
@@ -19,5 +20,10 @@ export default async function HomePage({ searchParams }: PageProps<'/'>) {
   const { layout, ...view } = await loadHomeView(sp)
   const preview = typeof sp.layout === 'string' ? sp.layout : undefined
   const Layout = homeLayout(layout, preview)
-  return <Layout {...view} />
+  return (
+    <>
+      <Layout {...view} />
+      <AnchorAd show={view.ads.anchor.show} tag={view.ads.anchor.tag} />
+    </>
+  )
 }

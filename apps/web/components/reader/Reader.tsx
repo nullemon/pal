@@ -3,6 +3,7 @@
 import { fmt, messages } from '@palscans/core/messages'
 import { useRouter } from 'next/navigation'
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { AnchorAd } from '@/components/shell/AnchorAd'
 import { MergeDeviceProgress } from '@/lib/progress/DeviceProgress'
 import { Skyscrapers } from './ads'
 import { BottomBar, ChromeHint, Kbd, ProgressBar, TopBar } from './chrome'
@@ -487,210 +488,227 @@ export function Reader({ data, comments }: ReaderProps) {
   )
 
   return (
-    <div
-      id="reader-root"
-      ref={rootRef}
-      data-mode={settings.mode}
-      className="fixed inset-0 z-40 overflow-hidden text-fg"
-      style={{ background: backgroundStyle(settings.background), overscrollBehavior: 'contain' }}
-    >
-      <style>{shellCss}</style>
-      {/* Signing in from inside the reader (the paywall, the header) lands back here, so
+    <>
+      <div
+        id="reader-root"
+        ref={rootRef}
+        data-mode={settings.mode}
+        /*
+         * `bottom` rather than `inset-0`: the sticky anchor ad lives below the reader, and
+         * ending the overlay above it is what keeps the ad off the chapter nav. `--anchor-h`
+         * is 0px whenever no anchor is mounted, so this is the full viewport in every other
+         * case (globals.css).
+         */
+        className="fixed inset-x-0 top-0 bottom-[var(--anchor-h)] z-40 overflow-hidden text-fg"
+        style={{ background: backgroundStyle(settings.background), overscrollBehavior: 'contain' }}
+      >
+        <style>{shellCss}</style>
+        {/* Signing in from inside the reader (the paywall, the header) lands back here, so
           this is one of the two places the device hands its anonymous reading over. */}
-      {data.viewer.userId === null ? null : <MergeDeviceProgress userId={data.viewer.userId} />}
-      <ProgressBar pct={progress} top={chrome ? topH : 0} current={pageIdx + 1} total={pageCount} />
-      <TopBar
-        visible={chrome}
-        paged={paged}
-        mobile={mobile}
-        seriesTitle={data.series.title}
-        seriesHref={data.series.href}
-        chapterLabel={data.chapter.label}
-        compactLabel={fmt(messages.readerUi.chapterCompact, {
-          title: data.series.title,
-          n: chapterNumber,
-        })}
-        counter={counter}
-        chapters={data.chapters}
-        currentChapter={data.chapter.number}
-        pageCount={pageCount}
-        currentPage={pageIdx}
-        onPage={goToPage}
-        onSettings={() => setSettingsOpen(true)}
-        onComments={scrollToComments}
-        onMore={() => setMoreOpen(true)}
-        settingsOpen={settingsOpen}
-        moreOpen={moreOpen}
-        height={topH}
-      />
-
-      {paged ? (
-        <PagedView
-          items={items}
-          pages={data.pages}
-          itemIndex={itemIndex}
-          mode={settings.mode}
-          fit={settings.fit}
-          direction={settings.direction}
-          preload={settings.preload}
-          zoom={zoom}
-          onZoom={setZoom}
-          srcFor={srcFor}
-          altTemplate={data.chapter.altTemplate}
-          lightInk={lightInk}
-          ads={data.ads}
+        {data.viewer.userId === null ? null : <MergeDeviceProgress userId={data.viewer.userId} />}
+        <ProgressBar
+          pct={progress}
           top={chrome ? topH : 0}
-          bottom={chrome ? bottomH : 0}
-          showTapHint={coarse && !tapHintSeen}
-          onDismissTapHint={markTapHint}
-          onPrev={goPrev}
-          onNext={goNext}
-          onToggleChrome={() => setChrome((v) => !v)}
-          end={end}
+          current={pageIdx + 1}
+          total={pageCount}
         />
-      ) : (
-        <div
-          ref={scrollRef}
-          className={`absolute inset-0 overscroll-contain ${
-            // Horizontal panning only once there is something to pan to. Left on, the strip
-            // reserves a horizontal scrollbar on desktop and the column sits off-centre.
-            isZoomed(zoom) ? 'overflow-auto' : 'overflow-x-hidden overflow-y-auto'
-          }`}
-          // Ours, not the browser's: `pan-x pan-y` keeps the one-finger scroll and the
-          // zoomed-in pan native while turning off the pinch and double-tap zoom that the
-          // fixed overlay makes useless anyway (`zoom.ts`).
-          style={{ touchAction: 'pan-x pan-y' }}
-        >
-          <StripView
-            key={stripKey}
-            scrollRef={scrollRef}
+        <TopBar
+          visible={chrome}
+          paged={paged}
+          mobile={mobile}
+          seriesTitle={data.series.title}
+          seriesHref={data.series.href}
+          chapterLabel={data.chapter.label}
+          compactLabel={fmt(messages.readerUi.chapterCompact, {
+            title: data.series.title,
+            n: chapterNumber,
+          })}
+          counter={counter}
+          chapters={data.chapters}
+          currentChapter={data.chapter.number}
+          pageCount={pageCount}
+          currentPage={pageIdx}
+          onPage={goToPage}
+          onSettings={() => setSettingsOpen(true)}
+          onComments={scrollToComments}
+          onMore={() => setMoreOpen(true)}
+          settingsOpen={settingsOpen}
+          moreOpen={moreOpen}
+          height={topH}
+        />
+
+        {paged ? (
+          <PagedView
             items={items}
             pages={data.pages}
+            itemIndex={itemIndex}
+            mode={settings.mode}
+            fit={settings.fit}
+            direction={settings.direction}
+            preload={settings.preload}
             zoom={zoom}
             onZoom={setZoom}
             srcFor={srcFor}
             altTemplate={data.chapter.altTemplate}
-            gap={settings.gap}
             lightInk={lightInk}
             ads={data.ads}
-            topPad={topH + 3}
-            bottomPad={bottomH}
-            initialPage={initialPage.current}
-            onCurrentPage={setPageIdx}
-            onScroll={onStripScroll}
+            top={chrome ? topH : 0}
+            bottom={chrome ? bottomH : 0}
+            showTapHint={coarse && !tapHintSeen}
+            onDismissTapHint={markTapHint}
+            onPrev={goPrev}
+            onNext={goNext}
             onToggleChrome={() => setChrome((v) => !v)}
             end={end}
           />
-        </div>
-      )}
-
-      {paged && !mobile ? (
-        <footer
-          className={`absolute inset-x-0 bottom-0 z-30 flex flex-col items-center justify-center gap-3 px-6 transition-transform duration-200 motion-reduce:transition-none ${
-            chrome ? 'translate-y-0' : 'translate-y-full'
-          }`}
-          style={{ height: bottomH }}
-        >
-          <Scrubber
-            count={pageCount}
-            current={pageIdx}
-            onChange={goToPage}
-            variant="ticks"
-            className="w-full max-w-[605px]"
-          />
-          <div className="flex items-center gap-1.5 whitespace-nowrap text-xs text-fg-muted">
-            <Kbd>←</Kbd>
-            <Kbd>→</Kbd>
-            <span>{messages.readerUi.hintTurn}</span>
-            <span className="px-0.5 opacity-50">·</span>
-            <Kbd>F</Kbd>
-            <span>{messages.readerUi.hintFullscreen}</span>
-            <span className="px-0.5 opacity-50">·</span>
-            <Kbd>S</Kbd>
-            <span>{messages.readerUi.hintStrip}</span>
-          </div>
-        </footer>
-      ) : (
-        <BottomBar
-          visible={chrome && !navHidden}
-          prev={data.prev}
-          next={data.next}
-          chapters={data.chapters}
-          currentChapter={data.chapter.number}
-          height={bottomH}
-          languages={data.languages}
-          language={data.language}
-          onHide={() => setNavHidden(true)}
-        />
-      )}
-
-      {paged && mobile ? (
-        <div
-          className={`pointer-events-none absolute inset-x-0 z-30 transition-[bottom] duration-200 motion-reduce:transition-none`}
-          style={{ bottom: chrome ? bottomH : 0 }}
-        >
-          <output
-            aria-live="polite"
-            className="absolute bottom-7 left-1/2 flex h-7 -translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-full border border-line bg-bg/95 px-3 text-sm font-semibold backdrop-blur-[12px]"
+        ) : (
+          <div
+            ref={scrollRef}
+            className={`absolute inset-0 overscroll-contain ${
+              // Horizontal panning only once there is something to pan to. Left on, the strip
+              // reserves a horizontal scrollbar on desktop and the column sits off-centre.
+              isZoomed(zoom) ? 'overflow-auto' : 'overflow-x-hidden overflow-y-auto'
+            }`}
+            // Ours, not the browser's: `pan-x pan-y` keeps the one-finger scroll and the
+            // zoomed-in pan native while turning off the pinch and double-tap zoom that the
+            // fixed overlay makes useless anyway (`zoom.ts`).
+            style={{ touchAction: 'pan-x pan-y' }}
           >
-            <span>{pageIdx + 1}</span>
-            <span className="font-medium text-fg-muted">/</span>
-            <span className="font-medium text-fg-muted">{pageCount}</span>
-          </output>
-          <Scrubber
-            count={pageCount}
-            current={pageIdx}
-            onChange={goToPage}
-            variant="thin"
-            className="pointer-events-auto absolute inset-x-4 bottom-3"
+            <StripView
+              key={stripKey}
+              scrollRef={scrollRef}
+              items={items}
+              pages={data.pages}
+              zoom={zoom}
+              onZoom={setZoom}
+              srcFor={srcFor}
+              altTemplate={data.chapter.altTemplate}
+              gap={settings.gap}
+              lightInk={lightInk}
+              ads={data.ads}
+              topPad={topH + 3}
+              bottomPad={bottomH}
+              initialPage={initialPage.current}
+              onCurrentPage={setPageIdx}
+              onScroll={onStripScroll}
+              onToggleChrome={() => setChrome((v) => !v)}
+              end={end}
+            />
+          </div>
+        )}
+
+        {paged && !mobile ? (
+          <footer
+            className={`absolute inset-x-0 bottom-0 z-30 flex flex-col items-center justify-center gap-3 px-6 transition-transform duration-200 motion-reduce:transition-none ${
+              chrome ? 'translate-y-0' : 'translate-y-full'
+            }`}
+            style={{ height: bottomH }}
+          >
+            <Scrubber
+              count={pageCount}
+              current={pageIdx}
+              onChange={goToPage}
+              variant="ticks"
+              className="w-full max-w-[605px]"
+            />
+            <div className="flex items-center gap-1.5 whitespace-nowrap text-xs text-fg-muted">
+              <Kbd>←</Kbd>
+              <Kbd>→</Kbd>
+              <span>{messages.readerUi.hintTurn}</span>
+              <span className="px-0.5 opacity-50">·</span>
+              <Kbd>F</Kbd>
+              <span>{messages.readerUi.hintFullscreen}</span>
+              <span className="px-0.5 opacity-50">·</span>
+              <Kbd>S</Kbd>
+              <span>{messages.readerUi.hintStrip}</span>
+            </div>
+          </footer>
+        ) : (
+          <BottomBar
+            visible={chrome && !navHidden}
+            prev={data.prev}
+            next={data.next}
+            chapters={data.chapters}
+            currentChapter={data.chapter.number}
+            height={bottomH}
+            languages={data.languages}
+            language={data.language}
+            onHide={() => setNavHidden(true)}
           />
-        </div>
-      ) : null}
+        )}
 
-      <ChromeHint
-        visible={!chrome || navHidden}
-        onShow={() => {
-          setNavHidden(false)
-          setChrome(true)
-        }}
-      />
-      <Skyscrapers ads={data.ads} />
+        {paged && mobile ? (
+          <div
+            className={`pointer-events-none absolute inset-x-0 z-30 transition-[bottom] duration-200 motion-reduce:transition-none`}
+            style={{ bottom: chrome ? bottomH : 0 }}
+          >
+            <output
+              aria-live="polite"
+              className="absolute bottom-7 left-1/2 flex h-7 -translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-full border border-line bg-bg/95 px-3 text-sm font-semibold backdrop-blur-[12px]"
+            >
+              <span>{pageIdx + 1}</span>
+              <span className="font-medium text-fg-muted">/</span>
+              <span className="font-medium text-fg-muted">{pageCount}</span>
+            </output>
+            <Scrubber
+              count={pageCount}
+              current={pageIdx}
+              onChange={goToPage}
+              variant="thin"
+              className="pointer-events-auto absolute inset-x-4 bottom-3"
+            />
+          </div>
+        ) : null}
 
-      <SettingsSheet
-        open={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-        settings={settings}
-        update={(patch) => {
-          if (patch.mode !== undefined) setMode(patch.mode)
-          const { mode: _mode, ...rest } = patch
-          if (Object.keys(rest).length) update(rest)
-        }}
-        subscribeHref={data.links.subscribe}
-        showPremium={data.ads.enabled}
-      />
-      <ShortcutsSheet open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
-      <MoreSheet
-        open={moreOpen}
-        onClose={() => setMoreOpen(false)}
-        showShortcuts={!coarse}
-        onReport={() => {
-          setMoreOpen(false)
-          setReportOpen(true)
-        }}
-        onShortcuts={() => {
-          setMoreOpen(false)
-          setShortcutsOpen(true)
-        }}
-      />
-      <ReportSheet
-        open={reportOpen}
-        onClose={() => setReportOpen(false)}
-        chapterId={data.chapter.id}
-        chapterLabel={data.chapter.labelWithTitle}
-        pageIdx={pageIdx}
-        pageCount={pageCount}
-        signedIn={data.viewer.signedIn}
-      />
-    </div>
+        <ChromeHint
+          visible={!chrome || navHidden}
+          onShow={() => {
+            setNavHidden(false)
+            setChrome(true)
+          }}
+        />
+        <Skyscrapers ads={data.ads} />
+
+        <SettingsSheet
+          open={settingsOpen}
+          onClose={() => setSettingsOpen(false)}
+          settings={settings}
+          update={(patch) => {
+            if (patch.mode !== undefined) setMode(patch.mode)
+            const { mode: _mode, ...rest } = patch
+            if (Object.keys(rest).length) update(rest)
+          }}
+          subscribeHref={data.links.subscribe}
+          showPremium={data.ads.enabled}
+        />
+        <ShortcutsSheet open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+        <MoreSheet
+          open={moreOpen}
+          onClose={() => setMoreOpen(false)}
+          showShortcuts={!coarse}
+          onReport={() => {
+            setMoreOpen(false)
+            setReportOpen(true)
+          }}
+          onShortcuts={() => {
+            setMoreOpen(false)
+            setShortcutsOpen(true)
+          }}
+        />
+        <ReportSheet
+          open={reportOpen}
+          onClose={() => setReportOpen(false)}
+          chapterId={data.chapter.id}
+          chapterLabel={data.chapter.labelWithTitle}
+          pageIdx={pageIdx}
+          pageCount={pageCount}
+          signedIn={data.viewer.signedIn}
+        />
+      </div>
+      {/* A sibling of the overlay, not a child: the reader's own `bottom` already leaves
+          this gap, and keeping the bar out of that subtree means no style added to the
+          overlay later can turn it into a containing block and trap the ad inside. */}
+      <AnchorAd show={data.ads.enabled} tag={data.ads.tags.anchor} />
+    </>
   )
 }

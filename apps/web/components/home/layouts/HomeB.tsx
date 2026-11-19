@@ -11,6 +11,7 @@ import { AnnouncementCard } from '@/components/home/AnnouncementCard'
 import { ContinueReading } from '@/components/home/ContinueReading'
 import { LatestUpdates } from '@/components/home/LatestUpdates'
 import { PopularSidebar } from '@/components/home/PopularSidebar'
+import { MediaOnly } from '@/components/shell/MediaOnly'
 import { siteFormatting } from '@/lib/copy/settings'
 import type { HomeViewProps } from './types'
 
@@ -274,7 +275,9 @@ export function HomeB({
             user={user}
             now={now}
             overrides={overrides}
-            sponsored={ads.infeed.show ? { placeholder: ads.infeed.placeholder } : null}
+            sponsored={
+              ads.infeed.show ? { placeholder: ads.infeed.placeholder, tag: ads.infeed.tag } : null
+            }
           />
         ) : (
           <div />
@@ -282,7 +285,7 @@ export function HomeB({
         <aside className="flex min-w-0 flex-col gap-2.5">
           {popular ? <PopularSidebar lists={popular} /> : null}
           {ads.sidebar.show ? (
-            <div className="hidden lg:block">
+            <MediaOnly query="(min-width: 1024px)" className="hidden lg:block">
               <AdSlot
                 slot="home_sidebar"
                 label={messages.ads.mpu}
@@ -291,7 +294,7 @@ export function HomeB({
                 placeholder={ads.sidebar.placeholder}
                 tag={ads.sidebar.tag}
               />
-            </div>
+            </MediaOnly>
           ) : null}
           <AnnouncementCard announcement={announcement} />
         </aside>

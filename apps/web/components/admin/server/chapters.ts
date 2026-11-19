@@ -351,7 +351,7 @@ export const convertChaptersToStorage = async (
       continue
     }
     const fetchDoc = row.processing?.fetch
-    if (!fetchDoc || fetchDoc.mode !== 'remote') {
+    if (fetchDoc?.mode !== 'remote') {
       skipped.push({ id: row.id, reason: 'already_ours' })
       continue
     }

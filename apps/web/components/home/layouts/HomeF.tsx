@@ -342,7 +342,7 @@ export function HomeF({
                 <div key={item.id} className="contents">
                   {i === sponsoredAt && ads.infeed.show ? (
                     <div className="col-span-3 min-w-0 sm:col-span-2">
-                      <SponsoredCard placeholder={ads.infeed.placeholder} />
+                      <SponsoredCard placeholder={ads.infeed.placeholder} tag={ads.infeed.tag} />
                     </div>
                   ) : null}
                   <ChapterTile
@@ -356,7 +356,7 @@ export function HomeF({
               ))}
               {sponsoredAt >= items.length && ads.infeed.show ? (
                 <div className="col-span-3 min-w-0 sm:col-span-2">
-                  <SponsoredCard placeholder={ads.infeed.placeholder} />
+                  <SponsoredCard placeholder={ads.infeed.placeholder} tag={ads.infeed.tag} />
                 </div>
               ) : null}
             </div>

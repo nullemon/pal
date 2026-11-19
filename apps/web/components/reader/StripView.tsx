@@ -348,8 +348,7 @@ export function StripView(p: StripViewProps) {
       }}
     >
       {p.items.map((it) => {
-        if (it.kind === 'ad')
-          return <AdBand key={`ad-${it.n}`} ads={p.ads} n={it.n} className="md:hidden" />
+        if (it.kind === 'ad') return <AdBand key={`ad-${it.n}`} ads={p.ads} n={it.n} />
         if (it.kind === 'end') return <div key="end">{p.end}</div>
         const page = p.pages[it.idx]
         if (!page) return null

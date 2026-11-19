@@ -73,7 +73,7 @@ export async function loadHomeView(
     ],
   )
 
-  const place = (id: 'home_top' | 'home_sidebar' | 'home_infeed') => {
+  const place = (id: 'home_top' | 'home_sidebar' | 'home_infeed' | 'mobile_anchor') => {
     const slot = adSlot(ads, id)
     // No placeholder for an untagged slot: `AdSlot` then renders nothing rather than a
     // grey box. The ads screen passes its own `placeholder` to preview placements.
@@ -99,6 +99,11 @@ export async function loadHomeView(
     copy: copyFn(appearanceCopy.copy),
     formatting: appearanceCopy.formatting,
     sections: { latest: sLatest.enabled },
-    ads: { top: place('home_top'), sidebar: place('home_sidebar'), infeed: place('home_infeed') },
+    ads: {
+      top: place('home_top'),
+      sidebar: place('home_sidebar'),
+      infeed: place('home_infeed'),
+      anchor: place('mobile_anchor'),
+    },
   }
 }

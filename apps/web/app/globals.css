@@ -159,6 +159,31 @@
   color-scheme: dark;
   /* Off by default; Appearance -> Theme turns it on (lib/appearance/resolve.ts overrides this). */
   --glow-brand: none;
+  /*
+   * How much room the sticky anchor ad is taking at the bottom of the window.
+   *
+   * Zero unless `AnchorAd` has mounted and has a tag to render, at which point it sets
+   * `data-anchor` on this element and the rules below give the variable the bar's real
+   * height. Everything that otherwise reaches the bottom edge -- the page's own padding,
+   * the mobile tab bar, the reader overlay -- subtracts it, so the ad takes space from the
+   * layout rather than covering it. A fixed bar that overlaps the reader's chapter nav is
+   * the single most common way an anchor placement gets blamed for a broken site.
+   *
+   * Driven by CSS rather than measured in JS on purpose: the bar is one height on a phone
+   * and another on a desktop, and a measured pixel value would need a resize observer to
+   * stay honest through a rotation or a window drag.
+   */
+  --anchor-h: 0px;
+}
+
+:root[data-anchor="on"] {
+  --anchor-h: calc(58px + env(safe-area-inset-bottom));
+}
+
+@media (min-width: 768px) {
+  :root[data-anchor="on"] {
+    --anchor-h: 98px;
+  }
 }
 
 /*
