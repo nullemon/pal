@@ -372,60 +372,6 @@ export function ChapterNavLink({
   )
 }
 
-/* ---------------------------------------------------------------- floating pill */
-
-export function FloatingPill(p: {
-  visible: boolean
-  prev: ChapterLink | null
-  next: ChapterLink | null
-  chapters: ChapterLink[]
-  currentChapter: number
-  languages?: ReaderLanguage[]
-  language?: string
-  /** Dismiss it. The pill sits over the page, so there has to be a way to get rid of it. */
-  onHide?: () => void
-}) {
-  return (
-    <nav
-      aria-label={messages.reader.nextChapter}
-      aria-hidden={!p.visible}
-      className={`absolute bottom-[calc(24px+env(safe-area-inset-bottom))] left-1/2 z-30 flex h-14 -translate-x-1/2 items-center gap-1 rounded-full border border-line bg-bg/80 px-1.5 shadow-2 backdrop-blur-[16px] transition-[opacity,transform] duration-200 motion-reduce:transition-none ${
-        p.visible ? 'opacity-100' : 'pointer-events-none translate-y-3 opacity-0'
-      }`}
-    >
-      <ChapterNavLink link={p.prev} dir="prev" pill />
-      <span aria-hidden="true" className="block h-6 w-px bg-white/[.08]" />
-      <ChapterSelect
-        chapters={p.chapters}
-        current={p.currentChapter}
-        pill
-        className="w-[170px] md:w-[210px]"
-      />
-      <span aria-hidden="true" className="block h-6 w-px bg-white/[.08]" />
-      <ChapterNavLink link={p.next} dir="next" pill />
-      {p.languages && p.language && p.languages.length > 1 ? (
-        <>
-          <span aria-hidden="true" className="hidden h-6 w-px bg-white/[.08] md:block" />
-          <div className="hidden md:flex">
-            <LanguagePicker languages={p.languages} current={p.language} compact />
-          </div>
-        </>
-      ) : null}
-      {p.onHide ? (
-        <button
-          type="button"
-          onClick={p.onHide}
-          aria-label={messages.readerUi.hideControls}
-          title={messages.readerUi.hideControls}
-          className="ml-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-fg-muted hover:bg-surface-2 hover:text-fg"
-        >
-          ✕
-        </button>
-      ) : null}
-    </nav>
-  )
-}
-
 /* ---------------------------------------------------------------- progress bar */
 
 export function ProgressBar({

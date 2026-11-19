@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { MergeDeviceProgress } from '@/lib/progress/DeviceProgress'
 import { Skyscrapers } from './ads'
-import { BottomBar, ChromeHint, FloatingPill, Kbd, ProgressBar, TopBar } from './chrome'
+import { BottomBar, ChromeHint, Kbd, ProgressBar, TopBar } from './chrome'
 import { EndOfChapter } from './EndOfChapter'
 import {
   useCoarsePointer,
@@ -84,9 +84,12 @@ export function Reader({ data, comments }: ReaderProps) {
   const [scrollPct, setScrollPct] = useState(0)
   const [chrome, setChrome] = useState(true)
   /**
-   * The third state. `chrome` only ever chose between the full bar and the floating pill, so
-   * there was no way to clear the page: the pill sits over the artwork and the reader is
-   * stuck with it. `navHidden` removes both, and the hint in the corner brings them back.
+   * The second axis, kept now that the floating pill is gone.
+   *
+   * `chrome` is transient: the strip hides it on scroll-down and brings it straight back on
+   * scroll-up, which is what a reader who simply wants the bar gone does not want. `navHidden`
+   * is the sticky answer — the bar's ✕ sets it, the scroll handler respects it, and only the
+   * hint in the corner (or H) brings the chrome back.
    */
   const [navHidden, setNavHidden] = useState(false)
   /**
@@ -393,12 +396,19 @@ export function Reader({ data, comments }: ReaderProps) {
           return
         case 'h':
         case 'H':
-          // bar -> pill -> hidden -> bar, off the refs so the cycle survives repeat presses.
-          if (navHiddenRef.current) {
+          /*
+           * A straight toggle, off the refs so it survives repeat presses.
+           *
+           * It used to cycle bar -> pill -> hidden -> bar, which was three presses for
+           * three distinct looks. With the pill gone, "chrome off" and "dismissed" render
+           * identically, so that cycle would spend a press moving between two states the
+           * reader cannot tell apart — H would look like it had done nothing. Hiding now
+           * dismisses outright, which is also the state that survives a scroll back up.
+           */
+          if (navHiddenRef.current || !chromeRef.current) {
             setNavHidden(false)
             setChrome(true)
-          } else if (chromeRef.current) setChrome(false)
-          else setNavHidden(true)
+          } else setNavHidden(true)
           return
         /**
          * Zoom. `+`/`=` and `-`/`_` because the unshifted key is what readers actually press,
@@ -637,16 +647,6 @@ export function Reader({ data, comments }: ReaderProps) {
         </div>
       ) : null}
 
-      <FloatingPill
-        visible={!chrome && !navHidden}
-        languages={data.languages}
-        language={data.language}
-        onHide={() => setNavHidden(true)}
-        prev={data.prev}
-        next={data.next}
-        chapters={data.chapters}
-        currentChapter={data.chapter.number}
-      />
       <ChromeHint
         visible={!chrome || navHidden}
         onShow={() => {

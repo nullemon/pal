@@ -223,6 +223,17 @@ export function StripView(p: StripViewProps) {
     return () => {
       root.removeEventListener('scroll', handler)
       if (raf.current !== null) window.cancelAnimationFrame(raf.current)
+      /*
+       * Clearing the slot, not only the frame. The guard above reads this ref to decide
+       * whether a frame is already pending, so cancelling the frame while leaving its id
+       * here leaves the guard permanently true and the handler returns on every scroll
+       * from then on: the chrome never auto-hides again and nothing in the UI says why.
+       *
+       * The only path that reaches this today is StrictMode's mount-cleanup-remount in
+       * development, so it never shipped — but it made the dev build behave unlike
+       * production, which is its own kind of bug to debug.
+       */
+      raf.current = null
     }
   }, [scrollRef, onScroll])
 
