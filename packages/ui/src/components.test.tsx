@@ -90,36 +90,62 @@ describe('AdSlot', () => {
 })
 
 /**
- * jsdom leaves injected scripts inert whatever `runScripts` is set to under this runner, so
- * these cover the mechanism — the script is re-created with its attributes and source, which
- * is what lets a browser run it — and the guard against running it twice. That the tag really
- * executes is checked in a real browser (`apps/web/e2e/ads.spec.ts` and the manual probe in
- * docs/18 §7).
+ * The tag runs in a sandboxed frame, and these pin the properties that make the frame worth
+ * having. They are assertions about attributes rather than behaviour because the behaviour
+ * is the browser's: what a sandbox token permits is not something jsdom can demonstrate.
+ * That a hostile tag really cannot cover or redirect the page is checked in a real browser.
  */
 describe('AdTag', () => {
   const tag = '<div id="banner">here</div><script src="https://ads.example/t.js" async></script>'
+  const frameOf = (container: HTMLElement) =>
+    container.querySelector('iframe[data-ad-tag="home_top"]') as HTMLIFrameElement
 
-  it('injects the markup and re-creates the script with its attributes', () => {
+  it('puts the tag in a frame, never in this document', () => {
     const { container } = render(<AdTag slot="home_top" html={tag} />)
-    expect(container.querySelector('#banner')?.textContent).toBe('here')
-    const script = container.querySelector('script')
-    expect(script?.getAttribute('src')).toBe('https://ads.example/t.js')
-    expect(script?.hasAttribute('async')).toBe(true)
+    // Nothing from the tag is in our DOM: a script here runs with our powers, which is how
+    // an ad came to redirect readers off the site.
+    expect(container.querySelector('script')).toBeNull()
+    expect(container.querySelector('#banner')).toBeNull()
+    expect(frameOf(container).srcdoc).toContain(tag)
   })
 
-  it('runs the tag once per mount, not once per render', () => {
+  it('withholds the two powers that let an ad take the page', () => {
+    const { container } = render(<AdTag slot="home_top" html={tag} />)
+    const tokens = (frameOf(container).getAttribute('sandbox') ?? '').split(/\s+/)
+    // Same-origin plus scripts would hand the frame this document back.
+    expect(tokens).not.toContain('allow-same-origin')
+    // Top navigation is the redirect: "it went to another site, same site always".
+    expect(tokens).not.toContain('allow-top-navigation')
+    expect(tokens).not.toContain('allow-top-navigation-by-user-activation')
+    expect(tokens).not.toContain('allow-modals')
+  })
+
+  it('keeps what an ad needs to earn: scripts, and a click that opens a tab', () => {
+    const { container } = render(<AdTag slot="home_top" html={tag} />)
+    const tokens = (frameOf(container).getAttribute('sandbox') ?? '').split(/\s+/)
+    expect(tokens).toContain('allow-scripts')
+    expect(tokens).toContain('allow-popups')
+    expect(tokens).toContain('allow-popups-to-escape-sandbox')
+    // Links open a tab instead of trying to navigate the frame.
+    expect(frameOf(container).srcdoc).toContain('<base target="_blank">')
+  })
+
+  it('writes the tag once per mount, not once per render', () => {
     const { container, rerender } = render(<AdTag slot="home_top" html={tag} />)
+    const frame = frameOf(container)
+    const first = frame.srcdoc
     rerender(<AdTag slot="home_top" html={tag} />)
-    // Two script elements would mean two requests to the network and two impressions.
-    expect(container.querySelectorAll('script')).toHaveLength(1)
-    expect(container.querySelectorAll('#banner')).toHaveLength(1)
+    // The same element with the same document: a reload would be a second impression.
+    expect(frameOf(container)).toBe(frame)
+    expect(frame.srcdoc).toBe(first)
   })
 
-  it('replaces the slot when the operator changes the tag', () => {
+  it('replaces the document when the operator changes the tag', () => {
     const { container, rerender } = render(<AdTag slot="home_top" html={tag} />)
     rerender(<AdTag slot="home_top" html={'<div id="other">new</div>'} />)
-    expect(container.querySelector('#banner')).toBeNull()
-    expect(container.querySelector('#other')?.textContent).toBe('new')
+    const doc = frameOf(container).srcdoc
+    expect(doc).toContain('id="other"')
+    expect(doc).not.toContain('id="banner"')
   })
 })
 

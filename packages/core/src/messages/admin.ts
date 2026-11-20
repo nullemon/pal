@@ -736,10 +736,10 @@ export const adminMessages = {
         'Long strip loads the chapter as one scroll. Paged turns one page at a time, loading as you go.',
       skyscrapers: 'Desktop skyscrapers',
       skyscrapersHint: 'Sticky in both gutters, vertically centred, on screens 1280px and wider.',
-      interval: 'Mobile in-strip ad every',
+      interval: 'In-strip ad every',
       intervalPages: 'pages',
       intervalHint:
-        'A 300×250 slot on a full-width dark band inside the strip. Off hides it for everyone.',
+        'A 300×250 slot on a full-width dark band inside the strip, on phones and desktop alike. Off hides it for everyone.',
       endSlot: 'End-of-chapter slot',
       endSlotHint:
         '336×280 on desktop, 300×250 on mobile, shown once after the last page before the Next chapter control.',
