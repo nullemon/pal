@@ -383,12 +383,19 @@ export function PageEditor({ chapterId, initial, editable }: Props) {
                     to ask for it. Same hidden-input pattern as the insert control beside it.
                   */}
                   <label
-                    className={`rounded px-1.5 py-0.5 text-xs hover:bg-surface-3 ${
+                    className={`rounded px-1.5 py-0.5 text-[11px] font-semibold hover:bg-surface-3 ${
                       gone ? 'cursor-not-allowed opacity-40' : 'cursor-pointer'
                     }`}
                     title={m.replace}
                   >
-                    ⟳
+                    {/*
+                      The word, not a glyph. This shipped as `⟳` with the label in a `title`,
+                      which is a tooltip: it needs a mouse to appear at all, and a lot of this
+                      panel is worked on a tablet. The one thing people come to this screen for
+                      was the one control that did not say what it was, and they went on asking
+                      how to replace a page while looking straight at the button that does it.
+                    */}
+                    {m.replace}
                     <input
                       type="file"
                       accept="image/*"

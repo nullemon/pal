@@ -3112,6 +3112,32 @@ export const adminMessages = {
     moveRight: 'Move later',
     page: 'Page {n}',
     replace: 'Replace',
+    /**
+     * The empty-grid case that is not an error: the chapter's pages live on the host it was
+     * imported from, so there is nothing of ours to edit yet. Without this the screen is a
+     * blank panel reading "no processed pages", which is true and tells an operator nothing
+     * about what to do — the single most reported piece of friction on this panel.
+     */
+    remoteTitle: 'These pages are not ours yet',
+    remoteBody:
+      'This chapter is read straight from {host}. We hold no copy, so there is nothing here to replace, reorder or watermark. Copy the pages into our storage and this grid fills in.',
+    remoteBodyNoHost:
+      'This chapter is read straight from the site it was imported from. We hold no copy, so there is nothing here to replace, reorder or watermark. Copy the pages into our storage and this grid fills in.',
+    remoteCta: 'Copy pages into our storage',
+    remoteBusy: 'Copying…',
+    remoteQueued: 'Copying started. The pages appear here once it finishes.',
+    /**
+     * The state between pressing the button and the worker finishing. Without it the panel
+     * kept offering the button it had just acted on — `pageSource` only changes when the
+     * job commits — so the screen read as though nothing had happened and the obvious move
+     * was to press it again.
+     */
+    remoteCopying: 'Copying the pages in now',
+    remoteCopyingBody:
+      'The worker is downloading every page of this chapter. Reload in a minute — once it finishes this becomes the normal page grid and Replace works on any page.',
+    remoteFailed: 'Could not start the copy.',
+    remoteHint:
+      'It downloads every page of this chapter once. Nothing else about the chapter changes.',
     /** Accessible names: the glyph controls are identical across 200 pages without them. */
     replacePage: 'Replace page {n}',
     insertBefore: 'Insert before',
@@ -3124,7 +3150,8 @@ export const adminMessages = {
      * says nothing on the screen and does not exist on a tablet at all, which left the most
      * common reason to open this screen with no way to ask for it.
      */
-    dropToReplace: 'To replace a page, press ⟳ on it — or drop an image straight onto it.',
+    dropToReplace:
+      'To swap one bad page: press Replace on it and pick the new image — or drag the image straight onto it. The rest of the chapter is untouched.',
     uploading: 'Uploading…',
     queued: 'Queued for processing. The new page appears once the worker finishes.',
     uploadFailed: 'That upload did not go through.',

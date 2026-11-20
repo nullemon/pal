@@ -5,6 +5,7 @@ import { eq } from 'drizzle-orm'
 import { notFound } from 'next/navigation'
 import { GalleryImport } from '@/components/admin/client/GalleryImport'
 import { PageEditor } from '@/components/admin/client/PageEditor'
+import { RemotePages } from '@/components/admin/client/RemotePages'
 import { editorPages } from '@/components/admin/server/chapter-pages'
 import { PageHeader } from '@/components/admin/ui'
 import { withPermission } from '@/lib/auth'
@@ -29,6 +30,7 @@ export default async function ChapterPagesPage({
   const [row] = await db
     .select({
       processing: chapters.processing,
+      state: chapters.state,
       number: chapters.number,
       title: chapters.title,
       pageCount: chapters.pageCount,
@@ -42,6 +44,12 @@ export default async function ChapterPagesPage({
 
   const m = adminMessages.pageEditor
   const pages = row.processing ? await editorPages(row.processing) : []
+  /**
+   * Remote chapters have pages on the live site and none in the bucket, so this screen's
+   * grid is empty however many pages a reader can see. `pageSource` is what the fetch job
+   * records; the descriptor is the fallback for chapters imported before it existed.
+   */
+  const remote = row.processing?.pageSource === 'remote' || row.processing?.fetch?.mode === 'remote'
   return (
     <>
       <PageHeader
@@ -49,7 +57,15 @@ export default async function ChapterPagesPage({
         subtitle={m.subtitle}
       />
       <div className="flex flex-col gap-4">
-        <PageEditor chapterId={chapterId} initial={pages} editable={!!row.processing} />
+        {remote && pages.length === 0 ? (
+          <RemotePages
+            chapterId={chapterId}
+            sourceUrl={row.processing?.fetch?.url ?? null}
+            copying={row.state === 'processing'}
+          />
+        ) : (
+          <PageEditor chapterId={chapterId} initial={pages} editable={!!row.processing} />
+        )}
         {/*
           The other half of "edit this chapter's pages": throw them all away and pull a fresh
           set from a gallery link. It is here rather than only on the upload screen because
