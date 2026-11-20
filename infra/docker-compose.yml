@@ -14,6 +14,10 @@ x-app-env: &app-env
   NODE_ENV: production
   DATABASE_URL: postgres://pal:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/palscans
   REDIS_URL: redis://valkey:6379
+  # Connections per process, for web and worker alike. It was documented in .env.example and
+  # never passed through, so setting it there changed nothing. See the max_connections note
+  # on the postgres service before raising it.
+  DATABASE_POOL_MAX: ${DATABASE_POOL_MAX:-10}
   # Optional: the ImgChest import works without it (the gallery page needs no credential).
   IMGCHEST_TOKEN: ${IMGCHEST_TOKEN:-}
   SITE_URL: ${SITE_URL:?set SITE_URL (https:// in production)}
@@ -61,15 +65,23 @@ services:
     # load costs far more than a smaller buffer pool does.
     #
     # `max_connections=100` is far above what the pool asks for (DATABASE_POOL_MAX, 10 per
-    # process) and each slot reserves memory, so it is also brought down to what two web
-    # processes, the worker and a psql session can actually use.
+    # process) and each slot reserves memory, so it is brought down to what the stack can
+    # actually use — with room left over, which the first figure here did not have.
+    #
+    # The budget, one pool per process: web processes x DATABASE_POOL_MAX, plus the worker's
+    # pool, plus the things nobody counts until they fail — a `db:migrate` run (a pool of its
+    # own), the nightly `pg_dump`, and the `psql` session an operator opens when something is
+    # wrong. At 40 that last one was the first casualty: two web processes and the worker
+    # could hold every slot, and the answer to "why is the site slow" was "sorry, too many
+    # clients already". 60 covers three web processes and the worker with a migration and a
+    # shell still able to connect. Raise it with WEB_CONCURRENCY, not instead of counting.
     command:
       [
         "postgres",
         "-c",
         "shared_buffers=128MB",
         "-c",
-        "max_connections=40",
+        "max_connections=60",
         "-c",
         "work_mem=4MB",
         "-c",

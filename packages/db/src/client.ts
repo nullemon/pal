@@ -100,9 +100,46 @@ export const executeRows = async <T extends Record<string, unknown> = Record<str
 
 let shared: Promise<DbHandle> | undefined
 
+/**
+ * The one Postgres pool this process owns.
+ *
+ * There used to be two. `getDb()` built a pool through `createDb()`, and the synchronous
+ * `db` export below built a second one of its own the first time it was touched — unless it
+ * happened to be touched first, in which case they shared. In practice `getDb()` always won
+ * that race, so every process quietly held two pools of `DATABASE_POOL_MAX` and could take
+ * twice the connections anyone had budgeted for it. With two web processes that was the
+ * whole of `max_connections` before the worker, a migration or a `psql` session got a slot:
+ * the site did not fall over, it queued — every request waiting on a connection — and the
+ * first thing to fail outright was an operator trying to connect to find out why.
+ *
+ * postgres-js connects lazily, so building the client is synchronous and both entry points
+ * can share this without either having to await the other.
+ */
+let pgHandle: DbHandle | undefined
+const postgresHandle = (url: string): DbHandle => {
+  if (pgHandle) return pgHandle
+  const client = postgres(url, {
+    max: getEnv().DATABASE_POOL_MAX,
+    prepare: false,
+    onnotice: () => undefined,
+  })
+  const raw = drizzlePostgres(client, { schema, casing: 'snake_case' })
+  pgHandle = {
+    db: raw as unknown as Db,
+    kind: 'postgres',
+    url,
+    raw,
+    close: () => client.end({ timeout: 5 }),
+  }
+  return pgHandle
+}
+
 /** Process-wide handle built from DATABASE_URL on first use. */
 export const getDbHandle = (): Promise<DbHandle> => {
-  shared ??= createDb()
+  if (!shared) {
+    const url = getEnv().DATABASE_URL || DEFAULT_PGLITE_URL
+    shared = dbKindFor(url) === 'postgres' ? Promise.resolve(postgresHandle(url)) : createDb()
+  }
   return shared
 }
 
@@ -113,6 +150,8 @@ export const closeDb = async (): Promise<void> => {
   if (!shared) return
   const h = await shared
   shared = undefined
+  pgHandle = undefined
+  sharedSync = undefined
   await h.close()
 }
 
@@ -131,19 +170,8 @@ export const db: Db = new Proxy({} as Db, {
           'DATABASE_URL is pglite://; use `await getDb()` (or warm it up once) instead of the sync `db` export',
         )
       }
-      const client = postgres(url, {
-        max: getEnv().DATABASE_POOL_MAX,
-        prepare: false,
-        onnotice: () => undefined,
-      })
-      const raw = drizzlePostgres(client, { schema, casing: 'snake_case' })
-      sharedSync = {
-        db: raw as unknown as Db,
-        kind: 'postgres',
-        url,
-        raw,
-        close: () => client.end({ timeout: 5 }),
-      }
+      // The same handle `getDb()` hands out, never a pool of its own (see `postgresHandle`).
+      sharedSync = postgresHandle(url)
       shared ??= Promise.resolve(sharedSync)
     }
     const value = Reflect.get(sharedSync.db as object, prop, sharedSync.db)
