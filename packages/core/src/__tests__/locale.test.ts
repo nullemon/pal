@@ -44,7 +44,10 @@ describe('the locale table', () => {
           token,
         )
       }
-      expect(locale.seo.description, locale.code).toContain('{next_prev_hint}')
+      // Every description has to end on something specific to the page rather than on the
+      // same sentence for every chapter: the series synopsis where we have prose in that
+      // language, the neighbouring chapters otherwise.
+      expect(locale.seo.description, locale.code).toMatch(/\{synopsis(:\d+)?\}|\{next_prev_hint\}/)
       expect(locale.previous, locale.code).toContain('{n}')
       expect(locale.next, locale.code).toContain('{n}')
     }

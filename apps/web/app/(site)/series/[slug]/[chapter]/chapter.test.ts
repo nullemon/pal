@@ -172,7 +172,13 @@ describe('settings', () => {
       end_slot: true,
     })
     // A slot with no row configured stays null, so its box renders reserved and empty.
-    expect(s.tags).toEqual({ sky: '<script>sky</script>', instrip: null, end: 'x' })
+    expect(s.tags).toEqual({
+      sky: '<script>sky</script>',
+      skyRight: null,
+      instrip: null,
+      end: 'x',
+      anchor: null,
+    })
     const d = parseReaderSiteSettings(null, { reader: { mobile_interval: 5 } })
     expect(d.ads.mobile_interval).toBe(4)
     expect(d.layout.default_mode).toBe('strip')

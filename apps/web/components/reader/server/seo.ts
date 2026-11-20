@@ -1,5 +1,5 @@
 import { DEFAULT_SEO_TEMPLATES, DEFAULT_SEPARATOR, renderSeo } from '@palscans/core'
-import { DEFAULT_CHAPTER_LANGUAGE } from '@palscans/core/languages'
+import { chapterLanguage, DEFAULT_CHAPTER_LANGUAGE } from '@palscans/core/languages'
 import { chapterLocale, localeChapterHint, localeChapterLabel } from '@palscans/core/locale'
 import { messages } from '@palscans/core/messages'
 import { getDb, getSeoSetting } from '@palscans/db'
@@ -110,6 +110,17 @@ export async function chapterMetadata(input: ChapterMetaInput): Promise<Metadata
       type: messages.series.type[series.type],
       chapter: number,
       next_prev_hint: nextPrevHint(bundle, language),
+      /*
+       * What a search result needs and the template could not say. A chapter page's
+       * description was the same sentence on every chapter of every series with only the
+       * numbers changed, which gives a search engine nothing to tell two of them apart and
+       * a reader nothing to recognise. The series synopsis is the one piece of real prose
+       * we hold about the page; the language is what somebody searching "in English" is
+       * matching on; the chapter's own title is there for operators who want it.
+       */
+      synopsis: (series.synopsis ?? '').replace(/\s+/g, ' ').trim(),
+      language: chapterLanguage(language).label,
+      chapter_title: bundle.chapter.title ?? '',
     },
     { chapter: template },
   )

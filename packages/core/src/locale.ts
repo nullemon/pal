@@ -47,8 +47,9 @@ export const CHAPTER_LOCALES: readonly ChapterLocale[] = [
     ogLocale: 'en_US',
     label: 'Chapter {n}',
     seo: {
-      title: '{title} Chapter {chapter} {sep} {site}',
-      description: 'Read {title} Chapter {chapter} online free at {site}. {next_prev_hint}',
+      title: 'Read {title} Chapter {chapter} Online Free {sep} {site}',
+      description:
+        'Read {title} Chapter {chapter} online free in {language} at {site}. {synopsis:120}',
     },
     previous: 'Previous: Chapter {n}.',
     next: 'Next: Chapter {n}.',

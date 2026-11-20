@@ -36,9 +36,17 @@ export const DEFAULT_SEO_TEMPLATES: Record<SeoPageType, SeoTemplate> = {
     description:
       'Read {title} {type} online. {chapter_count} {chapter_label}, latest {latest_chapter}. {synopsis:160}',
   },
+  /*
+   * Led by the words people type. "One Piece Chapter 1199 - PALScans" is a label; the query
+   * is "read one piece chapter 1199 online free", and the pages that outrank a label put
+   * those words in the title. The description ends on the series synopsis rather than
+   * "Previous: Chapter 1198." — the neighbouring chapter is already a link on the page and
+   * tells a searcher nothing about what they are about to open.
+   */
   chapter: {
-    title: '{title} Chapter {chapter} {sep} {site}',
-    description: 'Read {title} Chapter {chapter} online free at {site}. {next_prev_hint}',
+    title: 'Read {title} Chapter {chapter} Online Free {sep} {site}',
+    description:
+      'Read {title} Chapter {chapter} online free in {language} at {site}. {synopsis:120}',
   },
   genre: {
     title: '{genre} Manhwa & Manga {sep} Read Online {sep} {site}',

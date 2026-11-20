@@ -40,6 +40,8 @@ export interface ReaderSeriesRow {
   commentsEnabled: boolean
   state: (typeof series.$inferSelect)['state']
   noindex: boolean
+  /** For the chapter page's description; a chapter has no summary of its own. */
+  synopsis: string | null
 }
 
 const seriesColumns = {
@@ -53,6 +55,7 @@ const seriesColumns = {
   commentsEnabled: series.commentsEnabled,
   state: series.state,
   noindex: series.noindex,
+  synopsis: series.synopsis,
 } as const
 
 /**

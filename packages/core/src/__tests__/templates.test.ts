@@ -48,11 +48,40 @@ describe('renderTemplate', () => {
     ).toBe(true)
     expect(out.description.endsWith('…')).toBe(true)
   })
-  it('titles a chapter page as "<series> Chapter <n> - <site>"', () => {
+  it('titles a chapter page with the words people search for', () => {
     const vars = { site: 'PALScans', sep: '-', title: 'Naruto', chapter: 208 }
-    expect(renderSeo('chapter', vars).title).toBe('Naruto Chapter 208 - PALScans')
+    expect(renderSeo('chapter', vars).title).toBe('Read Naruto Chapter 208 Online Free - PALScans')
     // the separator is a setting, so switching it re-titles every page
-    expect(renderSeo('chapter', { ...vars, sep: '·' }).title).toBe('Naruto Chapter 208 · PALScans')
+    expect(renderSeo('chapter', { ...vars, sep: '·' }).title).toBe(
+      'Read Naruto Chapter 208 Online Free · PALScans',
+    )
+  })
+
+  it('describes a chapter with its language and what the series is about', () => {
+    const out = renderSeo('chapter', {
+      site: 'PALScans',
+      sep: '-',
+      title: 'Naruto',
+      chapter: 208,
+      language: 'English',
+      synopsis: 'A young ninja who seeks recognition from his peers dreams of leading his village.',
+    })
+    expect(out.description).toBe(
+      'Read Naruto Chapter 208 online free in English at PALScans. A young ninja who seeks recognition from his peers dreams of leading his village.',
+    )
+  })
+
+  it('still reads as a sentence for a series with no synopsis', () => {
+    // An empty variable must not leave "at PALScans. " hanging or a stray separator behind.
+    const out = renderSeo('chapter', {
+      site: 'PALScans',
+      sep: '-',
+      title: 'Naruto',
+      chapter: 208,
+      language: 'English',
+      synopsis: '',
+    })
+    expect(out.description).toBe('Read Naruto Chapter 208 online free in English at PALScans.')
   })
 
   it('drops unknown/empty variables and collapses whitespace', () => {
