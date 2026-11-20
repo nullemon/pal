@@ -12,6 +12,17 @@ export interface JobMap {
    * attempt.
    */
   'chapter.fetch': { chapterId: number }
+  /**
+   * Swap one page of a chapter for an uploaded image, in place.
+   *
+   * Separate from `chapter.process`, which rebuilds every page of a chapter from its
+   * sources. This exists for the chapter that has no sources: one imported in remote mode
+   * holds its pages on the host it came from, so there is no document to edit and no run to
+   * re-run — but a single bad page is still the most common thing an operator needs to fix.
+   * The job encodes the upload, writes it to our own storage, and points that one row at
+   * it, leaving the chapter's other pages exactly where they are.
+   */
+  'chapter.page.replace': { chapterId: number; idx: number; key: string }
   /** Re-encode an uploaded cover / banner original into the public variants (docs/03). */
   'series.art': { seriesId: number; kind: 'cover' | 'banner'; key: string }
   'sitemap.build': { kind: 'full' | 'incremental'; seriesIds?: number[] }

@@ -21,11 +21,16 @@ import { getStorage, sniffImage, verifyUploadSignature } from '@/lib/storage'
  * importantly, the reverse stays true.
  */
 const keySchema = z.object({
-  key: z
-    .string()
-    .regex(
-      /^(uploads\/\d+\/\d+\/\d{4}-[a-f0-9]{12}\.(jpg|png|webp|avif|gif)|uploads\/art\/\d+\/[a-f0-9]{12}\.(jpg|png|webp|avif)|uploads\/brand\/(logo_dark|logo_light|monogram|social_image)-[a-f0-9]{12}\.(jpg|png|webp|avif|svg))$/,
-    ),
+  key: z.string().regex(
+    /*
+     * `\d{4}-` is a page from a chapter upload; `repair-` is a single page replaced from
+     * the page editor (`/chapters/:id/pages/upload` mints that shape). The second was
+     * missing, so on the fs driver every Replace and Insert was refused here with a 400
+     * the panel could only report as "could not upload" — the route that mints the key
+     * and the route that accepts it disagreed about what a key looks like.
+     */
+    /^(uploads\/\d+\/\d+\/(\d{4}|repair)-[a-f0-9]{12}\.(jpg|png|webp|avif|gif)|uploads\/art\/\d+\/[a-f0-9]{12}\.(jpg|png|webp|avif)|uploads\/brand\/(logo_dark|logo_light|monogram|social_image)-[a-f0-9]{12}\.(jpg|png|webp|avif|svg))$/,
+  ),
   exp: z.coerce.number().int().positive(),
   bytes: z.coerce.number().int().positive().max(MAX_FILE_BYTES),
   sig: z.string().regex(/^[a-f0-9]{64}$/),

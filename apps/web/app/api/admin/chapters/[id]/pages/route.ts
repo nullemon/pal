@@ -1,5 +1,6 @@
-import { chapters, getDb } from '@palscans/db'
-import { eq } from 'drizzle-orm'
+import { getQueue } from '@palscans/core/queue'
+import { chapterPages, chapters, getDb } from '@palscans/db'
+import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { audit } from '@/components/admin/server/audit'
 import { purgeCatalog } from '@/components/admin/server/cache'
@@ -111,7 +112,16 @@ export const PATCH = withPermission<{ id: string }>(
 )
 
 const addSchema = z.object({
-  op: z.enum(['replace', 'insert']),
+  /**
+   * `replace_one` is the odd one out and deliberately named apart from `replace`.
+   *
+   * The other two edit the processing document and let a full run rebuild the chapter from
+   * its sources. `replace_one` edits a single `chapter_pages` row in place, because it
+   * exists for the chapter that has no sources to rebuild from: one imported in remote
+   * mode. Reusing the same op name for both would hide a real difference — what happens to
+   * every page that was not named — behind one word.
+   */
+  op: z.enum(['replace', 'insert', 'replace_one']),
   position: z.number().int().min(0).max(5000),
   key: z.string().min(1).max(512),
 })
@@ -151,6 +161,40 @@ export const POST = withPermission<{ id: string }>('chapter.repair', async (requ
     types: SOURCE_TYPES,
   })
   if (!check.ok) return fail(check.code === 'missing' ? 400 : 415, check.code)
+
+  /*
+   * The in-place path: one row, one job, nothing else in the chapter touched.
+   *
+   * It is gated on the page actually existing rather than on the chapter being remote. A
+   * stored page can be swapped this way too and the result is the same row pointing at a
+   * new object — but the page editor's own Replace is the better route there, because it
+   * goes through the document and therefore survives a re-run. This endpoint is what the
+   * remote grid uses, where no such route exists.
+   */
+  if (parsed.data.op === 'replace_one') {
+    const [page] = await db
+      .select({ idx: chapterPages.idx })
+      .from(chapterPages)
+      .where(and(eq(chapterPages.chapterId, id.data), eq(chapterPages.idx, parsed.data.position)))
+      .limit(1)
+    if (!page) return fail(404, 'not_found')
+
+    const queue = await getQueue()
+    await queue.add('chapter.page.replace', {
+      chapterId: id.data,
+      idx: parsed.data.position,
+      key: parsed.data.key,
+    })
+    await audit({
+      actorId: user.id,
+      action: 'chapter.page.replace_one',
+      targetType: 'chapter',
+      targetId: id.data,
+      after: { idx: parsed.data.position, key: parsed.data.key },
+    })
+    await purgeCatalog()
+    return ok({ processing: true, idx: parsed.data.position })
+  }
 
   let added: Awaited<ReturnType<typeof addPageSource>>
   try {

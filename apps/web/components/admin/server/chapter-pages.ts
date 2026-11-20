@@ -263,3 +263,51 @@ export const addPageSource = async (
   await enqueueProcess(chapterId, doc.attempt)
   return { doc, sourceIdx: edit.sourceIdx }
 }
+
+/** One page of a chapter as the *remote* grid sees it (no processing document behind it). */
+export interface RemoteEditorPage {
+  idx: number
+  width: number
+  height: number
+  /** The host's URL while the page is still theirs; null once it has been replaced. */
+  remoteUrl: string | null
+  /** A thumbnail to show: the host's image, or a signed URL for a page now in our bucket. */
+  url: string
+}
+
+/**
+ * The pages of a chapter straight from `chapter_pages`, for a chapter with no usable
+ * processing document.
+ *
+ * `editorPages` builds the normal grid from `processing.results`, which a remote import
+ * leaves empty — so for those chapters it returns nothing however many pages a reader can
+ * see. This reads the rows instead, which exist either way, and is therefore the only view
+ * that can show a remote chapter's pages at all. It offers no ordering or deletion, because
+ * those are expressed in the document this chapter does not have; replacing one page is
+ * written to the row directly and is the one edit that works here.
+ */
+export const remoteEditorPages = async (chapterId: number): Promise<RemoteEditorPage[]> => {
+  const db = await getDb()
+  const rows = await db
+    .select({
+      idx: chapterPages.idx,
+      width: chapterPages.width,
+      height: chapterPages.height,
+      remoteUrl: chapterPages.remoteUrl,
+      key: chapterPages.key,
+    })
+    .from(chapterPages)
+    .where(eq(chapterPages.chapterId, chapterId))
+    .orderBy(chapterPages.idx)
+  return Promise.all(
+    rows.map(async (r) => ({
+      idx: r.idx,
+      width: r.width,
+      height: r.height,
+      remoteUrl: r.remoteUrl,
+      // A replaced page is ours and signed like any other; a remote one is served from the
+      // host, which is where the reader gets it from too.
+      url: r.remoteUrl ?? (await signedStorageUrl(r.key)),
+    })),
+  )
+}

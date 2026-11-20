@@ -6,6 +6,7 @@ import { chapters, closeDb, getDb, getSetting, series } from '@palscans/db'
 import { and, eq, isNotNull, isNull, lt, sql } from 'drizzle-orm'
 import { BACKUP_SETTING_KEY, type BackupRun, backupEnv, runBackup } from './jobs/backup.js'
 import { fetchChapterGallery } from './jobs/chapter-fetch.js'
+import { replaceChapterPage } from './jobs/chapter-page-replace.js'
 import { processChapter } from './jobs/chapter-process.js'
 import { openSource, readImportConfig } from './jobs/import/resolve.js'
 import { runImport } from './jobs/import-run.js'
@@ -185,6 +186,17 @@ const main = async () => {
     },
     1,
   )
+  /**
+   * One page of a chapter, swapped for an upload. Unlike `chapter.process` this touches a
+   * single row, so two deliveries for different pages of the same chapter are independent
+   * and it needs no in-flight guard — the same page twice is idempotent, because the
+   * variant keys are content addresses and the second write sets the row to what it
+   * already holds.
+   */
+  queue.process('chapter.page.replace', async (job) => {
+    const { chapterId, idx, key } = job.data
+    await replaceChapterPage(chapterId, idx, key, { db, storage: await storageNow() })
+  })
   queue.process('chapter.publish', async (job) => {
     await publishPass()
     log.info('chapter.publish handled by the scheduler pass', { chapterId: job.data.chapterId })

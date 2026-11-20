@@ -6,7 +6,7 @@ import { notFound } from 'next/navigation'
 import { GalleryImport } from '@/components/admin/client/GalleryImport'
 import { PageEditor } from '@/components/admin/client/PageEditor'
 import { RemotePages } from '@/components/admin/client/RemotePages'
-import { editorPages } from '@/components/admin/server/chapter-pages'
+import { editorPages, remoteEditorPages } from '@/components/admin/server/chapter-pages'
 import { PageHeader } from '@/components/admin/ui'
 import { withPermission } from '@/lib/auth'
 
@@ -62,6 +62,7 @@ export default async function ChapterPagesPage({
             chapterId={chapterId}
             sourceUrl={row.processing?.fetch?.url ?? null}
             copying={row.state === 'processing'}
+            pages={await remoteEditorPages(chapterId)}
           />
         ) : (
           <PageEditor chapterId={chapterId} initial={pages} editable={!!row.processing} />

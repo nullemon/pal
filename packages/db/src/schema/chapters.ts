@@ -55,6 +55,17 @@ export interface ChapterProcessing {
    */
   dropped?: string[]
   /**
+   * Pages an operator swapped out by hand, keyed by page index.
+   *
+   * Written by `chapter.page.replace` and read by nothing: the replacement lives in the
+   * `chapter_pages` row itself, which is the only thing the reader consults. This is a
+   * record for the panel — so a chapter that is mostly remote can say which of its pages
+   * are now ours and when that happened — and deliberately not an input to any rebuild.
+   * Treating it as one would mean a remote chapter growing a parallel, half-true copy of
+   * the page list that the next import would have to reconcile.
+   */
+  replacedPages?: Record<string, { key: string; at: string }>
+  /**
    * A gallery import that still has to be downloaded (ImgChest, `@palscans/core/gallery`).
    *
    * Present between the operator pressing Import and the worker finishing the download, and

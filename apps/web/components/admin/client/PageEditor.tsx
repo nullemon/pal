@@ -6,6 +6,7 @@ import { Button, useToast } from '@palscans/ui'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import { Hint, Panel, PanelHeader, Pill } from '@/components/admin/ui'
+import { postJson } from './api'
 import { movePagesTo } from './util'
 
 /**
@@ -26,6 +27,13 @@ import { movePagesTo } from './util'
  * pages are marked and the server's resulting order replaces the local one after every save.
  */
 const m = adminMessages.pageEditor
+
+interface SignedUpload {
+  key: string
+  url: string
+  method: string
+  headers?: Record<string, string>
+}
 
 export interface EditorPage {
   id: string
@@ -165,18 +173,21 @@ export function PageEditor({ chapterId, initial, editable }: Props) {
       setBusy(m.uploading)
       try {
         const sha256 = await digest(file)
-        const intent = await fetch(`/api/admin/chapters/${chapterId}/pages/upload`, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ sha256, type: file.type, bytes: file.size }),
-        })
-        if (!intent.ok) throw new Error('intent')
-        const signed = (await intent.json()) as {
-          key: string
-          url: string
-          method: string
-          headers?: Record<string, string>
-        }
+        /*
+         * Through `postJson`, not a bare `fetch`.
+         *
+         * Every admin route answers `{ data }` — that is what `ok()` writes — and this read
+         * the presign off the top level, so `signed.url` was `undefined` on every call.
+         * `fetch(undefined)` then requested the literal path "undefined" relative to this
+         * page, got the HTML 404 back, and the upload failed with "could not upload" for a
+         * reason nothing on screen could explain. Replace and Insert have never worked.
+         */
+        const intent = await postJson<SignedUpload>(
+          `/api/admin/chapters/${chapterId}/pages/upload`,
+          { sha256, type: file.type, bytes: file.size },
+        )
+        if (!intent.ok) throw new Error(intent.message || 'intent')
+        const signed = intent.data
         const put = await fetch(signed.url, {
           method: signed.method,
           headers: signed.headers,

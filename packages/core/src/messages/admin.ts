@@ -3124,6 +3124,16 @@ export const adminMessages = {
     remoteBodyNoHost:
       'This chapter is read straight from the site it was imported from. We hold no copy, so there is nothing here to replace, reorder or watermark. Copy the pages into our storage and this grid fills in.',
     remoteCta: 'Copy pages into our storage',
+    /** The per-page grid a remote chapter gets instead of the full editor. */
+    remoteGridTitle: 'Pages on {host}',
+    remoteGridTitleNoHost: 'Pages on the original host',
+    remoteGridHint:
+      'Press Replace on the page you want to swap and pick the new image. Only that page is uploaded to our storage — the rest stay where they are.',
+    remoteOurs: 'ours',
+    remoteReplacing: 'Replacing…',
+    remoteReplaced: 'Replacing page {n}. It appears here in a minute.',
+    remoteReplaceFailed: 'Could not replace that page.',
+    remoteAllTitle: 'Or copy the whole chapter in',
     remoteBusy: 'Copying…',
     remoteQueued: 'Copying started. The pages appear here once it finishes.',
     /**
