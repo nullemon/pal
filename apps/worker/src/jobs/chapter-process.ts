@@ -243,9 +243,21 @@ export const processChapter = async (
   }))
   // Record what these pages actually carry, so the panel can say which chapters are on the
   // current mark without decoding an image, and a later re-apply can skip them.
+  /*
+   * `results` stays in the document.
+   *
+   * It used to be stripped here, on the reasoning that it only existed so a failed run
+   * could be retried page by page. But the page editor is built from it and nothing else:
+   * the grid, a reorder, a delete and a replace all read `results`, so every chapter that
+   * finished successfully — every chapter worth editing — showed "0 pages" and could not
+   * be touched. Keeping it also means replacing one page re-encodes one page, because a
+   * failed-only run treats a source with no kept result as work still to do.
+   *
+   * A full run still starts from an empty map, and a failed-only run only reuses results
+   * while the watermark has not moved (both above), so nothing stale can be carried over.
+   */
   const lean: ChapterProcessing = {
     ...doc,
-    results: undefined,
     mode: 'all',
     watermark: applied,
     pageSource: 'storage',

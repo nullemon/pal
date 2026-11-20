@@ -292,3 +292,97 @@ export const insertSourceAt = <S extends SourceLike, P>(
   const sourceIdx = staged.findIndex((s) => s.idx === free)
   return { plan: next, sourceIdx }
 }
+
+/**
+ * Rebuild `results` for a document that no longer carries them, from the rows it produced.
+ *
+ * ## Why a finished chapter has no results
+ *
+ * `chapter.process` used to end a successful run by writing the document back with
+ * `results: undefined` — "lean", on the reasoning that the results were only kept so a
+ * failed run could be retried page by page. But everything in this module reads `results`:
+ * the flatten above returns nothing without them, so the page editor showed "0 pages" for
+ * every chapter that had ever processed successfully, which is every chapter an operator
+ * would want to edit. The editor only ever had something to show while a chapter was broken.
+ *
+ * New runs keep their results. This is for the chapters processed before that changed.
+ *
+ * ## How a row is matched to its source
+ *
+ * The encode names every page `NNNN-<hash>`, where `NNNN` is `source.idx * 10 + segment`
+ * (`startIdx` in the worker). So the key says which upload a page came from and which slice
+ * of it — exactly the two things `results` is indexed by — and a lean document is one that
+ * was written by a successful run, so those numbers describe the sources as they stand.
+ *
+ * It is not taken on trust. The flatten walks sources in index order and segments in order,
+ * so the pairs read off the rows must come out strictly ascending, and every one must name
+ * a source the document still has. If either fails the keys no longer describe this
+ * document — a reorder followed by a partial re-encode can do that — and the fallback is
+ * the one other mapping that cannot be wrong: as many rows as sources and nothing dropped,
+ * so the n-th row is the n-th source. Anything else returns null, and the caller shows the
+ * chapter as uneditable rather than letting a Save rebuild `chapter_pages` from a guess.
+ *
+ * That last point is why this is strict. `savePageEdits` deletes a chapter's rows and
+ * reinserts what the document implies, so a wrong mapping is not a wrong thumbnail, it is
+ * pages in the wrong order on the live site.
+ */
+export const hydrateResults = <S extends SourceLike, P extends { key: string }>(
+  plan: PagePlan<S, P>,
+  /** The chapter's `chapter_pages` rows as pages, in `idx` order. */
+  rows: readonly P[],
+): PagePlan<S, P> | null => {
+  if (plan.results && Object.keys(plan.results).length > 0) return plan
+  if (rows.length === 0) return plan
+  const sources = [...plan.sources].sort((a, b) => a.idx - b.idx)
+  const known = new Set(sources.map((s) => s.idx))
+  const dropped = new Set(plan.dropped ?? [])
+
+  const byKey = (): Record<string, P[]> | null => {
+    const out: Record<string, P[]> = {}
+    let last = -1
+    for (const page of rows) {
+      const name = page.key.slice(page.key.lastIndexOf('/') + 1)
+      const match = /^(\d{4,})-/.exec(name)
+      if (!match) return null
+      const n = Number(match[1])
+      // Strictly ascending is the flatten's own order; anything else is not this document.
+      if (n <= last) return null
+      last = n
+      const sourceIdx = Math.floor(n / 10)
+      const segment = n % 10
+      if (!known.has(sourceIdx)) return null
+      const list = out[String(sourceIdx)] ?? []
+      // A gap before this segment is only legitimate if the operator deleted what was there.
+      // The slot is filled with this page so the array stays dense; the flatten skips a
+      // dropped segment before it ever reads the slot.
+      while (list.length < segment) {
+        if (!dropped.has(pageRefKey(sourceIdx, list.length))) return null
+        list.push(page)
+      }
+      if (list.length !== segment) return null
+      list.push(page)
+      out[String(sourceIdx)] = list
+    }
+    return out
+  }
+
+  const byPosition = (): Record<string, P[]> | null => {
+    if (dropped.size > 0 || rows.length !== sources.length) return null
+    const out: Record<string, P[]> = {}
+    for (const [i, source] of sources.entries()) {
+      const page = rows[i]
+      if (!page) return null
+      out[String(source.idx)] = [page]
+    }
+    return out
+  }
+
+  const results = byKey() ?? byPosition()
+  if (!results) return null
+  const hydrated: PagePlan<S, P> = { ...plan, results }
+  // The proof: what this implies must be exactly the rows that exist, in the same order.
+  const flat = flattenPages(hydrated)
+  if (flat.length !== rows.length) return null
+  for (const [i, f] of flat.entries()) if (f.page.key !== rows[i]?.key) return null
+  return hydrated
+}

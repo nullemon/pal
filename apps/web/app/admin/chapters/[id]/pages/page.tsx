@@ -6,7 +6,7 @@ import { notFound } from 'next/navigation'
 import { GalleryImport } from '@/components/admin/client/GalleryImport'
 import { PageEditor } from '@/components/admin/client/PageEditor'
 import { RemotePages } from '@/components/admin/client/RemotePages'
-import { editorPages, remoteEditorPages } from '@/components/admin/server/chapter-pages'
+import { editorPages, hydrateDoc, remoteEditorPages } from '@/components/admin/server/chapter-pages'
 import { PageHeader } from '@/components/admin/ui'
 import { withPermission } from '@/lib/auth'
 
@@ -43,7 +43,13 @@ export default async function ChapterPagesPage({
   if (!row) notFound()
 
   const m = adminMessages.pageEditor
-  const pages = row.processing ? await editorPages(row.processing) : []
+  /*
+   * Hydrated before anything reads it. A chapter that finished processing has no `results`
+   * in its document, and the grid is built from nothing else — so this screen said
+   * "0 pages" for every stored chapter, including the ones uploaded an hour ago.
+   */
+  const doc = row.processing ? await hydrateDoc(chapterId, row.processing, db) : null
+  const pages = doc ? await editorPages(doc) : []
   /**
    * Remote chapters have pages on the live site and none in the bucket, so this screen's
    * grid is empty however many pages a reader can see. `pageSource` is what the fetch job
@@ -65,7 +71,7 @@ export default async function ChapterPagesPage({
             pages={await remoteEditorPages(chapterId)}
           />
         ) : (
-          <PageEditor chapterId={chapterId} initial={pages} editable={!!row.processing} />
+          <PageEditor chapterId={chapterId} initial={pages} editable={!!doc} />
         )}
         {/*
           The other half of "edit this chapter's pages": throw them all away and pull a fresh

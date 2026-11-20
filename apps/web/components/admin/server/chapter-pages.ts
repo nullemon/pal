@@ -2,6 +2,7 @@ import 'server-only'
 import {
   deletePages,
   flattenPages,
+  hydrateResults,
   insertSourceAt,
   markForReprocess,
   type PagePlan,
@@ -53,6 +54,43 @@ const planOf = (doc: ChapterProcessing): Plan => ({
   errors: doc.errors,
   dropped: doc.dropped,
 })
+
+/**
+ * The document with its `results` restored, or null if they cannot be restored safely.
+ *
+ * A chapter that finished processing before `chapter.process` stopped stripping them has
+ * none, and every function below reads them — the grid, the reorder, the delete, and the
+ * replace all came out empty or wrong for exactly the chapters an operator wants to edit.
+ * This is the one place that puts them back, from `chapter_pages`, and every entry point
+ * goes through it so the grid and the save can never be working from different documents.
+ *
+ * Null means the rows do not line up with the sources (`hydrateResults` explains when).
+ * Callers must treat that as "not editable here", never as "no pages": a save built on an
+ * empty plan would delete the chapter's rows.
+ */
+export const hydrateDoc = async (
+  chapterId: number,
+  doc: ChapterProcessing,
+  db?: Db,
+): Promise<ChapterProcessing | null> => {
+  if (doc.results && Object.keys(doc.results).length > 0) return doc
+  const database = db ?? (await getDb())
+  const rows = await database
+    .select({
+      key: chapterPages.key,
+      width: chapterPages.width,
+      height: chapterPages.height,
+      bytes: chapterPages.bytes,
+      blurHash: chapterPages.blurHash,
+      variants: chapterPages.variants,
+    })
+    .from(chapterPages)
+    .where(eq(chapterPages.chapterId, chapterId))
+    .orderBy(chapterPages.idx)
+  const plan = hydrateResults(planOf(doc), rows as ProcessedPage[])
+  if (!plan) return null
+  return { ...doc, results: plan.results }
+}
 
 /**
  * Signed rather than public URLs, always.
@@ -184,7 +222,12 @@ export const savePageEdits = async (
     .limit(1)
   if (!row?.processing) return null
 
-  const doc = applyPageEdits(row.processing, edits)
+  // Hydrated first, and refused if it cannot be: the rows below are rebuilt from this
+  // document, so applying an edit to one with no results would reinsert nothing at all.
+  const current = await hydrateDoc(chapterId, row.processing, database)
+  if (!current) throw new Error('savePageEdits: pages cannot be matched to their sources')
+
+  const doc = applyPageEdits(current, edits)
   const rows = flattenPages(planOf(doc)).map(({ page, idx }) => ({
     chapterId,
     idx,
@@ -229,6 +272,15 @@ export const addPageSource = async (
     .limit(1)
   if (!row?.processing) return null
 
+  /*
+   * Hydrated for two reasons. `position` is a page position, and without results the
+   * flatten is empty, so every position was "out of range". And a failed-only run re-encodes
+   * any source that has no kept result — which, on a stripped document, was all of them:
+   * replacing one page re-encoded the entire chapter.
+   */
+  const current = await hydrateDoc(chapterId, row.processing, database)
+  if (!current) throw new Error('addPageSource: pages cannot be matched to their sources')
+
   const source = {
     key: input.key,
     bytes: input.bytes,
@@ -238,20 +290,20 @@ export const addPageSource = async (
   }
   const edit =
     input.op === 'replace'
-      ? replaceSourceAt(planOf(row.processing), input.position, source)
-      : insertSourceAt(planOf(row.processing), input.position, source)
+      ? replaceSourceAt(planOf(current), input.position, source)
+      : insertSourceAt(planOf(current), input.position, source)
 
   // An insert has no stale results to clear, but still has to be named in `errors`, or the
   // run falls through to re-encoding the whole chapter. See markForReprocess.
   const plan = markForReprocess(edit.plan, [edit.sourceIdx], input.op)
   const doc: ChapterProcessing = {
-    ...row.processing,
+    ...current,
     sources: plan.sources,
     results: plan.results,
     errors: plan.errors ?? {},
     dropped: plan.dropped,
     mode: 'failed',
-    attempt: (row.processing.attempt ?? 0) + 1,
+    attempt: (current.attempt ?? 0) + 1,
     progress: { done: 0, total: plan.sources.length },
     finishedAt: null,
   }

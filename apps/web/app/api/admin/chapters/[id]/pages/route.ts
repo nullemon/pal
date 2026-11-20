@@ -8,6 +8,7 @@ import {
   addPageSource,
   applyPageEdits,
   editorPages,
+  hydrateDoc,
   savePageEdits,
 } from '@/components/admin/server/chapter-pages'
 import { idParam } from '@/components/admin/server/params'
@@ -52,9 +53,11 @@ export const GET = withPermission<{ id: string }>('chapter.repair', async (_requ
   // A chapter with no processing document has never been through the worker; there is
   // nothing to edit, and an empty grid says so more clearly than an error.
   if (!row.processing) return ok({ pages: [], sources: 0, editable: false })
+  const doc = await hydrateDoc(id.data, row.processing, db)
+  if (!doc) return ok({ pages: [], sources: row.processing.sources.length, editable: false })
   return ok({
-    pages: await editorPages(row.processing),
-    sources: row.processing.sources.length,
+    pages: await editorPages(doc),
+    sources: doc.sources.length,
     editable: true,
   })
 })
@@ -84,7 +87,8 @@ export const PATCH = withPermission<{ id: string }>(
     if (!row) return notFound()
     if (!row.processing) return fail(409, 'validation')
 
-    const before = row.processing
+    const before = await hydrateDoc(id.data, row.processing, db)
+    if (!before) return fail(409, 'validation')
     let saved: Awaited<ReturnType<typeof savePageEdits>>
     try {
       // Applied once here purely to surface a bad request as a 400 rather than a 500 from
