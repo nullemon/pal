@@ -41,13 +41,44 @@ describe('mobile_anchor through the reader loader', () => {
         },
       },
     )
-    expect(parsed.tags).toEqual({ sky: 'sky', instrip: 'instrip', end: 'end', anchor: tag })
+    expect(parsed.tags).toEqual({
+      sky: 'sky',
+      skyRight: null,
+      instrip: 'instrip',
+      end: 'end',
+      anchor: tag,
+    })
   })
 
   it('survives a malformed row rather than taking the reader down', () => {
     expect(
       parseReaderSiteSettings({}, { slots: { mobile_anchor: 'nonsense' } }).tags.anchor,
     ).toBeNull()
+  })
+})
+
+describe('reader_sky_right', () => {
+  it('is null when unset, which is what makes the right gutter reuse the left tag', () => {
+    const parsed = parseReaderSiteSettings(
+      {},
+      { slots: { reader_sky: { enabled: true, tag: 'L' } } },
+    )
+    expect(parsed.tags.sky).toBe('L')
+    expect(parsed.tags.skyRight).toBeNull()
+  })
+
+  it('carries its own tag when the operator sets one', () => {
+    const parsed = parseReaderSiteSettings(
+      {},
+      {
+        slots: {
+          reader_sky: { enabled: true, tag: 'L' },
+          reader_sky_right: { enabled: true, tag: 'R' },
+        },
+      },
+    )
+    expect(parsed.tags.sky).toBe('L')
+    expect(parsed.tags.skyRight).toBe('R')
   })
 })
 

@@ -989,7 +989,9 @@ export const adminMessages = {
         home_infeed: 'After the 6th Latest updates row',
         series_top: 'Under the series header',
         series_sidebar: 'Under the chapter list',
-        reader_sky: 'Reader gutters, wide screens only',
+        reader_sky:
+          'Reader left gutter, wide screens only. Also fills the right one if that has no tag.',
+        reader_sky_right: 'Reader right gutter. Leave empty to reuse the left tag.',
         reader_instrip: 'Between pages in the mobile strip',
         reader_end: 'After the last page',
         mobile_anchor: 'Sticky bar across the bottom, phone and desktop',

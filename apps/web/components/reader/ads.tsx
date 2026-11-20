@@ -18,6 +18,17 @@ export function Skyscrapers({ ads }: { ads: ReaderAds }) {
   const offset = `calc((100vw - 820px) / 4 - ${w / 2}px)`
   const label = messages.readerUi.adSkyscraper
   /*
+   * The right gutter takes its own tag when the operator has given it one, and the left
+   * one's otherwise.
+   *
+   * One tag on both sides is the obvious setup and frequently half works: a network keys an
+   * impression on the ad unit, and many will fill a unit once per page view, so the second
+   * copy of the same unit comes back empty and the page looks like it only has a left
+   * skyscraper. A second unit, created in the network's dashboard and pasted into
+   * `reader_sky_right`, is the fix — and it can then be a different size or campaign.
+   */
+  const right = ads.tags.skyRight ?? ads.tags.sky
+  /*
    * Gated on the query as well as the class. The class alone hides the box but still mounts
    * the tag, so every phone was requesting two 160x600 creatives it could not show — the
    * bulk of the traffic, spent on impressions nobody saw. `MediaOnly` renders nothing at
@@ -49,8 +60,8 @@ export function Skyscrapers({ ads }: { ads: ReaderAds }) {
           width={w}
           height={h}
           label={label}
-          placeholder={ads.tags.sky === null}
-          tag={ads.tags.sky}
+          placeholder={right === null}
+          tag={right}
         />
       </aside>
     </MediaOnly>
